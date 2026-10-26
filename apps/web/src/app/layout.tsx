@@ -28,6 +28,16 @@ export const metadata: Metadata = {
   // Metadata is rendered on the server before the client locale is known: use the default (EN).
   title: enMessages.common.metaTitle,
   description: enMessages.common.metaDescription,
+  icons: {
+    icon: [
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: ['/favicon.ico'],
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

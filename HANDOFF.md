@@ -10,6 +10,7 @@
 - **Strict Multi-language (i18n):** official `next-intl`, zero hardcoded static text in JSX/TSX.
 - Locales: `en` (default for judges), `fr`, `mg` with 100% key parity enforced via `make check-i18n` and CI.
 - PR: `#1` on branch `feat/multilingual-ui-kit`.
+- **Brand Logo & Favicon:** Extracted futuristic solar microgrid mark (background & text removed), generated icons (`icon.png`, `apple-icon.png`, `favicon.ico`), wired metadata icons and sidebar logo.
 - Monorepo healthy: `make check` (19 web + 5 engine tests) and `pnpm build` pass with 0 errors.
 
 ## Next task

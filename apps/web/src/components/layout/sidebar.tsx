@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   Activity,
@@ -72,10 +73,16 @@ export function Sidebar({
             href="/overview"
             className="flex items-center gap-2.5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan rounded-control-sm"
           >
-            {/* Geometric Sun / Grid Mark */}
-            <div className="relative flex h-8 w-8 items-center justify-center rounded-control-sm bg-surface-elevated border border-border group-hover:border-solar-amber/50 transition-colors">
-              <span className="h-3 w-3 rounded-full bg-solar-amber shadow-sm shadow-solar-amber/50" />
-              <span className="absolute h-6 w-6 rounded-full border border-energy-cyan/30 border-dashed animate-spin motion-reduce:animate-none" />
+            {/* Futuristic Solar Microgrid Mark */}
+            <div className="relative flex h-8 w-8 items-center justify-center rounded-control-sm bg-surface-elevated border border-border group-hover:border-solar-amber/50 transition-colors p-1 overflow-hidden">
+              <Image
+                src="/icon.png"
+                alt={tCommon('appName')}
+                width={28}
+                height={28}
+                className="h-full w-full object-contain"
+                priority
+              />
             </div>
             <div className="flex flex-col">
               <span className="font-display text-sm font-semibold text-text-primary tracking-tight">
