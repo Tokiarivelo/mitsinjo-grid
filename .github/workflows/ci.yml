@@ -36,6 +36,9 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      - name: Verify i18n parity
+        run: pnpm --filter web test -- i18n-parity
+
       - name: Build
         run: pnpm build
         env:

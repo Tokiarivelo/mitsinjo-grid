@@ -1,0 +1,230 @@
+{
+  "common": {
+    "appName": "Mitsinjo Grid",
+    "simulationLab": "LABO DE SIMULATION",
+    "simulatedData": "DONNÉES SIMULÉES",
+    "aiGenerated": "GÉNÉRÉ PAR IA",
+    "aiExplanation": "EXPLICATION IA",
+    "engineStatus": "État du moteur",
+    "uiKit": "Composants",
+    "version": "v0.1.0",
+    "close": "Fermer",
+    "language": "Langue",
+    "selectLanguage": "Sélectionner la langue de l'application",
+    "languageSelection": "Sélection de la langue",
+    "metaTitle": "Mitsinjo Grid — Simulation de micro-réseau solaire rural",
+    "metaDescription": "Simulation de micro-réseau solaire et aide à la décision par IA pour l'électrification rurale."
+  },
+  "nav": {
+    "overview": "Aperçu",
+    "simulation": "Simulation en direct",
+    "strategies": "Labo Stratégies",
+    "scenarios": "Scénarios",
+    "copilot": "Copilote IA"
+  },
+  "routes": {
+    "overview": {
+      "title": "Aperçu",
+      "subtitle": "Bilan énergétique, indicateurs critiques et scénario actif"
+    },
+    "simulation": {
+      "title": "Simulation en direct",
+      "subtitle": "Réseau de village 3D interactif et chronologie horaire"
+    },
+    "strategies": {
+      "title": "Labo Stratégies",
+      "subtitle": "Comparaison côte à côte des algorithmes de distribution"
+    },
+    "scenarios": {
+      "title": "Scénarios & Hypothèses",
+      "subtitle": "Tests de pénurie pré-configurés et paramètres physiques"
+    },
+    "copilot": {
+      "title": "Copilote IA",
+      "subtitle": "Aide à la décision et explications des scénarios"
+    },
+    "design": {
+      "title": "Système de Design & Kit UI",
+      "subtitle": "Spécifications des composants, jetons et galerie des variantes"
+    }
+  },
+  "status": {
+    "ready": "PRÊT",
+    "running": "SIMULATION EN COURS",
+    "complete": "SIMULATION TERMINÉE",
+    "warning": "AVERTISSEMENT",
+    "critical": "CRITIQUE",
+    "simulated": "DONNÉES SIMULÉES",
+    "ai": "GÉNÉRÉ PAR IA"
+  },
+  "header": {
+    "reset": "Réinitialiser",
+    "copilot": "Copilote",
+    "toggleCopilot": "Basculer le copilote IA",
+    "openMenu": "Ouvrir le menu de navigation",
+    "selectScenario": "Sélectionner un scénario de simulation",
+    "modified": "MODIFIÉ",
+    "modifiedTooltip": "Les paramètres du scénario ont été modifiés par rapport au préréglage",
+    "language": "Langue"
+  },
+  "scenarios": {
+    "baseline": {
+      "name": "Référence 24h Nominale",
+      "description": "Journée ensoleillée nominale sans énergie non servie"
+    },
+    "cloudy_afternoon": {
+      "name": "Après-midi Nuageux (-40%)",
+      "description": "Chute solaire de 2h entre 13-15h avec 35% de batterie initiale"
+    },
+    "high_demand": {
+      "name": "Forte Demande Soir (+30%)",
+      "description": "Hausse de consommation en soirée de 17-22h sur tous les secteurs"
+    },
+    "battery_constraint": {
+      "name": "Batterie Restreinte (60 kWh)",
+      "description": "Capacité réduite de moitié avec 30% de réserve de départ"
+    },
+    "essential_stress": {
+      "name": "Stress Essentiel (-60%)",
+      "description": "Déficit solaire sévère de 4h entre 11-15h avec 25% de batterie"
+    }
+  },
+  "features": {
+    "overview": {
+      "title": "Aperçu du Micro-réseau",
+      "description": "Bienvenue sur Mitsinjo Grid — Simulation et aide à la décision pour micro-réseaux solaires."
+    },
+    "simulation": {
+      "title": "Simulation en direct",
+      "description": "Équilibre énergétique sur 24 heures et jumeau numérique 3D du village."
+    },
+    "strategyLab": {
+      "title": "Labo Stratégies",
+      "description": "Comparaison côte à côte des stratégies Proportionnelle et Services Essentiels d'abord."
+    },
+    "scenarios": {
+      "title": "Scénarios & Hypothèses",
+      "description": "Événements climatiques et pics de charge pré-configurés pour tester la résilience."
+    },
+    "copilot": {
+      "title": "Copilote IA",
+      "description": "Conseiller micro-réseau fondé sur les résultats déterministes de simulation."
+    }
+  },
+  "copilot": {
+    "title": "Copilote Mitsinjo",
+    "badge": "EXPLICATION IA",
+    "assistantRole": "Assistant d'aide à la décision",
+    "assistantDesc": "Posez des questions sur la simulation, comparez les stratégies ou explorez des ajustements de paramètres.",
+    "suggestedQuestions": "Questions suggérées",
+    "analyzing": "Analyse des résultats de simulation...",
+    "placeholder": "Posez une question sur la stabilité du réseau... (Entrée pour envoyer)",
+    "shiftEnter": "Maj+Entrée pour un saut de ligne",
+    "send": "Envoyer",
+    "computedEvidence": "Données calculées",
+    "close": "Fermer le panneau copilote",
+    "suggestedPrompt1": "Pourquoi le centre de santé a-t-il manqué d'électricité dans ce scénario ?",
+    "suggestedPrompt2": "Comparez les stratégies proportionnelle et services essentiels.",
+    "suggestedPrompt3": "Que se passe-t-il si l'on double la capacité de la batterie ?",
+    "suggestedPrompt4": "Quelle quantité d'énergie solaire a été écrêtée pendant les heures de pointe ?",
+    "unavailable": "Le copilote IA est temporairement indisponible. Vous pouvez continuer à explorer la simulation et ses résultats calculés."
+  },
+  "ui": {
+    "energyBar": {
+      "essentialShortfall": "Déficit en services essentiels",
+      "partialSupply": "Alimentation partielle",
+      "coverageLabel": "couverture énergétique",
+      "coveredText": "couvert"
+    },
+    "metricCard": {
+      "simulationPeriod": "Simulation sur 24h",
+      "warningLabel": "AVERTISSEMENT",
+      "criticalLabel": "CRITIQUE"
+    },
+    "chartCard": {
+      "noDataTitle": "Aucune donnée à afficher",
+      "noDataDesc": "Lancez la simulation pour visualiser les résultats."
+    },
+    "design": {
+      "catalogTitle": "Catalogue du Système de Design",
+      "catalogSubtitle": "Jetons Tailwind v4, états interactifs et composants accessibles WCAG AA.",
+      "tokenAudited": "JETONS AUDITÉS",
+      "sec1Title": "1. Jetons de la palette principale",
+      "sec2Title": "2. Variantes et états des boutons",
+      "sec3Title": "3. Variantes de StatusBadge (libellé visible obligatoire)",
+      "sec4Title": "4. MetricCards (Solaire, Batterie, Demande, Services Essentiels)",
+      "sec5Title": "5. EnergyBars (Allocations sectorielles)",
+      "sec6Title": "6. Contrôles et sélecteur de scénario",
+      "sec7Title": "7. ChartCard et états vides",
+      "smallPrimary": "Primaire Petit",
+      "smallSecondary": "Secondaire Petit",
+      "calculating": "Calcul en cours",
+      "disabled": "Désactivé",
+      "emergencyShed": "Délestage d'urgence",
+      "solarDeficit": "Baisse Solaire",
+      "solarDeficitDesc": "Simulez une couverture nuageuse soudaine ou un dépôt de poussière sur les panneaux solaires.",
+      "scenarioSelection": "Sélection du scénario",
+      "scenarioSelectionDesc": "Basculez entre les cas types et suivez l'état de modification.",
+      "active": "Actif",
+      "off": "Désactivé",
+      "energyBalanceTitle": "Bilan Énergétique 24h",
+      "energyBalanceSubtitle": "Courbes horaires de production et de consommation",
+      "energyBalanceSummary": "La production solaire atteint son pic à 12h00 à 38 kW. La demande du soir culmine à 19h00 à 12 kW.",
+      "chartPlaceholder": "[Le conteneur Recharts sera affiché ici en P4]",
+      "strategyCompareTitle": "Comparaison des Stratégies",
+      "strategyCompareSubtitle": "Proportionnelle vs Services Essentiels",
+      "strategyCompareSummary": "Aucune comparaison effectuée pour le moment",
+      "readySimulateTitle": "Prêt pour la simulation",
+      "readySimulateDesc": "Choisissez un scénario ou ajustez les hypothèses solaires et de batterie ci-dessus.",
+      "runFirstSim": "Lancer la première simulation",
+      "simErrorTitle": "Erreur de simulation",
+      "simErrorDesc": "La puissance solaire ne peut pas être nulle. Réglez au moins 1 kWp.",
+      "resetDefaults": "Rétablir les valeurs par défaut",
+      "clinicSupplyLabel": "Alimentation du Dispensaire (Déficit)",
+      "clinicShortfallCaption": "2.4 kWh de déficit essentiel à 19:00",
+      "batteryLowLabel": "Réserve Batterie (Faible)",
+      "batteryLowCaption": "Proche de la limite de réserve de 20%",
+      "loadingLabel": "État Chargement / Squelette",
+      "healthClinic": "Dispensaire de Santé",
+      "waterPumping": "Station de Pompage d'Eau",
+      "primarySchool": "École Primaire",
+      "villageHouseholds": "Ménages du Village",
+      "localMarket": "Marché Local & Artisans",
+      "palette": {
+        "canvasDesc": "fond de base",
+        "surfaceDesc": "carte/panneau",
+        "solarAmberDesc": "PV solaire",
+        "energyCyanDesc": "flux d'énergie",
+        "batteryGreenDesc": "batterie/ok",
+        "aiVioletDesc": "copilote",
+        "warningAmberDesc": "déficit",
+        "criticalRedDesc": "essentiel non servi"
+      },
+      "toggleModifiedWithState": "Basculer le badge Modifié ({state})"
+    }
+  },
+  "metrics": {
+    "solar": {
+      "label": "Pic Solaire PV",
+      "today": "kWh aujourd'hui"
+    },
+    "battery": {
+      "label": "Niveau Batterie",
+      "caption": "Capacité 120 kWh (réserve 20%)"
+    },
+    "demand": {
+      "label": "Demande Totale",
+      "served": "servie"
+    },
+    "essential": {
+      "label": "Services Essentiels",
+      "caption": "Poste de santé & pompage protégés"
+    }
+  },
+  "actions": {
+    "runSimulation": "Lancer la simulation",
+    "resetScenario": "Réinitialiser le scénario",
+    "exportJson": "Exporter en JSON",
+    "compareStrategies": "Comparer les stratégies"
+  }
+}

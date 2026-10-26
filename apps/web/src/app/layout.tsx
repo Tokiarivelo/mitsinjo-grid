@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { IBM_Plex_Mono, Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
+import { I18nProvider } from '@/lib/i18n';
+import enMessages from '@/messages/en.json';
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
@@ -23,8 +25,19 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Mitsinjo Grid — Rural Solar Microgrid Simulation',
-  description: 'Solar microgrid simulation and AI decision support for rural electrification.',
+  // Metadata is rendered on the server before the client locale is known: use the default (EN).
+  title: enMessages.common.metaTitle,
+  description: enMessages.common.metaDescription,
+  icons: {
+    icon: [
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: ['/favicon.ico'],
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -34,7 +47,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       className={`${spaceGrotesk.variable} ${inter.variable} ${plexMono.variable} dark`}
     >
       <body className="min-h-screen bg-canvas text-text-primary antialiased font-sans">
-        {children}
+        <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
   );

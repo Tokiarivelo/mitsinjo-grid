@@ -37,12 +37,13 @@ Demo path that must always work: **solar drop → strategy comparison → AI exp
 ## Stack
 
 pnpm workspace + Turborepo · Next.js 15 App Router · React 19 · TS strict · Tailwind 4 (`@theme`) ·
-shadcn/ui (restyled) · Zustand · Zod · R3F + Drei · Recharts · Vitest · Playwright · Meta Llama API.
+shadcn/ui (restyled) · Zustand · Zod · R3F + Drei · Recharts · next-intl · Vitest · Playwright · Meta Llama API.
 
 ## Non-negotiable rules
 
 - Numbers come **only** from `@mitsinjo/engine`. UI, 3D and LLM never compute or invent energy values.
 - Engine is pure TS: no React, no DOM, no network, no `Math.random` without seed.
+- Zero static text & Multi-language (i18n): All UI surfaces must be multi-lingual via official `next-intl` (EN default, FR, MG). Zero hardcoded/static user-visible strings in JSX/TSX. All text must use `useTranslations()` with 100% key parity across `en.json`, `fr.json`, and `mg.json` (enforced in CI and PR validation via `make check-i18n`).
 - `app/**/page.tsx` = import + render a feature page. No logic.
 - Feature code lives in `apps/web/src/features/<name>/{ui,hooks,utils,__tests__}`; export via `index.ts`.
 - Every engine function and hook ships with a Vitest test in the same commit.

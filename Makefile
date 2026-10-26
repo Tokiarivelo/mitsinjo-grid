@@ -89,7 +89,11 @@ format: ## Format with Prettier
 	$(need_ws)
 	$(PNPM) exec prettier --write .
 
-check: typecheck lint test ## typecheck + lint + test (run before handoff)
+check-i18n: ## Verify i18n key parity and completeness across locales
+	$(need_ws)
+	$(PNPM) --filter $(WEB) test -- i18n-parity
+
+check: typecheck lint test check-i18n ## typecheck + lint + test + i18n check (run before handoff)
 
 ci: check e2e build ## Everything CI runs
 

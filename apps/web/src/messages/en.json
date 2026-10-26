@@ -1,0 +1,230 @@
+{
+  "common": {
+    "appName": "Mitsinjo Grid",
+    "simulationLab": "SIMULATION LAB",
+    "simulatedData": "SIMULATED DATA",
+    "aiGenerated": "AI-GENERATED",
+    "aiExplanation": "AI EXPLANATION",
+    "engineStatus": "Engine Status",
+    "uiKit": "UI Kit",
+    "version": "v0.1.0",
+    "close": "Close",
+    "language": "Language",
+    "selectLanguage": "Select application language",
+    "languageSelection": "Language selection",
+    "metaTitle": "Mitsinjo Grid — Rural Solar Microgrid Simulation",
+    "metaDescription": "Solar microgrid simulation and AI decision support for rural electrification."
+  },
+  "nav": {
+    "overview": "Overview",
+    "simulation": "Live Simulation",
+    "strategies": "Strategy Lab",
+    "scenarios": "Scenarios",
+    "copilot": "AI Copilot"
+  },
+  "routes": {
+    "overview": {
+      "title": "Overview",
+      "subtitle": "System balance, critical metrics and active scenario"
+    },
+    "simulation": {
+      "title": "Live Simulation",
+      "subtitle": "Interactive 3D village grid and hourly timeline"
+    },
+    "strategies": {
+      "title": "Strategy Lab",
+      "subtitle": "Side-by-side comparison of allocation algorithms"
+    },
+    "scenarios": {
+      "title": "Scenarios & Assumptions",
+      "subtitle": "Pre-configured stress tests and physical parameters"
+    },
+    "copilot": {
+      "title": "AI Copilot",
+      "subtitle": "Decision support and scenario explanations"
+    },
+    "design": {
+      "title": "Design System & UI Kit",
+      "subtitle": "Component specifications, tokens, and variant showcase"
+    }
+  },
+  "status": {
+    "ready": "READY",
+    "running": "SIMULATING",
+    "complete": "SIMULATION COMPLETE",
+    "warning": "WARNING",
+    "critical": "CRITICAL",
+    "simulated": "SIMULATED DATA",
+    "ai": "AI-GENERATED"
+  },
+  "header": {
+    "reset": "Reset",
+    "copilot": "Copilot",
+    "toggleCopilot": "Toggle AI copilot",
+    "openMenu": "Open navigation menu",
+    "selectScenario": "Select simulation scenario",
+    "modified": "MODIFIED",
+    "modifiedTooltip": "Scenario parameters have been modified from default preset",
+    "language": "Language"
+  },
+  "scenarios": {
+    "baseline": {
+      "name": "Baseline 24h Nominal",
+      "description": "Sunny day nominal profile with 0 unserved demand"
+    },
+    "cloudy_afternoon": {
+      "name": "Cloudy Afternoon (-40%)",
+      "description": "2h solar drop at 13-15h with 35% initial battery SoC"
+    },
+    "high_demand": {
+      "name": "High Evening Demand (+30%)",
+      "description": "17-22h evening peak demand surge across all sectors"
+    },
+    "battery_constraint": {
+      "name": "Constrained Battery (60 kWh)",
+      "description": "Half normal storage capacity with 30% initial reserve"
+    },
+    "essential_stress": {
+      "name": "Essential Stress (-60%)",
+      "description": "Severe 4h solar deficit from 11-15h with 25% battery"
+    }
+  },
+  "features": {
+    "overview": {
+      "title": "Microgrid Overview",
+      "description": "Welcome to Mitsinjo Grid — Solar Microgrid Simulation & Decision Support."
+    },
+    "simulation": {
+      "title": "Live Simulation",
+      "description": "Interactive 24-hour microgrid power balance and 3D village digital twin."
+    },
+    "strategyLab": {
+      "title": "Strategy Lab",
+      "description": "Side-by-side comparison of Proportional vs Essential-First allocation strategies."
+    },
+    "scenarios": {
+      "title": "Scenarios & Assumptions",
+      "description": "Pre-configured climate and demand stress events for microgrid resilience testing."
+    },
+    "copilot": {
+      "title": "AI Copilot",
+      "description": "Grounded microgrid advisor powered by deterministic simulation evidence."
+    }
+  },
+  "copilot": {
+    "title": "Mitsinjo Copilot",
+    "badge": "AI EXPLANATION",
+    "assistantRole": "Decision Support Assistant",
+    "assistantDesc": "Ask questions about the simulation, compare strategies, or explore what-if parameter adjustments.",
+    "suggestedQuestions": "Suggested Questions",
+    "analyzing": "Analyzing simulation results...",
+    "placeholder": "Ask about grid stability or trade-offs... (Enter to send)",
+    "shiftEnter": "Shift+Enter for newline",
+    "send": "Send",
+    "computedEvidence": "Computed Evidence",
+    "close": "Close copilot panel",
+    "suggestedPrompt1": "Why did the health clinic lose power in this scenario?",
+    "suggestedPrompt2": "Compare proportional vs essential-first strategies.",
+    "suggestedPrompt3": "What happens if we double the battery capacity?",
+    "suggestedPrompt4": "How much energy was curtailed during peak sun hours?",
+    "unavailable": "The AI copilot is temporarily unavailable. You can keep exploring the simulation and its computed results."
+  },
+  "ui": {
+    "energyBar": {
+      "essentialShortfall": "Essential service shortfall",
+      "partialSupply": "Partial supply",
+      "coverageLabel": "energy coverage",
+      "coveredText": "covered"
+    },
+    "metricCard": {
+      "simulationPeriod": "24h simulation",
+      "warningLabel": "WARNING",
+      "criticalLabel": "CRITICAL"
+    },
+    "chartCard": {
+      "noDataTitle": "No data to chart yet",
+      "noDataDesc": "Run the simulation to see results."
+    },
+    "design": {
+      "catalogTitle": "Design System Catalog",
+      "catalogSubtitle": "Tailwind v4 tokens, interactive states, and WCAG AA accessible primitives.",
+      "tokenAudited": "TOKEN AUDITED",
+      "sec1Title": "1. Core Palette Tokens",
+      "sec2Title": "2. Button Variants & States",
+      "sec3Title": "3. StatusBadge Variants (Always includes visible label)",
+      "sec4Title": "4. MetricCards (Solar, Battery, Demand, Essential Services)",
+      "sec5Title": "5. EnergyBars (Sector Allocations)",
+      "sec6Title": "6. Controls & Scenario Switcher",
+      "sec7Title": "7. ChartCard & Empty State",
+      "smallPrimary": "Small Primary",
+      "smallSecondary": "Small Secondary",
+      "calculating": "Calculating",
+      "disabled": "Disabled",
+      "emergencyShed": "Emergency shed",
+      "solarDeficit": "Solar Drop Deficit",
+      "solarDeficitDesc": "Simulate sudden cloud cover or dust accumulation on solar array panels.",
+      "scenarioSelection": "Scenario Selection",
+      "scenarioSelectionDesc": "Switch between standard test cases and track modification state.",
+      "active": "Active",
+      "off": "Off",
+      "energyBalanceTitle": "Energy Balance 24h",
+      "energyBalanceSubtitle": "Hourly production vs consumption curves",
+      "energyBalanceSummary": "Solar generation peaks at 12:00 at 38 kW. Evening demand peaks at 19:00 at 12 kW.",
+      "chartPlaceholder": "[Recharts container will render here in P4]",
+      "strategyCompareTitle": "Strategy Comparison",
+      "strategyCompareSubtitle": "Proportional vs Essential-First",
+      "strategyCompareSummary": "No strategy comparison run yet",
+      "readySimulateTitle": "Ready to simulate",
+      "readySimulateDesc": "Choose a scenario or adjust solar and battery assumptions above.",
+      "runFirstSim": "Run first simulation",
+      "simErrorTitle": "Simulation error",
+      "simErrorDesc": "Solar capacity cannot be zero. Please adjust to at least 1 kWp.",
+      "resetDefaults": "Reset to defaults",
+      "clinicSupplyLabel": "Clinic Supply (Shortfall)",
+      "clinicShortfallCaption": "2.4 kWh essential deficit at 19:00",
+      "batteryLowLabel": "Battery Reserve (Low)",
+      "batteryLowCaption": "Approaching 20% reserve limit",
+      "loadingLabel": "Loading / Skeleton State",
+      "healthClinic": "Health Clinic",
+      "waterPumping": "Water Pumping Station",
+      "primarySchool": "Primary School",
+      "villageHouseholds": "Village Households",
+      "localMarket": "Local Market & Artisans",
+      "palette": {
+        "canvasDesc": "base bg",
+        "surfaceDesc": "card/panel",
+        "solarAmberDesc": "solar PV",
+        "energyCyanDesc": "energy flow",
+        "batteryGreenDesc": "battery/ok",
+        "aiVioletDesc": "copilot",
+        "warningAmberDesc": "shortage",
+        "criticalRedDesc": "unmet essential"
+      },
+      "toggleModifiedWithState": "Toggle Modified Badge ({state})"
+    }
+  },
+  "metrics": {
+    "solar": {
+      "label": "Solar PV Peak",
+      "today": "kWh today"
+    },
+    "battery": {
+      "label": "Battery SoC",
+      "caption": "Capacity 120 kWh (reserve 20%)"
+    },
+    "demand": {
+      "label": "Total Demand",
+      "served": "served"
+    },
+    "essential": {
+      "label": "Essential Services",
+      "caption": "Health clinic & pumping protected"
+    }
+  },
+  "actions": {
+    "runSimulation": "Run simulation",
+    "resetScenario": "Reset scenario",
+    "exportJson": "Export JSON",
+    "compareStrategies": "Compare strategies"
+  }
+}

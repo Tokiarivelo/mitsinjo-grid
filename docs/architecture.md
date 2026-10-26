@@ -41,6 +41,7 @@ mitsinjo-grid/
             │   ├── layout.tsx  globals.css (@theme tokens)  page.tsx → redirect /overview
             │   ├── (lab)/layout.tsx    # AppShell
             │   ├── (lab)/{overview,simulation,strategies,scenarios,copilot}/page.tsx
+            │   ├── design/page.tsx     # UI kit catalog (renders features/design-system)
             │   └── api/copilot/route.ts
             ├── features/
             │   ├── overview/           # ui/ hooks/ utils/ __tests__/ index.ts
@@ -48,11 +49,13 @@ mitsinjo-grid/
             │   ├── microgrid-3d/       # R3F scene, dynamic(ssr:false) + 2D fallback
             │   ├── strategy-lab/
             │   ├── scenarios/          # cards, assumptions, export summary
-            │   └── copilot/            # chat UI, useCopilot, proposal dialog
+            │   ├── copilot/            # chat UI, useCopilot, proposal dialog
+            │   └── design-system/      # /design UI kit catalog
             ├── components/{ui,layout,charts}/
             ├── stores/simulation.store.ts   # single source of UI state
             ├── server/copilot/         # server-only: provider, tools, prompts, loop
-            └── lib/{env.ts,format.ts,utils.ts}
+            ├── messages/{en,fr,mg}.json     # i18n copy (key parity enforced)
+            └── lib/{env.ts,format.ts,utils.ts,i18n.tsx}
 ```
 
 Create folders when first needed, not up front.
