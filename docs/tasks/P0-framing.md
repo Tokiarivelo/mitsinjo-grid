@@ -9,8 +9,7 @@
       **Done when:** constraints listed in `HANDOFF.md` → Decisions.
 - [x] **P0-T3** Confirm default parameters and scenarios in `engine-spec.md` §5–6 (keep or edit).
       **Done when:** "PROPOSALS" label removed. (Confirmed 2026-10-26)
-- [ ] **P0-T4** (human) Decide UI language: EN (default, judges) with FR toggle stretch, or FR only.
-      **Done when:** decision in `HANDOFF.md`.
+- [x] **P0-T4** Decide UI language: Multi-language with `next-intl` (EN default for judges + FR & MG toggles in UI). (Resolved 2026-10-26)
 - [ ] **P0-T5** Write the 8 demo questions / steps (draft of `docs/demo-script.md`).
 
 **Exit criteria:** Meta access known (works / blocked → mock-only plan); parameters frozen.

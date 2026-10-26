@@ -8,6 +8,7 @@ import { Header } from './header';
 import { CopilotPanel, type CopilotMessage } from './copilot-panel';
 import type { StatusBadgeVariant } from '@/components/ui/status-badge';
 import type { ScenarioOption } from '@/components/ui/scenario-selector';
+import { useTranslations } from '@/lib/i18n';
 
 export interface AppShellProps {
   children: ReactNode;
@@ -22,33 +23,6 @@ export interface AppShellProps {
   className?: string;
 }
 
-const ROUTE_TITLES: Record<string, { title: string; subtitle: string }> = {
-  '/overview': {
-    title: 'Overview',
-    subtitle: 'System balance, critical metrics and active scenario',
-  },
-  '/simulation': {
-    title: 'Live Simulation',
-    subtitle: 'Interactive 3D village grid and hourly timeline',
-  },
-  '/strategies': {
-    title: 'Strategy Lab',
-    subtitle: 'Side-by-side comparison of allocation algorithms',
-  },
-  '/scenarios': {
-    title: 'Scenarios & Assumptions',
-    subtitle: 'Pre-configured stress tests and physical parameters',
-  },
-  '/copilot': {
-    title: 'AI Copilot',
-    subtitle: 'Decision support and scenario explanations',
-  },
-  '/design': {
-    title: 'Design System & UI Kit',
-    subtitle: 'Component specifications, tokens, and variant showcase',
-  },
-};
-
 export function AppShell({
   children,
   title,
@@ -62,6 +36,7 @@ export function AppShell({
   className,
 }: AppShellProps) {
   const pathname = usePathname();
+  const tRoutes = useTranslations('routes');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
@@ -69,13 +44,20 @@ export function AppShell({
   // On the /copilot route, the full page is the copilot workspace, so we hide the slide-out panel
   const isCopilotRoute = pathname === '/copilot';
 
-  const defaultMeta = ROUTE_TITLES[pathname] || {
-    title: 'Mitsinjo Grid',
-    subtitle: 'Rural Solar Microgrid Simulation',
-  };
+  const routeKey = pathname?.replace(/^\//, '') || 'overview';
 
-  const resolvedTitle = title || defaultMeta.title;
-  const resolvedSubtitle = subtitle || defaultMeta.subtitle;
+  let defaultTitle = 'Mitsinjo Grid';
+  let defaultSubtitle = 'Rural Solar Microgrid Simulation';
+
+  try {
+    defaultTitle = tRoutes(`${routeKey}.title`);
+    defaultSubtitle = tRoutes(`${routeKey}.subtitle`);
+  } catch {
+    // Fallback if key not in route catalog
+  }
+
+  const resolvedTitle = title || defaultTitle;
+  const resolvedSubtitle = subtitle || defaultSubtitle;
 
   const handleSendMessage = (content: string) => {
     const userMsg: CopilotMessage = {

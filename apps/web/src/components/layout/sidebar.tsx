@@ -13,19 +13,21 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusBadge, type StatusBadgeVariant } from '@/components/ui/status-badge';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
+import { useTranslations } from '@/lib/i18n';
 
-export interface NavItem {
-  label: string;
+export interface NavConfig {
+  key: 'overview' | 'simulation' | 'strategies' | 'scenarios' | 'copilot';
   href: string;
   icon: typeof LayoutDashboard;
 }
 
-export const NAV_ITEMS: NavItem[] = [
-  { label: 'Overview', href: '/overview', icon: LayoutDashboard },
-  { label: 'Live Simulation', href: '/simulation', icon: Activity },
-  { label: 'Strategy Lab', href: '/strategies', icon: GitCompare },
-  { label: 'Scenarios', href: '/scenarios', icon: Sliders },
-  { label: 'AI Copilot', href: '/copilot', icon: Sparkles },
+export const NAV_CONFIG: NavConfig[] = [
+  { key: 'overview', href: '/overview', icon: LayoutDashboard },
+  { key: 'simulation', href: '/simulation', icon: Activity },
+  { key: 'strategies', href: '/strategies', icon: GitCompare },
+  { key: 'scenarios', href: '/scenarios', icon: Sliders },
+  { key: 'copilot', href: '/copilot', icon: Sparkles },
 ];
 
 export interface SidebarProps {
@@ -42,6 +44,8 @@ export function Sidebar({
   className,
 }: SidebarProps) {
   const pathname = usePathname();
+  const tNav = useTranslations('nav');
+  const tCommon = useTranslations('common');
 
   return (
     <>
@@ -75,10 +79,10 @@ export function Sidebar({
             </div>
             <div className="flex flex-col">
               <span className="font-display text-sm font-semibold text-text-primary tracking-tight">
-                Mitsinjo Grid
+                {tCommon('appName')}
               </span>
               <span className="font-mono text-[10px] text-text-muted tracking-wider uppercase">
-                SIMULATION LAB
+                {tCommon('simulationLab')}
               </span>
             </div>
           </Link>
@@ -98,9 +102,10 @@ export function Sidebar({
 
         {/* Navigation Items */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map((item) => {
+          {NAV_CONFIG.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
+            const label = tNav(item.key);
 
             return (
               <Link
@@ -124,17 +129,25 @@ export function Sidebar({
                   )}
                   aria-hidden="true"
                 />
-                <span>{item.label}</span>
+                <span>{label}</span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Footer Area: Simulation Status & Data Label */}
+        {/* Footer Area: Language Toggle, Simulation Status & Data Label */}
         <div className="p-4 border-t border-border flex flex-col gap-3 bg-surface-elevated/30">
+          {/* Language Switcher */}
+          <div className="flex items-center justify-between pb-2 border-b border-border/40">
+            <span className="text-[10px] font-mono text-text-muted uppercase tracking-wider">
+              Language
+            </span>
+            <LanguageSwitcher variant="tabs" />
+          </div>
+
           <div className="flex flex-col gap-1.5">
             <span className="text-[10px] font-mono text-text-muted uppercase tracking-wider">
-              Engine Status
+              {tCommon('engineStatus')}
             </span>
             <div className="flex items-center justify-between">
               <StatusBadge variant={status} size="sm" />
@@ -148,10 +161,10 @@ export function Sidebar({
               className="hover:text-text-primary transition-colors flex items-center gap-1 focus-visible:ring-1 focus-visible:ring-energy-cyan rounded-xs"
             >
               <BarChart3 className="h-3 w-3" aria-hidden="true" />
-              UI Kit
+              {tCommon('uiKit')}
             </Link>
             <span className="text-text-muted/40">•</span>
-            <span className="font-mono text-[10px]">v0.1.0</span>
+            <span className="font-mono text-[10px]">{tCommon('version')}</span>
           </div>
         </div>
       </aside>

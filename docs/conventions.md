@@ -11,6 +11,7 @@
 - 3D: `features/microgrid-3d` loaded with `next/dynamic({ ssr:false })`; scene reads a memoized
   `SceneModel` built by `utils/toSceneModel(result, timeIndex)` (pure, tested).
 - Formatting numbers: `lib/format.ts` (`fmtKw`, `fmtKwh`, `fmtPct`) — always with unit.
+- Multi-language (i18n): `next-intl` is the official package; messages in `apps/web/src/messages/{en,fr,mg}.json`. Consume via `useTranslations(namespace)`. No hardcoded user-visible text.
 - Styling: Tailwind tokens from `globals.css @theme` only; no raw hex in components.
 - Files: components `PascalCase.tsx`, hooks `useX.ts`, utils `kebab-case.ts`, tests `*.test.ts(x)`.
 

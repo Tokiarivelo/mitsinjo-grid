@@ -5,6 +5,7 @@ import { Send, Sparkles, X, Bot, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
+import { useTranslations } from '@/lib/i18n';
 
 export interface CopilotMessage {
   id: string;
@@ -43,6 +44,7 @@ export function CopilotPanel({
   className,
 }: CopilotPanelProps) {
   const [input, setInput] = useState('');
+  const tCopilot = useTranslations('copilot');
 
   const handleSend = () => {
     if (!input.trim() || pending) return;
@@ -83,16 +85,16 @@ export function CopilotPanel({
             </div>
             <div className="flex flex-col">
               <span className="font-display text-sm font-semibold text-text-primary">
-                Mitsinjo Copilot
+                {tCopilot('title')}
               </span>
-              <StatusBadge variant="ai" label="AI EXPLANATION" size="sm" />
+              <StatusBadge variant="ai" label={tCopilot('badge')} size="sm" />
             </div>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close copilot panel"
+            aria-label={tCopilot('close')}
             className="p-1.5 rounded-control text-text-muted hover:text-text-primary hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan cursor-pointer"
           >
             <X className="h-4 w-4" aria-hidden="true" />
@@ -106,10 +108,9 @@ export function CopilotPanel({
               <div className="p-3.5 rounded-card bg-surface-elevated/50 border border-border flex items-start gap-3">
                 <Bot className="h-5 w-5 text-ai-violet shrink-0 mt-0.5" aria-hidden="true" />
                 <div className="flex flex-col gap-1 text-xs">
-                  <span className="font-semibold text-text-primary">Decision Support Assistant</span>
+                  <span className="font-semibold text-text-primary">{tCopilot('assistantRole')}</span>
                   <p className="text-text-secondary leading-relaxed">
-                    Ask questions about the simulation, compare strategies, or explore what-if
-                    parameter adjustments.
+                    {tCopilot('assistantDesc')}
                   </p>
                 </div>
               </div>
@@ -117,7 +118,7 @@ export function CopilotPanel({
               {/* Suggested prompts */}
               <div className="flex flex-col gap-2">
                 <span className="text-[11px] font-mono text-text-muted uppercase tracking-wider">
-                  Suggested Questions
+                  {tCopilot('suggestedQuestions')}
                 </span>
                 <div className="flex flex-col gap-1.5">
                   {suggestedPrompts.map((prompt, idx) => (
@@ -149,7 +150,7 @@ export function CopilotPanel({
               >
                 {m.role === 'assistant' && (
                   <div className="flex items-center justify-between mb-1 text-[10px] text-ai-violet font-mono font-medium">
-                    <span>AI EXPLANATION</span>
+                    <span>{tCopilot('badge')}</span>
                   </div>
                 )}
                 <p className="whitespace-pre-wrap">{m.content}</p>
@@ -158,7 +159,7 @@ export function CopilotPanel({
                 {m.evidence && m.evidence.length > 0 && (
                   <div className="mt-2.5 pt-2 border-t border-border/40 space-y-1">
                     <span className="text-[10px] font-mono text-text-muted uppercase">
-                      Computed Evidence
+                      {tCopilot('computedEvidence')}
                     </span>
                     <div className="grid grid-cols-2 gap-1.5">
                       {m.evidence.map((ev, i) => (
@@ -179,7 +180,7 @@ export function CopilotPanel({
           {pending && (
             <div className="flex items-center gap-2 text-xs font-mono text-ai-violet p-3 rounded-card bg-surface-elevated border border-ai-violet/30">
               <Sparkles className="h-4 w-4 animate-spin text-ai-violet" aria-hidden="true" />
-              <span>Analyzing simulation results...</span>
+              <span>{tCopilot('analyzing')}</span>
             </div>
           )}
 
@@ -198,21 +199,21 @@ export function CopilotPanel({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about grid stability or trade-offs... (Enter to send)"
+              placeholder={tCopilot('placeholder')}
               className="w-full resize-none p-2.5 text-xs font-sans text-text-primary bg-canvas border border-border rounded-control
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan focus-visible:ring-offset-1 focus-visible:ring-offset-canvas placeholder:text-text-muted"
             />
             <div className="flex items-center justify-between text-[11px] text-text-muted">
-              <span>Shift+Enter for newline</span>
+              <span>{tCopilot('shiftEnter')}</span>
               <Button
                 variant="primary"
                 size="sm"
                 onClick={handleSend}
                 disabled={!input.trim() || pending}
-                aria-label="Send message to copilot"
+                aria-label={tCopilot('send')}
                 icon={<Send className="h-3 w-3" aria-hidden="true" />}
               >
-                Send
+                {tCopilot('send')}
               </Button>
             </div>
           </div>

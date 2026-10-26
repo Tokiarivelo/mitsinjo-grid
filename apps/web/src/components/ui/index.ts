@@ -6,3 +6,4 @@ export * from './sim-control';
 export * from './empty-state';
 export * from './chart-card';
 export * from './scenario-selector';
+export * from './language-switcher';

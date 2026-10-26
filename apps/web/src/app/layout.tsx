@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { IBM_Plex_Mono, Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
+import { I18nProvider } from '@/lib/i18n';
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
@@ -34,7 +35,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       className={`${spaceGrotesk.variable} ${inter.variable} ${plexMono.variable} dark`}
     >
       <body className="min-h-screen bg-canvas text-text-primary antialiased font-sans">
-        {children}
+        <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
   );

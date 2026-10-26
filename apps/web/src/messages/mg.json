@@ -1,0 +1,100 @@
+{
+  "common": {
+    "appName": "Mitsinjo Grid",
+    "simulationLab": "LABORATOARA FANAHARANA",
+    "simulatedData": "DATA NOBANJININA",
+    "aiGenerated": "NOFORONIN'NY AI",
+    "aiExplanation": "FANAZAVANA AI",
+    "engineStatus": "Toetry ny motera",
+    "uiKit": "Kit UI",
+    "version": "v0.1.0"
+  },
+  "nav": {
+    "overview": "Topimaso",
+    "simulation": "Fandinihana mivantana",
+    "strategies": "Paikady fizarana",
+    "scenarios": "Tranga",
+    "copilot": "Mpanampy AI"
+  },
+  "routes": {
+    "overview": {
+      "title": "Topimaso",
+      "subtitle": "Fandanjana angovo sy tranga miasa"
+    },
+    "simulation": {
+      "title": "Fandinihana mivantana",
+      "subtitle": "Tambazotran'ny tanàna 3D sy fandaharam-potoana"
+    },
+    "strategies": {
+      "title": "Paikady fizarana",
+      "subtitle": "Fampitahana ireo fomba fitsinjarana herinaratra"
+    },
+    "scenarios": {
+      "title": "Tranga sy Tombana",
+      "subtitle": "Fisedrana fikorontanana sy masontsivana"
+    },
+    "copilot": {
+      "title": "Mpanampy AI",
+      "subtitle": "Toro-hevitra sy fanazavana ny vokatry ny fandinihana"
+    },
+    "design": {
+      "title": "Rafitra sy Singa UI",
+      "subtitle": "Famaritana ny singa sy ny loko"
+    }
+  },
+  "status": {
+    "ready": "VONA",
+    "running": "EO AMP-PIASANA",
+    "complete": "VITA NY FANDINIHANA",
+    "warning": "FAMPITANDREMANA",
+    "critical": "SAROTRA",
+    "simulated": "DATA NOBANJININA",
+    "ai": "NOFORONIN'NY AI"
+  },
+  "header": {
+    "reset": "Hamerina",
+    "copilot": "Mpanampy AI",
+    "toggleCopilot": "Sokafy ny mpanampy AI",
+    "openMenu": "Sokafy ny sakafo",
+    "selectScenario": "Misafidiana tranga",
+    "modified": "NOVAINA",
+    "language": "Teny"
+  },
+  "copilot": {
+    "title": "Mpanampy Mitsinjo",
+    "badge": "FANAZAVANA AI",
+    "assistantRole": "Mpanolotsaina",
+    "assistantDesc": "Mametraha fanontaniana momba ny fandinihana na ampitahao ny paikady.",
+    "suggestedQuestions": "Fanontaniana azo apetraka",
+    "analyzing": "Manadihady ny valin'ny fandinihana...",
+    "placeholder": "Manontania momba ny tambazotra... (Tsindrio Enter)",
+    "shiftEnter": "Shift+Enter ho an'ny andalana vaovao",
+    "send": "Alefa",
+    "computedEvidence": "Porofo kajiana",
+    "close": "Hidio ny mpanampy"
+  },
+  "metrics": {
+    "solar": {
+      "label": "Taratra Masoandro",
+      "today": "kWh androany"
+    },
+    "battery": {
+      "label": "Tahan'ny Bateria",
+      "caption": "Fahafahana 120 kWh (tahiry 20%)"
+    },
+    "demand": {
+      "label": "Filana Ankapobeny",
+      "served": "voazara"
+    },
+    "essential": {
+      "label": "Asa Tena Ilaina",
+      "caption": "Hopitaly sy paompy rano arovana"
+    }
+  },
+  "actions": {
+    "runSimulation": "Alefaso ny fandinihana",
+    "resetScenario": "Avereno ny tranga",
+    "exportJson": "Avoahy amin'ny JSON",
+    "compareStrategies": "Ampitahao ny paikady"
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "common": {
+    "appName": "Mitsinjo Grid",
+    "simulationLab": "LABO DE SIMULATION",
+    "simulatedData": "DONNÉES SIMULÉES",
+    "aiGenerated": "GÉNÉRÉ PAR IA",
+    "aiExplanation": "EXPLICATION IA",
+    "engineStatus": "État du moteur",
+    "uiKit": "Composants",
+    "version": "v0.1.0"
+  },
+  "nav": {
+    "overview": "Aperçu",
+    "simulation": "Simulation en direct",
+    "strategies": "Labo Stratégies",
+    "scenarios": "Scénarios",
+    "copilot": "Copilote IA"
+  },
+  "routes": {
+    "overview": {
+      "title": "Aperçu",
+      "subtitle": "Bilan énergétique, indicateurs critiques et scénario actif"
+    },
+    "simulation": {
+      "title": "Simulation en direct",
+      "subtitle": "Réseau de village 3D interactif et chronologie horaire"
+    },
+    "strategies": {
+      "title": "Labo Stratégies",
+      "subtitle": "Comparaison côte à côte des algorithmes de distribution"
+    },
+    "scenarios": {
+      "title": "Scénarios & Hypothèses",
+      "subtitle": "Tests de pénurie pré-configurés et paramètres physiques"
+    },
+    "copilot": {
+      "title": "Copilote IA",
+      "subtitle": "Aide à la décision et explications des scénarios"
+    },
+    "design": {
+      "title": "Système de Design & Kit UI",
+      "subtitle": "Spécifications des composants, jetons et galerie des variantes"
+    }
+  },
+  "status": {
+    "ready": "PRÊT",
+    "running": "SIMULATION EN COURS",
+    "complete": "SIMULATION TERMINÉE",
+    "warning": "AVERTISSEMENT",
+    "critical": "CRITIQUE",
+    "simulated": "DONNÉES SIMULÉES",
+    "ai": "GÉNÉRÉ PAR IA"
+  },
+  "header": {
+    "reset": "Réinitialiser",
+    "copilot": "Copilote",
+    "toggleCopilot": "Basculer le copilote IA",
+    "openMenu": "Ouvrir le menu de navigation",
+    "selectScenario": "Sélectionner un scénario de simulation",
+    "modified": "MODIFIÉ",
+    "language": "Langue"
+  },
+  "copilot": {
+    "title": "Copilote Mitsinjo",
+    "badge": "EXPLICATION IA",
+    "assistantRole": "Assistant d'aide à la décision",
+    "assistantDesc": "Posez des questions sur la simulation, comparez les stratégies ou explorez des ajustements de paramètres.",
+    "suggestedQuestions": "Questions suggérées",
+    "analyzing": "Analyse des résultats de simulation...",
+    "placeholder": "Posez une question sur la stabilité du réseau... (Entrée pour envoyer)",
+    "shiftEnter": "Maj+Entrée pour un saut de ligne",
+    "send": "Envoyer",
+    "computedEvidence": "Données calculées",
+    "close": "Fermer le panneau copilote"
+  },
+  "metrics": {
+    "solar": {
+      "label": "Pic Solaire PV",
+      "today": "kWh aujourd'hui"
+    },
+    "battery": {
+      "label": "Niveau Batterie",
+      "caption": "Capacité 120 kWh (réserve 20%)"
+    },
+    "demand": {
+      "label": "Demande Totale",
+      "served": "servie"
+    },
+    "essential": {
+      "label": "Services Essentiels",
+      "caption": "Poste de santé & pompage protégés"
+    }
+  },
+  "actions": {
+    "runSimulation": "Lancer la simulation",
+    "resetScenario": "Réinitialiser le scénario",
+    "exportJson": "Exporter en JSON",
+    "compareStrategies": "Comparer les stratégies"
+  }
+}

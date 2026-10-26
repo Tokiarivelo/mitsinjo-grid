@@ -8,8 +8,11 @@ import {
   SimControl,
   EmptyState,
   ChartCard,
+  LanguageSwitcher,
   type StatusBadgeVariant,
 } from '../index';
+import { I18nProvider, useTranslations } from '@/lib/i18n';
+import { fireEvent } from '@testing-library/react';
 
 describe('UI Kit — P2-T6 Design Gate Tests', () => {
   describe('StatusBadge', () => {
@@ -176,6 +179,54 @@ describe('UI Kit — P2-T6 Design Gate Tests', () => {
         </ChartCard>
       );
       expect(screen.getByText('Generation peaks at 38 kW at midday')).toHaveClass('sr-only');
+    });
+  });
+
+  describe('Multi-language & LanguageSwitcher (i18n)', () => {
+    it('LanguageSwitcher renders all supported locales (EN, FR, MG)', () => {
+      render(
+        <I18nProvider>
+          <LanguageSwitcher variant="tabs" />
+        </I18nProvider>
+      );
+      expect(screen.getByRole('radio', { name: /en/i })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /fr/i })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /mg/i })).toBeInTheDocument();
+    });
+
+    it('LanguageSwitcher switches locale and updates translated strings', () => {
+      function TestConsumer() {
+        const t = useTranslations('nav');
+        return (
+          <div>
+            <LanguageSwitcher variant="tabs" />
+            <span data-testid="nav-overview">{t('overview')}</span>
+          </div>
+        );
+      }
+
+      render(
+        <I18nProvider>
+          <TestConsumer />
+        </I18nProvider>
+      );
+
+      // Default is English
+      expect(screen.getByTestId('nav-overview').textContent).toBe('Overview');
+
+      // Click French radio button
+      const frButton = screen.getByRole('radio', { name: /fr/i });
+      fireEvent.click(frButton);
+
+      // Should now render French
+      expect(screen.getByTestId('nav-overview').textContent).toBe('Aperçu');
+
+      // Click Malagasy radio button
+      const mgButton = screen.getByRole('radio', { name: /mg/i });
+      fireEvent.click(mgButton);
+
+      // Should now render Malagasy
+      expect(screen.getByTestId('nav-overview').textContent).toBe('Topimaso');
     });
   });
 });

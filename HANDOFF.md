@@ -1,14 +1,14 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-26 · **By:** Gemini (P2 Design System complete) · **Day:** 2 / 10
+**Updated:** 2026-10-26 · **By:** Gemini (P2 UI Kit + i18n next-intl + rules) · **Day:** 2 / 10
 
 ## State
 
 - Phase: **P1 — Repo** completed (P1-T0..T7, T9 done; CI, Turbo, engine + web apps).
-- Phase: **P2 — Design system** completed (P2-T0..T6 done; UI kit, AppShell, `/design` catalog, vitest tests).
-- Phase: **P0 — Framing** (P0-T1 fallback to `mock`, P0-T3 parameters confirmed).
-- Monorepo healthy: `make check` (typecheck, lint, 16 tests) and `pnpm build` (6 routes) pass with 0 errors.
-- Zero raw hex outside `globals.css`.
+- Phase: **P2 — Design system** completed (UI kit, AppShell, `/design` catalog, vitest tests).
+- Phase: **P0 — Framing** (P0-T1 fallback to `mock`, P0-T3 parameters, P0-T4 i18n EN/FR/MG).
+- **Multi-language (i18n):** official `next-intl` integrated with EN, FR, MG dictionaries and LanguageSwitcher in Header & Sidebar.
+- Monorepo healthy: `make check` (18 tests) and `pnpm build` pass with 0 errors.
 
 ## Next task
 
@@ -16,10 +16,10 @@
 
 ## Decisions taken
 
-- UI kit built: Button, StatusBadge, MetricCard, EnergyBar, SimControl, EmptyState, ChartCard, ScenarioSelector.
-- Layout system built: AppShell, Sidebar, Header, CopilotPanel drawer/collapsible slot.
-- `/design` dev route showcasing all tokens, component variants, and interactive states.
-- Lab layout wraps pages in `AppShell` with responsive sidebar and copilot drawer.
+- Multi-language official package: `next-intl` with client provider and zero-exception SSR fallback.
+- Added i18n rule to `.claude/rules/web-ui.md`, `CLAUDE.md`, and `docs/conventions.md`.
+- LanguageSwitcher tabs in Sidebar footer and compact picker in Header.
+- Resolved `P0-T4` with EN (default for judges) + FR & MG toggles.
 
 ## Open questions / blockers
 
@@ -27,8 +27,7 @@
 
 ## Files touched this session
 
-- `apps/web/src/lib/utils.ts`
-- `apps/web/src/components/ui/*` (button, status-badge, metric-card, energy-bar, sim-control, empty-state, chart-card, scenario-selector, index.ts, tests)
-- `apps/web/src/components/layout/*` (sidebar, header, copilot-panel, app-shell, index.ts)
-- `apps/web/src/app/(lab)/layout.tsx`, `apps/web/src/app/design/page.tsx`
-- `docs/tasks/P2-design.md`, `HANDOFF.md`
+- `apps/web/package.json`, `pnpm-lock.yaml`, `apps/web/src/messages/{en,fr,mg}.json`
+- `apps/web/src/lib/i18n.tsx`, `apps/web/src/components/ui/language-switcher.tsx`
+- `apps/web/src/components/layout/{sidebar,header,copilot-panel,app-shell}.tsx`
+- `.claude/rules/web-ui.md`, `CLAUDE.md`, `docs/conventions.md`, `docs/tasks/P0-framing.md`, `HANDOFF.md`

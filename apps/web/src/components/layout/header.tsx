@@ -8,6 +8,8 @@ import {
   ScenarioSelector,
   type ScenarioOption,
 } from '@/components/ui/scenario-selector';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
+import { useTranslations } from '@/lib/i18n';
 
 export interface HeaderProps {
   title: string;
@@ -46,6 +48,7 @@ export function Header({
   onMenuToggle,
   className,
 }: HeaderProps) {
+  const tHeader = useTranslations('header');
   const isResetDisabled = status === 'ready' && !modified;
 
   return (
@@ -61,7 +64,7 @@ export function Header({
           <button
             type="button"
             onClick={onMenuToggle}
-            aria-label="Open navigation menu"
+            aria-label={tHeader('openMenu')}
             className="xl:hidden p-2 rounded-control text-text-muted hover:text-text-primary hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan cursor-pointer"
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
@@ -80,8 +83,13 @@ export function Header({
         </div>
       </div>
 
-      {/* Right zone: Scenario selector, Status badge, Reset, Copilot Toggle */}
-      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+      {/* Right zone: Language Switcher, Scenario selector, Status badge, Reset, Copilot Toggle */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Language switcher */}
+        <div className="hidden lg:block">
+          <LanguageSwitcher variant="compact" size="sm" />
+        </div>
+
         {/* Scenario selector */}
         {onScenarioChange && (
           <div className="hidden md:block">
@@ -106,11 +114,11 @@ export function Header({
             size="sm"
             onClick={onReset}
             disabled={isResetDisabled}
-            aria-label="Reset scenario"
+            aria-label={tHeader('reset')}
             icon={<RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />}
             className="hidden sm:inline-flex"
           >
-            Reset
+            {tHeader('reset')}
           </Button>
         )}
 
@@ -119,7 +127,7 @@ export function Header({
           <button
             type="button"
             onClick={onCopilotToggle}
-            aria-label="Toggle AI copilot"
+            aria-label={tHeader('toggleCopilot')}
             aria-expanded={copilotOpen}
             className={cn(
               'flex items-center gap-1.5 h-8 px-2.5 rounded-control text-xs font-sans font-medium transition-colors cursor-pointer',
@@ -130,7 +138,7 @@ export function Header({
             )}
           >
             <Sparkles className="h-3.5 w-3.5 text-ai-violet" aria-hidden="true" />
-            <span className="hidden md:inline">Copilot</span>
+            <span className="hidden md:inline">{tHeader('copilot')}</span>
           </button>
         )}
       </div>

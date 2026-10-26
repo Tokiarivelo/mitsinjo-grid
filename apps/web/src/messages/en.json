@@ -1,0 +1,100 @@
+{
+  "common": {
+    "appName": "Mitsinjo Grid",
+    "simulationLab": "SIMULATION LAB",
+    "simulatedData": "SIMULATED DATA",
+    "aiGenerated": "AI-GENERATED",
+    "aiExplanation": "AI EXPLANATION",
+    "engineStatus": "Engine Status",
+    "uiKit": "UI Kit",
+    "version": "v0.1.0"
+  },
+  "nav": {
+    "overview": "Overview",
+    "simulation": "Live Simulation",
+    "strategies": "Strategy Lab",
+    "scenarios": "Scenarios",
+    "copilot": "AI Copilot"
+  },
+  "routes": {
+    "overview": {
+      "title": "Overview",
+      "subtitle": "System balance, critical metrics and active scenario"
+    },
+    "simulation": {
+      "title": "Live Simulation",
+      "subtitle": "Interactive 3D village grid and hourly timeline"
+    },
+    "strategies": {
+      "title": "Strategy Lab",
+      "subtitle": "Side-by-side comparison of allocation algorithms"
+    },
+    "scenarios": {
+      "title": "Scenarios & Assumptions",
+      "subtitle": "Pre-configured stress tests and physical parameters"
+    },
+    "copilot": {
+      "title": "AI Copilot",
+      "subtitle": "Decision support and scenario explanations"
+    },
+    "design": {
+      "title": "Design System & UI Kit",
+      "subtitle": "Component specifications, tokens, and variant showcase"
+    }
+  },
+  "status": {
+    "ready": "READY",
+    "running": "SIMULATING",
+    "complete": "SIMULATION COMPLETE",
+    "warning": "WARNING",
+    "critical": "CRITICAL",
+    "simulated": "SIMULATED DATA",
+    "ai": "AI-GENERATED"
+  },
+  "header": {
+    "reset": "Reset",
+    "copilot": "Copilot",
+    "toggleCopilot": "Toggle AI copilot",
+    "openMenu": "Open navigation menu",
+    "selectScenario": "Select simulation scenario",
+    "modified": "MODIFIED",
+    "language": "Language"
+  },
+  "copilot": {
+    "title": "Mitsinjo Copilot",
+    "badge": "AI EXPLANATION",
+    "assistantRole": "Decision Support Assistant",
+    "assistantDesc": "Ask questions about the simulation, compare strategies, or explore what-if parameter adjustments.",
+    "suggestedQuestions": "Suggested Questions",
+    "analyzing": "Analyzing simulation results...",
+    "placeholder": "Ask about grid stability or trade-offs... (Enter to send)",
+    "shiftEnter": "Shift+Enter for newline",
+    "send": "Send",
+    "computedEvidence": "Computed Evidence",
+    "close": "Close copilot panel"
+  },
+  "metrics": {
+    "solar": {
+      "label": "Solar PV Peak",
+      "today": "kWh today"
+    },
+    "battery": {
+      "label": "Battery SoC",
+      "caption": "Capacity 120 kWh (reserve 20%)"
+    },
+    "demand": {
+      "label": "Total Demand",
+      "served": "served"
+    },
+    "essential": {
+      "label": "Essential Services",
+      "caption": "Health clinic & pumping protected"
+    }
+  },
+  "actions": {
+    "runSimulation": "Run simulation",
+    "resetScenario": "Reset scenario",
+    "exportJson": "Export JSON",
+    "compareStrategies": "Compare strategies"
+  }
+}
