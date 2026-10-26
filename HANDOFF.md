@@ -1,31 +1,34 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-26 · **By:** Gemini (P1 repo scaffold + P2-T2 tokens) · **Day:** 1 / 10
+**Updated:** 2026-10-26 · **By:** Gemini (P2 Design System complete) · **Day:** 2 / 10
 
 ## State
 
 - Phase: **P1 — Repo** completed (P1-T0..T7, T9 done; CI, Turbo, engine + web apps).
-- Phase: **P2 — Design system** (P2-T0..T2 done; `@theme` tokens in `globals.css` + `next/font`).
+- Phase: **P2 — Design system** completed (P2-T0..T6 done; UI kit, AppShell, `/design` catalog, vitest tests).
 - Phase: **P0 — Framing** (P0-T1 fallback to `mock`, P0-T3 parameters confirmed).
-- Monorepo healthy: `make check` (typecheck, lint, test) and `pnpm build` pass with 0 errors.
+- Monorepo healthy: `make check` (typecheck, lint, 16 tests) and `pnpm build` (6 routes) pass with 0 errors.
+- Zero raw hex outside `globals.css`.
 
 ## Next task
 
-- `docs/tasks/P3-engine.md` → P3-T1 (Zod schemas in `packages/engine/src/schemas/`) or
-- `docs/tasks/P2-design.md` → P2-T3 (UI kit in `apps/web/src/components/ui/`).
+- `docs/tasks/P3-engine.md` → P3-T1 (Zod schemas in `packages/engine/src/schemas/` + inferred types).
 
 ## Decisions taken
 
-- Monorepo: Turborepo + pnpm workspace with `apps/web` (Next 16, React 19) + `packages/engine` (pure TS).
-- Fonts loaded via `next/font/google`: Space Grotesk (display), Inter (sans), IBM Plex Mono (mono).
-- Color tokens aligned to "Solar Observatory × Mission Control" palette in `@theme` (`globals.css`).
-- Fallback `LLM_PROVIDER=mock` active until `META_API_KEY` is provided.
+- UI kit built: Button, StatusBadge, MetricCard, EnergyBar, SimControl, EmptyState, ChartCard, ScenarioSelector.
+- Layout system built: AppShell, Sidebar, Header, CopilotPanel drawer/collapsible slot.
+- `/design` dev route showcasing all tokens, component variants, and interactive states.
+- Lab layout wraps pages in `AppShell` with responsive sidebar and copilot drawer.
 
 ## Open questions / blockers
 
-- Meta API key / endpoint credentials for live Llama inference (using offline mock).
+- Meta API key / endpoint credentials for live Llama inference (offline mock ready as fallback).
 
 ## Files touched this session
 
-- `package.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`, `README.md`, `LICENSE`
-- `.github/workflows/ci.yml`, `packages/engine/*`, `apps/web/*`, `docs/tasks/P0-framing.md`, `P1-repo.md`, `P2-design.md`
+- `apps/web/src/lib/utils.ts`
+- `apps/web/src/components/ui/*` (button, status-badge, metric-card, energy-bar, sim-control, empty-state, chart-card, scenario-selector, index.ts, tests)
+- `apps/web/src/components/layout/*` (sidebar, header, copilot-panel, app-shell, index.ts)
+- `apps/web/src/app/(lab)/layout.tsx`, `apps/web/src/app/design/page.tsx`
+- `docs/tasks/P2-design.md`, `HANDOFF.md`
