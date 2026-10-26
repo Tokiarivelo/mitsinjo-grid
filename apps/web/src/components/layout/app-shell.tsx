@@ -61,29 +61,14 @@ export function AppShell({
   const resolvedTitle = title || defaultTitle;
   const resolvedSubtitle = subtitle || defaultSubtitle;
 
+  // The LLM copilot is not wired yet (later phase). Never fake an answer or evidence here:
+  // AI text must come from the real copilot, numbers only from the engine.
   const handleSendMessage = (content: string) => {
-    const userMsg: CopilotMessage = {
-      id: `msg-${Date.now()}`,
-      role: 'user',
-      content,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
-
-    // Simulated copilot response for UI showcase
-    setTimeout(() => {
-      const assistantMsg: CopilotMessage = {
-        id: `msg-${Date.now() + 1}`,
-        role: 'assistant',
-        content: tCopilot('sampleResponse'),
-        evidence: [
-          { label: tCopilot('batteryMinSoc'), value: 20.0, unit: '%' },
-          { label: tCopilot('essentialCoverage'), value: 100.0, unit: '%' },
-        ],
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
-    }, 600);
+    setMessages((prev) => [
+      ...prev,
+      { id: `user-${prev.length}`, role: 'user', content },
+      { id: `error-${prev.length}`, role: 'error', content: tCopilot('unavailable') },
+    ]);
   };
 
   return (

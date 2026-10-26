@@ -11,7 +11,9 @@
     "close": "Close",
     "language": "Language",
     "selectLanguage": "Select application language",
-    "languageSelection": "Language selection"
+    "languageSelection": "Language selection",
+    "metaTitle": "Mitsinjo Grid — Rural Solar Microgrid Simulation",
+    "metaDescription": "Solar microgrid simulation and AI decision support for rural electrification."
   },
   "nav": {
     "overview": "Overview",
@@ -125,9 +127,7 @@
     "suggestedPrompt2": "Compare proportional vs essential-first strategies.",
     "suggestedPrompt3": "What happens if we double the battery capacity?",
     "suggestedPrompt4": "How much energy was curtailed during peak sun hours?",
-    "sampleResponse": "Under the current baseline scenario, the battery reserve maintains 20% minimum state of charge while keeping essential clinic services 100% covered.",
-    "batteryMinSoc": "Battery Min SoC",
-    "essentialCoverage": "Essential Coverage"
+    "unavailable": "The AI copilot is temporarily unavailable. You can keep exploring the simulation and its computed results."
   },
   "ui": {
     "energyBar": {
@@ -165,7 +165,6 @@
       "solarDeficitDesc": "Simulate sudden cloud cover or dust accumulation on solar array panels.",
       "scenarioSelection": "Scenario Selection",
       "scenarioSelectionDesc": "Switch between standard test cases and track modification state.",
-      "toggleModified": "Toggle Modified Badge",
       "active": "Active",
       "off": "Off",
       "energyBalanceTitle": "Energy Balance 24h",
@@ -200,7 +199,8 @@
         "aiVioletDesc": "copilot",
         "warningAmberDesc": "shortage",
         "criticalRedDesc": "unmet essential"
-      }
+      },
+      "toggleModifiedWithState": "Toggle Modified Badge ({state})"
     }
   },
   "metrics": {

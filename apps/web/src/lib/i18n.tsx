@@ -3,7 +3,8 @@
 import {
   createContext,
   useContext,
-  useState,
+  useEffect,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 import {
@@ -47,34 +48,47 @@ const I18nContext = createContext<I18nContextValue>({
 
 const STORAGE_KEY = 'mitsinjo_locale';
 
-function getInitialLocale(): Locale {
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as Locale | null;
-      if (stored && (stored === 'en' || stored === 'fr' || stored === 'mg')) {
-        return stored;
-      }
-    } catch {
-      // LocalStorage unavailable in SSR or sandboxes
-    }
+function isLocale(value: unknown): value is Locale {
+  return value === 'en' || value === 'fr' || value === 'mg';
+}
+
+// The chosen locale lives in localStorage. useSyncExternalStore renders the default during SSR
+// and hydration (no mismatch), then switches to the stored choice.
+const localeListeners = new Set<() => void>();
+let sessionLocale: Locale | null = null; // fallback when storage is blocked
+
+function readStoredLocale(): Locale {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (isLocale(stored)) return stored;
+  } catch {
+    // storage blocked (private mode, sandbox)
   }
-  return DEFAULT_LOCALE;
+  return sessionLocale ?? DEFAULT_LOCALE;
+}
+
+function subscribeLocale(listener: () => void) {
+  localeListeners.add(listener);
+  return () => localeListeners.delete(listener);
+}
+
+function writeLocale(next: Locale) {
+  sessionLocale = next;
+  try {
+    localStorage.setItem(STORAGE_KEY, next);
+  } catch {
+    // storage blocked: the choice lasts for this session only
+  }
+  localeListeners.forEach((listener) => listener());
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(getInitialLocale);
+  const locale = useSyncExternalStore(subscribeLocale, readStoredLocale, () => DEFAULT_LOCALE);
+  const setLocale = writeLocale;
 
-  const setLocale = (next: Locale) => {
-    setLocaleState(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, next);
-      if (typeof document !== 'undefined') {
-        document.documentElement.lang = next;
-      }
-    } catch {
-      // Ignore
-    }
-  };
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   const activeMessages = MESSAGES_BY_LOCALE[locale] || enMessages;
 

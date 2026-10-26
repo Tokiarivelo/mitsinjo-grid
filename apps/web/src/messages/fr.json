@@ -11,7 +11,9 @@
     "close": "Fermer",
     "language": "Langue",
     "selectLanguage": "Sélectionner la langue de l'application",
-    "languageSelection": "Sélection de la langue"
+    "languageSelection": "Sélection de la langue",
+    "metaTitle": "Mitsinjo Grid — Simulation de micro-réseau solaire rural",
+    "metaDescription": "Simulation de micro-réseau solaire et aide à la décision par IA pour l'électrification rurale."
   },
   "nav": {
     "overview": "Aperçu",
@@ -125,9 +127,7 @@
     "suggestedPrompt2": "Comparez les stratégies proportionnelle et services essentiels.",
     "suggestedPrompt3": "Que se passe-t-il si l'on double la capacité de la batterie ?",
     "suggestedPrompt4": "Quelle quantité d'énergie solaire a été écrêtée pendant les heures de pointe ?",
-    "sampleResponse": "Sous le scénario de référence actuel, la réserve de batterie maintient 20% d'état de charge minimum tout en couvrant 100% des besoins du dispensaire.",
-    "batteryMinSoc": "SoC Minimum Batterie",
-    "essentialCoverage": "Couverture Essentielle"
+    "unavailable": "Le copilote IA est temporairement indisponible. Vous pouvez continuer à explorer la simulation et ses résultats calculés."
   },
   "ui": {
     "energyBar": {
@@ -165,7 +165,6 @@
       "solarDeficitDesc": "Simulez une couverture nuageuse soudaine ou un dépôt de poussière sur les panneaux solaires.",
       "scenarioSelection": "Sélection du scénario",
       "scenarioSelectionDesc": "Basculez entre les cas types et suivez l'état de modification.",
-      "toggleModified": "Basculer le badge Modifié",
       "active": "Actif",
       "off": "Désactivé",
       "energyBalanceTitle": "Bilan Énergétique 24h",
@@ -200,7 +199,8 @@
         "aiVioletDesc": "copilote",
         "warningAmberDesc": "déficit",
         "criticalRedDesc": "essentiel non servi"
-      }
+      },
+      "toggleModifiedWithState": "Basculer le badge Modifié ({state})"
     }
   },
   "metrics": {

@@ -11,7 +11,9 @@
     "close": "Hidio",
     "language": "Teny",
     "selectLanguage": "Misafidiana teny fampiasana",
-    "languageSelection": "Safidy teny"
+    "languageSelection": "Safidy teny",
+    "metaTitle": "Mitsinjo Grid — Simulation tambajotra herinaratra masoandro ambanivohitra",
+    "metaDescription": "Simulation tambajotra herinaratra masoandro sy fanampiana amin'ny fanapahan-kevitra AI ho an'ny fampidirana jiro any ambanivohitra."
   },
   "nav": {
     "overview": "Topimaso",
@@ -125,9 +127,7 @@
     "suggestedPrompt2": "Ampitahao ny paikady fizarana mitovy sy ny laharam-pahamehana.",
     "suggestedPrompt3": "Inona no mitranga raha ampitomboina roa ny bateria?",
     "suggestedPrompt4": "Firy ny angovo masoandro tsy tafiditra tamin'ny fotoana nafana?",
-    "sampleResponse": "Amin'ity tranga fototra ity, ny tahiry bateria dia mitazona 20% farafahakeliny ary mahazo 100% ny hopitaly.",
-    "batteryMinSoc": "Tahiry Kely Indrindra Bateria",
-    "essentialCoverage": "Fandrakofana Ilaina"
+    "unavailable": "Tsy azo ampiasaina vonjimaika ny copilot AI. Afaka manohy mijery ny simulation sy ny valiny voakajy ianao."
   },
   "ui": {
     "energyBar": {
@@ -165,7 +165,6 @@
       "solarDeficitDesc": "Mamakafaka rahona tampoka na vovoka amin'ny takelaka masoandro.",
       "scenarioSelection": "Fisafidianana Tranga",
       "scenarioSelectionDesc": "Mifindrà eo amin'ireo tranga ary araho ny fanovana.",
-      "toggleModified": "Bokotra Novaina",
       "active": "Miasa",
       "off": "Tsy miasa",
       "energyBalanceTitle": "Fandanjana Angovo 24h",
@@ -200,7 +199,8 @@
         "aiVioletDesc": "mpanampy",
         "warningAmberDesc": "tsy fahampiana",
         "criticalRedDesc": "zava-dehibe tsy tanteraka"
-      }
+      },
+      "toggleModifiedWithState": "Bokotra Novaina ({state})"
     }
   },
   "metrics": {

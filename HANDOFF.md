@@ -10,7 +10,7 @@
 - **Strict Multi-language (i18n):** official `next-intl`, zero hardcoded static text in JSX/TSX.
 - Locales: `en` (default for judges), `fr`, `mg` with 100% key parity enforced via `make check-i18n` and CI.
 - PR: `#1` on branch `feat/multilingual-ui-kit`.
-- Monorepo healthy: `make check` (21 tests) and `pnpm build` pass with 0 errors.
+- Monorepo healthy: `make check` (19 web + 5 engine tests) and `pnpm build` pass with 0 errors.
 
 ## Next task
 
@@ -22,6 +22,10 @@
 - Zero static user-facing text rule added to `.claude/rules/web-ui.md`, `CLAUDE.md`, and `docs/conventions.md`.
 - Automated key-parity & non-empty test added in `apps/web/src/test/i18n-parity.test.ts`.
 - CI (`.github/workflows/ci.yml`) and `Makefile` updated with `check-i18n` target.
+- Locale is client state in localStorage via `useSyncExternalStore`: SSR/hydration always render EN, then switch (no mismatch).
+- Copilot panel shows the "AI unavailable" copy until the LLM is wired; no canned answers or invented numbers.
+- `/design` logic lives in `features/design-system`; `app/design/page.tsx` only renders it.
+- Known gap: feature pages are `'use client'` because i18n is client-only; move to cookie locale + server `getTranslations` if SSR text matters.
 
 ## Open questions / blockers
 
@@ -30,6 +34,6 @@
 ## Files touched this session
 
 - `apps/web/src/messages/{en,fr,mg}.json`, `apps/web/src/lib/i18n.tsx`
-- `apps/web/src/test/i18n-parity.test.ts`, `apps/web/src/app/design/page.tsx`
+- `apps/web/src/test/i18n-{parity,provider}.test.ts(x)`, `apps/web/src/features/design-system/`, `apps/web/src/app/{layout,design/page}.tsx`
 - `apps/web/src/components/layout/{header,sidebar,copilot-panel,app-shell}.tsx`
-- `Makefile`, `.github/workflows/ci.yml`, `.claude/rules/web-ui.md`, `CLAUDE.md`, `docs/conventions.md`
+- `Makefile`, `.github/workflows/ci.yml`, `.claude/rules/web-ui.md`, `CLAUDE.md`, `docs/conventions.md`, `docs/architecture.md`
