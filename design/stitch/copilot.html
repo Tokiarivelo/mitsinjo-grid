@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mitsinjo Grid — AI Copilot Simulation Analysis</title>
+<!-- Typography: Space Grotesk, Inter, IBM Plex Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=Inter:wght@300;400;500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-dim": "#0e1320",
+            "surface-container-lowest": "#090e1b",
+            "surface-container-highest": "#303443",
+            "on-primary": "#452b00",
+            "surface-container-low": "#161b29",
+            "on-secondary": "#00363c",
+            "secondary-fixed": "#8ef2ff",
+            "primary": "#ffd9ab",
+            "on-tertiary-container": "#005d3f",
+            "background": "#0e1320",
+            "secondary-container": "#00b1c1",
+            "on-error": "#690005",
+            "secondary-fixed-dim": "#50d8e8",
+            "inverse-surface": "#dee2f5",
+            "tertiary-fixed": "#79fac1",
+            "tertiary-fixed-dim": "#5bdda6",
+            "tertiary-container": "#57daa4",
+            "on-secondary-container": "#003e44",
+            "surface-variant": "#303443",
+            "surface-container-high": "#252a38",
+            "surface-container": "#1a1f2d",
+            "inverse-primary": "#835500",
+            "on-tertiary": "#003825",
+            "primary-fixed": "#ffddb4",
+            "on-secondary-fixed-variant": "#004f56",
+            "outline": "#9e8e7c",
+            "error-container": "#93000a",
+            "surface": "#0e1320",
+            "on-secondary-fixed": "#001f23",
+            "secondary": "#50d8e8",
+            "on-surface": "#dee2f5",
+            "error": "#ffb4ab",
+            "inverse-on-surface": "#2b303e",
+            "on-tertiary-fixed-variant": "#005237",
+            "on-primary-container": "#704800",
+            "surface-bright": "#343948",
+            "outline-variant": "#514535",
+            "tertiary": "#76f7be",
+            "surface-tint": "#ffb955",
+            "primary-fixed-dim": "#ffb955",
+            "on-error-container": "#ffdad6",
+            "on-background": "#dee2f5",
+            "on-primary-fixed-variant": "#633f00",
+            "primary-container": "#ffb547",
+            "on-tertiary-fixed": "#002114",
+            "on-surface-variant": "#d6c4af",
+            "on-primary-fixed": "#291800"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-lg": "1.5rem",
+            "gutter-desktop": "1.5rem",
+            "margin-desktop": "2.5rem",
+            "gutter": "1rem",
+            "margin": "1rem",
+            "space-xs": "0.25rem",
+            "margin-tablet": "1.5rem",
+            "space-xl": "2.5rem",
+            "space-md": "1rem",
+            "space-sm": "0.5rem"
+          },
+          "fontFamily": {
+            "telemetry-metric-lg": ["IBM Plex Mono"],
+            "body-md": ["Inter"],
+            "body-lg": ["Inter"],
+            "display": ["Space Grotesk"],
+            "body-sm": ["Inter"],
+            "telemetry-metric-md": ["IBM Plex Mono"],
+            "headline-lg": ["Space Grotesk"],
+            "label-micro": ["IBM Plex Mono"],
+            "title-md": ["Space Grotesk"],
+            "headline-md": ["Space Grotesk"],
+            "label-code": ["IBM Plex Mono"],
+            "headline-lg-mobile": ["Space Grotesk"],
+            "headline-sm": ["Space Grotesk"]
+          },
+          "fontSize": {
+            "telemetry-metric-lg": ["2rem", { "lineHeight": "2.25rem", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "body-md": ["0.875rem", { "lineHeight": "1.375rem", "fontWeight": "400" }],
+            "body-lg": ["1.125rem", { "lineHeight": "1.75rem", "fontWeight": "400" }],
+            "display": ["3.5rem", { "lineHeight": "4rem", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+            "body-sm": ["0.75rem", { "lineHeight": "1.125rem", "fontWeight": "400" }],
+            "telemetry-metric-md": ["1.25rem", { "lineHeight": "1.5rem", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "headline-lg": ["2.25rem", { "lineHeight": "2.75rem", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "label-micro": ["0.625rem", { "lineHeight": "0.875rem", "letterSpacing": "0.08em", "fontWeight": "600" }],
+            "title-md": ["1rem", { "lineHeight": "1.5rem", "letterSpacing": "0em", "fontWeight": "500" }],
+            "headline-md": ["1.5rem", { "lineHeight": "2rem", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "label-code": ["0.75rem", { "lineHeight": "1rem", "letterSpacing": "0.06em", "fontWeight": "500" }],
+            "headline-lg-mobile": ["1.75rem", { "lineHeight": "2.25rem", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "headline-sm": ["1.25rem", { "lineHeight": "1.75rem", "letterSpacing": "-0.01em", "fontWeight": "500" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    /* Subtle mission-control scanline & reticle aesthetics */
+    .bg-grid-subtle {
+      background-size: 24px 24px;
+      background-image: 
+        linear-gradient(to right, rgba(80, 216, 232, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(80, 216, 232, 0.03) 1px, transparent 1px);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #090e1b;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #252a38;
+      border-radius: 2px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #50d8e8;
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col font-body-md antialiased selection:bg-secondary/20 selection:text-secondary">
+<!-- ========================================================================= -->
+<!-- SHARED COMPONENT 1: SideNavBar (desktop_persistent, w-58)                  -->
+<!-- ========================================================================= -->
+<aside class="fixed top-0 left-0 h-screen w-58 z-40 bg-surface-container-low dark:bg-surface-container-low border-r border-outline-variant dark:border-outline-variant flat no shadows select-none" style="width: 232px;">
+<div class="w-58 h-full flex flex-col justify-between py-4 px-3" style="width: 232px;">
+<!-- Nav Top / Header -->
+<div class="flex flex-col gap-6">
+<!-- Brand identity -->
+<div class="px-2 pt-1 flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center border border-secondary/30 shadow-[0_0_12px_-2px_rgba(80,216,232,0.3)]">
+<span class="material-symbols-outlined text-secondary text-lg" data-icon="solar_power">solar_power</span>
+</div>
+<div>
+<div class="text-title-md font-title-md font-semibold tracking-wider text-primary dark:text-primary leading-tight">MITSINJO GRID</div>
+<div class="text-label-micro font-label-micro text-on-surface-variant tracking-wider">VILLAGE TWIN v2.4</div>
+</div>
+</div>
+<!-- Navigation Tabs: Exact JSON labels & icons -->
+<nav class="flex flex-col gap-1">
+<!-- Overview (Inactive) -->
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface dark:hover:text-on-surface font-normal text-body-md font-body-md hover:bg-surface-container-high dark:hover:bg-surface-container-high transition-colors duration-150 rounded cursor-pointer active:scale-[0.99]" href="#">
+<span class="material-symbols-outlined text-base" data-icon="dashboard">dashboard</span>
+<span>Overview</span>
+</a>
+<!-- Live Simulation (Inactive) -->
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface dark:hover:text-on-surface font-normal text-body-md font-body-md hover:bg-surface-container-high dark:hover:bg-surface-container-high transition-colors duration-150 rounded cursor-pointer active:scale-[0.99]" href="#">
+<span class="material-symbols-outlined text-base" data-icon="solar_power">solar_power</span>
+<span>Live Simulation</span>
+</a>
+<!-- Strategy Lab (Inactive) -->
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface dark:hover:text-on-surface font-normal text-body-md font-body-md hover:bg-surface-container-high dark:hover:bg-surface-container-high transition-colors duration-150 rounded cursor-pointer active:scale-[0.99]" href="#">
+<span class="material-symbols-outlined text-base" data-icon="science">science</span>
+<span>Strategy Lab</span>
+</a>
+<!-- Scenarios (Inactive) -->
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface dark:hover:text-on-surface font-normal text-body-md font-body-md hover:bg-surface-container-high dark:hover:bg-surface-container-high transition-colors duration-150 rounded cursor-pointer active:scale-[0.99]" href="#">
+<span class="material-symbols-outlined text-base" data-icon="history_toggle_off">history_toggle_off</span>
+<span>Scenarios</span>
+</a>
+<!-- AI Copilot (ACTIVE: Destination Lock) -->
+<a class="flex items-center justify-between px-3 py-2.5 text-secondary dark:text-secondary bg-surface-container dark:bg-surface-container border-l-2 border-secondary dark:border-secondary font-medium text-body-md font-body-md rounded-r cursor-pointer active:scale-[0.99]" href="#">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-base" data-icon="smart_toy">smart_toy</span>
+<span>AI Copilot</span>
+</div>
+<!-- AI Indicator Tag -->
+<span class="text-[9px] font-label-micro px-1.5 py-0.5 rounded bg-[#b6a0ff]/15 text-[#b6a0ff] border border-[#b6a0ff]/40 tracking-wider">AI</span>
+</a>
+</nav>
+</div>
+<!-- Nav Footer / Simulated Data Badge -->
+<div class="pt-4 border-t border-outline-variant/40 flex flex-col gap-2">
+<div class="flex items-center justify-between px-2.5 py-1.5 rounded bg-surface-container border border-outline-variant/30">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-sm" data-icon="sensors">sensors</span>
+<span class="text-label-micro font-label-micro text-tertiary">SIMULATED DATA</span>
+</div>
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span>
+</div>
+<div class="px-2 text-[10px] font-label-micro text-on-surface-variant/70 flex justify-between items-center">
+<span>SEED: #892F</span>
+<span>1000 ITER/S</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- ========================================================================= -->
+<!-- SHARED COMPONENT 2: TopNavBar (mission_control_header, h-[68px])           -->
+<!-- ========================================================================= -->
+<header class="fixed top-0 right-0 h-[68px] z-30 bg-surface-container-lowest dark:bg-surface-container-lowest border-b border-outline-variant dark:border-outline-variant flat no shadows flex items-center justify-between px-6" style="left: 232px;">
+<!-- Left Navigation Links Cluster -->
+<div class="flex items-center gap-5">
+<div class="flex items-center gap-2 text-primary font-headline-sm text-headline-sm font-semibold tracking-tight mr-2">
+<span>Mitsinjo Grid</span>
+</div>
+<div class="h-4 w-[1px] bg-outline-variant/50 hidden md:block"></div>
+<!-- Navigation links (JSON explicit labels) -->
+<div class="hidden lg:flex items-center gap-4">
+<!-- Link 1: Active Scenario -->
+<div class="flex items-center gap-1.5 text-secondary dark:text-secondary font-label-code text-label-code border-b-2 border-secondary dark:border-secondary pb-0.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span>Scenario: Monsoon Baseline</span>
+</div>
+<!-- Link 2: Grid status -->
+<div class="flex items-center gap-1.5 text-on-surface-variant dark:text-on-surface-variant font-label-code text-label-code">
+<span class="material-symbols-outlined text-xs text-tertiary" data-icon="bolt">bolt</span>
+<span>Grid: Nominal 240V</span>
+</div>
+<!-- Link 3: Latency sync -->
+<div class="flex items-center gap-1.5 text-on-surface-variant dark:text-on-surface-variant font-label-code text-label-code">
+<span class="material-symbols-outlined text-xs text-secondary" data-icon="sync">sync</span>
+<span>Sync: 12ms</span>
+</div>
+</div>
+</div>
+<!-- Right Trailing Actions Cluster -->
+<div class="flex items-center gap-3">
+<!-- Trailing Icon Actions: tune, notifications, fullscreen -->
+<div class="flex items-center gap-1 mr-2 text-on-surface-variant">
+<button class="p-2 rounded hover:bg-surface-container-high transition-colors active:scale-95 text-on-surface-variant hover:text-primary" title="Telemetry Filters">
+<span class="material-symbols-outlined text-lg" data-icon="tune">tune</span>
+</button>
+<button class="p-2 rounded hover:bg-surface-container-high transition-colors active:scale-95 text-on-surface-variant hover:text-primary relative" title="Alerts">
+<span class="material-symbols-outlined text-lg" data-icon="notifications">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+</button>
+<button class="p-2 rounded hover:bg-surface-container-high transition-colors active:scale-95 text-on-surface-variant hover:text-primary" title="Fullscreen View">
+<span class="material-symbols-outlined text-lg" data-icon="fullscreen">fullscreen</span>
+</button>
+</div>
+<!-- Trailing Secondary Action: Reset Telemetry -->
+<button class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-outline-variant hover:border-secondary text-on-surface text-label-code font-label-code hover:bg-surface-container transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined text-sm" data-icon="refresh">refresh</span>
+<span>Reset Telemetry</span>
+</button>
+<!-- Trailing Primary Action: AI Copilot status indicator -->
+<button class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded bg-[#b6a0ff]/15 border border-[#b6a0ff]/40 text-[#b6a0ff] font-label-code text-label-code hover:bg-[#b6a0ff]/25 transition-all shadow-[0_0_12px_-2px_rgba(182,160,255,0.25)] active:scale-[0.98]">
+<span class="material-symbols-outlined text-sm animate-pulse" data-icon="smart_toy">smart_toy</span>
+<span>AI Copilot</span>
+<span class="w-1.5 h-1.5 rounded-full bg-[#b6a0ff]"></span>
+</button>
+<!-- Profile Avatar Alt: Operator Station Unit 04 -->
+<div class="flex items-center gap-2 pl-2 border-l border-outline-variant/40">
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center text-xs font-label-code text-secondary" title="Operator Station Unit 04">
+          ST04
+        </div>
+</div>
+</div>
+</header>
+<!-- ========================================================================= -->
+<!-- MAIN WORKSPACE CANVAS                                                     -->
+<!-- ========================================================================= -->
+<main class="flex-1 mt-[68px] min-h-[calc(100vh-68px)] flex flex-col bg-grid-subtle" style="margin-left: 232px;">
+<!-- Screen Header Area -->
+<div class="px-8 pt-6 pb-4 border-b border-outline-variant/40 bg-surface-dim/90 backdrop-blur-md sticky top-[68px] z-20 flex flex-wrap items-center justify-between gap-4">
+<div class="flex items-center gap-3">
+<div class="p-2 rounded-lg bg-[#b6a0ff]/10 border border-[#b6a0ff]/30 text-[#b6a0ff]">
+<span class="material-symbols-outlined text-xl" data-icon="neurology">neurology</span>
+</div>
+<div>
+<div class="flex items-center gap-2.5">
+<h1 class="text-headline-md font-headline-md text-on-surface tracking-tight font-semibold">Mitsinjo Copilot</h1>
+<!-- Pill Badge: AI EXPLANATION in Violet -->
+<span class="px-2 py-0.5 rounded text-[10px] font-label-micro bg-[#B6A0FF]/10 text-[#B6A0FF] border border-[#B6A0FF]/30 tracking-wider flex items-center gap-1 font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-[#B6A0FF] animate-ping"></span>
+              AI EXPLANATION
+            </span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-0.5">Understand the simulation. Explore the trade-offs.</p>
+</div>
+</div>
+<!-- Live Engine Telemetry Pill & Model Specs -->
+<div class="flex items-center gap-3">
+<div class="px-3 py-1.5 rounded-md bg-surface-container border border-outline-variant/40 flex items-center gap-2">
+<span class="text-label-micro font-label-micro text-on-surface-variant">MODEL:</span>
+<span class="text-label-code font-label-code text-secondary font-medium">SOLAR-TWIN-v4.1-NEURAL</span>
+</div>
+<div class="px-3 py-1.5 rounded-md bg-surface-container border border-outline-variant/40 flex items-center gap-2">
+<span class="text-label-micro font-label-micro text-on-surface-variant">CONFIDENCE:</span>
+<span class="text-label-code font-label-code text-tertiary font-medium">99.4%</span>
+</div>
+</div>
+</div>
+<!-- Two-Column Operational Deck (Bento / HUD Layout) -->
+<div class="flex-1 p-6 lg:p-8 flex flex-col xl:flex-row gap-6 max-w-[1720px] w-full mx-auto">
+<!-- ===================================================================== -->
+<!-- LEFT COLUMN: Conversation & Diagnostic Engine (flex-1)                 -->
+<!-- ===================================================================== -->
+<section class="flex-1 flex flex-col gap-5 min-w-0">
+<!-- Tool Activity Status Bar -->
+<div class="px-4 py-2.5 rounded-lg bg-surface-container border border-[#B6A0FF]/25 flex items-center justify-between text-body-sm shadow-[0_0_15px_-4px_rgba(182,160,255,0.15)]">
+<div class="flex items-center gap-2.5">
+<span class="w-2 h-2 rounded-full bg-[#B6A0FF] animate-pulse"></span>
+<span class="material-symbols-outlined text-[#B6A0FF] text-base" data-icon="auto_awesome">auto_awesome</span>
+<span class="text-[#dee2f5] font-body-md text-sm">Reviewing computed results (engine seed #892F)</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-label-micro font-label-micro text-[#B6A0FF]/80 hidden sm:inline">CYCLE 14/14 RESOLVED</span>
+<span class="text-label-code font-label-code text-on-surface-variant text-xs">Δt 0.04s</span>
+</div>
+</div>
+<!-- Chat Stream Canvas -->
+<div class="flex-1 flex flex-col gap-6 custom-scrollbar pr-1">
+<!-- User Message Bubble -->
+<div class="flex items-start gap-3.5 max-w-3xl self-end">
+<div class="flex flex-col items-end">
+<div class="flex items-center gap-2 mb-1">
+<span class="text-label-micro font-label-micro text-on-surface-variant">OPERATOR 04 (PRIMARY DESK)</span>
+<span class="text-label-micro font-label-micro text-on-surface-variant/60">17:14:02 UTC</span>
+</div>
+<div class="bg-surface-container-high border border-outline-variant/60 text-on-surface rounded-2xl rounded-tr-xs px-4 py-3 text-body-md shadow-sm">
+                Why is the clinic receiving less energy in the afternoon, and how can we protect essential services?
+              </div>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border border-secondary/40 flex items-center justify-center text-xs font-label-code text-secondary shrink-0 mt-4">
+              OP
+            </div>
+</div>
+<!-- AI Assistant Response Container -->
+<div class="flex items-start gap-3.5 max-w-4xl">
+<div class="w-8 h-8 rounded-full bg-[#B6A0FF]/15 border border-[#B6A0FF]/50 flex items-center justify-center text-[#B6A0FF] shrink-0 mt-1 shadow-[0_0_12px_rgba(182,160,255,0.3)]">
+<span class="material-symbols-outlined text-lg" data-icon="smart_toy">smart_toy</span>
+</div>
+<div class="flex-1 flex flex-col gap-4">
+<div class="flex items-center gap-2">
+<span class="text-label-micro font-label-micro text-[#B6A0FF] font-semibold">MITSINJO REASONING CORE</span>
+<span class="text-label-micro font-label-micro text-on-surface-variant/60">17:14:04 UTC</span>
+<span class="px-1.5 py-0.2 rounded text-[9px] font-label-micro bg-surface-container border border-outline-variant/40 text-on-surface-variant">DETERMINISTIC SIMULATION</span>
+</div>
+<!-- Main Structured Diagnostic Card -->
+<div class="bg-surface-container border border-outline-variant/50 rounded-xl p-5 lg:p-6 flex flex-col gap-5 shadow-lg">
+<!-- Section 1: "What happened" -->
+<div class="space-y-1.5">
+<div class="flex items-center gap-2 text-label-code font-label-code text-primary uppercase tracking-wider font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+                    What happened
+                  </div>
+<p class="text-body-md text-on-surface leading-relaxed pl-3.5 border-l border-outline-variant/40">
+                    During the 14:00 - 17:00 monsoon cloud cover event, total solar generation dropped to <span class="font-telemetry-metric-md text-primary font-medium">11.2 kW</span> while community demand peaked. Under <span class="text-secondary font-medium">Proportional Allocation</span>, available power was divided equally, causing non-prioritized shedding across all sectors.
+                  </p>
+</div>
+<!-- Section 2: "Computed evidence" (Telemetry Monospace Table) -->
+<div class="space-y-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-label-code font-label-code text-secondary uppercase tracking-wider font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                      Computed evidence
+                    </div>
+<span class="text-label-micro font-label-micro text-on-surface-variant">ENGINE TELEMETRY SNAPSHOT</span>
+</div>
+<div class="overflow-x-auto rounded-lg border border-outline-variant/50 bg-surface-container-lowest">
+<table class="w-full text-left font-telemetry-metric-md text-xs">
+<thead>
+<tr class="border-b border-outline-variant/40 bg-surface-container-low text-on-surface-variant font-label-micro text-[10px]">
+<th class="py-2 px-3 font-semibold">TELEMETRY CHANNEL</th>
+<th class="py-2 px-3 font-semibold">COMPUTED VALUE</th>
+<th class="py-2 px-3 font-semibold">BASELINE DELTA</th>
+<th class="py-2 px-3 font-semibold text-right">STATE</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/30 text-on-surface">
+<!-- Metric 1: solar_kw_drop -->
+<tr class="hover:bg-surface-container/50 transition-colors">
+<td class="py-2.5 px-3 font-label-code text-on-surface-variant flex items-center gap-2">
+<span class="w-1 h-3 bg-primary-container rounded-xs"></span>
+                            solar_kw_drop
+                          </td>
+<td class="py-2.5 px-3 font-semibold text-primary">11.2 kW</td>
+<td class="py-2.5 px-3 text-error font-normal">-67.8% vs peak 34.8 kW</td>
+<td class="py-2.5 px-3 text-right">
+<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-label-micro bg-error/10 text-error border border-error/30">SHEDDING</span>
+</td>
+</tr>
+<!-- Metric 2: clinic_power_allocated -->
+<tr class="hover:bg-surface-container/50 transition-colors">
+<td class="py-2.5 px-3 font-label-code text-on-surface-variant flex items-center gap-2">
+<span class="w-1 h-3 bg-secondary rounded-xs"></span>
+                            clinic_power_allocated
+                          </td>
+<td class="py-2.5 px-3 font-semibold text-on-surface">3.94 kW / 4.80 kW</td>
+<td class="py-2.5 px-3 text-secondary font-normal">82.1% supplied</td>
+<td class="py-2.5 px-3 text-right">
+<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-label-micro bg-secondary/10 text-secondary border border-secondary/30">PROPORTIONAL</span>
+</td>
+</tr>
+<!-- Metric 3: critical_unserved_kwh -->
+<tr class="hover:bg-surface-container/50 transition-colors">
+<td class="py-2.5 px-3 font-label-code text-on-surface-variant flex items-center gap-2">
+<span class="w-1 h-3 bg-primary-container rounded-xs"></span>
+                            critical_unserved_kwh
+                          </td>
+<td class="py-2.5 px-3 font-semibold text-primary-container">2.58 kWh unmet deficit</td>
+<td class="py-2.5 px-3 text-primary-container font-normal">Critical boundary breached</td>
+<td class="py-2.5 px-3 text-right">
+<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-label-micro bg-primary-container/15 text-primary-container border border-primary-container/40">WARNING</span>
+</td>
+</tr>
+<!-- Metric 4: battery_soc_daybreak -->
+<tr class="hover:bg-surface-container/50 transition-colors">
+<td class="py-2.5 px-3 font-label-code text-on-surface-variant flex items-center gap-2">
+<span class="w-1 h-3 bg-tertiary rounded-xs"></span>
+                            battery_soc_daybreak
+                          </td>
+<td class="py-2.5 px-3 font-semibold text-on-surface">32.5%</td>
+<td class="py-2.5 px-3 text-on-surface-variant font-normal">Below 40% safety threshold</td>
+<td class="py-2.5 px-3 text-right">
+<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-label-micro bg-primary-container/10 text-primary-container border border-primary-container/30">DEPLETING</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Section 3: "Why it matters" -->
+<div class="space-y-1.5">
+<div class="flex items-center gap-2 text-label-code font-label-code text-error uppercase tracking-wider font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                    Why it matters
+                  </div>
+<p class="text-body-md text-on-surface leading-relaxed pl-3.5 border-l border-outline-variant/40">
+                    The <span class="font-telemetry-metric-md text-primary font-medium">2.58 kWh</span> unserved energy compromises cold-chain vaccine refrigeration reliability at the Rural Health Clinic after 18:30.
+                  </p>
+</div>
+<!-- Section 4: "Explore next" -->
+<div class="space-y-1.5">
+<div class="flex items-center gap-2 text-label-code font-label-code text-[#B6A0FF] uppercase tracking-wider font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-[#B6A0FF]"></span>
+                    Explore next
+                  </div>
+<p class="text-body-md text-on-surface leading-relaxed pl-3.5 border-l border-outline-variant/40">
+                    Switch dispatch policy to <span class="text-tertiary font-medium">Essential-First</span>, or shift the communal borehole pump schedule from 15:00 to 11:00 midday surplus.
+                  </p>
+</div>
+</div>
+<!-- ============================================================= -->
+<!-- Embedded Scenario Proposal Card                               -->
+<!-- ============================================================= -->
+<div class="bg-surface-container-high border-2 border-[#B6A0FF]/40 rounded-xl p-5 shadow-[0_0_24px_-4px_rgba(182,160,255,0.18)]">
+<!-- Card Header -->
+<div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-outline-variant/40">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#B6A0FF] text-lg" data-icon="schema">schema</span>
+<span class="font-title-md text-title-md text-on-surface font-semibold tracking-wide">PROPOSED SCENARIO MODIFICATION</span>
+</div>
+<span class="px-2 py-0.5 rounded text-[10px] font-label-micro bg-[#B6A0FF]/15 text-[#B6A0FF] border border-[#B6A0FF]/40 font-semibold tracking-wider">
+                    SIMULATION FIX #04-A
+                  </span>
+</div>
+<!-- Parameter Diff Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3 my-4 font-telemetry-metric-md text-xs">
+<!-- Diff Item 1: Dispatch Policy -->
+<div class="p-3 rounded-lg bg-surface-container border border-outline-variant/40 flex flex-col justify-between">
+<span class="text-label-micro font-label-micro text-on-surface-variant uppercase">Dispatch Policy</span>
+<div class="mt-2 flex items-center gap-2 flex-wrap">
+<span class="line-through text-on-surface-variant/70">proportional</span>
+<span class="material-symbols-outlined text-xs text-secondary" data-icon="arrow_forward">arrow_forward</span>
+<span class="text-tertiary font-semibold bg-tertiary/10 px-1.5 py-0.5 rounded border border-tertiary/30">essential_first</span>
+</div>
+</div>
+<!-- Diff Item 2: Water Pump Window -->
+<div class="p-3 rounded-lg bg-surface-container border border-outline-variant/40 flex flex-col justify-between">
+<span class="text-label-micro font-label-micro text-on-surface-variant uppercase">Water Pump Window</span>
+<div class="mt-2 flex items-center gap-2 flex-wrap">
+<span class="line-through text-on-surface-variant/70">15:00-18:00</span>
+<span class="material-symbols-outlined text-xs text-secondary" data-icon="arrow_forward">arrow_forward</span>
+<span class="text-secondary font-semibold bg-secondary/10 px-1.5 py-0.5 rounded border border-secondary/30">11:00-14:00</span>
+</div>
+</div>
+<!-- Diff Item 3: Critical Deficit -->
+<div class="p-3 rounded-lg bg-surface-container border border-outline-variant/40 flex flex-col justify-between">
+<span class="text-label-micro font-label-micro text-on-surface-variant uppercase">Critical Unserved Deficit</span>
+<div class="mt-2 flex items-center gap-2 flex-wrap">
+<span class="line-through text-primary-container">2.58 kWh</span>
+<span class="material-symbols-outlined text-xs text-tertiary" data-icon="arrow_forward">arrow_forward</span>
+<span class="text-tertiary font-bold bg-tertiary/15 px-1.5 py-0.5 rounded border border-tertiary/40">0.00 kWh (100% Protected)</span>
+</div>
+</div>
+</div>
+<!-- Scenario Action Buttons -->
+<div class="flex items-center justify-end gap-3 pt-2">
+<button class="px-4 py-2 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container hover:border-outline text-body-sm font-body-md transition-all active:scale-98">
+                    Reject
+                  </button>
+<button class="px-4 py-2 rounded-lg bg-primary-container text-on-primary font-display font-medium text-body-md hover:bg-primary-fixed-dim transition-all shadow-[0_0_16px_-4px_rgba(255,181,71,0.3)] active:scale-98 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-base" data-icon="check_circle">check_circle</span>
+<span>Approve &amp; Apply Scenario</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Suggested Prompt Quick-Chips -->
+<div class="pt-2 flex flex-col gap-2">
+<div class="text-label-micro font-label-micro text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-xs text-[#B6A0FF]" data-icon="tips_and_updates">tips_and_updates</span>
+<span>SUGGESTED EXPLORATION PROMPTS</span>
+</div>
+<div class="flex flex-wrap gap-2">
+<button class="px-3 py-1.5 rounded-full bg-surface-container border border-outline-variant/40 text-on-surface hover:border-[#B6A0FF]/60 hover:text-primary transition-all text-xs font-body-sm flex items-center gap-1.5 active:scale-95">
+<span>Why is the clinic receiving less energy?</span>
+<span class="material-symbols-outlined text-xs text-on-surface-variant" data-icon="north_east">north_east</span>
+</button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container border border-outline-variant/40 text-on-surface hover:border-[#B6A0FF]/60 hover:text-primary transition-all text-xs font-body-sm flex items-center gap-1.5 active:scale-95">
+<span>Compare the two allocation strategies</span>
+<span class="material-symbols-outlined text-xs text-on-surface-variant" data-icon="north_east">north_east</span>
+</button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container border border-outline-variant/40 text-on-surface hover:border-[#B6A0FF]/60 hover:text-primary transition-all text-xs font-body-sm flex items-center gap-1.5 active:scale-95">
+<span>What happens if solar production drops by 40%?</span>
+<span class="material-symbols-outlined text-xs text-on-surface-variant" data-icon="north_east">north_east</span>
+</button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container border border-outline-variant/40 text-on-surface hover:border-[#B6A0FF]/60 hover:text-primary transition-all text-xs font-body-sm flex items-center gap-1.5 active:scale-95">
+<span>Suggest a scenario to protect essential services</span>
+<span class="material-symbols-outlined text-xs text-on-surface-variant" data-icon="north_east">north_east</span>
+</button>
+</div>
+</div>
+<!-- Bottom Query Input Dock -->
+<div class="p-2.5 rounded-xl bg-surface-container-low border border-outline-variant/60 shadow-lg">
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-secondary hover:bg-surface-container transition-colors" title="Attach Telemetry Log">
+<span class="material-symbols-outlined text-lg" data-icon="attach_file">attach_file</span>
+</button>
+<input class="flex-1 bg-transparent border-0 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-0 text-body-md font-body-md py-2 px-1" placeholder="Ask Mitsinjo Copilot about microgrid simulation results..." type="text"/>
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-primary transition-colors" title="Voice Input">
+<span class="material-symbols-outlined text-lg" data-icon="mic">mic</span>
+</button>
+<!-- Send Button in Violet Accent (#B6A0FF) -->
+<button class="px-3.5 py-2 rounded-lg bg-[#B6A0FF] hover:bg-[#c8b7ff] text-[#080D1A] font-semibold flex items-center justify-center transition-all shadow-[0_0_14px_-2px_rgba(182,160,255,0.4)] active:scale-95">
+<span class="material-symbols-outlined text-lg" data-icon="send">send</span>
+</button>
+</div>
+</div>
+</section>
+<!-- ===================================================================== -->
+<!-- RIGHT COLUMN: 360px Context Panel (Computed Telemetry)                -->
+<!-- ===================================================================== -->
+<aside class="w-full xl:w-[360px] flex flex-col gap-4 shrink-0">
+<!-- Context Panel Header -->
+<div class="flex items-center justify-between pb-2 border-b border-outline-variant/40">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-base" data-icon="memory">memory</span>
+<span class="text-label-code font-label-code text-on-surface font-semibold tracking-wider">ACTIVE CONTEXT (COMPUTED)</span>
+</div>
+<!-- SIMULATED DATA pill -->
+<span class="text-[10px] font-label-micro px-2 py-0.5 rounded bg-tertiary/10 text-tertiary border border-tertiary/30 font-medium tracking-wider">
+            SIMULATED DATA
+          </span>
+</div>
+<!-- Active Scenario Card -->
+<div class="bg-surface-container border border-outline-variant/50 rounded-xl p-4 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="text-label-micro font-label-micro text-on-surface-variant">ACTIVE BASELINE</span>
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+</div>
+<div>
+<div class="text-title-md font-title-md text-on-surface font-semibold">Monsoon Twilight Baseline</div>
+<div class="text-label-micro font-label-micro text-secondary">BUILD 1.4 — DETERMINISTIC ITER 12</div>
+</div>
+<!-- Environmental Metadata Chips -->
+<div class="grid grid-cols-3 gap-2 pt-2 border-t border-outline-variant/30 text-center font-telemetry-metric-md text-xs">
+<div class="p-1.5 rounded bg-surface-container-lowest">
+<div class="text-label-micro text-on-surface-variant font-label-micro">TEMP</div>
+<div class="text-on-surface font-medium">27.4°C</div>
+</div>
+<div class="p-1.5 rounded bg-surface-container-lowest">
+<div class="text-label-micro text-on-surface-variant font-label-micro">HUMIDITY</div>
+<div class="text-on-surface font-medium">84% RH</div>
+</div>
+<div class="p-1.5 rounded bg-surface-container-lowest">
+<div class="text-label-micro text-on-surface-variant font-label-micro">IRRADIANCE</div>
+<div class="text-primary font-medium">410 W/m²</div>
+</div>
+</div>
+</div>
+<!-- Dispatch Policy Indicator -->
+<div class="bg-surface-container border border-outline-variant/50 rounded-xl p-4 flex items-center justify-between">
+<div class="flex flex-col">
+<span class="text-label-micro font-label-micro text-on-surface-variant">DISPATCH POLICY</span>
+<span class="text-body-md font-body-md text-on-surface font-medium">Proportional Allocation</span>
+</div>
+<span class="px-2 py-1 rounded text-label-micro font-label-micro bg-primary-container/15 text-primary-container border border-primary-container/30 flex items-center gap-1 font-semibold">
+<span class="material-symbols-outlined text-xs" data-icon="warning">warning</span>
+            NON-PRIORITIZED
+          </span>
+</div>
+<!-- Real-Time Engine Metrics Grid -->
+<div class="space-y-3">
+<div class="text-label-micro font-label-micro text-on-surface-variant tracking-wider">REAL-TIME ENGINE METRICS</div>
+<div class="grid grid-cols-2 gap-3">
+<!-- Metric Card 1: Solar Peak -->
+<div class="p-3.5 rounded-xl bg-surface-container border border-outline-variant/40 flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="text-label-micro font-label-micro">SOLAR PEAK</span>
+<span class="material-symbols-outlined text-sm text-primary" data-icon="solar_power">solar_power</span>
+</div>
+<div class="mt-2">
+<div class="text-telemetry-metric-md font-telemetry-metric-md text-primary font-bold">34.8 kW</div>
+<div class="text-label-micro font-label-micro text-on-surface-variant">avg 18.2 kW</div>
+</div>
+</div>
+<!-- Metric Card 2: Battery SoC -->
+<div class="p-3.5 rounded-xl bg-surface-container border border-outline-variant/40 flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="text-label-micro font-label-micro">BATTERY SOC</span>
+<span class="material-symbols-outlined text-sm text-tertiary" data-icon="battery_charging_full">battery_charging_full</span>
+</div>
+<div class="mt-2">
+<div class="text-telemetry-metric-md font-telemetry-metric-md text-tertiary font-bold">78.4%</div>
+<div class="text-label-micro font-label-micro text-on-surface-variant">94.1 / 120 kWh BESS</div>
+</div>
+</div>
+<!-- Metric Card 3: Community Demand -->
+<div class="p-3.5 rounded-xl bg-surface-container border border-outline-variant/40 flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="text-label-micro font-label-micro">COMMUNITY DEMAND</span>
+<span class="material-symbols-outlined text-sm text-secondary" data-icon="grid_view">grid_view</span>
+</div>
+<div class="mt-2">
+<div class="text-telemetry-metric-md font-telemetry-metric-md text-on-surface font-bold">242.6 kWh</div>
+<div class="text-label-micro font-label-micro text-error">22.4 kWh unserved</div>
+</div>
+</div>
+<!-- Metric Card 4: Critical Deficit (Warning) -->
+<div class="p-3.5 rounded-xl bg-surface-container border border-primary-container/40 flex flex-col justify-between shadow-[0_0_12px_-2px_rgba(255,181,71,0.15)]">
+<div class="flex items-center justify-between text-primary-container">
+<span class="text-label-micro font-label-micro">CRITICAL DEFICIT</span>
+<span class="material-symbols-outlined text-sm" data-icon="report_problem">report_problem</span>
+</div>
+<div class="mt-2">
+<div class="text-telemetry-metric-md font-telemetry-metric-md text-primary-container font-bold">2.58 kWh</div>
+<span class="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-label-micro bg-primary-container/20 text-primary-container border border-primary-container/40 font-semibold">
+                  CLINIC AT RISK
+                </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Sector Allocation Status Pills -->
+<div class="bg-surface-container border border-outline-variant/50 rounded-xl p-4 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="text-label-code font-label-code text-on-surface font-semibold">SECTOR ALLOCATION STATUS</span>
+<span class="text-label-micro font-label-micro text-on-surface-variant">5 NODES</span>
+</div>
+<div class="flex flex-col gap-2.5">
+<!-- Sector 1: Rural Clinic (Deficit) -->
+<div class="p-2.5 rounded-lg bg-surface-container-lowest border border-primary-container/40 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary-container"></div>
+<div>
+<div class="text-body-sm font-body-sm font-semibold text-on-surface flex items-center gap-1.5">
+<span>Rural Clinic</span>
+<span class="text-[9px] font-label-micro px-1 py-0.2 rounded bg-primary-container/20 text-primary-container border border-primary-container/40">DEFICIT</span>
+</div>
+<div class="text-label-micro font-label-micro text-on-surface-variant">3.94 kW / 4.80 kW</div>
+</div>
+</div>
+<div class="text-telemetry-metric-md font-telemetry-metric-md text-primary-container font-semibold">82.1%</div>
+</div>
+<!-- Sector 2: Water Pump Tower -->
+<div class="p-2.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-secondary"></div>
+<div>
+<div class="text-body-sm font-body-sm font-medium text-on-surface">Water Pump Tower</div>
+<div class="text-label-micro font-label-micro text-on-surface-variant">Borehole Array A</div>
+</div>
+</div>
+<div class="text-telemetry-metric-md font-telemetry-metric-md text-on-surface font-medium">82.1%</div>
+</div>
+<!-- Sector 3: Primary School -->
+<div class="p-2.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-secondary"></div>
+<div>
+<div class="text-body-sm font-body-sm font-medium text-on-surface">Primary School</div>
+<div class="text-label-micro font-label-micro text-on-surface-variant">Classrooms &amp; Tech</div>
+</div>
+</div>
+<div class="text-telemetry-metric-md font-telemetry-metric-md text-on-surface font-medium">82.1%</div>
+</div>
+<!-- Sector 4: Village Households -->
+<div class="p-2.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-secondary"></div>
+<div>
+<div class="text-body-sm font-body-sm font-medium text-on-surface">Village Households</div>
+<div class="text-label-micro font-label-micro text-on-surface-variant">Zone 1-4 Domestic</div>
+</div>
+</div>
+<div class="text-telemetry-metric-md font-telemetry-metric-md text-on-surface font-medium">82.1%</div>
+</div>
+<!-- Sector 5: Communal Market -->
+<div class="p-2.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-secondary"></div>
+<div>
+<div class="text-body-sm font-body-sm font-medium text-on-surface">Communal Market</div>
+<div class="text-label-micro font-label-micro text-on-surface-variant">Commercial Stalls</div>
+</div>
+</div>
+<div class="text-telemetry-metric-md font-telemetry-metric-md text-on-surface font-medium">82.1%</div>
+</div>
+</div>
+<!-- Topology Health Footnote -->
+<div class="pt-2 border-t border-outline-variant/30 flex items-center justify-between text-label-micro font-label-micro text-on-surface-variant">
+<span>UNBALANCED RATIO: 1.000</span>
+<span class="text-secondary">EQUAL SHEDDING ACTIVE</span>
+</div>
+</div>
+</aside>
+</div>
+</main>
+</body></html>

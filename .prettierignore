@@ -1,0 +1,13 @@
+pnpm-lock.yaml
+.next/
+node_modules/
+dist/
+coverage/
+.turbo/
+design/shots/
+design/stitch/*.html
+design/reference/
+*.png
+*.jpg
+*.jpeg
+*.svg
