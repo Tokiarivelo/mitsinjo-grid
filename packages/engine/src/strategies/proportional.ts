@@ -1,0 +1,31 @@
+import type { SectorDemandStep } from '../model/demand';
+import type { SectorId, SectorStep } from '../schemas';
+
+export function runProportionalStrategy(
+  availableKw: number,
+  sectors: readonly SectorDemandStep[]
+): Record<SectorId, SectorStep> {
+  const result = {} as Record<SectorId, SectorStep>;
+  let totalDemandKw = 0;
+
+  for (const s of sectors) {
+    totalDemandKw += s.demandKw;
+  }
+
+  const ratio =
+    totalDemandKw > 0 ? Math.min(1, Math.max(0, availableKw) / totalDemandKw) : 1;
+
+  for (const s of sectors) {
+    const servedKw = Math.min(s.demandKw, s.demandKw * ratio);
+    const criticalServedKw = Math.min(servedKw, s.criticalDemandKw);
+
+    result[s.sectorId] = {
+      demandKw: s.demandKw,
+      servedKw,
+      criticalDemandKw: s.criticalDemandKw,
+      criticalServedKw,
+    };
+  }
+
+  return result;
+}
