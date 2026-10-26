@@ -26,20 +26,12 @@ export interface HeaderProps {
   className?: string;
 }
 
-const DEFAULT_SCENARIOS: ScenarioOption[] = [
-  { id: 'baseline', name: 'Baseline 24h', description: 'Sunny day nominal profile' },
-  { id: 'cloudy_afternoon', name: 'Cloudy Afternoon (-40%)', description: '2h drop 13-15h + 35% init SoC' },
-  { id: 'high_demand', name: 'High Evening Demand (+30%)', description: '17-22h demand spike across sectors' },
-  { id: 'battery_constraint', name: 'Constrained Battery (60 kWh)', description: 'Half capacity with 30% initial' },
-  { id: 'essential_stress', name: 'Essential Stress (-60%)', description: '4h heavy drop 11-15h + 25% init' },
-];
-
 export function Header({
   title,
   subtitle,
   status = 'ready',
   modified = false,
-  scenarios = DEFAULT_SCENARIOS,
+  scenarios,
   activeScenarioId = 'baseline',
   onScenarioChange,
   onReset,
@@ -49,6 +41,37 @@ export function Header({
   className,
 }: HeaderProps) {
   const tHeader = useTranslations('header');
+  const tScenarios = useTranslations('scenarios');
+
+  const defaultScenarios: ScenarioOption[] = [
+    {
+      id: 'baseline',
+      name: tScenarios('baseline.name'),
+      description: tScenarios('baseline.description'),
+    },
+    {
+      id: 'cloudy_afternoon',
+      name: tScenarios('cloudy_afternoon.name'),
+      description: tScenarios('cloudy_afternoon.description'),
+    },
+    {
+      id: 'high_demand',
+      name: tScenarios('high_demand.name'),
+      description: tScenarios('high_demand.description'),
+    },
+    {
+      id: 'battery_constraint',
+      name: tScenarios('battery_constraint.name'),
+      description: tScenarios('battery_constraint.description'),
+    },
+    {
+      id: 'essential_stress',
+      name: tScenarios('essential_stress.name'),
+      description: tScenarios('essential_stress.description'),
+    },
+  ];
+
+  const resolvedScenarios = scenarios || defaultScenarios;
   const isResetDisabled = status === 'ready' && !modified;
 
   return (
@@ -94,7 +117,7 @@ export function Header({
         {onScenarioChange && (
           <div className="hidden md:block">
             <ScenarioSelector
-              scenarios={scenarios}
+              scenarios={resolvedScenarios}
               value={activeScenarioId}
               modified={modified}
               onChange={onScenarioChange}

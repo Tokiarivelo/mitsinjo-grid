@@ -26,18 +26,11 @@ export interface CopilotPanelProps {
   className?: string;
 }
 
-const DEFAULT_PROMPTS = [
-  'Why did the health clinic lose power in this scenario?',
-  'Compare proportional vs essential-first strategies.',
-  'What happens if we double the battery capacity?',
-  'How much energy was curtailed during peak sun hours?',
-];
-
 export function CopilotPanel({
   open,
   onClose,
   messages = [],
-  suggestedPrompts = DEFAULT_PROMPTS,
+  suggestedPrompts,
   pending = false,
   error,
   onSendMessage,
@@ -45,6 +38,14 @@ export function CopilotPanel({
 }: CopilotPanelProps) {
   const [input, setInput] = useState('');
   const tCopilot = useTranslations('copilot');
+
+  const defaultPrompts = [
+    tCopilot('suggestedPrompt1'),
+    tCopilot('suggestedPrompt2'),
+    tCopilot('suggestedPrompt3'),
+    tCopilot('suggestedPrompt4'),
+  ];
+  const activePrompts = suggestedPrompts || defaultPrompts;
 
   const handleSend = () => {
     if (!input.trim() || pending) return;
@@ -121,7 +122,7 @@ export function CopilotPanel({
                   {tCopilot('suggestedQuestions')}
                 </span>
                 <div className="flex flex-col gap-1.5">
-                  {suggestedPrompts.map((prompt, idx) => (
+                  {activePrompts.map((prompt, idx) => (
                     <button
                       key={idx}
                       type="button"

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { AlertCircle, AlertTriangle, CheckCircle2, Clock, Cpu, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslations } from '@/lib/i18n';
 
 export type StatusBadgeVariant =
   | 'ready'
@@ -21,16 +22,6 @@ export interface StatusBadgeProps {
   className?: string;
 }
 
-const DEFAULT_LABELS: Record<StatusBadgeVariant, string> = {
-  ready: 'READY',
-  running: 'SIMULATING',
-  complete: 'SIMULATION COMPLETE',
-  warning: 'WARNING',
-  critical: 'CRITICAL',
-  simulated: 'SIMULATED DATA',
-  ai: 'AI-GENERATED',
-};
-
 export function StatusBadge({
   variant,
   label,
@@ -38,7 +29,8 @@ export function StatusBadge({
   size = 'md',
   className,
 }: StatusBadgeProps) {
-  const text = label || DEFAULT_LABELS[variant];
+  const tStatus = useTranslations('status');
+  const text = label || tStatus(variant);
 
   const sizeStyles = {
     sm: 'text-[11px] px-2 py-0.5 gap-1 rounded-control-sm font-medium',

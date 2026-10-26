@@ -1,5 +1,6 @@
 import { AlertCircle, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslations } from '@/lib/i18n';
 
 export type SectorPriority = 'critical' | 'high' | 'medium' | 'low';
 export type EnergyBarStatus = 'full' | 'partial' | 'critical';
@@ -26,6 +27,7 @@ export function EnergyBar({
   showValues = true,
   className,
 }: EnergyBarProps) {
+  const tUi = useTranslations('ui.energyBar');
   const clampedPct = Math.max(0, Math.min(100, Math.round(valuePct * 10) / 10));
 
   // Determine status if not explicitly passed
@@ -93,8 +95,8 @@ export function EnergyBar({
         aria-valuenow={clampedPct}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`${label} energy coverage`}
-        aria-valuetext={`${label}: ${clampedPct}% covered`}
+        aria-label={`${label} ${tUi('coverageLabel')}`}
+        aria-valuetext={`${label}: ${clampedPct}% ${tUi('coveredText')}`}
         className="h-2 w-full bg-surface-elevated rounded-full overflow-hidden border border-border/40"
       >
         <div
@@ -109,12 +111,12 @@ export function EnergyBar({
           {resolvedStatus === 'critical' ? (
             <>
               <ShieldAlert className="h-3 w-3 text-critical-red shrink-0" aria-hidden="true" />
-              <span className="text-critical-red">Essential service shortfall</span>
+              <span className="text-critical-red">{tUi('essentialShortfall')}</span>
             </>
           ) : (
             <>
               <AlertCircle className="h-3 w-3 text-warning-amber shrink-0" aria-hidden="true" />
-              <span className="text-warning-amber">Partial supply</span>
+              <span className="text-warning-amber">{tUi('partialSupply')}</span>
             </>
           )}
         </div>

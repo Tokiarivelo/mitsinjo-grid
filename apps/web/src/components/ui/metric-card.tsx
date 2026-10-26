@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { ArrowDown, ArrowUp, BatteryCharging, Factory, HeartPulse, Sun, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslations } from '@/lib/i18n';
 
 export type MetricCardVariant = 'solar' | 'battery' | 'demand' | 'essential';
 export type MetricCardStatus = 'normal' | 'warning' | 'critical';
@@ -36,6 +37,8 @@ export function MetricCard({
   empty = false,
   className,
 }: MetricCardProps) {
+  const tUi = useTranslations('ui.metricCard');
+
   // Variant accent rules
   const variantColor = () => {
     if (status === 'critical') return 'text-critical-red border-critical-red/30';
@@ -119,19 +122,19 @@ export function MetricCard({
         ) : caption ? (
           <span className="text-text-muted font-sans text-xs">{caption}</span>
         ) : (
-          <span className="text-text-muted font-mono text-[11px]">24h simulation</span>
+          <span className="text-text-muted font-mono text-[11px]">{tUi('simulationPeriod')}</span>
         )}
 
         {status === 'warning' && (
           <span className="inline-flex items-center gap-1 text-[11px] font-mono text-warning-amber">
             <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-            WARNING
+            {tUi('warningLabel')}
           </span>
         )}
         {status === 'critical' && (
           <span className="inline-flex items-center gap-1 text-[11px] font-mono text-critical-red">
             <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-            CRITICAL
+            {tUi('criticalLabel')}
           </span>
         )}
       </div>

@@ -105,35 +105,59 @@ export function useAppLocale() {
   return context;
 }
 
+function getNestedValue(obj: unknown, path: string): unknown {
+  if (!obj || typeof obj !== 'object') return undefined;
+  const parts = path.split('.');
+  let current: unknown = obj;
+  for (const part of parts) {
+    if (current && typeof current === 'object' && part in current) {
+      current = (current as Record<string, unknown>)[part];
+    } else {
+      return undefined;
+    }
+  }
+  return current;
+}
+
+export type TranslationValues = Record<string, string | number | Date>;
+
 /**
  * Universal useTranslations wrapper:
  * Uses next-intl useTranslations when within a configured NextIntlClientProvider,
- * with zero-exception fallback to the static dictionary during SSR/SSG prerender passes.
+ * with zero-exception fallback to the static dictionary during SSR/SSG prerender passes
+ * and isolated component tests.
  */
 export function useTranslations(namespace?: string) {
   const context = useContext(I18nContext);
   const locale = context?.locale || DEFAULT_LOCALE;
   const messages = MESSAGES_BY_LOCALE[locale] || enMessages;
 
-  try {
-    return nextIntlUseTranslations(namespace);
-  } catch {
-    return (key: string) => {
-      const root = namespace
-        ? (messages as unknown as Record<string, unknown>)[namespace]
-        : messages;
-
-      const parts = key.split('.');
-      let current: unknown = root;
-      for (const part of parts) {
-        if (current && typeof current === 'object' && part in current) {
-          current = (current as Record<string, unknown>)[part];
-        } else {
-          return key;
-        }
+  const fallbackTranslate = (key: string, values?: TranslationValues) => {
+    const root = namespace ? getNestedValue(messages, namespace) : messages;
+    const value = getNestedValue(root, key);
+    if (typeof value === 'string') {
+      if (values) {
+        return Object.entries(values).reduce(
+          (acc, [k, v]) => acc.replace(new RegExp(`{${k}}`, 'g'), String(v)),
+          value
+        );
       }
-      return typeof current === 'string' ? current : key;
+      return value;
+    }
+    return key;
+  };
+
+  try {
+    const nextIntlTranslate = nextIntlUseTranslations(namespace);
+    return (key: string, values?: TranslationValues) => {
+      try {
+        return nextIntlTranslate(key, values);
+      } catch {
+        return fallbackTranslate(key, values);
+      }
     };
+  } catch {
+    return fallbackTranslate;
   }
 }
 

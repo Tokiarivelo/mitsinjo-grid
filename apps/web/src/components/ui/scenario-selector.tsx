@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react';
 import { Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslations } from '@/lib/i18n';
 
 export interface ScenarioOption {
   id: string;
@@ -23,6 +24,8 @@ export function ScenarioSelector({
   onChange,
   className,
 }: ScenarioSelectorProps) {
+  const tHeader = useTranslations('header');
+
   const handleChange = (e: ChangeEvent<HTMLSelectElement>) => {
     onChange(e.target.value);
   };
@@ -37,7 +40,7 @@ export function ScenarioSelector({
         <select
           value={value}
           onChange={handleChange}
-          aria-label="Select simulation scenario"
+          aria-label={tHeader('selectScenario')}
           className="h-9 pl-8 pr-8 py-1 text-xs font-sans font-medium text-text-primary bg-surface border border-border rounded-control appearance-none cursor-pointer
             hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-canvas transition-colors"
         >
@@ -55,10 +58,10 @@ export function ScenarioSelector({
       {modified && (
         <span
           className="inline-flex items-center gap-1 text-[11px] font-mono text-warning-amber bg-warning-amber/10 border border-warning-amber/30 px-2 py-0.5 rounded-control-sm"
-          title="Scenario parameters have been modified from default preset"
+          title={tHeader('modifiedTooltip')}
         >
           <span className="h-1.5 w-1.5 rounded-full bg-warning-amber animate-pulse motion-reduce:animate-none" />
-          MODIFIED
+          {tHeader('modified')}
         </span>
       )}
     </div>

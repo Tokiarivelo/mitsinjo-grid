@@ -37,6 +37,8 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname();
   const tRoutes = useTranslations('routes');
+  const tCommon = useTranslations('common');
+  const tCopilot = useTranslations('copilot');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
@@ -46,8 +48,8 @@ export function AppShell({
 
   const routeKey = pathname?.replace(/^\//, '') || 'overview';
 
-  let defaultTitle = 'Mitsinjo Grid';
-  let defaultSubtitle = 'Rural Solar Microgrid Simulation';
+  let defaultTitle = tCommon('appName');
+  let defaultSubtitle = '';
 
   try {
     defaultTitle = tRoutes(`${routeKey}.title`);
@@ -74,10 +76,10 @@ export function AppShell({
       const assistantMsg: CopilotMessage = {
         id: `msg-${Date.now() + 1}`,
         role: 'assistant',
-        content: `Analyzing "${content}": Under the current baseline scenario, the battery reserve maintains 20% minimum state of charge while keeping essential clinic services 100% covered.`,
+        content: tCopilot('sampleResponse'),
         evidence: [
-          { label: 'Battery Min SoC', value: 20.0, unit: '%' },
-          { label: 'Essential Coverage', value: 100.0, unit: '%' },
+          { label: tCopilot('batteryMinSoc'), value: 20.0, unit: '%' },
+          { label: tCopilot('essentialCoverage'), value: 100.0, unit: '%' },
         ],
       };
       setMessages((prev) => [...prev, assistantMsg]);

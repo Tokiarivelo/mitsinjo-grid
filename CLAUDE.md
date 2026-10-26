@@ -43,7 +43,7 @@ shadcn/ui (restyled) · Zustand · Zod · R3F + Drei · Recharts · next-intl ·
 
 - Numbers come **only** from `@mitsinjo/engine`. UI, 3D and LLM never compute or invent energy values.
 - Engine is pure TS: no React, no DOM, no network, no `Math.random` without seed.
-- Multi-language (i18n): UI must be multi-lingual via official `next-intl` (EN default, FR, MG). No hardcoded strings.
+- Zero static text & Multi-language (i18n): All UI surfaces must be multi-lingual via official `next-intl` (EN default, FR, MG). Zero hardcoded/static user-visible strings in JSX/TSX. All text must use `useTranslations()` with 100% key parity across `en.json`, `fr.json`, and `mg.json` (enforced in CI and PR validation via `make check-i18n`).
 - `app/**/page.tsx` = import + render a feature page. No logic.
 - Feature code lives in `apps/web/src/features/<name>/{ui,hooks,utils,__tests__}`; export via `index.ts`.
 - Every engine function and hook ships with a Vitest test in the same commit.

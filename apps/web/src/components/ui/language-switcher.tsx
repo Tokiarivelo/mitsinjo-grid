@@ -2,7 +2,7 @@
 
 import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAppLocale, type Locale } from '@/lib/i18n';
+import { useAppLocale, useTranslations, type Locale } from '@/lib/i18n';
 
 export interface LanguageSwitcherProps {
   size?: 'sm' | 'md';
@@ -16,12 +16,13 @@ export function LanguageSwitcher({
   className,
 }: LanguageSwitcherProps) {
   const { locale, setLocale, availableLocales } = useAppLocale();
+  const tCommon = useTranslations('common');
 
   if (variant === 'tabs') {
     return (
       <div
         role="radiogroup"
-        aria-label="Language selection"
+        aria-label={tCommon('languageSelection')}
         className={cn(
           'inline-flex items-center p-0.5 rounded-control-sm bg-surface-elevated border border-border',
           className
@@ -58,7 +59,7 @@ export function LanguageSwitcher({
       <select
         value={locale}
         onChange={(e) => setLocale(e.target.value as Locale)}
-        aria-label="Select application language"
+        aria-label={tCommon('selectLanguage')}
         className={cn(
           'appearance-none bg-surface text-text-secondary border border-border rounded-control font-mono cursor-pointer transition-colors',
           'hover:text-text-primary hover:border-border-strong',

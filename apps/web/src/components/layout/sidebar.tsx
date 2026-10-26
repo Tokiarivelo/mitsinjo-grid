@@ -92,7 +92,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close navigation"
+              aria-label={tCommon('close')}
               className="xl:hidden p-1.5 rounded-control text-text-muted hover:text-text-primary hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan"
             >
               <X className="h-5 w-5" aria-hidden="true" />
@@ -140,7 +140,7 @@ export function Sidebar({
           {/* Language Switcher */}
           <div className="flex items-center justify-between pb-2 border-b border-border/40">
             <span className="text-[10px] font-mono text-text-muted uppercase tracking-wider">
-              Language
+              {tCommon('language')}
             </span>
             <LanguageSwitcher variant="tabs" />
           </div>

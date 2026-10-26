@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { useTranslations } from '@/lib/i18n';
 import { EmptyState } from './empty-state';
 
 export interface ChartCardProps {
@@ -25,6 +26,8 @@ export function ChartCard({
   children,
   className,
 }: ChartCardProps) {
+  const tUi = useTranslations('ui.chartCard');
+
   return (
     <div
       className={cn(
@@ -60,8 +63,8 @@ export function ChartCard({
           <div className="h-60 w-full bg-surface-elevated animate-pulse rounded-control" />
         ) : empty ? (
           <EmptyState
-            title="No data to chart yet"
-            description={`Run the simulation to see ${title.toLowerCase()}.`}
+            title={tUi('noDataTitle')}
+            description={tUi('noDataDesc')}
           />
         ) : (
           children

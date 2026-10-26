@@ -6,8 +6,12 @@
     "aiGenerated": "NOFORONIN'NY AI",
     "aiExplanation": "FANAZAVANA AI",
     "engineStatus": "Toetry ny motera",
-    "uiKit": "Kit UI",
-    "version": "v0.1.0"
+    "uiKit": "Singa UI",
+    "version": "v0.1.0",
+    "close": "Hidio",
+    "language": "Teny",
+    "selectLanguage": "Misafidiana teny fampiasana",
+    "languageSelection": "Safidy teny"
   },
   "nav": {
     "overview": "Topimaso",
@@ -56,9 +60,54 @@
     "copilot": "Mpanampy AI",
     "toggleCopilot": "Sokafy ny mpanampy AI",
     "openMenu": "Sokafy ny sakafo",
-    "selectScenario": "Misafidiana tranga",
+    "selectScenario": "Misafidiana tranga fandinihana",
     "modified": "NOVAINA",
+    "modifiedTooltip": "Novaina ny masontsivana raha oharina amin'ny fototra",
     "language": "Teny"
+  },
+  "scenarios": {
+    "baseline": {
+      "name": "Fototra 24h Ara-dalàna",
+      "description": "Andro masoandro tsara tsy misy fahatapahana"
+    },
+    "cloudy_afternoon": {
+      "name": "Tolakandro Mandrahona (-40%)",
+      "description": "Fidinan'ny masoandro 2 ora amin'ny 13-15h miaraka amin'ny bateria 35%"
+    },
+    "high_demand": {
+      "name": "Filana Mafy Hariva (+30%)",
+      "description": "Fiakaran'ny fanjifana amin'ny 17-22h ho an'ny sehatra rehetra"
+    },
+    "battery_constraint": {
+      "name": "Bateria Voafetra (60 kWh)",
+      "description": "Fahafaha-mitahiry mihena antsasany miaraka amin'ny tahiry 30%"
+    },
+    "essential_stress": {
+      "name": "Fisedrana Mafy (-60%)",
+      "description": "Fahatapahan'ny masoandro 4 ora amin'ny 11-15h miaraka amin'ny bateria 25%"
+    }
+  },
+  "features": {
+    "overview": {
+      "title": "Topimason'ny Tambazotra",
+      "description": "Tongasoa eto amin'ny Mitsinjo Grid — Fandinihana sy toro-hevitra momba ny angovo masoandro."
+    },
+    "simulation": {
+      "title": "Fandinihana mivantana",
+      "description": "Fandanjana angovo 24 ora sy fanehoana 3D an'ny tanàna."
+    },
+    "strategyLab": {
+      "title": "Paikady fizarana",
+      "description": "Fampitahana ny fizarana mitovy sy ny laharam-pahamehana ho an'ny tena ilaina."
+    },
+    "scenarios": {
+      "title": "Tranga sy Tombana",
+      "description": "Fisedrana ny fiaretan'ny tambazotra amin'ny toetr'andro sy ny filana."
+    },
+    "copilot": {
+      "title": "Mpanampy AI",
+      "description": "Mpanolotsaina mifototra amin'ny kajy sy porofo mazava."
+    }
   },
   "copilot": {
     "title": "Mpanampy Mitsinjo",
@@ -71,7 +120,88 @@
     "shiftEnter": "Shift+Enter ho an'ny andalana vaovao",
     "send": "Alefa",
     "computedEvidence": "Porofo kajiana",
-    "close": "Hidio ny mpanampy"
+    "close": "Hidio ny mpanampy",
+    "suggestedPrompt1": "Nahoana no tapaka ny herinaratra tao amin'ny hopitaly?",
+    "suggestedPrompt2": "Ampitahao ny paikady fizarana mitovy sy ny laharam-pahamehana.",
+    "suggestedPrompt3": "Inona no mitranga raha ampitomboina roa ny bateria?",
+    "suggestedPrompt4": "Firy ny angovo masoandro tsy tafiditra tamin'ny fotoana nafana?",
+    "sampleResponse": "Amin'ity tranga fototra ity, ny tahiry bateria dia mitazona 20% farafahakeliny ary mahazo 100% ny hopitaly.",
+    "batteryMinSoc": "Tahiry Kely Indrindra Bateria",
+    "essentialCoverage": "Fandrakofana Ilaina"
+  },
+  "ui": {
+    "energyBar": {
+      "essentialShortfall": "Tsy ampy ny herinaratra ilaina",
+      "partialSupply": "Fizarana ampahany",
+      "coverageLabel": "fandrakofana angovo",
+      "coveredText": "voarakotra"
+    },
+    "metricCard": {
+      "simulationPeriod": "Fandinihana 24h",
+      "warningLabel": "FAMPITANDREMANA",
+      "criticalLabel": "SAROTRA"
+    },
+    "chartCard": {
+      "noDataTitle": "Tsy mbola misy data",
+      "noDataDesc": "Alefaso ny fandinihana hahitana ny vokany."
+    },
+    "design": {
+      "catalogTitle": "Katalaogin'ny Rafitra Design",
+      "catalogSubtitle": "Loko Tailwind v4, toe-javatra miasa ary singa azo idirana WCAG AA.",
+      "tokenAudited": "LOKO VOAZAHA",
+      "sec1Title": "1. Loko fototra",
+      "sec2Title": "2. Karazana bokotra sy endriny",
+      "sec3Title": "3. Karazana StatusBadge (misy soratra mazava)",
+      "sec4Title": "4. MetricCards (Masoandro, Bateria, Filana, Asa Ilaina)",
+      "sec5Title": "5. EnergyBars (Fitsinjaran'ny sehatra)",
+      "sec6Title": "6. Fibaikoana sy Fisafidianana Tranga",
+      "sec7Title": "7. ChartCard sy Tsy misy data",
+      "smallPrimary": "Voalohany Kely",
+      "smallSecondary": "Faharoa Kely",
+      "calculating": "Manao kajy",
+      "disabled": "Tsy miasa",
+      "emergencyShed": "Fanapahana maika",
+      "solarDeficit": "Fidinan'ny Masoandro",
+      "solarDeficitDesc": "Mamakafaka rahona tampoka na vovoka amin'ny takelaka masoandro.",
+      "scenarioSelection": "Fisafidianana Tranga",
+      "scenarioSelectionDesc": "Mifindrà eo amin'ireo tranga ary araho ny fanovana.",
+      "toggleModified": "Bokotra Novaina",
+      "active": "Miasa",
+      "off": "Tsy miasa",
+      "energyBalanceTitle": "Fandanjana Angovo 24h",
+      "energyBalanceSubtitle": "Fiakaran'ny famokarana sy ny fanjifana isan'ora",
+      "energyBalanceSummary": "Mahatratra 38 kW ny famokarana amin'ny 12:00. Mahatratra 12 kW ny filana amin'ny 19:00.",
+      "chartPlaceholder": "[Recharts dia haseho eto amin'ny P4]",
+      "strategyCompareTitle": "Fampitahana Paikady",
+      "strategyCompareSubtitle": "Fizarana Mitovy vs Laharam-pahamehana",
+      "strategyCompareSummary": "Tsy mbola misy fampitahana natao",
+      "readySimulateTitle": "Vonona handinika",
+      "readySimulateDesc": "Misafidiana tranga na ovao ny masontsivana etsy ambony.",
+      "runFirstSim": "Alefaso ny fandinihana voalohany",
+      "simErrorTitle": "Tsy fetezana",
+      "simErrorDesc": "Tsy azo atao aotra ny herin'ny masoandro. Apetraho 1 kWp farafahakeliny.",
+      "resetDefaults": "Avereno amin'ny fototra",
+      "clinicSupplyLabel": "Herinaratra Hopitaly (Tsy ampy)",
+      "clinicShortfallCaption": "2.4 kWh tsy ampy amin'ny 19:00",
+      "batteryLowLabel": "Tahiry Bateria (Ambany)",
+      "batteryLowCaption": "Manakaiky ny tahiry farany 20%",
+      "loadingLabel": "Eo am-pamakiana",
+      "healthClinic": "Toeram-pitsaboana",
+      "waterPumping": "Paompy Rano",
+      "primarySchool": "Sekoly Fanabeazana Fototra",
+      "villageHouseholds": "Tokantrano Tanàna",
+      "localMarket": "Tsena sy Mpanao Asa Tanana",
+      "palette": {
+        "canvasDesc": "fototra ambadika",
+        "surfaceDesc": "karatra/tontonana",
+        "solarAmberDesc": "masoandro PV",
+        "energyCyanDesc": "fikorianan'ny herinaratra",
+        "batteryGreenDesc": "bateria/milamina",
+        "aiVioletDesc": "mpanampy",
+        "warningAmberDesc": "tsy fahampiana",
+        "criticalRedDesc": "zava-dehibe tsy tanteraka"
+      }
+    }
   },
   "metrics": {
     "solar": {
