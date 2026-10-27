@@ -136,11 +136,12 @@ todo: ## List unchecked tasks across all phases
 	@grep -n -- '- \[ \]' docs/tasks/P*.md | sed 's/:- \[ \] / /' | cut -c1-140
 
 ##@ Deploy
-deploy-preview: ## Deploy a preview to Vercel
-	npx -y vercel
+# Only `main` is deployed: pushes to main auto-deploy (Vercel Git integration); other branches are skipped.
+deploy-link: ## Link this clone to the Vercel project (once per machine)
+	npx -y vercel@latest link --yes --project mitsinjo-grid
 
-deploy: ## Deploy to production on Vercel
-	npx -y vercel --prod
+deploy: ## Manual production deploy (only from a clean main = origin/main)
+	@scripts/deploy.sh
 
 ##@ Cleanup
 clean: ## Remove build/test output (keeps node_modules)
@@ -150,4 +151,4 @@ clean-all: clean ## Also remove node_modules
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
 
 .PHONY: help install env setup-claude browsers dev dev-mock build start test test-engine test-web test-watch coverage e2e \
-        typecheck lint format check ci shots mockups analyze lighthouse claude env-export mcp status todo deploy-preview deploy clean clean-all
+        typecheck lint format check ci shots mockups analyze lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all
