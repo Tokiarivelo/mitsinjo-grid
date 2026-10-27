@@ -35,8 +35,17 @@ export interface VillageViewportProps {
   selectedSector: SectorId | null;
   onSelectSector: (sector: SectorId | null) => void;
   timeIndex: number;
+  /** Store status is `modified`: show the last result dimmed and frozen. */
+  isModified?: boolean;
   className?: string;
 }
+
+const CAMERA_PRESET_KEYS: { id: CameraPreset; labelKey: string }[] = [
+  { id: 'village', labelKey: 'presetVillage' },
+  { id: 'solar', labelKey: 'presetSolar' },
+  { id: 'battery', labelKey: 'presetBattery' },
+  { id: 'essential', labelKey: 'presetEssential' },
+];
 
 export function VillageViewport({
   input,
@@ -44,6 +53,7 @@ export function VillageViewport({
   selectedSector,
   onSelectSector,
   timeIndex,
+  isModified = false,
   className,
 }: VillageViewportProps) {
   const tSim = useTranslations('features.simulation');
@@ -55,6 +65,12 @@ export function VillageViewport({
   const [userViewMode, setUserViewMode] = useState<'3d' | 'schematic' | 'circuit' | null>(null);
   const viewMode = userViewMode ?? (hasWebGL ? '3d' : 'schematic');
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>('village');
+  const [cameraResetKey, setCameraResetKey] = useState(0);
+  const applyPreset = (preset: CameraPreset) => {
+    setCameraPreset(preset);
+    // Re-apply even when the preset is unchanged (user orbited away).
+    setCameraResetKey((k) => k + 1);
+  };
 
   const step = result?.steps[timeIndex];
   const solarKw = step?.solarKw ?? 0;
@@ -68,10 +84,10 @@ export function VillageViewport({
         input,
         result,
         timeIndex,
-        isModified: false,
+        isModified,
         strategy: result?.strategy ?? 'proportional',
       }),
-    [input, result, timeIndex]
+    [input, result, timeIndex, isModified]
   );
 
   const nodes = [
@@ -146,59 +162,27 @@ export function VillageViewport({
           <div className="flex items-center gap-1 p-0.5 rounded-control bg-surface-elevated/90 backdrop-blur border border-border pointer-events-auto shadow-xs">
             <div className="flex items-center gap-1 px-1.5 text-[11px] font-mono text-text-muted border-r border-border pr-2">
               <Camera className="h-3 w-3 text-energy-cyan" aria-hidden="true" />
-              <span className="hidden md:inline">CAMERA:</span>
+              <span className="hidden md:inline">{tSim('cameraLabel')}</span>
             </div>
+            {CAMERA_PRESET_KEYS.map(({ id, labelKey }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => applyPreset(id)}
+                aria-pressed={cameraPreset === id}
+                className={cn(
+                  'px-2 py-0.5 rounded-control-sm text-xs font-sans transition-colors cursor-pointer',
+                  cameraPreset === id
+                    ? 'bg-energy-cyan/20 text-energy-cyan font-medium'
+                    : 'text-text-muted hover:text-text-primary'
+                )}
+              >
+                {tSim(labelKey)}
+              </button>
+            ))}
             <button
               type="button"
-              onClick={() => setCameraPreset('village')}
-              className={cn(
-                'px-2 py-0.5 rounded-control-sm text-xs font-sans transition-colors cursor-pointer',
-                cameraPreset === 'village'
-                  ? 'bg-energy-cyan/20 text-energy-cyan font-medium'
-                  : 'text-text-muted hover:text-text-primary'
-              )}
-            >
-              {tSim('presetVillage')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setCameraPreset('solar')}
-              className={cn(
-                'px-2 py-0.5 rounded-control-sm text-xs font-sans transition-colors cursor-pointer',
-                cameraPreset === 'solar'
-                  ? 'bg-energy-cyan/20 text-energy-cyan font-medium'
-                  : 'text-text-muted hover:text-text-primary'
-              )}
-            >
-              {tSim('presetSolar')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setCameraPreset('battery')}
-              className={cn(
-                'px-2 py-0.5 rounded-control-sm text-xs font-sans transition-colors cursor-pointer',
-                cameraPreset === 'battery'
-                  ? 'bg-energy-cyan/20 text-energy-cyan font-medium'
-                  : 'text-text-muted hover:text-text-primary'
-              )}
-            >
-              {tSim('presetBattery')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setCameraPreset('essential')}
-              className={cn(
-                'px-2 py-0.5 rounded-control-sm text-xs font-sans transition-colors cursor-pointer',
-                cameraPreset === 'essential'
-                  ? 'bg-energy-cyan/20 text-energy-cyan font-medium'
-                  : 'text-text-muted hover:text-text-primary'
-              )}
-            >
-              {tSim('presetEssential')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setCameraPreset('village')}
+              onClick={() => applyPreset('village')}
               aria-label={tSim('resetCamera')}
               title={tSim('resetCamera')}
               className="p-1 rounded-control-sm text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer ml-1"
@@ -260,8 +244,21 @@ export function VillageViewport({
             selectedSector={selectedSector}
             onSelectSector={onSelectSector}
             cameraPreset={cameraPreset}
-            className="w-full h-full absolute inset-0"
+            cameraResetKey={cameraResetKey}
+            className={cn(
+              'w-full h-full absolute inset-0 transition-opacity',
+              isModified && 'opacity-60'
+            )}
           />
+
+          {isModified && (
+            <div
+              role="status"
+              className="absolute top-14 left-1/2 -translate-x-1/2 z-10 px-2.5 py-1 rounded-control bg-surface-elevated/90 backdrop-blur border border-warning-amber/40 text-[11px] font-sans text-warning-amber"
+            >
+              {tSim('scenarioModified3D')}
+            </div>
+          )}
 
           {/* Adjacent 2D Sector Selector mirror bar (bottom-left) for quick accessibility */}
           <div className="absolute bottom-3 left-3 z-10 hidden sm:flex items-center gap-1.5 bg-surface/85 backdrop-blur p-1.5 rounded-control border border-border">
@@ -433,7 +430,7 @@ export function VillageViewport({
       <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-[11px] text-text-muted font-sans pointer-events-none">
         <span>
           {viewMode === '3d'
-            ? 'Click building to inspect · Drag to orbit · Scroll to zoom'
+            ? tSim('hint3d')
             : tSim('clickNodeToInspect')}
         </span>
         <span className="font-mono text-[10px] text-energy-cyan">

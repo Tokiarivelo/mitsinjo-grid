@@ -245,6 +245,7 @@ export function SimulationPage() {
             selectedSector={selectedSector}
             onSelectSector={selectSector}
             timeIndex={timeIndex}
+            isModified={status === 'modified'}
           />
 
           {/* Timeline Scrubber Component */}

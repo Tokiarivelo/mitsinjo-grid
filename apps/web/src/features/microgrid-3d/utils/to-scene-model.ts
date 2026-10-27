@@ -12,6 +12,7 @@ import type {
   SceneModel,
   StatusColor,
 } from '../types';
+import { STATUS_HEX, TOKEN_HEX } from './scene-palette';
 
 export const SECTOR_POSITIONS: Record<SectorId, [number, number, number]> = {
   health: [9, 0, -1],
@@ -24,6 +25,9 @@ export const SECTOR_POSITIONS: Record<SectorId, [number, number, number]> = {
 export const SOLAR_POSITION: [number, number, number] = [-10, 0, -8];
 export const BATTERY_POSITION: [number, number, number] = [0, 0, -2];
 export const BUS_POSITION: [number, number, number] = [0, 0, 1];
+
+/** SoC at or below this shows the battery as amber (visual threshold only). */
+export const BATTERY_WARNING_SOC_PCT = 30;
 
 export interface ToSceneModelOptions {
   input: SimulationInput;
@@ -83,7 +87,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
   let batteryColor: BatteryStatusColor = 'healthy';
   if (socPct <= input.battery.minSocPct) {
     batteryColor = 'critical';
-  } else if (socPct <= 30) {
+  } else if (socPct <= BATTERY_WARNING_SOC_PCT) {
     batteryColor = 'warning';
   }
 
@@ -151,12 +155,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
       flowKw: servedKw,
       direction: activeLine ? 'forward' : 'idle',
       speed: Math.min(2.5, Math.max(0.5, servedKw / 5)),
-      color:
-        status === 'full'
-          ? '#22c55e'
-          : status === 'partial'
-          ? '#f59e0b'
-          : '#ef4444',
+      color: STATUS_HEX[statusColor],
     };
   }
 
@@ -169,7 +168,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     flowKw: currentSolarKw,
     direction: solarActive ? 'forward' : 'idle',
     speed: Math.min(2.5, Math.max(0.5, currentSolarKw / 10)),
-    color: '#f59e0b',
+    color: TOKEN_HEX.solarAmber,
   };
 
   const batteryFlowAbs = Math.abs(flowKw);
@@ -181,7 +180,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     flowKw: batteryFlowAbs,
     direction: isCharging ? 'forward' : isDischarging ? 'backward' : 'idle',
     speed: Math.min(2.5, Math.max(0.5, batteryFlowAbs / 10)),
-    color: '#50d8e8',
+    color: TOKEN_HEX.energyCyan,
   };
 
   return {

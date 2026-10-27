@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-27 · **By:** Antigravity (P7 3D Microgrid Digital Twin) · **Day:** 8 / 10
+**Updated:** 2026-10-27 · **By:** Claude (PR #10 review fixes, `fix/p7-review`) · **Day:** 8 / 10
 
 ## State
 
@@ -22,14 +22,19 @@
 
 - Numbers come **strictly** from `@mitsinjo/engine`; 3D components consume pre-mapped `SceneModel` without calculating flows or metrics.
 - WebGL detection uses `useSyncExternalStore` for SSR-safe zero-cascading-render state management.
+- PR #10 review: canvas is `frameloop="demand"`; lines/camera tween call `invalidate()` only while moving.
+  Solar panels instanced (4 draw calls). Scene status colors come from `utils/scene-palette.ts` (mirrors `@theme`).
+  `status === 'modified'` dims the 3D scene + freezes flows. Reset camera re-applies preset via `cameraResetKey`.
+  Folder is `microgrid-3d/{ui,hooks,utils}` (was `components/`).
 - Default camera is isometric three-quarter view with smooth transitions for presets.
 
 ## Open questions / blockers
 
-- None. Ready for P8 quality and performance tuning.
+- Battery has no 3D text label for SoC status (spec asks "with label"); 2D views only. P8: add it + measure fps/draw calls.
 
 ## Files touched this session
 
 - `apps/web/src/features/microgrid-3d/**`, `apps/web/src/features/simulation/ui/village-viewport.tsx`
 - `apps/web/src/features/overview/ui/grid-schematic-preview.tsx`, `apps/web/src/lib/i18n.tsx`
 - `apps/web/src/messages/{en,fr,mg}.json`, `docs/design/stitch-map.md`, `docs/tasks/P7-3d.md`, `HANDOFF.md`
+- Review fix: `microgrid-3d/{ui,hooks,utils/scene-palette.ts}`, `simulation/ui/{village-viewport,simulation-page}.tsx`

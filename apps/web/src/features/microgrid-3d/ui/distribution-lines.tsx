@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { type ComponentRef, useEffect, useMemo, useRef } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
 import { Line } from '@react-three/drei';
 import * as THREE from 'three';
 import type { LineFlowSceneModel } from '../types';
@@ -12,17 +12,27 @@ export interface DistributionLinesProps {
     batteryToBus: LineFlowSceneModel;
     busToSectors: Record<string, LineFlowSceneModel>;
   };
-  reducedMotion?: boolean;
+  /** False under reduced motion or a modified scenario: lines stay lit but static. */
+  animate?: boolean;
 }
 
 interface SingleLineProps {
   line: LineFlowSceneModel;
-  reducedMotion?: boolean;
+  animate: boolean;
 }
 
-function TransmissionCable({ line, reducedMotion = false }: SingleLineProps) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const activeLineRef = useRef<any>(null);
+/** Cap per-frame delta so the first demand frame after idle doesn't jump. */
+const MAX_DELTA_S = 0.1;
+
+function TransmissionCable({ line, animate }: SingleLineProps) {
+  const activeLineRef = useRef<ComponentRef<typeof Line>>(null);
+  const invalidate = useThree((s) => s.invalidate);
+  const isFlowing = animate && line.active;
+
+  // frameloop="demand": kick off the loop when this line starts flowing.
+  useEffect(() => {
+    if (isFlowing) invalidate();
+  }, [isFlowing, invalidate]);
 
   // Generate catenary curve points between from and to with sag / pole height
   const points = useMemo(() => {
@@ -41,13 +51,12 @@ function TransmissionCable({ line, reducedMotion = false }: SingleLineProps) {
     return curve.getPoints(24);
   }, [line.from, line.to]);
 
-  useFrame((_, delta) => {
-    if (reducedMotion || !line.active || !activeLineRef.current) return;
+  useFrame((state, delta) => {
+    if (!isFlowing || !activeLineRef.current) return;
     const mat = activeLineRef.current.material;
-    if (mat && 'dashOffset' in mat) {
-      const dir = line.direction === 'backward' ? -1 : 1;
-      mat.dashOffset -= dir * line.speed * delta * 2;
-    }
+    const dir = line.direction === 'backward' ? -1 : 1;
+    mat.dashOffset -= dir * line.speed * Math.min(delta, MAX_DELTA_S) * 2;
+    state.invalidate();
   });
 
   return (
@@ -80,7 +89,7 @@ function TransmissionCable({ line, reducedMotion = false }: SingleLineProps) {
   );
 }
 
-export function DistributionLines({ lines, reducedMotion = false }: DistributionLinesProps) {
+export function DistributionLines({ lines, animate = true }: DistributionLinesProps) {
   const allLines = useMemo(() => {
     const list: LineFlowSceneModel[] = [
       lines.solarToBattery,
@@ -96,7 +105,7 @@ export function DistributionLines({ lines, reducedMotion = false }: Distribution
         <TransmissionCable
           key={idx}
           line={line}
-          reducedMotion={reducedMotion}
+          animate={animate}
         />
       ))}
     </group>
