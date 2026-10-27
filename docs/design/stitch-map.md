@@ -32,4 +32,10 @@ Status values: `not generated` · `generated` · `exported` · `implemented` · 
 
 ## Notes / deviations
 
-- (none yet)
+- Overview: no telemetry strip (temp, RH, DNI, sync, grid V) — engine has no such fields (precedence 1).
+- Overview: no AI optimization panel — AI text lives only in copilot components; a computed InsightCard is used instead.
+- Overview: right column of the middle row is a 24h Energy Balance card; Service Allocation moved under it (same data, fits 1440×900).
+- Strategy Lab: decision summary sits above the cards (read before comparing) instead of bottom-right; no "Recommended" ribbon — the summary's "Use this strategy" action plays that role.
+- Strategy Lab: no fixed-inputs tile strip; scenario, PV and battery are one line under the title (values from `input`).
+- Strategy Lab: comparison is one grouped Recharts bar chart, not per-metric bar rows; mixed units are labelled in the card header.
+- Gate-out 2026-10-27 (after PR #3 fixes): sidebar status badges wrap inside the sidebar; EnergyBar header wraps in narrow cards.
