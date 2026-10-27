@@ -19,6 +19,7 @@ import mgMessages from '@/messages/mg.json';
 export type Locale = 'en' | 'fr' | 'mg';
 
 export const DEFAULT_LOCALE: Locale = 'en';
+export const DEFAULT_TIMEZONE = 'UTC';
 
 export const SUPPORTED_LOCALES: { code: Locale; label: string; short: string }[] = [
   { code: 'en', label: 'English', short: 'EN' },
@@ -103,6 +104,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       <NextIntlClientProvider
         locale={locale}
         messages={activeMessages}
+        timeZone={DEFAULT_TIMEZONE}
         key={locale}
       >
         {children}
