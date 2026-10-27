@@ -289,43 +289,19 @@ export function OverviewPage() {
             </div>
 
             <div className="mt-4 flex flex-col divide-y divide-border/40">
-              <EnergyBar
-                label={tSectors('health')}
-                valuePct={hasResults && metrics ? (metrics.perSector.health?.coveragePct ?? 0) : 0}
-                servedKwh={metrics?.perSector.health?.servedKwh}
-                demandKwh={metrics?.perSector.health?.demandKwh}
-                priority="critical"
-              />
-              <EnergyBar
-                label={tSectors('water')}
-                valuePct={hasResults && metrics ? (metrics.perSector.water?.coveragePct ?? 0) : 0}
-                servedKwh={metrics?.perSector.water?.servedKwh}
-                demandKwh={metrics?.perSector.water?.demandKwh}
-                priority="critical"
-              />
-              <EnergyBar
-                label={tSectors('school')}
-                valuePct={hasResults && metrics ? (metrics.perSector.school?.coveragePct ?? 0) : 0}
-                servedKwh={metrics?.perSector.school?.servedKwh}
-                demandKwh={metrics?.perSector.school?.demandKwh}
-                priority="medium"
-              />
-              <EnergyBar
-                label={tSectors('households')}
-                valuePct={
-                  hasResults && metrics ? (metrics.perSector.households?.coveragePct ?? 0) : 0
-                }
-                servedKwh={metrics?.perSector.households?.servedKwh}
-                demandKwh={metrics?.perSector.households?.demandKwh}
-                priority="low"
-              />
-              <EnergyBar
-                label={tSectors('market')}
-                valuePct={hasResults && metrics ? (metrics.perSector.market?.coveragePct ?? 0) : 0}
-                servedKwh={metrics?.perSector.market?.servedKwh}
-                demandKwh={metrics?.perSector.market?.demandKwh}
-                priority="low"
-              />
+              {input.sectors.map((sec) => {
+                const sm = metrics?.perSector[sec.id];
+                return (
+                  <EnergyBar
+                    key={sec.id}
+                    label={tSectors(sec.id)}
+                    valuePct={hasResults && sm ? sm.coveragePct : 0}
+                    servedKwh={sm?.servedKwh}
+                    demandKwh={sm?.demandKwh}
+                    priority={sec.priority}
+                  />
+                );
+              })}
             </div>
           </div>
 

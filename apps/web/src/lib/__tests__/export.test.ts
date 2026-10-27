@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { compare, scenarios } from '@mitsinjo/engine';
-import { buildExportData, generateSummaryMarkdown } from '../export';
+import { createTranslator } from 'next-intl';
+import en from '@/messages/en.json';
+import fr from '@/messages/fr.json';
+import { buildExportData, generateSummaryMarkdown, type Translate } from '../export';
+
+const makeT = (locale: string, messages: Record<string, unknown>): Translate => {
+  const t = createTranslator({ locale, messages });
+  return (key, values) => t(key as never, values as never);
+};
+const tEn = makeT('en', en);
+const tFr = makeT('fr', fr);
 
 describe('export utilities (P5-T4, P5-T6)', () => {
   const baselineInput = scenarios.baseline.input;
@@ -35,6 +45,7 @@ describe('export utilities (P5-T4, P5-T6)', () => {
     const proportionalRes = comparison.proportional!;
 
     const markdown = generateSummaryMarkdown(
+      tEn,
       cloudyInput,
       proportionalRes,
       comparison,
@@ -42,16 +53,16 @@ describe('export utilities (P5-T4, P5-T6)', () => {
     );
 
     expect(markdown).toContain('# Mitsinjo Grid — Simulation Summary');
-    expect(markdown).toContain('**Scenario:** cloudy_afternoon');
+    expect(markdown).toContain('**Scenario:** Cloudy Afternoon (-40%) (cloudy_afternoon)');
     expect(markdown).toContain(`**Result ID:** ${proportionalRes.id}`);
     expect(markdown).toContain('SYNTHETIC SIMULATION');
-    expect(markdown).toContain('Total Demand:');
-    expect(markdown).toContain('Served Energy:');
+    expect(markdown).toContain('Total demand:');
+    expect(markdown).toContain('Served energy:');
     const servedPct = (proportionalRes.metrics.servedKwh / proportionalRes.metrics.demandKwh) * 100;
     expect(markdown).toContain(`(${servedPct.toFixed(1)}%)`);
-    expect(markdown).toContain('Health');
-    expect(markdown).toContain('Water');
-    expect(markdown).toContain('## Strategy Comparison');
+    expect(markdown).toContain('Health Clinic');
+    expect(markdown).toContain('Water Pumping Station');
+    expect(markdown).toContain('## Strategy comparison');
     expect(markdown).toContain(comparison.essential_first!.id);
   });
 
@@ -60,8 +71,16 @@ describe('export utilities (P5-T4, P5-T6)', () => {
     expect(exportData.resultId).toBeNull();
     expect(exportData.metrics).toBeNull();
 
-    const markdown = generateSummaryMarkdown(baselineInput, undefined, undefined, 'proportional');
-    expect(markdown).toContain('**Result ID:** N/A');
-    expect(markdown).toContain('**Scenario:** baseline');
+    const markdown = generateSummaryMarkdown(tEn, baselineInput, undefined, undefined, 'proportional');
+    expect(markdown).toContain('**Result ID:** N/A (not simulated)');
+    expect(markdown).toContain('(baseline)');
+  });
+
+  it('follows the caller locale (French)', () => {
+    const comparison = compare(cloudyInput, ['proportional', 'essential_first']);
+    const markdown = generateSummaryMarkdown(tFr, cloudyInput, comparison.proportional, comparison, 'proportional');
+    expect(markdown).toContain('# Mitsinjo Grid — Résumé de simulation');
+    expect(markdown).toContain('SIMULATION SYNTHÉTIQUE');
+    expect(markdown).not.toContain('Total demand');
   });
 });

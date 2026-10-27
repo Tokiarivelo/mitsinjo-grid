@@ -28,6 +28,7 @@ export function EnergyBar({
   className,
 }: EnergyBarProps) {
   const tUi = useTranslations('ui.energyBar');
+  const tPriorities = useTranslations('priorities');
   const clampedPct = Math.max(0, Math.min(100, Math.round(valuePct * 10) / 10));
 
   // Determine status if not explicitly passed
@@ -56,7 +57,7 @@ export function EnergyBar({
           : 'bg-surface-elevated text-text-muted border-border'
       )}
     >
-      {priority.toUpperCase()}
+      {tPriorities(priority)}
     </span>
   ) : null;
 

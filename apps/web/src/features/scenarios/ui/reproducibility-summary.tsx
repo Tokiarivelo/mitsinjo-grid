@@ -20,6 +20,7 @@ import {
   copyToClipboard,
   downloadJsonFile,
   generateSummaryMarkdown,
+  type Translate,
 } from '@/lib/export';
 import { Button } from '@/components/ui/button';
 import { useTranslations } from '@/lib/i18n';
@@ -41,10 +42,12 @@ export function ReproducibilitySummary({
 }: ReproducibilitySummaryProps) {
   const tScenarios = useTranslations('features.scenarios');
   const tActions = useTranslations('actions');
+  const tRootRaw = useTranslations();
+  const tRoot: Translate = (key, values) => tRootRaw(key as never, values as never);
   const [copied, setCopied] = useState(false);
 
   const handleCopySummary = async () => {
-    const md = generateSummaryMarkdown(input, result, comparison, activeStrategy);
+    const md = generateSummaryMarkdown(tRoot, input, result, comparison, activeStrategy);
     const success = await copyToClipboard(md);
     if (success) {
       setCopied(true);

@@ -69,99 +69,106 @@ export function buildExportData(
   };
 }
 
+/** Root-level translator (e.g. `useTranslations()` from `@/lib/i18n`). */
+export type Translate = (key: string, values?: Record<string, string | number>) => string;
+
 /**
- * Generates a human-readable Markdown summary report for clipboard export.
+ * Generates a human-readable Markdown summary report for clipboard export,
+ * in the caller's locale. All copy comes from the `export` i18n namespace.
  */
 export function generateSummaryMarkdown(
+  t: Translate,
   input: SimulationInput,
   result?: SimulationResult,
   comparison?: Partial<Comparison>,
   activeStrategy: StrategyId = 'proportional'
 ): string {
+  const e = (key: string, values?: Record<string, string | number>) => t(`export.${key}`, values);
+  const strategyName = (id: string) => t(`strategies.${id}`);
+
   const lines: string[] = [
-    '# Mitsinjo Grid — Simulation Summary',
-    `**Generated:** ${new Date().toISOString()} · **Data Provenance:** SYNTHETIC SIMULATION`,
+    `# ${e('title')}`,
+    `**${e('generated')}:** ${new Date().toISOString()} · **${e('provenance')}:** ${e('provenanceValue')}`,
     '',
-    '## Configuration',
-    `- **Scenario:** ${input.scenarioId}`,
-    `- **Active Strategy:** ${activeStrategy}`,
-    `- **Result ID:** ${result?.id ?? 'N/A (Not simulated)'}`,
-    `- **Engine Version:** ${result?.engineVersion ?? 'N/A'}`,
-    `- **PV Peak:** ${fmtKw(input.solar.peakKw, 1)}`,
-    `- **Battery Capacity:** ${fmtKwh(input.battery.capacityKwh, 1)} (Initial SoC: ${fmtPct(input.battery.initialSocPct, 0)})`,
-    `- **Demand Multiplier:** ${input.demandMultiplier.toFixed(2)}x`,
+    `## ${e('configuration')}`,
+    `- **${e('scenario')}:** ${t(`scenarios.${input.scenarioId}.name`)} (${input.scenarioId})`,
+    `- **${e('activeStrategy')}:** ${strategyName(activeStrategy)}`,
+    `- **${e('resultId')}:** ${result?.id ?? e('notSimulated')}`,
+    `- **${e('engineVersion')}:** ${result?.engineVersion ?? e('na')}`,
+    `- **${e('pvPeak')}:** ${fmtKw(input.solar.peakKw, 1)}`,
+    `- **${e('batteryCapacity')}:** ${fmtKwh(input.battery.capacityKwh, 1)} (${e('initialSoc', {
+      pct: fmtPct(input.battery.initialSocPct, 0),
+    })})`,
+    `- **${e('demandMultiplier')}:** ${input.demandMultiplier.toFixed(2)}×`,
   ];
 
-  const solarDrop = input.events.find((e) => e.type === 'solar_drop');
-  if (solarDrop && solarDrop.type === 'solar_drop') {
-    const dropPct = Math.round((1 - solarDrop.factor) * 100);
+  const solarDrop = input.events.find((ev) => ev.type === 'solar_drop');
+  if (solarDrop) {
     lines.push(
-      `- **Solar Drop Event:** -${dropPct}% from ${fmtHour(solarDrop.startHour)} to ${fmtHour(
-        solarDrop.startHour + solarDrop.durationH
-      )}`
+      `- **${e('solarDrop')}:** ${e('solarDropValue', {
+        pct: Math.round((1 - solarDrop.factor) * 100),
+        from: fmtHour(solarDrop.startHour),
+        to: fmtHour(solarDrop.startHour + solarDrop.durationH),
+      })}`
     );
   }
 
   if (result) {
     const m = result.metrics;
+    const servedPct = m.demandKwh > 0 ? (m.servedKwh / m.demandKwh) * 100 : null;
     lines.push(
       '',
-      '## Key Performance Metrics',
-      `- **Total Demand:** ${fmtKwh(m.demandKwh, 1)}`,
-      `- **Served Energy:** ${fmtKwh(m.servedKwh, 1)} (${fmtPct(m.demandKwh > 0 ? (m.servedKwh / m.demandKwh) * 100 : null, 1)})`,
-      `- **Unserved Deficit:** ${fmtKwh(m.unservedKwh, 1)}`,
-      `- **Essential Services Coverage:** ${fmtPct(m.criticalCoveragePct, 1)} (${fmtKwh(
-        m.criticalUnservedKwh,
-        1
-      )} unserved)`,
-      `- **Critical Unmet Hours:** ${m.criticalUnmetHours} h`,
-      `- **Ending Battery SoC:** ${fmtPct(m.socEndPct, 1)} (Min: ${fmtPct(m.socMinPct, 1)})`,
-      `- **Solar Curtailment:** ${fmtKwh(m.curtailedKwh, 1)}`,
+      `## ${e('keyMetrics')}`,
+      `- **${e('totalDemand')}:** ${fmtKwh(m.demandKwh, 1)}`,
+      `- **${e('servedEnergy')}:** ${fmtKwh(m.servedKwh, 1)} (${fmtPct(servedPct, 1)})`,
+      `- **${e('unservedDeficit')}:** ${fmtKwh(m.unservedKwh, 1)}`,
+      `- **${e('essentialCoverage')}:** ${fmtPct(m.criticalCoveragePct, 1)} (${e('unservedSuffix', {
+        kwh: fmtKwh(m.criticalUnservedKwh, 1),
+      })})`,
+      `- **${e('criticalUnmetHours')}:** ${m.criticalUnmetHours} h`,
+      `- **${e('endSoc')}:** ${fmtPct(m.socEndPct, 1)} (${e('minSoc', { pct: fmtPct(m.socMinPct, 1) })})`,
+      `- **${e('curtailment')}:** ${fmtKwh(m.curtailedKwh, 1)}`,
       '',
-      '## Per-Sector Service Allocation'
+      `## ${e('perSector')}`
     );
 
-    const sectorsOrder = ['health', 'water', 'school', 'households', 'market'] as const;
-    for (const sec of sectorsOrder) {
-      const sm = m.perSector[sec];
+    for (const sec of input.sectors) {
+      const sm = m.perSector[sec.id];
       if (sm) {
         lines.push(
-          `- **${sec.charAt(0).toUpperCase() + sec.slice(1)}:** ${fmtKwh(sm.servedKwh, 1)} / ${fmtKwh(
-            sm.demandKwh,
-            1
-          )} (${fmtPct(sm.coveragePct, 1)} coverage)`
+          `- **${t(`sectors.${sec.id}`)}:** ${fmtKwh(sm.servedKwh, 1)} / ${fmtKwh(sm.demandKwh, 1)} (${e(
+            'coverageSuffix',
+            { pct: fmtPct(sm.coveragePct, 1) }
+          )})`
         );
       }
     }
 
-    if (result.warnings.length > 0) {
-      lines.push('', `## Active Warnings (${result.warnings.length})`);
-      for (const w of result.warnings) {
-        lines.push(`- [${w.code}] ${w.sector ? `Sector: ${w.sector} · ` : ''}Hours ${w.fromHour}-${w.toHour}`);
-      }
-    } else {
-      lines.push('', '## Active Warnings', '- None (Nominal operating conditions)');
+    lines.push('', `## ${e('warnings', { count: result.warnings.length })}`);
+    if (result.warnings.length === 0) lines.push(`- ${e('noWarnings')}`);
+    for (const w of result.warnings) {
+      const sector = w.sector ? `${e('warningSector', { sector: t(`sectors.${w.sector}`) })} · ` : '';
+      lines.push(`- [${w.code}] ${sector}${e('warningHours', { from: fmtHour(w.fromHour), to: fmtHour(w.toHour) })}`);
     }
   }
 
   if (comparison && Object.keys(comparison).length > 1) {
-    lines.push('', '## Strategy Comparison');
+    lines.push('', `## ${e('strategyComparison')}`);
     for (const [strat, res] of Object.entries(comparison)) {
       if (res) {
         lines.push(
-          `- **${strat}:** Result ID ${res.id} | Served: ${fmtKwh(
+          `- **${strategyName(strat)}:** ${e('resultId')} ${res.id} | ${e('servedShort')}: ${fmtKwh(
             res.metrics.servedKwh,
             1
-          )} | Critical Coverage: ${fmtPct(res.metrics.criticalCoveragePct, 1)} | End SoC: ${fmtPct(
-            res.metrics.socEndPct,
-            1
-          )}`
+          )} | ${e('criticalCoverageShort')}: ${fmtPct(res.metrics.criticalCoveragePct, 1)} | ${e(
+            'endSocShort'
+          )}: ${fmtPct(res.metrics.socEndPct, 1)}`
         );
       }
     }
   }
 
-  lines.push('', '---', '*Simulated data generated by @mitsinjo/engine. Not measured from a live village.*');
+  lines.push('', '---', `*${e('footer')}*`);
   return lines.join('\n');
 }
 
