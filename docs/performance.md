@@ -45,6 +45,14 @@ baked `ContactShadows`, `dpr={[1, 1.75]}`, Drei `<PerformanceMonitor>` to lower 
 `<AdaptiveDpr pixelated />` during camera moves, lazy chunk via `next/dynamic({ ssr:false })`,
 preload the chunk on sidebar hover of "Live Simulation".
 
+Measure: add `?perf=1` to `/simulation` or `/overview` for a live draw-call / fps readout
+(sampled at 2 Hz from `gl.info`). `make scene-audit` (server running) checks draw calls and
+triangles against the budget and saves `design/shots/{simulation,overview}-3d.png`. It runs
+headless Chromium on SwiftShader (software GL): draw calls and triangles are exact, fps is
+not a GPU number. Check fps by hand on an integrated-GPU laptop with `?perf=1`.
+In-scene `<Html>` labels take `portal` = a stable container ref so drei never re-targets
+them after mount (re-targeting races React root unmounts and can leave a label empty).
+
 ## 6. Loading & navigation
 
 - Fonts via `next/font` (self-hosted, `display: swap`, subsets latin) — no layout shift.

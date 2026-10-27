@@ -22,7 +22,10 @@ describe('toSceneModel pure mapping (P7-T1)', () => {
     expect(model.battery.socPct).toBe(baselineInput.battery.initialSocPct);
     expect(model.buildings.health.demandKw).toBe(0);
     expect(model.buildings.health.servedKw).toBe(0);
-    expect(model.buildings.health.status).toBe('full');
+    // No result → no invented coverage (badge shows "—", neutral color).
+    expect(model.buildings.health.status).toBe('unknown');
+    expect(model.buildings.health.statusColor).toBe('idle');
+    expect(model.buildings.health.coveragePct).toBeNull();
   });
 
   it('correctly maps solar generation, glow, and daylight metrics at noon', () => {

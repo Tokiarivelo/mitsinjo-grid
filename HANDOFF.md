@@ -1,18 +1,17 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-27 · **By:** Claude (PR #10 review fixes, `fix/p7-review`) · **Day:** 8 / 10
+**Updated:** 2026-10-27 · **By:** Claude (P7 follow-ups, `fix/p7-followups`) · **Day:** 8 / 10
 
 ## State
 
 - Phase: **P7 — 3D Microgrid** completed (P7-T0..P7-T7 done; gate-out passed).
-- Monorepo healthy: `make check` (84 engine + 144 web = 228 passing tests, 100% i18n parity, 0 lint/tsc errors), `pnpm build` clean.
+- Monorepo healthy: `make check` green (tests, i18n parity, lint, tsc), `pnpm build` clean.
 - Features delivered:
   - Pure Scene Mapping: `toSceneModel(input, result, timeIndex)` maps solar glow, battery SoC, line flow animations, and building status with zero energy math in 3D components.
   - Three.js / R3F Digital Twin: Low-poly Madagascar-inspired village layout with terrain, instanced solar array, BESS battery container with 5-bar LED gauge, catenary overhead cables with animated flow, 5 canonical sector buildings with 2D HTML status badges and click selection.
-  - Camera Controller: OrbitControls with constrained polar/distance limits, 4 presets (`village`, `solar`, `battery`, `essential`), and reset camera button (`aria-label="Reset camera"`).
+  - Camera: OrbitControls with limits, 4 presets, reset camera. `?perf=1` shows draw calls/fps; `make scene-audit` checks budget + screenshots.
   - Accessibility & Fallbacks: Full `prefers-reduced-motion` compliance, SSR dynamic loading, and automatic WebGL detection falling back to 2D topology/schematic without crashing.
   - Overview & Simulation Integration: Viewport toggle on `/simulation` and compact preview on `/overview`.
-  - Next-intl timeZone fix: Added `DEFAULT_TIMEZONE = 'UTC'` to `NextIntlClientProvider` resolving `ENVIRONMENT_FALLBACK` warning.
 
 ## Next task
 
@@ -25,12 +24,13 @@
 - PR #10 review: canvas is `frameloop="demand"`; lines/camera tween call `invalidate()` only while moving.
   Solar panels instanced (4 draw calls). Scene status colors come from `utils/scene-palette.ts` (mirrors `@theme`).
   `status === 'modified'` dims the 3D scene + freezes flows. Reset camera re-applies preset via `cameraResetKey`.
-  Folder is `microgrid-3d/{ui,hooks,utils}` (was `components/`).
-- Default camera is isometric three-quarter view with smooth transitions for presets.
+  Folder is `microgrid-3d/{ui,hooks,utils}` (was `components/`). In-scene `<Html>` labels use a stable
+  `portal` ref (fixes empty battery label + dev "unmount a root" errors). No result → badges show "—".
 
 ## Open questions / blockers
 
-- Battery has no 3D text label for SoC status (spec asks "with label"); 2D views only. P8: add it + measure fps/draw calls.
+- fps on a real integrated GPU still needs a manual check: open `/simulation?perf=1` on a laptop (target ≥45 fps).
+  `make scene-audit`: 97 draw calls, 6.2k triangles (SwiftShader fps is not meaningful).
 
 ## Files touched this session
 

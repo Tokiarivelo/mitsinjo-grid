@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, type RefObject, useState } from 'react';
 import { Html } from '@react-three/drei';
 import type { Priority, SectorId } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,8 @@ export interface VillageBuildingsProps {
   onSelectSector: (sector: SectorId | null) => void;
   sectorNames: Record<SectorId, string>;
   priorityLabels: Record<Priority, string>;
+  /** Stable DOM parent for labels (see VillageCanvas). */
+  htmlPortal?: RefObject<HTMLElement | null>;
 }
 
 /** Per-building layout of the shared frame (selection ring, status light, badge). */
@@ -28,6 +30,7 @@ interface BuildingFrameProps extends FrameLayout {
   onSelect: () => void;
   sectorName: string;
   priorityLabel: string;
+  htmlPortal?: RefObject<HTMLElement | null>;
   children: ReactNode;
 }
 
@@ -42,6 +45,7 @@ function BuildingFrame({
   priorityLabel,
   ringInner,
   ledY,
+  htmlPortal,
   children,
 }: BuildingFrameProps) {
   const [hovered, setHovered] = useState(false);
@@ -84,6 +88,7 @@ function BuildingFrame({
         position={[0, ledY + 0.6, 0]}
         center
         distanceFactor={18}
+        portal={htmlPortal as RefObject<HTMLElement>}
         className="pointer-events-auto select-none"
       >
         <button
@@ -294,6 +299,7 @@ export function VillageBuildings({
   onSelectSector,
   sectorNames,
   priorityLabels,
+  htmlPortal,
 }: VillageBuildingsProps) {
   return (
     <group name="village-buildings">
@@ -308,6 +314,7 @@ export function VillageBuildings({
             onSelect={() => onSelectSector(isSelected ? null : id)}
             sectorName={sectorNames[id]}
             priorityLabel={priorityLabels[model.priority]}
+            htmlPortal={htmlPortal}
             {...LAYOUT[id]}
           >
             <BuildingBody id={id} isSelected={isSelected} />

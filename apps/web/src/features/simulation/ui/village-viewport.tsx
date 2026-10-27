@@ -261,7 +261,7 @@ export function VillageViewport({
           )}
 
           {/* Adjacent 2D Sector Selector mirror bar (bottom-left) for quick accessibility */}
-          <div className="absolute bottom-3 left-3 z-10 hidden sm:flex items-center gap-1.5 bg-surface/85 backdrop-blur p-1.5 rounded-control border border-border">
+          <div className="absolute bottom-9 left-3 right-3 z-10 hidden sm:flex items-center overflow-x-auto gap-1.5 bg-surface/85 backdrop-blur p-1.5 rounded-control border border-border">
             {nodes.map((node) => {
               const isSelected = selectedSector === node.id;
               return (
@@ -271,7 +271,7 @@ export function VillageViewport({
                   onClick={() => onSelectSector(isSelected ? null : node.id)}
                   aria-pressed={isSelected}
                   className={cn(
-                    'px-2 py-1 rounded-control-sm text-xs font-sans flex items-center gap-1 border transition-all cursor-pointer',
+                    'px-2 py-1 rounded-control-sm text-xs font-sans flex items-center gap-1 border transition-all cursor-pointer shrink-0 whitespace-nowrap',
                     isSelected
                       ? 'bg-surface-elevated border-energy-cyan text-energy-cyan font-semibold'
                       : 'border-border/60 text-text-secondary hover:text-text-primary hover:border-text-secondary'

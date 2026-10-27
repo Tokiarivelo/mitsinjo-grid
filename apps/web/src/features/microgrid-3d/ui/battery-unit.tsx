@@ -1,15 +1,28 @@
 'use client';
 
-import { useMemo } from 'react';
+import { type RefObject, useMemo } from 'react';
+import { Html } from '@react-three/drei';
+import { cn } from '@/lib/utils';
+import { fmtPct } from '@/lib/format';
 import { BATTERY_POSITION } from '../utils/to-scene-model';
-import type { BatterySceneModel } from '../types';
-import { BATTERY_STATUS_HEX, TOKEN_HEX } from '../utils/scene-palette';
+import type { BatterySceneModel, BatteryStatusColor } from '../types';
+import {
+  BATTERY_STATUS_BG_CLASS,
+  BATTERY_STATUS_HEX,
+  TOKEN_HEX,
+} from '../utils/scene-palette';
 
 export interface BatteryUnitProps {
   model: BatterySceneModel;
+  /** Translated status text per color (spec: color + text label). */
+  statusLabels: Record<BatteryStatusColor, string>;
+  /** Translated SoC text, e.g. "62% SoC". */
+  socLabel: (pct: string) => string;
+  /** Stable DOM parent for the label (see VillageCanvas). */
+  htmlPortal?: RefObject<HTMLElement | null>;
 }
 
-export function BatteryUnit({ model }: BatteryUnitProps) {
+export function BatteryUnit({ model, statusLabels, socLabel, htmlPortal }: BatteryUnitProps) {
   const { socPct, isCharging, isDischarging, statusColor } = model;
 
   const statusHexColor = BATTERY_STATUS_HEX[statusColor];
@@ -95,6 +108,27 @@ export function BatteryUnit({ model }: BatteryUnitProps) {
         <circleGeometry args={[0.1, 16]} />
         <meshBasicMaterial color={flowHex} />
       </mesh>
+
+      {/* SoC + status label (color is never the only signal) */}
+      <Html
+        position={[0, 3.1, 0]}
+        center
+        distanceFactor={18}
+        portal={htmlPortal as RefObject<HTMLElement>}
+        className="select-none"
+      >
+        <div
+          role="status"
+          className="flex items-center gap-1.5 px-2 py-1 rounded-control shadow-md backdrop-blur text-[11px] font-sans border bg-surface/90 border-border whitespace-nowrap"
+        >
+          <span
+            className={cn('w-2 h-2 rounded-full shrink-0', BATTERY_STATUS_BG_CLASS[statusColor])}
+            aria-hidden="true"
+          />
+          <span className="font-mono text-text-primary">{socLabel(fmtPct(socPct, 0))}</span>
+          <span className="text-text-muted">{statusLabels[statusColor]}</span>
+        </div>
+      </Html>
 
       {/* Active Power Glow */}
       {(isCharging || isDischarging) && (

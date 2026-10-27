@@ -114,6 +114,10 @@ analyze: ## Bundle analysis build (needs @next/bundle-analyzer)
 	$(need_ws)
 	ANALYZE=true $(PNPM) --filter $(WEB) build
 
+scene-audit: ## 3D scene: draw calls + triangles vs budget, screenshots → design/shots/*-3d.png (server must run)
+	$(need_ws)
+	@$(PNPM) --filter $(WEB) exec node scripts/scene-audit.mjs $(URL) $(CURDIR)/$(SHOTS)
+
 lighthouse: ## Lighthouse perf score for /overview (prod server must run)
 	npx -y lighthouse $(URL)/overview --preset=desktop --only-categories=performance --quiet --output=json \
 	  | jq '{score: .categories.performance.score, lcp: .audits["largest-contentful-paint"].displayValue, tbt: .audits["total-blocking-time"].displayValue}'
@@ -154,4 +158,4 @@ clean-all: clean ## Also remove node_modules
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
 
 .PHONY: help install env setup-claude browsers dev dev-mock build start test test-engine test-web test-watch coverage e2e \
-        typecheck lint format check ci shots mockups analyze lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all
+        typecheck lint format check ci shots mockups analyze scene-audit lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all

@@ -43,3 +43,14 @@ describe('useWebGLAvailable', () => {
     expect(result.current).toBe(false);
   });
 });
+
+describe('usePerfFlag', () => {
+  it('is true only with ?perf=1', async () => {
+    const { usePerfFlag } = await import('../use-perf-flag');
+    window.history.replaceState(null, '', '/simulation');
+    expect(renderHook(() => usePerfFlag()).result.current).toBe(false);
+    window.history.replaceState(null, '', '/simulation?perf=1');
+    expect(renderHook(() => usePerfFlag()).result.current).toBe(true);
+    window.history.replaceState(null, '', '/');
+  });
+});

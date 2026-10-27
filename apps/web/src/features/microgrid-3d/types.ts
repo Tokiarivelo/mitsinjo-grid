@@ -1,7 +1,8 @@
 import type { SectorId, Priority, StrategyId } from '@mitsinjo/engine';
 
-export type BuildingStatus = 'full' | 'partial' | 'unserved';
-export type StatusColor = 'battery-green' | 'warning-amber' | 'critical-red';
+/** `unknown` = no simulation result for this step yet. */
+export type BuildingStatus = 'full' | 'partial' | 'unserved' | 'unknown';
+export type StatusColor = 'battery-green' | 'warning-amber' | 'critical-red' | 'idle';
 export type BatteryStatusColor = 'healthy' | 'warning' | 'critical';
 
 export interface BuildingSceneModel {
@@ -12,7 +13,8 @@ export interface BuildingSceneModel {
   demandKw: number;
   servedKw: number;
   unservedKw: number;
-  coveragePct: number;
+  /** Null when there is no result for this step. */
+  coveragePct: number | null;
   status: BuildingStatus;
   statusColor: StatusColor;
   isCritical: boolean;

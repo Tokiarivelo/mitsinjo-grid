@@ -176,7 +176,11 @@
       "siteLocation": "Madagascar S 18,91° E 47,53°",
       "loading3d": "Initialisation du jumeau numérique 3D…",
       "cameraLabel": "Caméra :",
-      "hint3d": "Cliquez sur un bâtiment pour l’inspecter · Glissez pour pivoter · Molette pour zoomer"
+      "hint3d": "Cliquez sur un bâtiment pour l’inspecter · Glissez pour pivoter · Molette pour zoomer",
+      "batteryHealthy": "Correct",
+      "batteryLow": "Faible",
+      "batteryDepleted": "Épuisée",
+      "perfOverlay": "{calls} appels de rendu · {fps} i/s"
     },
     "strategyLab": {
       "title": "Labo Stratégies",
