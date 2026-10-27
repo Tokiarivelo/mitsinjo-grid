@@ -96,6 +96,10 @@
     "essential_stress": {
       "name": "Stress Essentiel (-60%)",
       "description": "Déficit solaire sévère de 4h entre 11-15h avec 25% de batterie"
+    },
+    "meter_anomaly": {
+      "name": "Anomalie de comptage synthétique",
+      "description": "Écart simulé du compteur (>25 % sur 4h) dans le secteur du marché (vérification requise)"
     }
   },
   "features": {
@@ -136,6 +140,8 @@
       "initialSoc": "Charge Initiale (SoC)",
       "initialSocDesc": "État de charge au début de la simulation 24h",
       "selectStrategy": "Stratégie d Allocation d Énergie",
+      "sectorPrioritiesAndCaps": "Priorités sectorielles et plafonds de capacité actifs",
+      "capsActiveCount": "{count} plafonds actifs",
       "runSimulation": "Lancer la simulation",
       "resetScenario": "Réinitialiser scénario",
       "errors": {
@@ -230,7 +236,8 @@
       "deltaDemandSpike": "+{pct}% demande ({from}–{to})",
       "deltaGlobalLoad": "{pct}% charge globale",
       "horizonValue": "{hours} h (pas de {step} h)",
-      "chargeDischargeEff": "Rendement charge / décharge"
+      "chargeDischargeEff": "Rendement charge / décharge",
+      "capBadge": "PLAFOND : {maxKw} kW ({from}h–{to}h)"
     },
     "copilot": {
       "title": "Copilote Mitsinjo",
@@ -266,6 +273,9 @@
       "diffBatteryCapacity": "Capacité batterie",
       "diffInitialSoc": "SoC initial",
       "diffMinSoc": "SoC réserve min",
+      "diffPriorityLabel": "Priorité",
+      "diffCapLabel": "Plafond de capacité",
+      "noCap": "Aucun (non plafonné)",
       "contextPanelAria": "Contexte actif de simulation",
       "contextTitle": "CONTEXTE ACTIF (CALCULÉ)",
       "contextActiveScenario": "Référence active",
@@ -455,6 +465,10 @@
     "reserveReachedDesc": "Le stockage a atteint le seuil de réserve minimal entre {from} et {to}.",
     "curtailmentTitle": "Écrêtement de la production solaire",
     "curtailmentDesc": "Surplus solaire écrêté entre {from} et {to} car la batterie était pleine.",
+    "anomalyToVerifyTitle": "Signal d'anomalie à vérifier",
+    "anomalyToVerifyDesc": "Écart >25 % par rapport au profil attendu détecté sur {sector} entre {from} et {to}. Vérification requise (ne pas présumer d'une panne ou d'une fraude).",
+    "sectorCappedTitle": "Plafond de capacité sectorielle actif",
+    "sectorCappedDesc": "L'alimentation de {sector} a été plafonnée selon la limite de l'opérateur entre {from} et {to}.",
     "hoursRange": "{from} - {to}"
   },
   "overview": {

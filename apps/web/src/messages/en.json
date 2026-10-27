@@ -96,6 +96,10 @@
     "essential_stress": {
       "name": "Essential Stress (-60%)",
       "description": "Severe 4h solar deficit from 11-15h with 25% battery"
+    },
+    "meter_anomaly": {
+      "name": "Synthetic Meter Anomaly",
+      "description": "Simulated meter divergence (>25% for 4h) in market sector (verification required)"
     }
   },
   "features": {
@@ -136,6 +140,8 @@
       "initialSoc": "Initial Charge (SoC)",
       "initialSocDesc": "State of charge at start of 24h simulation",
       "selectStrategy": "Power Allocation Strategy",
+      "sectorPrioritiesAndCaps": "Active Sector Priorities & Capacity Caps",
+      "capsActiveCount": "{count} Active Caps",
       "runSimulation": "Run simulation",
       "resetScenario": "Reset scenario",
       "errors": {
@@ -230,7 +236,8 @@
       "deltaDemandSpike": "+{pct}% demand ({from}–{to})",
       "deltaGlobalLoad": "{pct}% global load",
       "horizonValue": "{hours} h ({step} h step)",
-      "chargeDischargeEff": "Charge / Discharge Efficiency"
+      "chargeDischargeEff": "Charge / Discharge Efficiency",
+      "capBadge": "CAP: {maxKw} kW ({from}:00–{to}:00)"
     },
     "copilot": {
       "title": "Mitsinjo Copilot",
@@ -266,6 +273,9 @@
       "diffBatteryCapacity": "Battery Capacity",
       "diffInitialSoc": "Initial SoC",
       "diffMinSoc": "Min Reserve SoC",
+      "diffPriorityLabel": "Priority",
+      "diffCapLabel": "Capacity Cap",
+      "noCap": "None (uncapped)",
       "contextPanelAria": "Active simulation context",
       "contextTitle": "ACTIVE CONTEXT (COMPUTED)",
       "contextActiveScenario": "Active Baseline",
@@ -455,6 +465,10 @@
     "reserveReachedDesc": "Storage reached minimum reserve threshold between {from} and {to}.",
     "curtailmentTitle": "Solar Generation Curtailment",
     "curtailmentDesc": "Surplus solar generation curtailed between {from} and {to} due to full storage.",
+    "anomalyToVerifyTitle": "Anomaly Signal to Verify",
+    "anomalyToVerifyDesc": "Divergence >25% vs expected profile detected on {sector} from {from} to {to}. Requires verification (do not assume hardware fault or fraud).",
+    "sectorCappedTitle": "Sector Capacity Cap Active",
+    "sectorCappedDesc": "{sector} power intake was capped by operator limit between {from} and {to}.",
     "hoursRange": "{from} - {to}"
   },
   "overview": {

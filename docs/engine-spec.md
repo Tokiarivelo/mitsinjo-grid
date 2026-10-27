@@ -7,7 +7,7 @@ Types: `docs/contracts.md`.
 
 ```text
 solarKw   = solar.peakKw × solar.profile[t] × Π(solar_drop factors active at t)
-demand_s  = sector.profileKw[t] × demandMultiplier × Π(demand_spike factors for s at t)
+demand_s  = sector.meterReadings?.[t] ?? (sector.profileKw[t] × demandMultiplier × Π(demand_spike factors for s at t))
 critical_s= demand_s × sector.criticalShare
 demandKw  = Σ demand_s
 
@@ -16,8 +16,9 @@ reserveKwh      = minSoc/100 × capacityKwh
 dischargeMaxKw  = min(maxDischargeKw, (storedKwh − reserveKwh) × dischargeEff)   // ≥ 0
 availableKw     = solarKw + dischargeMaxKw
 
-served_s = STRATEGY(availableKw, demands, criticals, priorities)   // Σ served ≤ min(availableKw, demandKw)
-servedKw = Σ served_s
+raw_served_s = STRATEGY(availableKw, demands, criticals, priorities)
+served_s     = WATER_FILLING_CAPS(raw_served_s, sectorCaps active at t) // served_s ≤ min(cap_s, demand_s); reallocates freed power
+servedKw     = Σ served_s
 
 if servedKw ≤ solarKw:                         // surplus → charge
    surplus     = solarKw − servedKw
@@ -32,7 +33,7 @@ else:                                          // deficit → discharge
 unservedKw = demandKw − servedKw
 ```
 
-## 2. Strategies (same battery rules for all → fair comparison)
+## 2. Strategies and sector capacity caps
 
 - **proportional** — `served_s = demand_s × min(1, availableKw / demandKw)`.
 - **essential_first** — serve sectors in priority order `critical > high > medium > low`;
@@ -40,11 +41,15 @@ unservedKw = demandKw − servedKw
 - **balanced** (stretch) — pass 1: serve `critical_s` of all sectors (proportional if short);
   pass 2: share the rest by `demand_s_remaining × weight` with weights `critical 4, high 3, medium 2, low 1`,
   capped at each sector's remaining demand (iterate water-filling until no remainder or all capped).
+- **Sector capacity caps (`sectorCaps`)** — optional `sectorCaps?: { sector, maxKw, fromHour, toHour }[]`.
+  When caps apply at step $t$, capped sectors receive at most `min(allocation, maxKw)`. Any freed power
+  is iteratively reallocated via water-filling to uncapped sectors up to their demand.
 
 ## 3. Invariants (checked every step; count into `metrics.violations`)
 
-`0 ≤ served_s ≤ demand_s` · `servedKw ≤ availableKw + ε` · `reserveKwh − ε ≤ storedKwh ≤ capacityKwh + ε` ·
-`|chargeKw| ≤ maxChargeKw`, `|drawKw| ≤ maxDischargeKw` · all values finite · `ε = 1e-9`.
+`0 ≤ served_s ≤ demand_s` · `served_s ≤ cap_s + ε` (when sector cap active) · `servedKw ≤ availableKw + ε` ·
+`reserveKwh − ε ≤ storedKwh ≤ capacityKwh + ε` · `|chargeKw| ≤ maxChargeKw`, `|drawKw| ≤ maxDischargeKw` ·
+all values finite · `ε = 1e-9`.
 Round **only** at display time (UI `lib/format.ts`), never in the engine.
 
 ## 4. Metrics & warnings
@@ -54,7 +59,8 @@ Sums over steps (kW × 1 h = kWh). `coveragePct = servedKwh / demandKwh × 100` 
 `affectedSectors` = sectors with `unservedKwh > ε`. `criticalUnmetHours` = steps where any `criticalServed_s < critical_s − ε`.
 Warnings: merge consecutive hours into ranges. `CRITICAL_UNMET` (any critical shortfall),
 `SECTOR_PARTIAL` (sector coverage < 100 % in a step), `RESERVE_REACHED` (soc ≤ min + 0.5),
-`CURTAILMENT` (curtailedKw > 0).
+`CURTAILMENT` (curtailedKw > 0), `SECTOR_CAPPED` (sector allocation constrained by a capacity cap),
+`ANOMALY_TO_VERIFY` (meter readings persistently diverge from expected profile by > 25% for ≥ 2 consecutive hours).
 
 ## 5. Default parameters
 
@@ -81,6 +87,7 @@ Total ≈ 128 kWh/day. Tune so that: `baseline` → 0 unserved; `cloudy_afternoo
 | high_demand        | demand_spike all ×1.3, 17 h, 5 h                              |
 | battery_constraint | capacity 60 kWh, initialSoc 30 %                              |
 | essential_stress   | solar ×0.4 for 4 h at 11 h + initialSoc 25 %                  |
+| meter_anomaly      | market meter readings 3.2 kW at 11–15 h (expected 2.0 kW)     |
 
 ## 7. Tests (Vitest, `packages/engine/src/__tests__`)
 

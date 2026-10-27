@@ -138,6 +138,37 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
     expect(useSimulationStore.getState().status).toBe('complete');
   });
 
+  it('renders priority and cap diffs in ConfirmProposalDialog (PY-T4)', () => {
+    render(
+      <ConfirmProposalDialog
+        proposal={{
+          proposalId: 'PROP-CAPS',
+          patch: {
+            priorities: {
+              water: 'critical',
+            },
+            sectorCaps: [
+              {
+                sector: 'market',
+                maxKw: 1.0,
+                fromHour: 18,
+                toHour: 22,
+              },
+            ],
+          },
+          reason: 'Limit market to 1 kW and raise water to critical',
+        }}
+        onApprove={() => {}}
+        onReject={() => {}}
+      />
+    );
+
+    expect(
+      screen.getByText('Limit market to 1 kW and raise water to critical')
+    ).toBeInTheDocument();
+    expect(screen.getByText('1 kW (18:00 - 22:00)')).toBeInTheDocument();
+  });
+
   it('renders ContextPanel with active baseline, specs, and runs simulation', () => {
     render(<ContextPanel />);
 

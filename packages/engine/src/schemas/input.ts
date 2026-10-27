@@ -8,6 +8,7 @@ export const SectorConfigSchema = z.object({
   criticalShare: z.number().min(0).max(1),
   profileKw: z.array(z.number().min(0)).length(24),
   flexible: z.boolean(),
+  meterReadings: z.array(z.number().min(0)).length(24).optional(),
 });
 export type SectorConfig = z.infer<typeof SectorConfigSchema>;
 
@@ -74,6 +75,19 @@ export const ScenarioEventSchema = z
   });
 export type ScenarioEvent = z.infer<typeof ScenarioEventSchema>;
 
+export const SectorCapSchema = z
+  .object({
+    sector: SectorIdSchema,
+    maxKw: z.number().min(0).max(500),
+    fromHour: z.number().int().min(0).max(23),
+    toHour: z.number().int().min(1).max(24),
+  })
+  .refine((c) => c.fromHour < c.toHour, {
+    message: 'fromHour must be strictly less than toHour',
+    path: ['toHour'],
+  });
+export type SectorCap = z.infer<typeof SectorCapSchema>;
+
 const REQUIRED_SECTORS = ['health', 'water', 'school', 'households', 'market'] as const;
 
 export const SimulationInputSchema = z.object({
@@ -98,6 +112,7 @@ export const SimulationInputSchema = z.object({
     ),
   events: z.array(ScenarioEventSchema),
   demandMultiplier: z.number().min(0.5).max(2),
+  sectorCaps: z.array(SectorCapSchema).optional(),
 });
 export type SimulationInput = z.infer<typeof SimulationInputSchema>;
 
@@ -109,5 +124,8 @@ export const InputPatchSchema = z.object({
   batteryCapacityKwh: z.number().min(1).max(2000).optional(),
   initialSocPct: z.number().min(0).max(100).optional(),
   minSocPct: z.number().min(0).max(100).optional(),
+  priorities: z.record(SectorIdSchema, PrioritySchema).optional(),
+  sectorCaps: z.array(SectorCapSchema).optional(),
+  meterReadings: z.record(SectorIdSchema, z.array(z.number().min(0)).length(24)).optional(),
 });
 export type InputPatch = z.infer<typeof InputPatchSchema>;

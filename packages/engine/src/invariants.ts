@@ -1,5 +1,5 @@
 import { EPS } from './constants';
-import type { BatteryConfig, SectorStep, StepResult } from './schemas';
+import type { BatteryConfig, SectorCap, SectorStep, StepResult } from './schemas';
 
 export interface InvariantCheckParams {
   t: number;
@@ -8,6 +8,7 @@ export interface InvariantCheckParams {
   newStoredKwh: number;
   availableKw: number;
   battery: BatteryConfig;
+  sectorCaps?: readonly SectorCap[];
 }
 
 /**
@@ -15,7 +16,7 @@ export interface InvariantCheckParams {
  * Returns the number of violations (0 when all invariants hold).
  */
 export function checkStepInvariants(params: InvariantCheckParams): number {
-  const { step, prevStoredKwh, newStoredKwh, availableKw, battery } = params;
+  const { t, step, prevStoredKwh, newStoredKwh, availableKw, battery, sectorCaps } = params;
   let violations = 0;
 
   // 1. All step values must be finite
@@ -86,6 +87,18 @@ export function checkStepInvariants(params: InvariantCheckParams): number {
   const actualDelta = newStoredKwh - prevStoredKwh;
   if (Math.abs(actualDelta - expectedDelta) > EPS) {
     violations++;
+  }
+
+  // 8. Sector caps invariant: served_s <= cap_s + EPS
+  if (sectorCaps && sectorCaps.length > 0) {
+    for (const cap of sectorCaps) {
+      if (t >= cap.fromHour && t < cap.toHour) {
+        const sec = step.sectors[cap.sector];
+        if (sec && sec.servedKw > cap.maxKw + EPS) {
+          violations++;
+        }
+      }
+    }
   }
 
   return violations;

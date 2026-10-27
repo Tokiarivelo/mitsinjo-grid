@@ -5,6 +5,7 @@ import { useTranslations } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { useSimulationStore } from '@/stores';
 import { cn } from '@/lib/utils';
+import type { SectorId } from '@mitsinjo/engine';
 import type { CopilotProposal } from '../types';
 
 export interface ConfirmProposalDialogProps {
@@ -21,6 +22,8 @@ export function ConfirmProposalDialog({
   className,
 }: ConfirmProposalDialogProps) {
   const tCopilot = useTranslations('features.copilot');
+  const tSectors = useTranslations('sectors');
+  const tPriorities = useTranslations('priorities');
   const currentInput = useSimulationStore((s) => s.input);
   const currentStrategy = useSimulationStore((s) => s.activeStrategy);
 
@@ -35,6 +38,33 @@ export function ConfirmProposalDialog({
       current: currentStrategy,
       proposed: proposal.strategy,
     });
+  }
+
+  if (patch?.priorities !== undefined) {
+    for (const [secId, prio] of Object.entries(patch.priorities)) {
+      if (prio) {
+        const currentSecPrio = currentInput.sectors.find((s) => s.id === secId)?.priority;
+        diffItems.push({
+          label: `${tSectors(secId as SectorId)} ${tCopilot('diffPriorityLabel')}`,
+          current: currentSecPrio ? tPriorities(currentSecPrio) : 'default',
+          proposed: tPriorities(prio),
+        });
+      }
+    }
+  }
+
+  if (patch?.sectorCaps !== undefined && patch.sectorCaps.length > 0) {
+    for (const cap of patch.sectorCaps) {
+      const existingCap = currentInput.sectorCaps?.find((c) => c.sector === cap.sector);
+      const existingStr = existingCap
+        ? `${existingCap.maxKw} kW (${existingCap.fromHour}:00 - ${existingCap.toHour}:00)`
+        : tCopilot('noCap');
+      diffItems.push({
+        label: `${tSectors(cap.sector)} ${tCopilot('diffCapLabel')}`,
+        current: existingStr,
+        proposed: `${cap.maxKw} kW (${cap.fromHour}:00 - ${cap.toHour}:00)`,
+      });
+    }
   }
 
   if (patch?.solarDropPct !== undefined) {

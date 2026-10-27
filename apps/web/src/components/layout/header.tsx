@@ -66,6 +66,11 @@ export function Header({
       name: tScenarios('essential_stress.name'),
       description: tScenarios('essential_stress.description'),
     },
+    {
+      id: 'meter_anomaly',
+      name: tScenarios('meter_anomaly.name'),
+      description: tScenarios('meter_anomaly.description'),
+    },
   ];
 
   const resolvedScenarios = scenarios || defaultScenarios;

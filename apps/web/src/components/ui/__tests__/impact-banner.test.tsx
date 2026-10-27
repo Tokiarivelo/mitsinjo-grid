@@ -36,4 +36,19 @@ describe('ImpactBanner titles (states-copy)', () => {
     renderBanner([{ code: 'RESERVE_REACHED', fromHour: 21, toHour: 23 } as SimWarning]);
     expect(screen.getByText('Battery reserve depleted before simulation end')).toBeInTheDocument();
   });
+
+  it('renders ANOMALY_TO_VERIFY warning badge and title (PX-T2)', () => {
+    renderBanner([
+      { code: 'ANOMALY_TO_VERIFY', sector: 'market', fromHour: 11, toHour: 14 } as SimWarning,
+    ]);
+    expect(screen.getByText("Anomaly Signal to Verify")).toBeInTheDocument();
+    expect(screen.getByText(/Requires verification/i)).toBeInTheDocument();
+  });
+
+  it('renders SECTOR_CAPPED warning badge and title (PY-T1, PY-T4)', () => {
+    renderBanner([
+      { code: 'SECTOR_CAPPED', sector: 'market', fromHour: 18, toHour: 22 } as SimWarning,
+    ]);
+    expect(screen.getByText("Sector Capacity Cap Active")).toBeInTheDocument();
+  });
 });

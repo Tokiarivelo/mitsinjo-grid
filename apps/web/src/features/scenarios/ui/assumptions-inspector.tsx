@@ -270,9 +270,25 @@ export function AssumptionsInspector({
                   </div>
                 </div>
 
-                <span className="text-[10px] font-mono uppercase text-text-muted">
-                  {tPriorities(sec.priority)}
-                </span>
+                <div className="flex items-center gap-2">
+                  {input.sectorCaps
+                    ?.filter((c) => c.sector === sec.id)
+                    .map((cap, cIdx) => (
+                      <span
+                        key={cIdx}
+                        className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-energy-cyan/15 border border-energy-cyan/30 text-energy-cyan font-medium"
+                      >
+                        {tScenarios('capBadge', {
+                          maxKw: cap.maxKw,
+                          from: cap.fromHour,
+                          to: cap.toHour,
+                        })}
+                      </span>
+                    ))}
+                  <span className="text-[10px] font-mono uppercase text-text-muted">
+                    {tPriorities(sec.priority)}
+                  </span>
+                </div>
               </div>
             );
           })}

@@ -58,4 +58,120 @@ describe('simulate (P3-T5)', () => {
       );
     }
   });
+
+  describe('PY-T1: Sector control proposals & capacity caps', () => {
+    it('strictly respects sectorCaps invariant served_s <= cap_s + EPS and maintains energy balance', () => {
+      const input = structuredClone(scenarios.cloudy_afternoon.input);
+      input.sectorCaps = [
+        {
+          sector: 'market',
+          maxKw: 0.5,
+          fromHour: 10,
+          toHour: 16,
+        },
+      ];
+
+      const sim = simulate(input, 'proportional');
+      expect(sim.metrics.violations).toBe(0);
+
+      // Verify cap on market during 10..15h
+      for (let t = 10; t < 16; t++) {
+        const step = sim.steps[t]!;
+        const marketStep = step.sectors.market!;
+        expect(marketStep.servedKw).toBeLessThanOrEqual(0.5 + 1e-9);
+      }
+
+      // Verify SECTOR_CAPPED warning
+      const capWarning = sim.warnings.find((w) => w.code === 'SECTOR_CAPPED');
+      expect(capWarning).toBeDefined();
+      expect(capWarning?.sector).toBe('market');
+    });
+
+    it('reallocates freed power to other sectors', () => {
+      // At midday (hour 12), total demand is 8.7 kW (health 1.2, water 3.0, school 1.5, market 2.0, households 1.0).
+      // With peakKw = 10 and battery at minSoc, solar provides ~4.85 kW (< 8.7 kW demand), causing a deficit.
+      const input = structuredClone(scenarios.baseline.input);
+      input.solar.peakKw = 10;
+      input.battery.initialSocPct = 20.001;
+      input.battery.minSocPct = 20;
+
+      const cappedInput = structuredClone(input);
+      cappedInput.sectorCaps = [
+        {
+          sector: 'market',
+          maxKw: 0,
+          fromHour: 12,
+          toHour: 13,
+        },
+      ];
+
+      const simUncapped = simulate(input, 'proportional');
+      const simCapped = simulate(cappedInput, 'proportional');
+
+      const uncappedHealth = simUncapped.steps[12]!.sectors.health!.servedKw;
+      const cappedHealth = simCapped.steps[12]!.sectors.health!.servedKw;
+
+      expect(cappedHealth).toBeGreaterThan(uncappedHealth);
+      expect(simCapped.steps[12]!.sectors.market!.servedKw).toBe(0);
+      expect(simUncapped.steps[12]!.sectors.market!.servedKw).toBeGreaterThan(0.5);
+    });
+
+    it('no cap = identical result & id', () => {
+      const inputWithoutCaps = scenarios.cloudy_afternoon.input;
+      const inputWithEmptyCaps = structuredClone(scenarios.cloudy_afternoon.input);
+      inputWithEmptyCaps.sectorCaps = [];
+
+      const res1 = simulate(inputWithoutCaps, 'proportional');
+      const res2 = simulate(inputWithEmptyCaps, 'proportional');
+
+      expect(res1.id).toBe(res2.id);
+      expect(res1.inputHash).toBe(res2.inputHash);
+      expect(res1.metrics.servedKwh).toBe(res2.metrics.servedKwh);
+    });
+  });
+
+  describe('PX-T1 & PX-T2: Meter readings override & anomaly detector', () => {
+    it('overrides sector demand with meterReadings and detects persistent gap > 25% for >= 2h', () => {
+      const input = structuredClone(scenarios.baseline.input);
+      const market = input.sectors.find((s) => s.id === 'market')!;
+      // Normal market demand is 2 kW 08..17h.
+      // Inject meterReadings with 3.0 kW (+50% gap) at 12..14h (2 hours >= 2h)
+      market.meterReadings = market.profileKw.map((kw, h) => (h === 12 || h === 13 ? 3.0 : kw));
+
+      const sim = simulate(input, 'proportional');
+      // Market demand overridden at hour 12
+      expect(sim.steps[12]!.sectors.market!.demandKw).toBe(3.0);
+
+      // Warning ANOMALY_TO_VERIFY generated
+      const anomalyWarn = sim.warnings.find((w) => w.code === 'ANOMALY_TO_VERIFY');
+      expect(anomalyWarn).toBeDefined();
+      expect(anomalyWarn?.sector).toBe('market');
+      expect(anomalyWarn?.fromHour).toBe(12);
+      expect(anomalyWarn?.toHour).toBe(13);
+    });
+
+    it('does NOT trigger ANOMALY_TO_VERIFY for an isolated 1-hour gap (< 2h)', () => {
+      const input = structuredClone(scenarios.baseline.input);
+      const market = input.sectors.find((s) => s.id === 'market')!;
+      // Divergence at only hour 12 (1 hour)
+      market.meterReadings = market.profileKw.map((kw, h) => (h === 12 ? 3.5 : kw));
+
+      const sim = simulate(input, 'proportional');
+      const anomalyWarn = sim.warnings.find((w) => w.code === 'ANOMALY_TO_VERIFY');
+      expect(anomalyWarn).toBeUndefined();
+    });
+
+    it('does NOT trigger ANOMALY_TO_VERIFY when divergence is <= 25%', () => {
+      const input = structuredClone(scenarios.baseline.input);
+      const market = input.sectors.find((s) => s.id === 'market')!;
+      // Divergence is 2.3 kW vs 2.0 kW (+15% <= 25%) for 4 hours
+      market.meterReadings = market.profileKw.map((kw, h) =>
+        h >= 10 && h < 14 ? 2.3 : kw
+      );
+
+      const sim = simulate(input, 'proportional');
+      const anomalyWarn = sim.warnings.find((w) => w.code === 'ANOMALY_TO_VERIFY');
+      expect(anomalyWarn).toBeUndefined();
+    });
+  });
 });

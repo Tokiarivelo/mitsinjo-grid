@@ -62,6 +62,21 @@ export function createEssentialStressInput(): SimulationInput {
   return input;
 }
 
+export function createMeterAnomalyInput(): SimulationInput {
+  const input = createBaselineInput();
+  input.scenarioId = 'meter_anomaly';
+  const market = input.sectors.find((s) => s.id === 'market');
+  if (market) {
+    market.meterReadings = market.profileKw.map((kw, h) => {
+      if (h >= 11 && h < 15) {
+        return 3.2; // Divergence > 25% for 4 consecutive hours (>= 2h)
+      }
+      return kw;
+    });
+  }
+  return input;
+}
+
 export const scenarios: Record<ScenarioId, ScenarioDefinition> = {
   baseline: {
     title: 'Sunny Baseline Day',
@@ -92,5 +107,11 @@ export const scenarios: Record<ScenarioId, ScenarioDefinition> = {
     description:
       'Extended storm drops solar output by 60% for 4 midday hours with depleted starting storage (25%). Demonstrates critical lifeline protection under deep deficit.',
     input: createEssentialStressInput(),
+  },
+  meter_anomaly: {
+    title: 'Synthetic Meter Anomaly',
+    description:
+      'Clearly labeled synthetic anomaly scenario: persistent divergence between meter readings and expected profile (>25% for 4h) in the market sector. Flags ANOMALY_TO_VERIFY without assuming fraud.',
+    input: createMeterAnomalyInput(),
   },
 };

@@ -74,7 +74,7 @@ describe('ScenariosPage (P5-T3, P5-T6)', () => {
     render(<ScenariosPage />);
 
     const openButtons = screen.getAllByRole('button', { name: /open scenario/i });
-    expect(openButtons.length).toBe(5);
+    expect(openButtons.length).toBe(6);
 
     fireEvent.click(openButtons[1]!); // Cloudy afternoon card
     expect(useSimulationStore.getState().scenarioId).toBe('cloudy_afternoon');

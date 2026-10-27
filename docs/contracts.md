@@ -17,7 +17,12 @@ type Priority = 'critical' | 'high' | 'medium' | 'low';
 type StrategyId = 'proportional' | 'essential_first' | 'balanced'; // balanced = stretch
 type SimStatus = 'ready' | 'modified' | 'running' | 'complete' | 'error';
 type ScenarioId =
-  'baseline' | 'cloudy_afternoon' | 'high_demand' | 'battery_constraint' | 'essential_stress';
+  | 'baseline'
+  | 'cloudy_afternoon'
+  | 'high_demand'
+  | 'battery_constraint'
+  | 'essential_stress'
+  | 'meter_anomaly';
 ```
 
 ## Input
@@ -30,6 +35,7 @@ interface SectorConfig {
   criticalShare: number; // 0–1, part of demand that is critical (health 0.8, others lower)
   profileKw: number[]; // length 24, hourly demand kW
   flexible: boolean; // shiftable load (water pump) — used only by stretch features
+  meterReadings?: number[]; // length 24, optional measured demand override
 }
 interface BatteryConfig {
   capacityKwh: number;
@@ -53,6 +59,12 @@ type ScenarioEvent =
       durationH: number;
       factor: number;
     };
+interface SectorCap {
+  sector: SectorId;
+  maxKw: number; // ≥ 0
+  fromHour: number; // 0–23
+  toHour: number; // 1–24, fromHour < toHour
+}
 interface SimulationInput {
   scenarioId: ScenarioId | 'custom';
   horizonH: 24;
@@ -62,12 +74,14 @@ interface SimulationInput {
   sectors: SectorConfig[];
   events: ScenarioEvent[];
   demandMultiplier: number; // global, 0.5–2
+  sectorCaps?: SectorCap[];
 }
 ```
 
 Validation bounds (Zod, reject — never silently clamp): `peakKw 0–500`, `capacityKwh 1–2000`,
 `initialSocPct/minSocPct 0–100` with `min < initial`, effs `0.5–1`, `factor 0–3`,
-`startHour 0–23`, `startHour + durationH ≤ 24`, `durationH 1–24`, exactly 5 sectors with unique ids.
+`startHour 0–23`, `startHour + durationH ≤ 24`, `durationH 1–24`, exactly 5 sectors with unique ids,
+`sectorCaps` `maxKw 0–500`, `fromHour 0–23`, `toHour 1–24`, `fromHour < toHour`.
 
 ## Result
 
@@ -112,7 +126,13 @@ interface Metrics {
   violations: number; // must be 0; engine self-checks invariants
   perSector: Record<SectorId, SectorMetrics>;
 }
-type WarningCode = 'CRITICAL_UNMET' | 'SECTOR_PARTIAL' | 'RESERVE_REACHED' | 'CURTAILMENT';
+type WarningCode =
+  | 'CRITICAL_UNMET'
+  | 'SECTOR_PARTIAL'
+  | 'RESERVE_REACHED'
+  | 'CURTAILMENT'
+  | 'ANOMALY_TO_VERIFY'
+  | 'SECTOR_CAPPED';
 interface SimWarning {
   code: WarningCode;
   sector?: SectorId;
@@ -162,6 +182,9 @@ interface InputPatch {
   batteryCapacityKwh?: number;
   initialSocPct?: number;
   minSocPct?: number;
+  priorities?: Partial<Record<SectorId, Priority>>;
+  sectorCaps?: SectorCap[];
+  meterReadings?: Partial<Record<SectorId, number[]>>;
 }
 ```
 

@@ -1,33 +1,32 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-27 · **By:** Antigravity (P9 ship, `feat/p9-ship`) · **Day:** 10 / 10
+**Updated:** 2026-10-27 · **By:** Antigravity (PX & PY phases) · **Branch:** `feat/px-py-phases`
 
 ## State
 
-- Phase: **P9 — Deploy, demo, submission** completed (P9-T1..P9-T4 done, P9-T5..P9-T6 human recording & submit).
-- Production deployed & verified: `https://mitsinjo-grid.vercel.app` (200/307 OK, rate limited SSE copilot ready).
-- Zero secrets in repo (git history verified, `.env` / `.env.local` gitignored).
-- Monorepo healthy: `make check` 100% green (242 tests, tsc, lint, i18n parity across EN/FR/MG), `pnpm build` clean.
-- Docs ready: `docs/assumptions.md` (physics & boundary formulas), `docs/demo-script.md` (3-minute demo script), and comprehensive `README.md` with Mermaid architecture diagram.
+- Phases: **PX (Anomaly signal)** and **PY (Sector control proposals)** completed.
+- PX: Engine `meterReadings` override + `ANOMALY_TO_VERIFY` detector (>25% gap, ≥2h). Synthetic `meter_anomaly` scenario.
+- PY: Engine `sectorCaps` + iterative water-filling reallocation, `SECTOR_CAPPED` warning, `served_s ≤ cap_s + ε` invariant.
+- Copilot: `propose_change` supports `priorities` & `sectorCaps`; prompt ensures trade-off proposals, never physical control.
+- UI: ConfirmProposalDialog shows diffs, SimControls & AssumptionsInspector show active caps/priorities, 100% i18n EN/FR/MG parity.
+- Monorepo healthy: `make check` 100% green (typecheck, lint, test), `pnpm build` clean.
 
 ## Next task
 
-- Record 3-minute video per `docs/demo-script.md` (P9-T5) and submit project with tag `v1.0.0` (P9-T6).
+- Review & merge PR `feat/px-py-phases` into `main`.
 
 ## Decisions taken
 
-- Public URL: `https://mitsinjo-grid.vercel.app` with `LLM_PROVIDER=mock` active and Meta provider fallback.
-- Retained strict non-negotiable invariants: all energy numbers originate exclusively from `@mitsinjo/engine`.
+- Empty/absent `sectorCaps` preserves canonical JSON hash and ID (byte-identical results).
+- Strict warning wording: "anomaly to verify" only, never "fraud" or "theft".
+- Caps and priorities presented strictly as simulated trade-offs and social choices.
 
 ## Open questions / blockers
 
-- PR created from `feat/p9-ship` (waiting for user review & merge).
-- Human tasks remaining: video recording and final hackathon portal submission.
+- PR created without review or merge per explicit user constraint.
 
 ## Files touched this session
 
-- `docs/assumptions.md` (created)
-- `docs/demo-script.md` (created)
-- `README.md` (updated with architecture, problem, demo walkthrough, tour)
-- `docs/tasks/P9-ship.md` (tasks P9-T1..P9-T4 ticked)
-- `HANDOFF.md`
+- Engine: `schemas/`, `model/demand.ts`, `simulate.ts`, `invariants.ts`, `warnings.ts`, `patch.ts`, `hash.ts`, `scenarios/`
+- Web: `server/copilot/`, `features/scenarios/`, `features/simulation/`, `features/copilot/`, `components/`, `messages/`
+- Docs: `docs/engine-spec.md`, `docs/contracts.md`, `docs/tasks/PX-anomaly.md`, `docs/tasks/PY-sector-control.md`, `HANDOFF.md`

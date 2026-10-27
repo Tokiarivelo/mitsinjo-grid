@@ -54,6 +54,8 @@ export const WarningCodeSchema = z.enum([
   'SECTOR_PARTIAL',
   'RESERVE_REACHED',
   'CURTAILMENT',
+  'ANOMALY_TO_VERIFY',
+  'SECTOR_CAPPED',
 ]);
 export type WarningCode = z.infer<typeof WarningCodeSchema>;
 

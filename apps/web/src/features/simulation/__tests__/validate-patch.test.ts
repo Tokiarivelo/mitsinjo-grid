@@ -28,4 +28,46 @@ describe('validatePatch', () => {
       params: { min },
     });
   });
+
+  it('flags invalid sectorCaps with outOfRange (PY-T2)', () => {
+    expect(
+      validatePatch(
+        'sectorCaps',
+        {
+          sectorCaps: [
+            {
+              sector: 'market',
+              maxKw: -2,
+              fromHour: 18,
+              toHour: 22,
+            },
+          ],
+        },
+        input
+      )
+    ).toEqual({ key: 'outOfRange' });
+  });
+
+  it('accepts valid sectorCaps and priorities (PY-T2)', () => {
+    expect(
+      validatePatch(
+        'sectorCaps',
+        {
+          sectorCaps: [
+            {
+              sector: 'market',
+              maxKw: 1.5,
+              fromHour: 18,
+              toHour: 22,
+            },
+          ],
+        },
+        input
+      )
+    ).toBeNull();
+
+    expect(
+      validatePatch('priorities', { priorities: { water: 'critical' } }, input)
+    ).toBeNull();
+  });
 });

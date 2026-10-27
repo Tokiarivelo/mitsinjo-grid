@@ -102,4 +102,71 @@ describe('applyPatch (P3-T7)', () => {
     // 95 % drop → factor 0.05 is a valid event, but InputPatch caps solarDropPct at 90.
     expect(() => applyPatch(input, { solarDropPct: 95 })).toThrow(ZodError);
   });
+
+  it('updates sector priorities via patch (PY-T2)', () => {
+    const input = createBaselineInput();
+    const waterBefore = input.sectors.find((s) => s.id === 'water')?.priority;
+    expect(waterBefore).toBe('high');
+
+    const patched = applyPatch(input, {
+      priorities: {
+        water: 'critical',
+        market: 'medium',
+      },
+    });
+
+    expect(patched.sectors.find((s) => s.id === 'water')?.priority).toBe('critical');
+    expect(patched.sectors.find((s) => s.id === 'market')?.priority).toBe('medium');
+    // Health priority unchanged
+    expect(patched.sectors.find((s) => s.id === 'health')?.priority).toBe('critical');
+  });
+
+  it('updates sectorCaps via patch with LLM-safe bounds (PY-T2)', () => {
+    const input = createBaselineInput();
+    expect(input.sectorCaps).toBeUndefined();
+
+    const patched = applyPatch(input, {
+      sectorCaps: [
+        {
+          sector: 'market',
+          maxKw: 1.0,
+          fromHour: 18,
+          toHour: 22,
+        },
+      ],
+    });
+
+    expect(patched.sectorCaps).toHaveLength(1);
+    expect(patched.sectorCaps?.[0]).toEqual({
+      sector: 'market',
+      maxKw: 1.0,
+      fromHour: 18,
+      toHour: 22,
+    });
+  });
+
+  it('rejects invalid sectorCaps bounds (fromHour >= toHour, negative maxKw, hour > 24) (PY-T2)', () => {
+    const input = createBaselineInput();
+
+    // fromHour >= toHour
+    expect(() =>
+      applyPatch(input, {
+        sectorCaps: [{ sector: 'market', maxKw: 1.0, fromHour: 20, toHour: 18 }],
+      })
+    ).toThrow(ZodError);
+
+    // negative maxKw
+    expect(() =>
+      applyPatch(input, {
+        sectorCaps: [{ sector: 'market', maxKw: -1, fromHour: 18, toHour: 22 }],
+      })
+    ).toThrow(ZodError);
+
+    // fromHour > 23
+    expect(() =>
+      applyPatch(input, {
+        sectorCaps: [{ sector: 'market', maxKw: 1, fromHour: 24, toHour: 25 }],
+      })
+    ).toThrow(ZodError);
+  });
 });

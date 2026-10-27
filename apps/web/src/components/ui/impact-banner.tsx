@@ -1,4 +1,12 @@
-import { AlertTriangle, BatteryCharging, CheckCircle2, Info, ZapOff } from 'lucide-react';
+import {
+  AlertTriangle,
+  BatteryCharging,
+  CheckCircle2,
+  Info,
+  Search,
+  Sliders,
+  ZapOff,
+} from 'lucide-react';
 import type { SimWarning } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtHour } from '@/lib/format';
@@ -90,6 +98,24 @@ export function ImpactBanner({ warnings, className, showNominal = true }: Impact
             title = tWarnings('curtailmentTitle');
             desc = tWarnings('curtailmentDesc', { from: fromStr, to: toStr });
             break;
+
+          case 'ANOMALY_TO_VERIFY': {
+            const sectorName = w.sector ? tSectors(w.sector) : '';
+            toneClass = 'border-ai-violet/50 bg-ai-violet/10 text-ai-violet';
+            icon = <Search className="h-4 w-4 text-ai-violet" aria-hidden="true" />;
+            title = tWarnings('anomalyToVerifyTitle');
+            desc = tWarnings('anomalyToVerifyDesc', { sector: sectorName, from: fromStr, to: toStr });
+            break;
+          }
+
+          case 'SECTOR_CAPPED': {
+            const sectorName = w.sector ? tSectors(w.sector) : '';
+            toneClass = 'border-energy-cyan/40 bg-energy-cyan/10 text-energy-cyan';
+            icon = <Sliders className="h-4 w-4 text-energy-cyan" aria-hidden="true" />;
+            title = tWarnings('sectorCappedTitle');
+            desc = tWarnings('sectorCappedDesc', { sector: sectorName, from: fromStr, to: toStr });
+            break;
+          }
         }
 
         return (

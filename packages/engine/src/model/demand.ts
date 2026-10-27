@@ -6,6 +6,8 @@ export interface SectorDemandStep {
   criticalDemandKw: number;
   priority: Priority;
   criticalShare: number;
+  profileDemandKw?: number;
+  hasMeterOverride?: boolean;
 }
 
 export interface DemandStepResult {
@@ -41,7 +43,9 @@ export function computeDemandStep(
     }
 
     const baseDemandKw = s.profileKw[t] ?? 0;
-    const demandKw = Math.max(0, baseDemandKw * demandMultiplier * spikeMultiplier);
+    const profileDemandKw = Math.max(0, baseDemandKw * demandMultiplier * spikeMultiplier);
+    const hasMeterOverride = s.meterReadings !== undefined && s.meterReadings[t] !== undefined;
+    const demandKw = hasMeterOverride ? Math.max(0, s.meterReadings![t] ?? 0) : profileDemandKw;
     const criticalDemandKw = demandKw * s.criticalShare;
 
     const sectorStep: SectorDemandStep = {
@@ -50,6 +54,8 @@ export function computeDemandStep(
       criticalDemandKw,
       priority: s.priority,
       criticalShare: s.criticalShare,
+      profileDemandKw,
+      hasMeterOverride,
     };
 
     sectorsRecord[s.id] = sectorStep;
