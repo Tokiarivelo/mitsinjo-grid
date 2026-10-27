@@ -13,16 +13,18 @@ import {
   Waves,
 } from 'lucide-react';
 import {
+  HORIZON_H,
+  STEP_H,
   type InputPatch,
   type ScenarioId,
   type SimulationInput,
-  InputPatchSchema,
 } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
-import { fmtKw, fmtKwh, fmtPct } from '@/lib/format';
+import { fmtKw, fmtPct } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { SimControl } from '@/components/ui/sim-control';
 import { useTranslations } from '@/lib/i18n';
+import { validatePatch } from '@/features/simulation';
 
 export interface AssumptionsInspectorProps {
   scenarioId: ScenarioId;
@@ -46,6 +48,7 @@ export function AssumptionsInspector({
   const tScenarios = useTranslations('features.scenarios');
   const tSim = useTranslations('features.simulation');
   const tSectors = useTranslations('sectors');
+  const tPriorities = useTranslations('priorities');
 
   // Confirmation state for reset
   const [confirmReset, setConfirmReset] = useState(false);
@@ -56,30 +59,17 @@ export function AssumptionsInspector({
   const dropStart = existingDrop ? existingDrop.startHour : 12;
   const dropDuration = existingDrop ? existingDrop.durationH : 3;
 
-  const validateAndPatch = (field: keyof InputPatch, val: number, fullPatchCandidate: InputPatch) => {
-    const parseResult = InputPatchSchema.safeParse(fullPatchCandidate);
+  const validateAndPatch = (field: keyof InputPatch, candidate: InputPatch) => {
+    const error = validatePatch(field, candidate, input);
     const newErrors = { ...errors };
-
-    if (!parseResult.success) {
-      const fieldIssue = parseResult.error.issues.find((issue) =>
-        issue.path.includes(field)
-      );
-      if (fieldIssue) {
-        newErrors[field] = fieldIssue.message;
-        setErrors(newErrors);
-        return;
-      }
-    }
-
-    if (field === 'initialSocPct' && val <= input.battery.minSocPct) {
-      newErrors.initialSocPct = tSim('errors.initialBelowMinSoc', { min: input.battery.minSocPct });
+    if (error) {
+      newErrors[field] = tSim(`errors.${error.key}`, error.params);
       setErrors(newErrors);
       return;
     }
-
     delete newErrors[field];
     setErrors(newErrors);
-    onPatch(fullPatchCandidate);
+    onPatch(candidate);
   };
 
   const handleResetClick = () => {
@@ -153,7 +143,7 @@ export function AssumptionsInspector({
             max={90}
             step={5}
             onChange={(val) =>
-              validateAndPatch('solarDropPct', val, {
+              validateAndPatch('solarDropPct', {
                 solarDropPct: val,
                 dropStartHour: dropStart,
                 dropDurationH: dropDuration,
@@ -171,7 +161,7 @@ export function AssumptionsInspector({
             step={0.1}
             onChange={(val) => {
               const rounded = Math.round(val * 10) / 10;
-              validateAndPatch('demandMultiplier', rounded, { demandMultiplier: rounded });
+              validateAndPatch('demandMultiplier', { demandMultiplier: rounded });
             }}
             error={errors.demandMultiplier}
           />
@@ -184,7 +174,7 @@ export function AssumptionsInspector({
             max={2000}
             step={10}
             onChange={(val) =>
-              validateAndPatch('batteryCapacityKwh', val, { batteryCapacityKwh: val })
+              validateAndPatch('batteryCapacityKwh', { batteryCapacityKwh: val })
             }
             error={errors.batteryCapacityKwh}
           />
@@ -197,7 +187,7 @@ export function AssumptionsInspector({
             max={100}
             step={5}
             onChange={(val) =>
-              validateAndPatch('initialSocPct', val, { initialSocPct: val })
+              validateAndPatch('initialSocPct', { initialSocPct: val })
             }
             error={errors.initialSocPct}
           />
@@ -222,16 +212,16 @@ export function AssumptionsInspector({
               {tScenarios('simulationHorizon')}
             </span>
             <span className="font-semibold text-text-primary">
-              24 h (1h step)
+              {tScenarios('horizonValue', { hours: HORIZON_H, step: STEP_H })}
             </span>
           </div>
 
           <div className="p-2.5 rounded-control bg-surface-elevated/70 border border-border">
             <span className="text-[10px] font-sans text-text-muted block">
-              {tScenarios('roundtripEff')}
+              {tScenarios('chargeDischargeEff')}
             </span>
             <span className="font-semibold text-battery-green">
-              90.2% (0.95 × 0.95)
+              {fmtPct(input.battery.chargeEff * 100, 0)} / {fmtPct(input.battery.dischargeEff * 100, 0)}
             </span>
           </div>
 
@@ -263,9 +253,6 @@ export function AssumptionsInspector({
 
         <div className="flex flex-col gap-1.5">
           {input.sectors.map((sec) => {
-            const peakDemandKw = Math.max(...sec.profileKw);
-            const totalDemandKwh = sec.profileKw.reduce((a, b) => a + b, 0);
-
             return (
               <div
                 key={sec.id}
@@ -286,14 +273,9 @@ export function AssumptionsInspector({
                   </div>
                 </div>
 
-                <div className="text-right font-mono">
-                  <span className="font-semibold text-text-primary block">
-                    {fmtKwh(totalDemandKwh, 1)} / 24h
-                  </span>
-                  <span className="text-[10px] text-text-muted">
-                    Peak: {fmtKw(peakDemandKw, 1)}
-                  </span>
-                </div>
+                <span className="text-[10px] font-mono uppercase text-text-muted">
+                  {tPriorities(sec.priority)}
+                </span>
               </div>
             );
           })}

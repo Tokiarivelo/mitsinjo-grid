@@ -108,7 +108,7 @@ export function generateSummaryMarkdown(
       '',
       '## Key Performance Metrics',
       `- **Total Demand:** ${fmtKwh(m.demandKwh, 1)}`,
-      `- **Served Energy:** ${fmtKwh(m.servedKwh, 1)} (${fmtPct(m.servedKwh / m.demandKwh, 1)})`,
+      `- **Served Energy:** ${fmtKwh(m.servedKwh, 1)} (${fmtPct(m.demandKwh > 0 ? (m.servedKwh / m.demandKwh) * 100 : null, 1)})`,
       `- **Unserved Deficit:** ${fmtKwh(m.unservedKwh, 1)}`,
       `- **Essential Services Coverage:** ${fmtPct(m.criticalCoveragePct, 1)} (${fmtKwh(
         m.criticalUnservedKwh,

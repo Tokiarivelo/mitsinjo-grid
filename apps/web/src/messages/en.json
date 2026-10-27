@@ -19,7 +19,8 @@
     "no": "No",
     "supplied": "Supplied",
     "curtailed": "Curtailed",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "idLabel": "ID: {id}"
   },
   "nav": {
     "overview": "Overview",
@@ -137,7 +138,8 @@
       "resetScenario": "Reset scenario",
       "errors": {
         "dropExceedsHorizon": "Drop start + duration cannot exceed 24 hours.",
-        "initialBelowMinSoc": "Initial SoC must be greater than reserve minimum ({min}%)."
+        "initialBelowMinSoc": "Initial SoC must be greater than reserve minimum ({min}%).",
+        "outOfRange": "Value is outside the allowed range."
       },
       "inspectorTitle": "Building Telemetry",
       "criticalDemandShare": "Critical Lifeline Share",
@@ -158,9 +160,12 @@
       "bessBattery": "Central BESS Storage",
       "idle": "Idle",
       "distributionBus": "240V Microgrid Distribution Bus",
-      "criticalPriority": "Critical",
       "clickNodeToInspect": "Click any village sector node to inspect load allocation & resilience.",
-      "cursorAt": "Timeline cursor: {hour}:00"
+      "cursorAt": "Timeline cursor: {hour}:00",
+      "solarArrayCapacity": "{kw}p solar PV",
+      "batteryStorageCapacity": "{kwh} storage",
+      "socValue": "{pct} SoC",
+      "siteLocation": "Madagascar S 18.91° E 47.53°"
     },
     "strategyLab": {
       "title": "Strategy Lab",
@@ -191,7 +196,6 @@
       "fixedEngineConstants": "Fixed Engine Invariants",
       "enforcedByModel": "Enforced by @mitsinjo/engine",
       "simulationHorizon": "Simulation Horizon",
-      "roundtripEff": "Roundtrip Efficiency",
       "minSocReserve": "Min SoC Reserve",
       "maxChargeDischarge": "Max Charge / Discharge",
       "sectorPrioritiesAndProfiles": "Village Sectors & Resilience Tiers",
@@ -204,7 +208,12 @@
       "unserved": "Deficit",
       "essentialCoverage": "Essential Coverage",
       "endSoc": "Ending SoC",
-      "runToGenerateSummary": "Simulation has not been run for this scenario yet. Open in simulation to compute metrics."
+      "runToGenerateSummary": "Simulation has not been run for this scenario yet. Open in simulation to compute metrics.",
+      "deltaSolarDrop": "-{pct}% solar ({from}–{to})",
+      "deltaDemandSpike": "+{pct}% demand ({from}–{to})",
+      "deltaGlobalLoad": "{pct}% global load",
+      "horizonValue": "{hours} h ({step} h step)",
+      "chargeDischargeEff": "Charge / Discharge Efficiency"
     },
     "copilot": {
       "title": "AI Copilot",
@@ -461,5 +470,11 @@
     "tooltipCoverage": "Coverage",
     "tooltipServedDemand": "Served / Demand",
     "tooltipUnmet": "Unmet"
+  },
+  "priorities": {
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
   }
 }

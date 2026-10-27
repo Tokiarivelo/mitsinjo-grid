@@ -39,37 +39,33 @@ export function BuildingInspectorPanel({
   const tSim = useTranslations('features.simulation');
   const tSectors = useTranslations('sectors');
   const tCommon = useTranslations('common');
+  const tPriorities = useTranslations('priorities');
 
   const sectorConfigs = {
     health: {
       id: 'health' as SectorId,
       name: tSectors('health'),
       icon: <HeartPulse className="h-4 w-4 text-critical-red" aria-hidden="true" />,
-      priority: 'critical',
     },
     water: {
       id: 'water' as SectorId,
       name: tSectors('water'),
       icon: <Waves className="h-4 w-4 text-energy-cyan" aria-hidden="true" />,
-      priority: 'critical',
     },
     school: {
       id: 'school' as SectorId,
       name: tSectors('school'),
       icon: <School className="h-4 w-4 text-warning-amber" aria-hidden="true" />,
-      priority: 'medium',
     },
     households: {
       id: 'households' as SectorId,
       name: tSectors('households'),
       icon: <Home className="h-4 w-4 text-text-secondary" aria-hidden="true" />,
-      priority: 'medium',
     },
     market: {
       id: 'market' as SectorId,
       name: tSectors('market'),
       icon: <ShoppingBag className="h-4 w-4 text-solar-amber" aria-hidden="true" />,
-      priority: 'low',
     },
   };
 
@@ -150,7 +146,7 @@ export function BuildingInspectorPanel({
                   {currentSector.name}
                 </h4>
                 <span className="text-[11px] font-mono text-text-muted">
-                  ID: {selectedSector}
+                  {tCommon('idLabel', { id: selectedSector })}
                 </span>
               </div>
             </div>
@@ -166,7 +162,7 @@ export function BuildingInspectorPanel({
                     : 'text-energy-cyan bg-energy-cyan/10 border-energy-cyan/30'
                 )}
               >
-                {sectorInput.priority}
+                {tPriorities(sectorInput.priority)}
               </span>
             </div>
           </div>
@@ -178,7 +174,7 @@ export function BuildingInspectorPanel({
                 {tSim('criticalDemandShare')}
               </span>
               <span className="font-mono font-medium text-text-primary">
-                {fmtPct(sectorInput.criticalShare)}
+                {fmtPct(sectorInput.criticalShare * 100, 0)}
               </span>
             </div>
             <div className="flex items-center justify-between">

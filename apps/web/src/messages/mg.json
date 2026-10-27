@@ -19,7 +19,8 @@
     "no": "Tsia",
     "supplied": "Voazara",
     "curtailed": "Voafetra",
-    "loading": "Am-panatanterahana..."
+    "loading": "Am-panatanterahana...",
+    "idLabel": "ID: {id}"
   },
   "nav": {
     "overview": "Topimaso",
@@ -137,7 +138,8 @@
       "resetScenario": "Avereno ny scénario",
       "errors": {
         "dropExceedsHorizon": "Tsy afaka mihoatra ny 24 ora ny ora fiandohana sy ny faharetana.",
-        "initialBelowMinSoc": "Ny SoC voalohany dia tsy maintsy mihoatra ny tahiry farany ambany ({min}%)."
+        "initialBelowMinSoc": "Ny SoC voalohany dia tsy maintsy mihoatra ny tahiry farany ambany ({min}%).",
+        "outOfRange": "Tsy ao anatin'ny fetra azo ekena ny sanda."
       },
       "inspectorTitle": "Fandrefesana ny Trano",
       "criticalDemandShare": "Anjara Toerana Tena Ilaina",
@@ -158,9 +160,12 @@
       "bessBattery": "Fitahirizana BESS Foibe",
       "idle": "Miato",
       "distributionBus": "Bus Fizarana Herinaratra 240V",
-      "criticalPriority": "Tena Ilaina",
       "clickNodeToInspect": "Tsindrio ny sokajin-tanàna iray hijerena ny fizarana sy ny faharetana.",
-      "cursorAt": "Fotoana voatondro: {hour}:00"
+      "cursorAt": "Fotoana voatondro: {hour}:00",
+      "solarArrayCapacity": "PV masoandro {kw}p",
+      "batteryStorageCapacity": "Fitehirizana {kwh}",
+      "socValue": "{pct} SoC",
+      "siteLocation": "Madagasikara S 18.91° E 47.53°"
     },
     "strategyLab": {
       "title": "Paikady fizarana",
@@ -191,7 +196,6 @@
       "fixedEngineConstants": "Lalàna Tsy Miova amin ny Maotera",
       "enforcedByModel": "Fehezin ny @mitsinjo/engine",
       "simulationHorizon": "Fari-potoanan ny Simulation",
-      "roundtripEff": "Taham-pamokarana Mandroso sy Miverina",
       "minSocReserve": "Tahiry Bateria Farany Ambany",
       "maxChargeDischarge": "Fiampangana / Famoahana Farany Ambony",
       "sectorPrioritiesAndProfiles": "Sokajin-tanàna sy Ambaratongam-paharitana",
@@ -204,7 +208,12 @@
       "unserved": "Banga",
       "essentialCoverage": "Fandrakofana Fototra",
       "endSoc": "SoC Farany",
-      "runToGenerateSummary": "Mbola tsy nalefa ny simulation ho an ity scénario ity. Sokafy amin ny simulation hikajiana ny tarehimarika."
+      "runToGenerateSummary": "Mbola tsy nalefa ny simulation ho an ity scénario ity. Sokafy amin ny simulation hikajiana ny tarehimarika.",
+      "deltaSolarDrop": "-{pct}% masoandro ({from}–{to})",
+      "deltaDemandSpike": "+{pct}% filàna ({from}–{to})",
+      "deltaGlobalLoad": "{pct}% totalin'ny enta",
+      "horizonValue": "{hours} o (dingana {step} o)",
+      "chargeDischargeEff": "Fahombiazan'ny fiampangana / fandaniana"
     },
     "copilot": {
       "title": "Mpanampy AI",
@@ -461,5 +470,11 @@
     "tooltipCoverage": "Fahafaham-po",
     "tooltipServedDemand": "Voazara / Fitakiana",
     "tooltipUnmet": "Tsy ampy"
+  },
+  "priorities": {
+    "critical": "Tena ilaina",
+    "high": "Ambony",
+    "medium": "Antonony",
+    "low": "Ambany"
   }
 }

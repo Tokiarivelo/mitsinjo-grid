@@ -41,17 +41,21 @@ export function ScenarioCard({
   let deltaLabel = tScenarios('nominalConditions');
   if (solarDrop && solarDrop.type === 'solar_drop') {
     const dropPct = Math.round((1 - solarDrop.factor) * 100);
-    deltaLabel = `-${dropPct}% solar (${fmtHour(solarDrop.startHour)}-${fmtHour(
-      solarDrop.startHour + solarDrop.durationH
-    )})`;
+    deltaLabel = tScenarios('deltaSolarDrop', {
+      pct: dropPct,
+      from: fmtHour(solarDrop.startHour),
+      to: fmtHour(solarDrop.startHour + solarDrop.durationH),
+    });
   } else if (demandSpike && demandSpike.type === 'demand_spike') {
     const spikePct = Math.round((demandSpike.factor - 1) * 100);
-    deltaLabel = `+${spikePct}% demand (${fmtHour(demandSpike.startHour)}-${fmtHour(
-      demandSpike.startHour + demandSpike.durationH
-    )})`;
+    deltaLabel = tScenarios('deltaDemandSpike', {
+      pct: spikePct,
+      from: fmtHour(demandSpike.startHour),
+      to: fmtHour(demandSpike.startHour + demandSpike.durationH),
+    });
   } else if (input.demandMultiplier !== 1.0) {
     const multPct = Math.round((input.demandMultiplier - 1) * 100);
-    deltaLabel = `${multPct >= 0 ? '+' : ''}${multPct}% global load`;
+    deltaLabel = tScenarios('deltaGlobalLoad', { pct: `${multPct >= 0 ? '+' : ''}${multPct}` });
   }
 
   const typeVariant =
@@ -146,7 +150,7 @@ export function ScenarioCard({
       {/* Footer CTA */}
       <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-border/60">
         <span className="text-[11px] font-mono text-text-muted">
-          ID: {id}
+          {tCommon('idLabel', { id })}
         </span>
 
         <Button

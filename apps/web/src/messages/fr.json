@@ -19,7 +19,8 @@
     "no": "Non",
     "supplied": "Fourni",
     "curtailed": "Écrêté",
-    "loading": "Chargement..."
+    "loading": "Chargement...",
+    "idLabel": "ID : {id}"
   },
   "nav": {
     "overview": "Aperçu",
@@ -137,7 +138,8 @@
       "resetScenario": "Réinitialiser scénario",
       "errors": {
         "dropExceedsHorizon": "Le début + la durée du déficit ne peuvent dépasser 24 heures.",
-        "initialBelowMinSoc": "Le SoC initial doit être supérieur au minimum de réserve ({min}%)."
+        "initialBelowMinSoc": "Le SoC initial doit être supérieur au minimum de réserve ({min}%).",
+        "outOfRange": "Valeur hors de la plage autorisée."
       },
       "inspectorTitle": "Télémétrie du Bâtiment",
       "criticalDemandShare": "Part Vitale Critique",
@@ -158,9 +160,12 @@
       "bessBattery": "Stockage BESS Central",
       "idle": "Inactif",
       "distributionBus": "Bus de Distribution Micro-Réseau 240V",
-      "criticalPriority": "Critique",
       "clickNodeToInspect": "Cliquez sur un secteur du village pour inspecter l allocation et la résilience.",
-      "cursorAt": "Curseur temporel : {hour}h00"
+      "cursorAt": "Curseur temporel : {hour}h00",
+      "solarArrayCapacity": "PV solaire {kw}c",
+      "batteryStorageCapacity": "Stockage {kwh}",
+      "socValue": "{pct} SoC",
+      "siteLocation": "Madagascar S 18,91° E 47,53°"
     },
     "strategyLab": {
       "title": "Labo Stratégies",
@@ -191,7 +196,6 @@
       "fixedEngineConstants": "Invariants Moteur Fixes",
       "enforcedByModel": "Imposé par @mitsinjo/engine",
       "simulationHorizon": "Horizon de Simulation",
-      "roundtripEff": "Rendement Aller-Retour",
       "minSocReserve": "Réserve SoC Min",
       "maxChargeDischarge": "Charge / Décharge Max",
       "sectorPrioritiesAndProfiles": "Secteurs du Village & Paliers de Résilience",
@@ -204,7 +208,12 @@
       "unserved": "Déficit",
       "essentialCoverage": "Couverture Essentielle",
       "endSoc": "SoC Final",
-      "runToGenerateSummary": "La simulation n a pas encore été exécutée pour ce scénario. Ouvrez en simulation pour calculer les métriques."
+      "runToGenerateSummary": "La simulation n a pas encore été exécutée pour ce scénario. Ouvrez en simulation pour calculer les métriques.",
+      "deltaSolarDrop": "-{pct}% solaire ({from}–{to})",
+      "deltaDemandSpike": "+{pct}% demande ({from}–{to})",
+      "deltaGlobalLoad": "{pct}% charge globale",
+      "horizonValue": "{hours} h (pas de {step} h)",
+      "chargeDischargeEff": "Rendement charge / décharge"
     },
     "copilot": {
       "title": "Copilote IA",
@@ -461,5 +470,11 @@
     "tooltipCoverage": "Couverture",
     "tooltipServedDemand": "Fourni / Demande",
     "tooltipUnmet": "Non satisfait"
+  },
+  "priorities": {
+    "critical": "Critique",
+    "high": "Haute",
+    "medium": "Moyenne",
+    "low": "Basse"
   }
 }

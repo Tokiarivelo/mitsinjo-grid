@@ -311,12 +311,7 @@ export function SimulationPage() {
             <div className="mt-4 flex flex-col gap-3">
               {sectorsOrder.map((sec) => {
                 const secMetrics = metrics?.perSector[sec];
-                const priority =
-                  sec === 'health' || sec === 'water'
-                    ? 'critical'
-                    : sec === 'school' || sec === 'households'
-                    ? 'medium'
-                    : 'low';
+                const priority = input.sectors.find((s) => s.id === sec)?.priority;
 
                 return (
                   <EnergyBar

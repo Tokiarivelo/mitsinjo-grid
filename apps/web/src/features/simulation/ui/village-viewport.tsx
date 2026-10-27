@@ -17,7 +17,7 @@ import type {
   SimulationResult,
 } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
-import { fmtHour, fmtKw, fmtPct } from '@/lib/format';
+import { fmtHour, fmtKw, fmtKwh, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
 
 export interface VillageViewportProps {
@@ -40,6 +40,7 @@ export function VillageViewport({
   const tSim = useTranslations('features.simulation');
   const tSectors = useTranslations('sectors');
   const tCommon = useTranslations('common');
+  const tPriorities = useTranslations('priorities');
   const [viewMode, setViewMode] = useState<'schematic' | 'circuit'>('schematic');
 
   const step = result?.steps[timeIndex];
@@ -52,7 +53,6 @@ export function VillageViewport({
       id: 'health' as SectorId,
       name: tSectors('health'),
       icon: <HeartPulse className="h-4 w-4" aria-hidden="true" />,
-      priority: 'critical',
       step: step?.sectors.health,
       color: 'critical-red',
     },
@@ -60,7 +60,6 @@ export function VillageViewport({
       id: 'water' as SectorId,
       name: tSectors('water'),
       icon: <Waves className="h-4 w-4" aria-hidden="true" />,
-      priority: 'critical',
       step: step?.sectors.water,
       color: 'energy-cyan',
     },
@@ -68,7 +67,6 @@ export function VillageViewport({
       id: 'school' as SectorId,
       name: tSectors('school'),
       icon: <School className="h-4 w-4" aria-hidden="true" />,
-      priority: 'medium',
       step: step?.sectors.school,
       color: 'warning-amber',
     },
@@ -76,7 +74,6 @@ export function VillageViewport({
       id: 'households' as SectorId,
       name: tSectors('households'),
       icon: <Home className="h-4 w-4" aria-hidden="true" />,
-      priority: 'medium',
       step: step?.sectors.households,
       color: 'text-secondary',
     },
@@ -84,7 +81,6 @@ export function VillageViewport({
       id: 'market' as SectorId,
       name: tSectors('market'),
       icon: <ShoppingBag className="h-4 w-4" aria-hidden="true" />,
-      priority: 'low',
       step: step?.sectors.market,
       color: 'solar-amber',
     },
@@ -110,7 +106,7 @@ export function VillageViewport({
 
           <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-control bg-surface/80 backdrop-blur border border-border text-[11px] font-sans text-text-muted">
             <MapPin className="h-3 w-3 text-solar-amber" aria-hidden="true" />
-            <span>Madagascar S 18.91° E 47.53°</span>
+            <span>{tSim('siteLocation')}</span>
           </div>
         </div>
 
@@ -158,7 +154,7 @@ export function VillageViewport({
                   {tSim('solarArray')}
                 </span>
                 <span className="text-[11px] font-mono text-text-muted">
-                  {input.solar.peakKw} kWp Solar PV
+                  {tSim('solarArrayCapacity', { kw: fmtKw(input.solar.peakKw, 0) })}
                 </span>
               </div>
             </div>
@@ -183,13 +179,13 @@ export function VillageViewport({
                   {tSim('bessBattery')}
                 </span>
                 <span className="text-[11px] font-mono text-text-muted">
-                  {input.battery.capacityKwh} kWh Storage
+                  {tSim('batteryStorageCapacity', { kwh: fmtKwh(input.battery.capacityKwh, 0) })}
                 </span>
               </div>
             </div>
             <div className="text-right font-mono">
               <span className="text-sm font-semibold text-battery-green block">
-                {fmtPct(socPct)} SoC
+                {tSim('socValue', { pct: fmtPct(socPct) })}
               </span>
               <span className="text-[10px] text-text-muted">
                 {result
@@ -214,6 +210,7 @@ export function VillageViewport({
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 max-w-3xl mx-auto w-full mt-4">
           {nodes.map((node) => {
             const isSelected = selectedSector === node.id;
+            const priority = input.sectors.find((s) => s.id === node.id)?.priority;
             const served = node.step?.servedKw ?? 0;
             const demand = node.step?.demandKw ?? 0;
             const isDeficit = demand > 0 && served < demand - 0.05;
@@ -235,13 +232,13 @@ export function VillageViewport({
                   <div className="p-1.5 rounded-control-sm bg-surface-elevated border border-border/60 text-text-primary">
                     {node.icon}
                   </div>
-                  {node.priority === 'critical' ? (
+                  {priority === 'critical' ? (
                     <span className="text-[9px] font-mono px-1 rounded-control-sm text-critical-red bg-critical-red/10 border border-critical-red/30 uppercase">
-                      {tSim('criticalPriority')}
+                      {tPriorities('critical')}
                     </span>
                   ) : (
                     <span className="text-[9px] font-mono px-1 rounded-control-sm text-text-muted bg-surface-elevated uppercase">
-                      {node.priority}
+                      {priority ? tPriorities(priority) : null}
                     </span>
                   )}
                 </div>
@@ -254,7 +251,7 @@ export function VillageViewport({
 
                 <div className="mt-1 font-mono text-[11px] flex items-center justify-between">
                   <span className="text-text-muted">
-                    {result ? `${Math.round(demand)} kW` : '—'}
+                    {result ? fmtKw(demand) : fmtKw(null)}
                   </span>
                   <span
                     className={cn(
@@ -266,7 +263,7 @@ export function VillageViewport({
                         : 'text-battery-green'
                     )}
                   >
-                    {result ? fmtKw(served) : '—'}
+                    {result ? fmtKw(served) : fmtKw(null)}
                   </span>
                 </div>
               </button>

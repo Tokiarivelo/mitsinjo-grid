@@ -45,7 +45,7 @@ describe('ScenariosPage (P5-T3, P5-T6)', () => {
     // Assumptions Inspector is visible
     expect(screen.getByText('Assumptions Inspector')).toBeInTheDocument();
     expect(screen.getByText('Fixed Engine Invariants')).toBeInTheDocument();
-    expect(screen.getByText('24 h (1h step)')).toBeInTheDocument();
+    expect(screen.getByText('24 h (1 h step)')).toBeInTheDocument();
   });
 
   it('clicking a scenario card inspects its assumptions and updates active store scenario', () => {

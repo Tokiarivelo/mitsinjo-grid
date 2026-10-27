@@ -47,6 +47,8 @@ describe('export utilities (P5-T4, P5-T6)', () => {
     expect(markdown).toContain('SYNTHETIC SIMULATION');
     expect(markdown).toContain('Total Demand:');
     expect(markdown).toContain('Served Energy:');
+    const servedPct = (proportionalRes.metrics.servedKwh / proportionalRes.metrics.demandKwh) * 100;
+    expect(markdown).toContain(`(${servedPct.toFixed(1)}%)`);
     expect(markdown).toContain('Health');
     expect(markdown).toContain('Water');
     expect(markdown).toContain('## Strategy Comparison');

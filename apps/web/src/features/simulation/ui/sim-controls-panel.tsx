@@ -11,13 +11,13 @@ import {
   type InputPatch,
   type SimulationInput,
   type StrategyId,
-  InputPatchSchema,
 } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { SimControl } from '@/components/ui/sim-control';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useTranslations } from '@/lib/i18n';
+import { validatePatch } from '../utils/validate-patch';
 
 export interface SimControlsPanelProps {
   input: SimulationInput;
@@ -55,54 +55,25 @@ export function SimControlsPanel({
   // Validation error dictionary for inline feedback
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const validateAndPatch = (field: keyof InputPatch, val: number, fullPatchCandidate: InputPatch) => {
-    // Validate with Zod
-    const parseResult = InputPatchSchema.safeParse(fullPatchCandidate);
+  const validateAndPatch = (field: keyof InputPatch, candidate: InputPatch) => {
+    const error = validatePatch(field, candidate, input);
     const newErrors = { ...errors };
-
-    if (!parseResult.success) {
-      const fieldIssue = parseResult.error.issues.find((issue) =>
-        issue.path.includes(field)
-      );
-      if (fieldIssue) {
-        newErrors[field] = fieldIssue.message;
-        setErrors(newErrors);
-        return;
-      }
+    if (error) {
+      newErrors[field] = tSim(`errors.${error.key}`, error.params);
+      setErrors(newErrors);
+      return;
     }
-
-    // Cross-field checks
-    if (field === 'dropStartHour' || field === 'dropDurationH') {
-      const start = fullPatchCandidate.dropStartHour ?? currentDropStart;
-      const duration = fullPatchCandidate.dropDurationH ?? currentDropDuration;
-      if (start + duration > 24) {
-        newErrors[field] = tSim('errors.dropExceedsHorizon');
-        setErrors(newErrors);
-        return;
-      }
-    }
-
-    if (field === 'initialSocPct') {
-      const minSoc = input.battery.minSocPct;
-      if (val <= minSoc) {
-        newErrors.initialSocPct = tSim('errors.initialBelowMinSoc', { min: minSoc });
-        setErrors(newErrors);
-        return;
-      }
-    }
-
-    // If valid, clear field error and dispatch patch
     delete newErrors[field];
     if (field === 'dropStartHour' || field === 'dropDurationH') {
       delete newErrors.dropStartHour;
       delete newErrors.dropDurationH;
     }
     setErrors(newErrors);
-    onPatch(fullPatchCandidate);
+    onPatch(candidate);
   };
 
   const handleSolarDropChange = (val: number) => {
-    validateAndPatch('solarDropPct', val, {
+    validateAndPatch('solarDropPct', {
       solarDropPct: val,
       dropStartHour: currentDropStart,
       dropDurationH: currentDropDuration,
@@ -110,7 +81,7 @@ export function SimControlsPanel({
   };
 
   const handleDropStartChange = (val: number) => {
-    validateAndPatch('dropStartHour', val, {
+    validateAndPatch('dropStartHour', {
       dropStartHour: val,
       dropDurationH: currentDropDuration,
       solarDropPct: currentDropPct,
@@ -118,7 +89,7 @@ export function SimControlsPanel({
   };
 
   const handleDropDurationChange = (val: number) => {
-    validateAndPatch('dropDurationH', val, {
+    validateAndPatch('dropDurationH', {
       dropDurationH: val,
       dropStartHour: currentDropStart,
       solarDropPct: currentDropPct,
@@ -128,15 +99,15 @@ export function SimControlsPanel({
   const handleDemandMultiplierChange = (val: number) => {
     // Round to 1 decimal place to prevent floating point noise
     const rounded = Math.round(val * 10) / 10;
-    validateAndPatch('demandMultiplier', rounded, { demandMultiplier: rounded });
+    validateAndPatch('demandMultiplier', { demandMultiplier: rounded });
   };
 
   const handleBatteryCapacityChange = (val: number) => {
-    validateAndPatch('batteryCapacityKwh', val, { batteryCapacityKwh: val });
+    validateAndPatch('batteryCapacityKwh', { batteryCapacityKwh: val });
   };
 
   const handleInitialSocChange = (val: number) => {
-    validateAndPatch('initialSocPct', val, { initialSocPct: val });
+    validateAndPatch('initialSocPct', { initialSocPct: val });
   };
 
   const hasErrors = Object.keys(errors).length > 0;
