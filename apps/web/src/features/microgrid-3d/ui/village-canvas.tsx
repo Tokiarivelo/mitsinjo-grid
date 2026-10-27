@@ -8,11 +8,7 @@ import { useTranslations } from '@/lib/i18n';
 import type { BatteryStatusColor, CameraPreset, SceneModel } from '../types';
 import { useReducedMotion } from '../hooks/use-reduced-motion';
 import { usePerfFlag } from '../hooks/use-perf-flag';
-import {
-  createSceneStats,
-  sampleSceneStats,
-  type SceneStatsSample,
-} from '../utils/scene-stats';
+import { createSceneStats, sampleSceneStats, type SceneStatsSample } from '../utils/scene-stats';
 import { SceneStatsProbe } from './scene-stats-probe';
 import { VillageTerrain } from './terrain';
 import { SolarArray } from './solar-array';
@@ -97,11 +93,7 @@ export function VillageCanvas({
   ];
   const ambientIntensity = model.isDaytime ? 0.6 : 0.25;
   const dirLightIntensity = model.isDaytime ? model.sunIntensity * 1.4 : 0.1;
-  const bgColor = model.isDaytime
-    ? '#142033'
-    : model.sunElevation > 0
-    ? '#0f172a'
-    : '#090d16';
+  const bgColor = model.isDaytime ? '#142033' : model.sunElevation > 0 ? '#0f172a' : '#090d16';
 
   return (
     <div ref={htmlPortal} className={className} style={{ width: '100%', height: '100%' }}>

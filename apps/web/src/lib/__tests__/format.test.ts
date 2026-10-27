@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  EMPTY_PLACEHOLDER,
-  fmtDeltaPct,
-  fmtHour,
-  fmtKw,
-  fmtKwh,
-  fmtPct,
-} from '../format';
+import { EMPTY_PLACEHOLDER, fmtDeltaPct, fmtHour, fmtKw, fmtKwh, fmtPct } from '../format';
 
 describe('format utilities (P4-T2)', () => {
   describe('fmtKw', () => {

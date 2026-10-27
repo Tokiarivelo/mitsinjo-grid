@@ -16,7 +16,11 @@ test.describe('P8-T1 Demo Path E2E', () => {
     await expect(page.locator('main').getByText('Cloudy Afternoon (-40%)').first()).toBeVisible();
 
     // Click Cloudy Afternoon scenario card
-    await page.locator('main').getByRole('button', { name: /Cloudy Afternoon/i }).first().click();
+    await page
+      .locator('main')
+      .getByRole('button', { name: /Cloudy Afternoon/i })
+      .first()
+      .click();
 
     // Open in simulation
     await page.getByRole('button', { name: /Open scenario Cloudy Afternoon/i }).click();
@@ -62,9 +66,11 @@ test.describe('P8-T1 Demo Path E2E', () => {
     await expect(page.getByText('Mitsinjo Copilot').first()).toBeVisible();
 
     // Send question using suggested prompt or direct input
-    const suggestedPrompt = page.getByRole('button', {
-      name: /why is the clinic receiving less energy\?|why did the health clinic lose power|compare the two allocation strategies/i,
-    }).first();
+    const suggestedPrompt = page
+      .getByRole('button', {
+        name: /why is the clinic receiving less energy\?|why did the health clinic lose power|compare the two allocation strategies/i,
+      })
+      .first();
 
     if (await suggestedPrompt.isVisible().catch(() => false)) {
       await suggestedPrompt.click();
@@ -108,7 +114,9 @@ test.describe('P8-T1 Demo Path E2E', () => {
       await page.getByRole('link', { name: /strategy lab/i }).click();
       const compareBtn = page.getByRole('button', { name: /compare strategies/i }).first();
       await compareBtn.click();
-      await expect(page.getByText('Essential-First Priority').first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText('Essential-First Priority').first()).toBeVisible({
+        timeout: 15_000,
+      });
 
       // Copilot
       await page.getByRole('link', { name: /ai copilot/i }).click();
@@ -139,7 +147,9 @@ test.describe('P8-T5 Responsive Viewport Audits (1440 / 1024 / 390 px)', () => {
       test.use({ viewport: { width: vp.width, height: vp.height } });
 
       for (const route of ROUTES) {
-        test(`renders ${route} fluidly without layout breaks at ${vp.width}px`, async ({ page }) => {
+        test(`renders ${route} fluidly without layout breaks at ${vp.width}px`, async ({
+          page,
+        }) => {
           await page.goto(route);
           await page.waitForLoadState('domcontentloaded');
 

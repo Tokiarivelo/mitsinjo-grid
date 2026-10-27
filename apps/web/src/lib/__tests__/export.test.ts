@@ -20,12 +20,7 @@ describe('export utilities (P5-T4, P5-T6)', () => {
     const comparison = compare(cloudyInput, ['proportional', 'essential_first']);
     const proportionalRes = comparison.proportional!;
 
-    const exportData = buildExportData(
-      cloudyInput,
-      proportionalRes,
-      comparison,
-      'proportional'
-    );
+    const exportData = buildExportData(cloudyInput, proportionalRes, comparison, 'proportional');
 
     expect(exportData.scenarioId).toBe('cloudy_afternoon');
     expect(exportData.activeStrategy).toBe('proportional');
@@ -71,14 +66,26 @@ describe('export utilities (P5-T4, P5-T6)', () => {
     expect(exportData.resultId).toBeNull();
     expect(exportData.metrics).toBeNull();
 
-    const markdown = generateSummaryMarkdown(tEn, baselineInput, undefined, undefined, 'proportional');
+    const markdown = generateSummaryMarkdown(
+      tEn,
+      baselineInput,
+      undefined,
+      undefined,
+      'proportional'
+    );
     expect(markdown).toContain('**Result ID:** N/A (not simulated)');
     expect(markdown).toContain('(baseline)');
   });
 
   it('follows the caller locale (French)', () => {
     const comparison = compare(cloudyInput, ['proportional', 'essential_first']);
-    const markdown = generateSummaryMarkdown(tFr, cloudyInput, comparison.proportional, comparison, 'proportional');
+    const markdown = generateSummaryMarkdown(
+      tFr,
+      cloudyInput,
+      comparison.proportional,
+      comparison,
+      'proportional'
+    );
     expect(markdown).toContain('# Mitsinjo Grid — Résumé de simulation');
     expect(markdown).toContain('SIMULATION SYNTHÉTIQUE');
     expect(markdown).not.toContain('Total demand');

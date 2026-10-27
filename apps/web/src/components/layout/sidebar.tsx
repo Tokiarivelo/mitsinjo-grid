@@ -38,12 +38,7 @@ export interface SidebarProps {
   className?: string;
 }
 
-export function Sidebar({
-  status = 'ready',
-  open = false,
-  onClose,
-  className,
-}: SidebarProps) {
+export function Sidebar({ status = 'ready', open = false, onClose, className }: SidebarProps) {
   const pathname = usePathname();
   const tNav = useTranslations('nav');
   const tCommon = useTranslations('common');

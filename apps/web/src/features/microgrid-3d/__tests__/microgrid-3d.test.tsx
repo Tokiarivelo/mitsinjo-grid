@@ -11,7 +11,9 @@ vi.mock('@react-three/fiber', () => ({
   ),
   useFrame: vi.fn(),
   useThree: () => ({
-    camera: { position: { copy: vi.fn(), set: vi.fn(), lerp: vi.fn(), distanceTo: vi.fn(() => 0) } },
+    camera: {
+      position: { copy: vi.fn(), set: vi.fn(), lerp: vi.fn(), distanceTo: vi.fn(() => 0) },
+    },
   }),
 }));
 

@@ -32,10 +32,7 @@ export function ContextPanel({ className }: ContextPanelProps) {
   return (
     <aside
       aria-label={tCopilot('contextPanelAria')}
-      className={cn(
-        'w-full xl:w-[360px] flex flex-col gap-4 shrink-0',
-        className
-      )}
+      className={cn('w-full xl:w-[360px] flex flex-col gap-4 shrink-0', className)}
     >
       {/* Context Panel Header */}
       <div className="flex items-center justify-between pb-2 border-b border-border/60">
@@ -103,9 +100,7 @@ export function ContextPanel({ className }: ContextPanelProps) {
       <div className="flex flex-col gap-2.5">
         <div className="flex items-center justify-between text-[10px] font-mono text-text-muted uppercase tracking-wider">
           <span>{tCopilot('contextEngineMetrics')}</span>
-          {activeResult && (
-            <span className="text-energy-cyan">{activeResult.id}</span>
-          )}
+          {activeResult && <span className="text-energy-cyan">{activeResult.id}</span>}
         </div>
 
         {metrics ? (
@@ -117,9 +112,7 @@ export function ContextPanel({ className }: ContextPanelProps) {
                 <SunMedium className="h-3.5 w-3.5 text-energy-amber" aria-hidden="true" />
               </div>
               <div className="mt-2">
-                <div className="text-sm font-bold text-energy-amber">
-                  {metrics.solarKwh} kWh
-                </div>
+                <div className="text-sm font-bold text-energy-amber">{metrics.solarKwh} kWh</div>
                 <div className="text-[10px] text-text-muted">
                   {metrics.curtailedKwh} kWh {tCopilot('curtailed')}
                 </div>
@@ -149,9 +142,7 @@ export function ContextPanel({ className }: ContextPanelProps) {
                 <Zap className="h-3.5 w-3.5 text-energy-cyan" aria-hidden="true" />
               </div>
               <div className="mt-2">
-                <div className="text-sm font-bold text-energy-cyan">
-                  {metrics.servedKwh} kWh
-                </div>
+                <div className="text-sm font-bold text-energy-cyan">{metrics.servedKwh} kWh</div>
                 <div className="text-[10px] text-text-muted">
                   {metrics.demandKwh} kWh {tCopilot('demand')}
                 </div>
@@ -165,9 +156,7 @@ export function ContextPanel({ className }: ContextPanelProps) {
                 <BatteryCharging className="h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />
               </div>
               <div className="mt-2">
-                <div className="text-sm font-bold text-text-primary">
-                  {metrics.socMinPct}%
-                </div>
+                <div className="text-sm font-bold text-text-primary">{metrics.socMinPct}%</div>
                 <div className="text-[10px] text-text-muted">
                   {tCopilot('minReserve')} {input.battery.minSocPct}%
                 </div>

@@ -16,12 +16,7 @@ export function parseMessageSections(content: string): MessageSections {
     /###\s*(?:Explore next|Pour aller plus loin)\s*\n([\s\S]*?)$/i
   );
 
-  if (
-    whatHappenedMatch ||
-    computedEvidenceMatch ||
-    whyItMattersMatch ||
-    exploreNextMatch
-  ) {
+  if (whatHappenedMatch || computedEvidenceMatch || whyItMattersMatch || exploreNextMatch) {
     return {
       whatHappened: whatHappenedMatch?.[1]?.trim(),
       computedEvidence: computedEvidenceMatch?.[1]?.trim(),

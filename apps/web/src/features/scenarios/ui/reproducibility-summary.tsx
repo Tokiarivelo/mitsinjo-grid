@@ -1,18 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Check,
-  Copy,
-  Download,
-  FileCheck,
-} from 'lucide-react';
-import type {
-  Comparison,
-  SimulationInput,
-  SimulationResult,
-  StrategyId,
-} from '@mitsinjo/engine';
+import { Check, Copy, Download, FileCheck } from 'lucide-react';
+import type { Comparison, SimulationInput, SimulationResult, StrategyId } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtKwh, fmtPct } from '@/lib/format';
 import {
@@ -98,9 +88,7 @@ export function ReproducibilitySummary({
             <span className="text-text-muted">·</span>
             <span className="text-text-muted">
               {tScenarios('unserved')}:{' '}
-              <strong
-                className={metrics.unservedKwh > 0 ? 'text-critical-red' : 'text-text-muted'}
-              >
+              <strong className={metrics.unservedKwh > 0 ? 'text-critical-red' : 'text-text-muted'}>
                 {fmtKwh(metrics.unservedKwh)}
               </strong>
             </span>
@@ -122,9 +110,7 @@ export function ReproducibilitySummary({
             </span>
           </div>
         ) : (
-          <p className="text-xs text-text-muted font-sans">
-            {tScenarios('runToGenerateSummary')}
-          </p>
+          <p className="text-xs text-text-muted font-sans">{tScenarios('runToGenerateSummary')}</p>
         )}
       </div>
 

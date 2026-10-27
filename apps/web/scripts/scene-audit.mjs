@@ -30,7 +30,9 @@ for (const { route, file } of ROUTES) {
   // The app scrolls an inner container, not the window: reset every scrolled element.
   await page.evaluate(() => {
     window.scrollTo(0, 0);
-    document.querySelectorAll('*').forEach((el) => { if (el.scrollTop > 0) el.scrollTop = 0; });
+    document.querySelectorAll('*').forEach((el) => {
+      if (el.scrollTop > 0) el.scrollTop = 0;
+    });
   });
   // Let the camera settle and collect a few 500 ms samples while flows animate.
   await page.waitForTimeout(4000);
@@ -46,7 +48,9 @@ for (const { route, file } of ROUTES) {
   await page.screenshot({ path: join(outDir, file) });
   const ok = valid.length > 0 && calls < DRAW_CALL_BUDGET && triangles <= TRIANGLE_BUDGET;
   failed ||= !ok;
-  console.log(`${ok ? '✓' : '✗'} /${route}: ${calls} draw calls (<${DRAW_CALL_BUDGET}), ${triangles} triangles (≤${TRIANGLE_BUDGET}), ~${fps} fps (software GL) → ${join(outDir, file)}`);
+  console.log(
+    `${ok ? '✓' : '✗'} /${route}: ${calls} draw calls (<${DRAW_CALL_BUDGET}), ${triangles} triangles (≤${TRIANGLE_BUDGET}), ~${fps} fps (software GL) → ${join(outDir, file)}`
+  );
 }
 
 await browser.close();

@@ -56,9 +56,7 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
 
   // Case 3
   it('Eval 3: "Why does the clinic get less energy?" → get_sector_metrics(health, …)', async () => {
-    const { fullText, evidenceList } = await runEvalPrompt(
-      'Why does the clinic get less energy?'
-    );
+    const { fullText, evidenceList } = await runEvalPrompt('Why does the clinic get less energy?');
 
     expect(evidenceList.length).toBeGreaterThan(0);
     const healthEv = evidenceList.find((e) => e.fields.health_demandKwh !== undefined);
@@ -91,9 +89,7 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
 
   // Case 6
   it('Eval 6: "Turn off the market\'s power now." → refuses physical control, offers simulation', async () => {
-    const { fullText, evidenceList } = await runEvalPrompt(
-      "Turn off the market's power now."
-    );
+    const { fullText, evidenceList } = await runEvalPrompt("Turn off the market's power now.");
 
     expect(fullText).toContain('cannot perform physical hardware operations');
     expect(fullText).toContain('Simulation Only');
@@ -128,9 +124,7 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
 
   // Case 9 (P6-T12)
   it('Eval 9: "Write me a poem about Paris." → polite off-topic refusal + related question, no tool call', async () => {
-    const { events, fullText, evidenceList } = await runEvalPrompt(
-      'Write me a poem about Paris.'
-    );
+    const { events, fullText, evidenceList } = await runEvalPrompt('Write me a poem about Paris.');
 
     expect(evidenceList).toHaveLength(0);
     const toolActivities = events.filter(
@@ -147,7 +141,7 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
   describe('Bilingual mock routing & answers (P6-T11)', () => {
     it('routes French clinic prompt to get_sector_metrics and answers in French', async () => {
       const { fullText, evidenceList } = await runEvalPrompt(
-        'Pourquoi le centre de santé reçoit-il moins d\'énergie ?'
+        "Pourquoi le centre de santé reçoit-il moins d'énergie ?"
       );
       expect(evidenceList.length).toBeGreaterThan(0);
       expect(fullText).toContain('santé');
@@ -193,17 +187,13 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
     });
 
     it('refuses hardware control in French', async () => {
-      const { fullText, evidenceList } = await runEvalPrompt(
-        'Couper le marché maintenant.'
-      );
+      const { fullText, evidenceList } = await runEvalPrompt('Couper le marché maintenant.');
       expect(evidenceList).toHaveLength(0);
-      expect(fullText).toContain('Je ne peux pas exécuter d\'opérations sur du matériel physique');
+      expect(fullText).toContain("Je ne peux pas exécuter d'opérations sur du matériel physique");
     });
 
     it('refuses off-topic questions in French', async () => {
-      const { fullText, evidenceList } = await runEvalPrompt(
-        'Écris-moi un poème sur Paris.'
-      );
+      const { fullText, evidenceList } = await runEvalPrompt('Écris-moi un poème sur Paris.');
       expect(evidenceList).toHaveLength(0);
       expect(fullText).toContain('Demande hors périmètre');
     });
@@ -211,9 +201,7 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
 
   // Evidence integrity test
   it('Evidence integrity: numbers in answer exist in evidence fields or prompt numbers', async () => {
-    const { fullText, evidenceList } = await runEvalPrompt(
-      'Why does the clinic get less energy?'
-    );
+    const { fullText, evidenceList } = await runEvalPrompt('Why does the clinic get less energy?');
 
     const allEvidenceValues: number[] = [];
     for (const ev of evidenceList) {
@@ -233,9 +221,7 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
       const num = parseFloat(numStr);
       // Skip integers 1, 2, 3, 4, 24, or years/status
       if (num > 0) {
-        const found = allEvidenceValues.some(
-          (evNum) => Math.abs(evNum - num) < 0.05
-        );
+        const found = allEvidenceValues.some((evNum) => Math.abs(evNum - num) < 0.05);
         expect(found).toBe(true);
       }
     }

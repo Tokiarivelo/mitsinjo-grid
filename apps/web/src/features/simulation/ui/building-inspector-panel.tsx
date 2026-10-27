@@ -1,20 +1,7 @@
 'use client';
 
-import {
-  HeartPulse,
-  Home,
-  School,
-  ShieldAlert,
-  ShoppingBag,
-  Waves,
-  X,
-  Zap,
-} from 'lucide-react';
-import type {
-  SectorId,
-  SimulationInput,
-  SimulationResult,
-} from '@mitsinjo/engine';
+import { HeartPulse, Home, School, ShieldAlert, ShoppingBag, Waves, X, Zap } from 'lucide-react';
+import type { SectorId, SimulationInput, SimulationResult } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtKw, fmtKwh, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
@@ -70,15 +57,12 @@ export function BuildingInspectorPanel({
   };
 
   const currentSector = selectedSector ? sectorConfigs[selectedSector] : null;
-  const sectorInput = selectedSector
-    ? input.sectors.find((s) => s.id === selectedSector)
-    : null;
-  const sectorMetrics = selectedSector && result
-    ? result.metrics.perSector[selectedSector]
-    : null;
-  const stepSector = selectedSector && result?.steps[timeIndex]
-    ? result.steps[timeIndex].sectors[selectedSector]
-    : null;
+  const sectorInput = selectedSector ? input.sectors.find((s) => s.id === selectedSector) : null;
+  const sectorMetrics = selectedSector && result ? result.metrics.perSector[selectedSector] : null;
+  const stepSector =
+    selectedSector && result?.steps[timeIndex]
+      ? result.steps[timeIndex].sectors[selectedSector]
+      : null;
 
   return (
     <div
@@ -158,8 +142,8 @@ export function BuildingInspectorPanel({
                   sectorInput.priority === 'critical'
                     ? 'text-critical-red bg-critical-red/10 border-critical-red/30'
                     : sectorInput.priority === 'high'
-                    ? 'text-solar-amber bg-solar-amber/10 border-solar-amber/30'
-                    : 'text-energy-cyan bg-energy-cyan/10 border-energy-cyan/30'
+                      ? 'text-solar-amber bg-solar-amber/10 border-solar-amber/30'
+                      : 'text-energy-cyan bg-energy-cyan/10 border-energy-cyan/30'
                 )}
               >
                 {tPriorities(sectorInput.priority)}
@@ -170,17 +154,13 @@ export function BuildingInspectorPanel({
           {/* Critical Share & Shiftable characteristics */}
           <div className="p-2.5 rounded-control bg-surface-elevated/50 border border-border/60 text-xs">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-text-secondary font-sans">
-                {tSim('criticalDemandShare')}
-              </span>
+              <span className="text-text-secondary font-sans">{tSim('criticalDemandShare')}</span>
               <span className="font-mono font-medium text-text-primary">
                 {fmtPct(sectorInput.criticalShare * 100, 0)}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-text-secondary font-sans">
-                {tSim('flexibleLoad')}
-              </span>
+              <span className="text-text-secondary font-sans">{tSim('flexibleLoad')}</span>
               <span className="font-mono font-medium text-text-primary">
                 {sectorInput.flexible ? tCommon('yes') : tCommon('no')}
               </span>
@@ -232,8 +212,8 @@ export function BuildingInspectorPanel({
                     sectorMetrics.coveragePct < 90
                       ? 'text-critical-red'
                       : sectorMetrics.coveragePct < 99
-                      ? 'text-solar-amber'
-                      : 'text-battery-green'
+                        ? 'text-solar-amber'
+                        : 'text-battery-green'
                   )}
                 >
                   {fmtPct(sectorMetrics.coveragePct)}
@@ -241,9 +221,7 @@ export function BuildingInspectorPanel({
               </div>
             </div>
           ) : (
-            <p className="text-xs text-text-muted italic">
-              {tSim('runToViewMetrics')}
-            </p>
+            <p className="text-xs text-text-muted italic">{tSim('runToViewMetrics')}</p>
           )}
 
           {/* Current Step (Hour t) Snapshot */}
@@ -275,9 +253,7 @@ export function BuildingInspectorPanel({
       ) : (
         <div className="py-6 flex flex-col items-center justify-center text-center text-text-muted">
           <ShieldAlert className="h-6 w-6 text-text-muted/60 mb-2" aria-hidden="true" />
-          <p className="text-xs font-sans max-w-[200px]">
-            {tSim('inspectorPrompt')}
-          </p>
+          <p className="text-xs font-sans max-w-[200px]">{tSim('inspectorPrompt')}</p>
         </div>
       )}
     </div>

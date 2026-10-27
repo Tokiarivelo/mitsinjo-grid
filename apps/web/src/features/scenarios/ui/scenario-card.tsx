@@ -62,10 +62,10 @@ export function ScenarioCard({
     id === 'baseline'
       ? 'nominal'
       : id === 'cloudy_afternoon' || id === 'essential_stress'
-      ? 'climate'
-      : id === 'battery_constraint'
-      ? 'storage'
-      : 'demand';
+        ? 'climate'
+        : id === 'battery_constraint'
+          ? 'storage'
+          : 'demand';
 
   return (
     <div
@@ -88,10 +88,10 @@ export function ScenarioCard({
                 typeVariant === 'nominal'
                   ? 'text-battery-green bg-battery-green/10 border-battery-green/30'
                   : typeVariant === 'climate'
-                  ? 'text-solar-amber bg-solar-amber/10 border-solar-amber/30'
-                  : typeVariant === 'storage'
-                  ? 'text-energy-cyan bg-energy-cyan/10 border-energy-cyan/30'
-                  : 'text-critical-red bg-critical-red/10 border-critical-red/30'
+                    ? 'text-solar-amber bg-solar-amber/10 border-solar-amber/30'
+                    : typeVariant === 'storage'
+                      ? 'text-energy-cyan bg-energy-cyan/10 border-energy-cyan/30'
+                      : 'text-critical-red bg-critical-red/10 border-critical-red/30'
               )}
             >
               {tScenarios(`types.${typeVariant}`)}
@@ -132,9 +132,7 @@ export function ScenarioCard({
             <span className="text-[10px] font-sans text-text-muted block">
               {tScenarios('pvCapacity')}
             </span>
-            <span className="font-semibold text-solar-amber">
-              {fmtKw(input.solar.peakKw, 0)}
-            </span>
+            <span className="font-semibold text-solar-amber">{fmtKw(input.solar.peakKw, 0)}</span>
           </div>
 
           <div>
@@ -150,18 +148,14 @@ export function ScenarioCard({
             <span className="text-[10px] font-sans text-text-muted block">
               {tScenarios('stressProfile')}
             </span>
-            <span className="font-semibold text-text-primary truncate block">
-              {deltaLabel}
-            </span>
+            <span className="font-semibold text-text-primary truncate block">{deltaLabel}</span>
           </div>
         </div>
       </div>
 
       {/* Footer CTA */}
       <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-border/60">
-        <span className="text-[11px] font-mono text-text-muted">
-          {tCommon('idLabel', { id })}
-        </span>
+        <span className="text-[11px] font-mono text-text-muted">{tCommon('idLabel', { id })}</span>
 
         <Button
           variant={isActive ? 'primary' : 'secondary'}

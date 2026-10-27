@@ -13,7 +13,10 @@ function mockMatchMedia(initial: boolean) {
     addEventListener: (_: string, cb: () => void) => listeners.add(cb),
     removeEventListener: (_: string, cb: () => void) => listeners.delete(cb),
   };
-  vi.stubGlobal('matchMedia', vi.fn(() => mql));
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn(() => mql)
+  );
   return {
     set(next: boolean) {
       matches = next;

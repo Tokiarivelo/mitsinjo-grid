@@ -25,11 +25,7 @@ export interface CopilotPanelProps {
   className?: string;
 }
 
-export function CopilotPanel({
-  open,
-  onClose,
-  className,
-}: CopilotPanelProps) {
+export function CopilotPanel({ open, onClose, className }: CopilotPanelProps) {
   const tCopilot = useTranslations('copilot');
 
   if (!open) return null;

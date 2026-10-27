@@ -35,20 +35,20 @@ describe('UI Kit — P2-T6 Design Gate Tests', () => {
           variant === 'ready'
             ? 'READY'
             : variant === 'modified'
-            ? 'SCENARIO MODIFIED'
-            : variant === 'running'
-            ? 'SIMULATING'
-            : variant === 'complete'
-            ? 'SIMULATION COMPLETE'
-            : variant === 'error'
-            ? 'SIMULATION ERROR'
-            : variant === 'warning'
-            ? 'WARNING'
-            : variant === 'critical'
-            ? 'CRITICAL'
-            : variant === 'simulated'
-            ? 'SIMULATED DATA'
-            : 'AI-GENERATED'
+              ? 'SCENARIO MODIFIED'
+              : variant === 'running'
+                ? 'SIMULATING'
+                : variant === 'complete'
+                  ? 'SIMULATION COMPLETE'
+                  : variant === 'error'
+                    ? 'SIMULATION ERROR'
+                    : variant === 'warning'
+                      ? 'WARNING'
+                      : variant === 'critical'
+                        ? 'CRITICAL'
+                        : variant === 'simulated'
+                          ? 'SIMULATED DATA'
+                          : 'AI-GENERATED'
         );
         expect(badge).toBeInTheDocument();
         expect(badge.textContent).toBeTruthy();
@@ -64,29 +64,14 @@ describe('UI Kit — P2-T6 Design Gate Tests', () => {
 
   describe('MetricCard', () => {
     it('always displays the specified unit in nominal state', () => {
-      render(
-        <MetricCard
-          variant="solar"
-          label="Solar PV Peak"
-          value={40}
-          unit="kWp"
-        />
-      );
+      render(<MetricCard variant="solar" label="Solar PV Peak" value={40} unit="kWp" />);
       expect(screen.getByText('Solar PV Peak')).toBeInTheDocument();
       expect(screen.getByText('40')).toBeInTheDocument();
       expect(screen.getByText('kWp')).toBeInTheDocument();
     });
 
     it('displays unit even in empty state', () => {
-      render(
-        <MetricCard
-          variant="battery"
-          label="Battery Capacity"
-          value={0}
-          unit="kWh"
-          empty
-        />
-      );
+      render(<MetricCard variant="battery" label="Battery Capacity" value={0} unit="kWh" empty />);
       expect(screen.getByText('Battery Capacity')).toBeInTheDocument();
       expect(screen.getByText('--')).toBeInTheDocument();
       expect(screen.getByText('kWh')).toBeInTheDocument();
@@ -94,25 +79,13 @@ describe('UI Kit — P2-T6 Design Gate Tests', () => {
 
     it('displays warning and critical status indicators with text labels', () => {
       const { unmount } = render(
-        <MetricCard
-          variant="battery"
-          label="Battery Level"
-          value={19}
-          unit="%"
-          status="critical"
-        />
+        <MetricCard variant="battery" label="Battery Level" value={19} unit="%" status="critical" />
       );
       expect(screen.getByText('CRITICAL')).toBeInTheDocument();
       unmount();
 
       render(
-        <MetricCard
-          variant="battery"
-          label="Battery Level"
-          value={25}
-          unit="%"
-          status="warning"
-        />
+        <MetricCard variant="battery" label="Battery Level" value={25} unit="%" status="warning" />
       );
       expect(screen.getByText('WARNING')).toBeInTheDocument();
     });
@@ -127,14 +100,7 @@ describe('UI Kit — P2-T6 Design Gate Tests', () => {
 
     it('SimControl slider includes accessible attributes and focus-visible styles', () => {
       render(
-        <SimControl
-          label="Solar Drop"
-          value={40}
-          unit="%"
-          min={0}
-          max={90}
-          onChange={() => {}}
-        />
+        <SimControl label="Solar Drop" value={40} unit="%" min={0} max={90} onChange={() => {}} />
       );
       const slider = screen.getByRole('slider', { name: /solar drop/i });
       expect(slider).toHaveAttribute('aria-valuemin', '0');

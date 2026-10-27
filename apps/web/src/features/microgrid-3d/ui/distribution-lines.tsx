@@ -62,13 +62,7 @@ function TransmissionCable({ line, animate }: SingleLineProps) {
   return (
     <group>
       {/* Base physical dark utility wire */}
-      <Line
-        points={points}
-        color="#334155"
-        lineWidth={1.5}
-        transparent
-        opacity={0.4}
-      />
+      <Line points={points} color="#334155" lineWidth={1.5} transparent opacity={0.4} />
 
       {/* Glowing energy flow overlay (dashed when active) */}
       {line.active && (
@@ -102,11 +96,7 @@ export function DistributionLines({ lines, animate = true }: DistributionLinesPr
   return (
     <group name="distribution-lines">
       {allLines.map((line, idx) => (
-        <TransmissionCable
-          key={idx}
-          line={line}
-          animate={animate}
-        />
+        <TransmissionCable key={idx} line={line} animate={animate} />
       ))}
     </group>
   );

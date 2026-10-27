@@ -28,7 +28,11 @@ export function sampleSceneStats(stats: SceneStatsCounters, nowMs: number): Scen
 }
 
 /** Called once per rendered frame by the in-canvas probe. */
-export function recordSceneFrame(stats: SceneStatsCounters, calls: number, triangles: number): void {
+export function recordSceneFrame(
+  stats: SceneStatsCounters,
+  calls: number,
+  triangles: number
+): void {
   stats.frames += 1;
   stats.calls = calls;
   stats.triangles = triangles;

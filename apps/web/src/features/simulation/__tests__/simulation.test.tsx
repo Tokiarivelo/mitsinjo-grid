@@ -57,9 +57,7 @@ describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
     const dropStartSlider = screen.getByLabelText(/drop start hour/i);
     fireEvent.change(dropStartSlider, { target: { value: '23' } });
 
-    expect(
-      screen.getByText(/drop start \+ duration cannot exceed 24 hours/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/drop start \+ duration cannot exceed 24 hours/i)).toBeInTheDocument();
 
     // Run button is disabled while validation errors exist
     const runBtn = screen.getByRole('button', { name: /run simulation/i });

@@ -50,9 +50,7 @@ export function DesignSystemPage() {
               <h2 className="font-display text-sm font-semibold text-text-primary">
                 {tDesign('catalogTitle')}
               </h2>
-              <p className="text-xs text-text-secondary">
-                {tDesign('catalogSubtitle')}
-              </p>
+              <p className="text-xs text-text-secondary">{tDesign('catalogSubtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -80,17 +78,23 @@ export function DesignSystemPage() {
             <div className="p-3 rounded-card bg-surface border border-border flex flex-col gap-2">
               <div className="h-8 rounded-control-sm bg-solar-amber" />
               <span className="font-mono text-[11px] text-solar-amber">solar-amber</span>
-              <span className="text-[10px] text-text-muted">{tDesign('palette.solarAmberDesc')}</span>
+              <span className="text-[10px] text-text-muted">
+                {tDesign('palette.solarAmberDesc')}
+              </span>
             </div>
             <div className="p-3 rounded-card bg-surface border border-border flex flex-col gap-2">
               <div className="h-8 rounded-control-sm bg-energy-cyan" />
               <span className="font-mono text-[11px] text-energy-cyan">energy-cyan</span>
-              <span className="text-[10px] text-text-muted">{tDesign('palette.energyCyanDesc')}</span>
+              <span className="text-[10px] text-text-muted">
+                {tDesign('palette.energyCyanDesc')}
+              </span>
             </div>
             <div className="p-3 rounded-card bg-surface border border-border flex flex-col gap-2">
               <div className="h-8 rounded-control-sm bg-battery-green" />
               <span className="font-mono text-[11px] text-battery-green">battery-green</span>
-              <span className="text-[10px] text-text-muted">{tDesign('palette.batteryGreenDesc')}</span>
+              <span className="text-[10px] text-text-muted">
+                {tDesign('palette.batteryGreenDesc')}
+              </span>
             </div>
             <div className="p-3 rounded-card bg-surface border border-border flex flex-col gap-2">
               <div className="h-8 rounded-control-sm bg-ai-violet" />
@@ -100,12 +104,16 @@ export function DesignSystemPage() {
             <div className="p-3 rounded-card bg-surface border border-border flex flex-col gap-2">
               <div className="h-8 rounded-control-sm bg-warning-amber" />
               <span className="font-mono text-[11px] text-warning-amber">warning-amber</span>
-              <span className="text-[10px] text-text-muted">{tDesign('palette.warningAmberDesc')}</span>
+              <span className="text-[10px] text-text-muted">
+                {tDesign('palette.warningAmberDesc')}
+              </span>
             </div>
             <div className="p-3 rounded-card bg-surface border border-border flex flex-col gap-2">
               <div className="h-8 rounded-control-sm bg-critical-red" />
               <span className="font-mono text-[11px] text-critical-red">critical-red</span>
-              <span className="text-[10px] text-text-muted">{tDesign('palette.criticalRedDesc')}</span>
+              <span className="text-[10px] text-text-muted">
+                {tDesign('palette.criticalRedDesc')}
+              </span>
             </div>
           </div>
         </section>
@@ -155,7 +163,15 @@ export function DesignSystemPage() {
           </h3>
           <div className="p-5 rounded-card bg-surface border border-border flex flex-wrap gap-3 items-center">
             {(
-              ['ready', 'running', 'complete', 'warning', 'critical', 'simulated', 'ai'] as StatusBadgeVariant[]
+              [
+                'ready',
+                'running',
+                'complete',
+                'warning',
+                'critical',
+                'simulated',
+                'ai',
+              ] as StatusBadgeVariant[]
             ).map((variant) => (
               <StatusBadge key={variant} variant={variant} />
             ))}
@@ -299,9 +315,7 @@ export function DesignSystemPage() {
                 <span className="font-sans text-xs font-medium text-text-primary block mb-1">
                   {tDesign('scenarioSelection')}
                 </span>
-                <p className="text-xs text-text-muted mb-3">
-                  {tDesign('scenarioSelectionDesc')}
-                </p>
+                <p className="text-xs text-text-muted mb-3">{tDesign('scenarioSelectionDesc')}</p>
                 <ScenarioSelector
                   scenarios={[
                     { id: 'baseline', name: tScenarios('baseline.name') },
@@ -315,11 +329,7 @@ export function DesignSystemPage() {
               </div>
 
               <div className="flex items-center gap-2 pt-3 border-t border-border">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setModified(!modified)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => setModified(!modified)}>
                   {tDesign('toggleModifiedWithState', {
                     state: modified ? tDesign('active') : tDesign('off'),
                   })}

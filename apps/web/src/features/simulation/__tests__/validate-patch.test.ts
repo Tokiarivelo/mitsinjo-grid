@@ -16,9 +16,9 @@ describe('validatePatch', () => {
   });
 
   it('flags a solar drop that runs past the 24h horizon', () => {
-    expect(
-      validatePatch('dropStartHour', { dropStartHour: 23, dropDurationH: 3 }, input)
-    ).toEqual({ key: 'dropExceedsHorizon' });
+    expect(validatePatch('dropStartHour', { dropStartHour: 23, dropDurationH: 3 }, input)).toEqual({
+      key: 'dropExceedsHorizon',
+    });
   });
 
   it('flags initial SoC at or below the reserve minimum', () => {
