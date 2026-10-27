@@ -97,6 +97,7 @@ describe('MetaLlmProvider & Model Discovery (P6-T5)', () => {
   });
 
   it('isCopilotModel rejects non-chat and contributor ids', () => {
+    expect(isCopilotModel('mock-deterministic-v1')).toBe(true);
     expect(isCopilotModel('muse-spark-1.2')).toBe(true);
     expect(isCopilotModel('muse-spark-1.2-contributor')).toBe(false);
     expect(isCopilotModel('muse-voice-transcribe-1.0')).toBe(false);

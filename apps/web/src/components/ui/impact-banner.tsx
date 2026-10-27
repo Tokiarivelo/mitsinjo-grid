@@ -32,7 +32,7 @@ export function ImpactBanner({
         </div>
         <div>
           <h4 className="font-display font-semibold text-text-primary text-xs">
-            {tWarnings('noWarnings')}
+            {tWarnings('essentialSupplied')}
           </h4>
           <p className="mt-0.5 text-text-secondary leading-relaxed text-xs">
             {tWarnings('noWarningsDesc')}
@@ -59,7 +59,7 @@ export function ImpactBanner({
           case 'CRITICAL_UNMET':
             toneClass = 'border-critical-red/40 bg-critical-red/10 text-critical-red';
             icon = <ZapOff className="h-4 w-4 text-critical-red" aria-hidden="true" />;
-            title = tWarnings('criticalUnmetTitle');
+            title = tWarnings('clinicSupplyBelowTarget');
             desc = tWarnings('criticalUnmetDesc', { from: fromStr, to: toStr });
             break;
 
@@ -67,7 +67,12 @@ export function ImpactBanner({
             const sectorName = w.sector ? tSectors(w.sector) : '';
             toneClass = 'border-warning-amber/30 bg-warning-amber/10 text-warning-amber';
             icon = <AlertTriangle className="h-4 w-4 text-warning-amber" aria-hidden="true" />;
-            title = tWarnings('sectorPartialTitle');
+            title =
+              w.sector === 'water'
+                ? tWarnings('waterPartiallyUnmet')
+                : w.sector === 'health'
+                ? tWarnings('clinicSupplyBelowTarget')
+                : tWarnings('sectorPartialTitle');
             desc = tWarnings('sectorPartialDesc', { sector: sectorName, from: fromStr, to: toStr });
             break;
           }
@@ -75,7 +80,7 @@ export function ImpactBanner({
           case 'RESERVE_REACHED':
             toneClass = 'border-warning-amber/30 bg-warning-amber/10 text-warning-amber';
             icon = <BatteryCharging className="h-4 w-4 text-warning-amber" aria-hidden="true" />;
-            title = tWarnings('reserveReachedTitle');
+            title = tWarnings('batteryDepletedTitle');
             desc = tWarnings('reserveReachedDesc', { from: fromStr, to: toStr });
             break;
 

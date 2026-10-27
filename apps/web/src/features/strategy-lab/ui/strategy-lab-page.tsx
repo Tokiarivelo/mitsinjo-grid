@@ -178,6 +178,8 @@ export function StrategyLabPage() {
           unit="kWh / %"
           summary={tStrategies('comparisonChartSummary')}
           empty={!hasResults}
+          emptyTitle={tStrategies('compareEmptyTitle')}
+          emptyDescription={tStrategies('compareEmptyDesc')}
           loading={isRunning}
         >
           {hasResults && <StrategyComparisonChart comparison={comparison} height={280} />}

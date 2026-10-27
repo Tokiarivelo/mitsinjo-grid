@@ -37,6 +37,8 @@ export function SimControl({
   };
 
   const id = `control-${label.toLowerCase().replace(/\s+/g, '-')}`;
+  const descId = `${id}-desc`;
+  const errorId = `${id}-error`;
 
   return (
     <div className={cn('flex flex-col gap-2 p-3.5 rounded-card bg-surface border border-border', className)}>
@@ -50,7 +52,11 @@ export function SimControl({
         </span>
       </div>
 
-      {description && <p className="text-xs text-text-muted font-sans leading-relaxed">{description}</p>}
+      {description && (
+        <p id={descId} className="text-xs text-text-muted font-sans leading-relaxed">
+          {description}
+        </p>
+      )}
 
       {/* Control element */}
       <div className="mt-1 flex flex-col gap-1.5">
@@ -67,6 +73,8 @@ export function SimControl({
             aria-valuemax={max}
             aria-valuenow={value}
             aria-valuetext={`${value} ${unit}`}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? errorId : description ? descId : undefined}
             className="w-full h-2 bg-surface-elevated rounded-lg appearance-none cursor-pointer accent-solar-amber
               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
           />
@@ -79,6 +87,8 @@ export function SimControl({
             step={step}
             value={value}
             onChange={handleChange}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? errorId : description ? descId : undefined}
             className="w-full bg-surface-elevated text-text-primary border border-border rounded-control px-3 py-1.5 text-sm font-mono
               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
           />
@@ -97,7 +107,7 @@ export function SimControl({
 
       {/* Error display */}
       {error && (
-        <div className="mt-1 flex items-center gap-1.5 text-xs text-critical-red font-sans">
+        <div id={errorId} role="alert" className="mt-1 flex items-center gap-1.5 text-xs text-critical-red font-sans">
           <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span>{error}</span>
         </div>

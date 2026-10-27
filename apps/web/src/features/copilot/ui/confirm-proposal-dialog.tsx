@@ -86,7 +86,14 @@ export function ConfirmProposalDialog({
     <div
       role="dialog"
       aria-labelledby={`proposal-title-${proposal.proposalId}`}
-      aria-modal="false"
+      aria-modal="true"
+      tabIndex={-1}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          onReject();
+        }
+      }}
       className={cn(
         'bg-surface-elevated border-2 border-ai-violet/40 rounded-xl p-5 shadow-[0_0_24px_-4px_rgba(182,160,255,0.18)] flex flex-col gap-4 text-xs font-sans animate-in fade-in duration-200',
         className

@@ -46,7 +46,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="en"
       className={`${spaceGrotesk.variable} ${inter.variable} ${plexMono.variable} dark`}
     >
-      <body className="min-h-screen bg-canvas text-text-primary antialiased font-sans">
+      {/* Browser extensions inject attributes on <body> before hydration. */}
+      <body
+        suppressHydrationWarning
+        className="min-h-screen bg-canvas text-text-primary antialiased font-sans"
+      >
         <I18nProvider>{children}</I18nProvider>
       </body>
     </html>

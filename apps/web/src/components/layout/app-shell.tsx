@@ -45,11 +45,13 @@ export function AppShell({
   const resolvedStatus: StatusBadgeVariant =
     status ??
     (storeStatus === 'modified'
-      ? 'warning'
+      ? 'modified'
       : storeStatus === 'complete'
       ? 'complete'
       : storeStatus === 'running'
       ? 'running'
+      : storeStatus === 'error'
+      ? 'error'
       : 'ready');
   const resolvedModified = modified ?? (storeStatus === 'modified');
   const resolvedActiveScenarioId = activeScenarioId ?? storeScenarioId;

@@ -10,6 +10,10 @@ export interface ChartCardProps {
   legend?: ReactNode;
   summary: string;
   empty?: boolean;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  emptyActionLabel?: string;
+  onEmptyAction?: () => void;
   loading?: boolean;
   children?: ReactNode;
   className?: string;
@@ -22,6 +26,10 @@ export function ChartCard({
   legend,
   summary,
   empty = false,
+  emptyTitle,
+  emptyDescription,
+  emptyActionLabel,
+  onEmptyAction,
   loading = false,
   children,
   className,
@@ -63,8 +71,10 @@ export function ChartCard({
           <div className="h-60 w-full bg-surface-elevated animate-pulse rounded-control" />
         ) : empty ? (
           <EmptyState
-            title={tUi('noDataTitle')}
-            description={tUi('noDataDesc')}
+            title={emptyTitle || tUi('noDataTitle')}
+            description={emptyDescription || tUi('noDataDesc')}
+            actionLabel={emptyActionLabel}
+            onAction={onEmptyAction}
           />
         ) : (
           children

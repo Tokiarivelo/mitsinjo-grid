@@ -18,8 +18,10 @@ describe('UI Kit — P2-T6 Design Gate Tests', () => {
   describe('StatusBadge', () => {
     const variants: StatusBadgeVariant[] = [
       'ready',
+      'modified',
       'running',
       'complete',
+      'error',
       'warning',
       'critical',
       'simulated',
@@ -32,10 +34,14 @@ describe('UI Kit — P2-T6 Design Gate Tests', () => {
         const badge = screen.getByText(
           variant === 'ready'
             ? 'READY'
+            : variant === 'modified'
+            ? 'SCENARIO MODIFIED'
             : variant === 'running'
             ? 'SIMULATING'
             : variant === 'complete'
             ? 'SIMULATION COMPLETE'
+            : variant === 'error'
+            ? 'SIMULATION ERROR'
             : variant === 'warning'
             ? 'WARNING'
             : variant === 'critical'
