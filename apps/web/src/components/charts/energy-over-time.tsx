@@ -5,6 +5,7 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -16,6 +17,7 @@ import { useTranslations } from '@/lib/i18n';
 
 export interface EnergyOverTimeChartProps {
   steps: readonly StepResult[];
+  cursorHour?: number;
   height?: number;
   className?: string;
 }
@@ -65,7 +67,12 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   );
 }
 
-export function EnergyOverTimeChart({ steps, height = 260, className }: EnergyOverTimeChartProps) {
+export function EnergyOverTimeChart({
+  steps,
+  cursorHour,
+  height = 260,
+  className,
+}: EnergyOverTimeChartProps) {
   const tCharts = useTranslations('charts');
 
   const chartData = steps.map((s) => ({
@@ -178,6 +185,17 @@ export function EnergyOverTimeChart({ steps, height = 260, className }: EnergyOv
             strokeDasharray="3 3"
             dot={false}
           />
+
+          {/* Timeline Scrubber Cursor */}
+          {cursorHour !== undefined && (
+            <ReferenceLine
+              yAxisId="power"
+              x={cursorHour}
+              stroke="var(--color-energy-cyan)"
+              strokeWidth={2}
+              strokeDasharray="3 3"
+            />
+          )}
         </ComposedChart>
       </ResponsiveContainer>
     </div>
