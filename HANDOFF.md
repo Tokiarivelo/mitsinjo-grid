@@ -1,40 +1,36 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-26 · **By:** Antigravity (P2 UI Kit + Zero-Static i18n + CI parity) · **Day:** 2 / 10
+**Updated:** 2026-10-26 · **By:** Antigravity (P3 Core Engine + Strategies + Scenarios) · **Day:** 3 / 10
 
 ## State
 
-- Phase: **P1 — Repo** completed (P1-T0..T7, T9 done; CI, Turbo, engine + web apps).
-- Phase: **P2 — Design system & UI Kit** completed (`/design` catalog, components, vitest tests).
-- Phase: **P0 — Framing** (P0-T1 mock fallback, P0-T3 parameters, P0-T4 i18n EN/FR/MG done).
-- **Strict Multi-language (i18n):** official `next-intl`, zero hardcoded static text in JSX/TSX.
-- Locales: `en` (default for judges), `fr`, `mg` with 100% key parity enforced via `make check-i18n` and CI.
-- PR: `#1` on branch `feat/multilingual-ui-kit`.
-- **Brand Logo & Favicon:** Extracted futuristic solar microgrid mark (background & text removed), generated icons (`icon.png`, `apple-icon.png`, `favicon.ico`), wired metadata icons and sidebar logo.
-- Monorepo healthy: `make check` (19 web + 5 engine tests) and `pnpm build` pass with 0 errors.
+- Phase: **P3 — Engine** completed (P3-T1..T9 done; 100% contracts & physics, 0 violations, demo hero verified).
+- Prior phases complete: P0 Framing, P1 Repo & Tooling, P2 Design system & Strict Zero-Static i18n.
+- Engine stats: 83 tests passing, 98.8% statement coverage (exit criteria ≥ 90%), `compare()` in ~3.4 ms (< 10 ms).
+- Demo Hero verified: on `cloudy_afternoon`, `proportional` drops clinic critical power (`criticalUnservedKwh > 0`), whereas `essential_first` fully protects it (`criticalUnservedKwh === 0`, 100% critical coverage).
+- All 5 scenarios verified with 0 invariant violations across all 3 strategies (`proportional`, `essential_first`, `balanced`).
+- Monorepo healthy: `make check` (83 engine + 19 web tests = 102 passing) and `pnpm build` pass with 0 errors.
+- PR: branch `feat/p3-engine` ready for merge into `main`.
 
 ## Next task
 
-- `docs/tasks/P3-engine.md` → P3-T1 (Zod schemas in `packages/engine/src/schemas/` + inferred types).
+- `docs/tasks/P4-dashboard.md` → P4-T0 / P4-T1 (`simulation.store.ts` + `selectors.ts` wired to `@mitsinjo/engine`).
 
 ## Decisions taken
 
-- Official `next-intl` package with dot-notated dictionary fallback for SSR/SSG.
-- Zero static user-facing text rule added to `.claude/rules/web-ui.md`, `CLAUDE.md`, and `docs/conventions.md`.
-- Automated key-parity & non-empty test added in `apps/web/src/test/i18n-parity.test.ts`.
-- CI (`.github/workflows/ci.yml`) and `Makefile` updated with `check-i18n` target.
-- Locale is client state in localStorage via `useSyncExternalStore`: SSR/hydration always render EN, then switch (no mismatch).
-- Copilot panel shows the "AI unavailable" copy until the LLM is wired; no canned answers or invented numbers.
-- `/design` logic lives in `features/design-system`; `app/design/page.tsx` only renders it.
-- Known gap: feature pages are `'use client'` because i18n is client-only; move to cookie locale + server `getTranslations` if SSR text matters.
+- Implemented pure TS deterministic simulation with FNV-1a 64-bit hashing for stable `inputHash` and `SIM-XXXXXX` IDs.
+- Solar bell curve calibrated (peakKw 40, profile max 0.485 → ≈3.1 peak-sun-hours, ~124 kWh/day; spec §5 updated) to guarantee 0 unserved on `baseline` and distinct evening deficit on `cloudy_afternoon`.
+- Water-filling with priority weights (4, 3, 2, 1) implemented for stretch `balanced` strategy.
+- Spec §7 property "essential_first ≥ proportional" scoped to the critical tier (health): all-sector critical coverage is 73.2 vs 73.3 % on `essential_stress`. `applyPatch` validates the patch with `InputPatchSchema`.
+- Preallocated length-24 arrays in hot path `simulate()` for allocation-light performance.
 
 ## Open questions / blockers
 
-- Meta API key / endpoint credentials for live Llama inference (offline mock ready as fallback).
+- Meta API key / endpoint credentials for live Llama inference (offline mock ready as fallback for P6).
 
 ## Files touched this session
 
-- `apps/web/src/messages/{en,fr,mg}.json`, `apps/web/src/lib/i18n.tsx`
-- `apps/web/src/test/i18n-{parity,provider}.test.ts(x)`, `apps/web/src/features/design-system/`, `apps/web/src/app/{layout,design/page}.tsx`
-- `apps/web/src/components/layout/{header,sidebar,copilot-panel,app-shell}.tsx`
-- `Makefile`, `.github/workflows/ci.yml`, `.claude/rules/web-ui.md`, `CLAUDE.md`, `docs/conventions.md`, `docs/architecture.md`
+- `packages/engine/src/{index,constants,invariants,warnings,simulate,compare,patch,hash}.ts`
+- `packages/engine/src/{schemas,model,strategies,metrics,scenarios}/**`
+- `packages/engine/src/__tests__/{schemas,strategies,invariants,hash,patch,compare,scenarios,demo-hero,simulate,spec-invariants}.test.ts`
+- `packages/engine/package.json`, `packages/engine/vitest.config.ts`, `docs/tasks/P3-engine.md`, `HANDOFF.md`
