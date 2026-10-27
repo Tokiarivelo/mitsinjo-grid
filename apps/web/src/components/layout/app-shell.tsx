@@ -45,11 +45,13 @@ export function AppShell({
   const resolvedStatus: StatusBadgeVariant =
     status ??
     (storeStatus === 'modified'
-      ? 'warning'
+      ? 'modified'
       : storeStatus === 'complete'
       ? 'complete'
       : storeStatus === 'running'
       ? 'running'
+      : storeStatus === 'error'
+      ? 'error'
       : 'ready');
   const resolvedModified = modified ?? (storeStatus === 'modified');
   const resolvedActiveScenarioId = activeScenarioId ?? storeScenarioId;
@@ -81,7 +83,7 @@ export function AppShell({
   const resolvedSubtitle = subtitle || defaultSubtitle;
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-canvas text-text-primary">
+    <div className="relative flex h-full w-full overflow-hidden bg-canvas text-text-primary">
       {/* Sidebar (desktop fixed / mobile drawer) */}
       <Sidebar
         status={resolvedStatus}
@@ -113,7 +115,7 @@ export function AppShell({
           {/* Main workspace (scrolls independently, padding 24: p-6) */}
           <main
             className={cn(
-              'flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 bg-canvas',
+              'relative flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 bg-canvas',
               className
             )}
           >

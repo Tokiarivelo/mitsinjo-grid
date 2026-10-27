@@ -5,8 +5,10 @@ import { useTranslations } from '@/lib/i18n';
 
 export type StatusBadgeVariant =
   | 'ready'
+  | 'modified'
   | 'running'
   | 'complete'
+  | 'error'
   | 'warning'
   | 'critical'
   | 'simulated'
@@ -39,9 +41,11 @@ export function StatusBadge({
 
   const variantStyles: Record<StatusBadgeVariant, string> = {
     ready: 'bg-battery-green/12 text-battery-green border border-battery-green/30',
+    modified: 'bg-warning-amber/12 text-warning-amber border border-warning-amber/35',
     running:
       'bg-energy-cyan/12 text-energy-cyan border border-energy-cyan/30 animate-pulse motion-reduce:animate-none',
     complete: 'bg-battery-green/15 text-battery-green border border-battery-green/35',
+    error: 'bg-critical-red/15 text-critical-red border border-critical-red/35',
     warning: 'bg-warning-amber/12 text-warning-amber border border-warning-amber/35',
     critical: 'bg-critical-red/15 text-critical-red border border-critical-red/35',
     simulated:
@@ -53,10 +57,14 @@ export function StatusBadge({
     switch (variant) {
       case 'ready':
         return <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />;
+      case 'modified':
+        return <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />;
       case 'running':
         return <Cpu className="h-3 w-3 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />;
       case 'complete':
         return <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" />;
+      case 'error':
+        return <AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />;
       case 'warning':
         return <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />;
       case 'critical':

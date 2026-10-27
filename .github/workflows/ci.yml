@@ -43,3 +43,31 @@ jobs:
         run: pnpm build
         env:
           LLM_PROVIDER: mock
+
+  e2e:
+    name: E2E demo path (Playwright, mock LLM)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.29.3
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter web exec playwright install --with-deps chromium
+
+      - name: Run e2e
+        run: pnpm --filter web test:e2e
+        env:
+          LLM_PROVIDER: mock

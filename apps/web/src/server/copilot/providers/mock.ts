@@ -8,6 +8,9 @@ import type {
   ToolCall,
 } from '../provider';
 
+/** Model id reported (and accepted) when `LLM_PROVIDER=mock`. */
+export const MOCK_MODEL_ID = 'mock-deterministic-v1';
+
 function isFrenchQuery(text: string): boolean {
   const q = text.toLowerCase();
   return (

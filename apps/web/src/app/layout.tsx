@@ -44,9 +44,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${inter.variable} ${plexMono.variable} dark`}
+      className={`${spaceGrotesk.variable} ${inter.variable} ${plexMono.variable} h-full overflow-hidden dark`}
     >
-      <body className="min-h-screen bg-canvas text-text-primary antialiased font-sans">
+      {/* Browser extensions inject attributes on <body> before hydration. */}
+      <body
+        suppressHydrationWarning
+        className="h-full overflow-hidden bg-canvas text-text-primary antialiased font-sans"
+      >
         <I18nProvider>{children}</I18nProvider>
       </body>
     </html>

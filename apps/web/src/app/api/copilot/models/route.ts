@@ -2,6 +2,7 @@ import 'server-only';
 
 import { env } from '@/lib/env';
 import { MetaLlmProvider, DEFAULT_META_MODEL } from '@/server/copilot/providers/meta';
+import { MOCK_MODEL_ID } from '@/server/copilot/providers/mock';
 
 export async function GET() {
   if (env.LLM_PROVIDER === 'meta' && env.META_API_KEY) {
@@ -20,7 +21,7 @@ export async function GET() {
 
   return Response.json({
     provider: 'mock',
-    activeModel: 'mock-deterministic-v1',
-    models: ['mock-deterministic-v1'],
+    activeModel: MOCK_MODEL_ID,
+    models: [MOCK_MODEL_ID],
   });
 }
