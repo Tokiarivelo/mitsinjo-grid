@@ -275,7 +275,7 @@
     "emptyTitle": "No simulation results yet",
     "emptyDesc": "Run the simulation to calculate energy distribution and inspect community coverage.",
     "solarGen": "Total Solar Generation",
-    "batteryNet": "Battery Net Flow",
+    "batteryNet": "Battery SoC (start → end)",
     "servedEnergy": "Total Served Energy",
     "unservedTotal": "Total Unserved Energy",
     "energyOverTimeTitle": "Energy Over Time (24h)",
@@ -283,15 +283,16 @@
     "energyOverTimeSummary": "24-hour timeline of solar generation, total community demand, served energy in kW and battery state of charge percentage.",
     "clinicWarningInsight": "Proportional shedding impacts essential health clinic services. Switch to Essential-First in Strategy Lab to preserve life-critical loads.",
     "solarArrayNode": "Solar PV Array",
-    "solarArrayCapacity": "40 kWp capacity",
+    "solarArrayCapacity": "{kw} peak capacity",
     "batteryStorageNode": "LiFePO4 Storage",
-    "batteryStorageCapacity": "120 kWh bank",
+    "batteryStorageCapacity": "{kwh} bank",
     "gridBusLabel": "AC Microgrid 230V Bus",
     "schematicBadge": "2D SCHEMATIC",
-    "atHour": "at {hour}:00",
+    "atHour": "at {hour}",
     "charging": "+{kw} chg",
     "discharging": "{kw} dis",
-    "idle": "idle"
+    "idle": "idle",
+    "criticalTag": "CRIT"
   },
   "strategies": {
     "subtitle": "Side-by-side comparison of allocation algorithms under identical conditions",
@@ -320,7 +321,7 @@
     "emptyTitle": "No strategy comparison run yet",
     "emptyDesc": "Run strategy comparison to evaluate trade-offs between Proportional and Essential-First policies under current scenario conditions.",
     "summaryHeroTitle": "Critical Lifeline Protection Under Deficit",
-    "summaryHeroDesc": "Essential-First eliminates critical power outages (0.0 kWh unserved for clinic & water vs {propUnserved} on Proportional), protecting vital services during solar drop.",
+    "summaryHeroDesc": "Essential-First eliminates critical power outages ({essUnserved} unserved for clinic & water vs {propUnserved} on Proportional), protecting vital services during solar drop.",
     "summaryNominalTitle": "Optimal Nominal Coverage",
     "summaryNominalDesc": "Under current conditions, available generation and storage satisfy 100% of community demand across all strategies with zero unserved energy.",
     "summaryStressTitle": "Severe Deficit: Lifeline Isolation Advised",
@@ -330,7 +331,11 @@
     "bestEssentialBadge": "Top Protection",
     "lowestUnmetBadge": "Lowest Deficit",
     "highestSocBadge": "Top Reserve",
-    "copilotPromoDesc": "Explore why essential services were impacted and test custom solar or battery patches with the grounded Copilot."
+    "copilotPromoDesc": "Explore why essential services were impacted and test custom solar or battery patches with the grounded Copilot.",
+    "badgeTop": "TOP",
+    "badgeBest": "BEST",
+    "badgeMin": "MIN",
+    "badgeMax": "MAX"
   },
   "charts": {
     "hourAxis": "Hour of Day",
@@ -345,6 +350,9 @@
     "deliveredEnergy": "Delivered (kWh)",
     "criticalCoverage": "Essential (%)",
     "unservedEnergy": "Unmet (kWh)",
-    "endSoc": "End SoC (%)"
+    "endSoc": "End SoC (%)",
+    "tooltipCoverage": "Coverage",
+    "tooltipServedDemand": "Served / Demand",
+    "tooltipUnmet": "Unmet"
   }
 }

@@ -5,7 +5,7 @@
 ## State
 
 - Phase: **P4 — 2D Dashboard + Strategy Lab** completed (P4-T0..T7 done; all gate criteria met).
-- Monorepo healthy: `make check` (84 engine + 49 web tests = 133 passing, 100% i18n parity, 0 lint/tsc errors), `pnpm build` clean.
+- Monorepo healthy: `make check` (84 engine + 51 web tests = 135 passing, 100% i18n parity, 0 lint/tsc errors), `pnpm build` clean.
 - Feature delivered:
   - `stores/simulation.store.ts` + `selectors.ts` wired to `@mitsinjo/engine` `compare()` & `simulate()`.
   - `lib/format.ts` (`fmtKw`, `fmtKwh`, `fmtPct`, `fmtHour`) with null/NaN edge guards & unit tests.
@@ -23,6 +23,9 @@
 - `useSimulationStore` integrated with `AppShell` header/sidebar so scenario switcher and status indicators sync globally.
 - `selectActiveSteps` and `selectActiveWarnings` memoized empty arrays to prevent React 19 `useSyncExternalStore` re-render cycles.
 - Decision summary generator (`utils/summarize.ts`) operates purely on numerical engine output (zero LLM dependency).
+- PR #3 review fixes: summary stress rule recommends the best essential protector (not hardwired essential_first;
+  engine-spec §7); no numbers baked into i18n strings; chart colors via `var(--color-*)` tokens; no UI energy sums;
+  `buttonVariants()` for Link-as-button (no `<button>` inside `<a>`); badges/tooltips translated.
 - Complete strict zero-static-text i18n: all new labels extracted to `en.json`, `fr.json`, `mg.json` with 100% key parity.
 
 ## Open questions / blockers
@@ -33,4 +36,4 @@
 
 - `apps/web/src/stores/**`, `apps/web/src/lib/format*`, `apps/web/src/components/{charts,ui}/**`
 - `apps/web/src/features/{overview,strategy-lab}/**`, `apps/web/src/messages/{en,fr,mg}.json`
-- `apps/web/src/components/layout/app-shell.tsx`, `apps/web/src/test/setup.ts`, `docs/**`, `HANDOFF.md`
+- `apps/web/src/components/layout/app-shell.tsx`, `apps/web/src/test/setup.ts`, `components/ui/button.tsx`, `docs/**`, `HANDOFF.md`

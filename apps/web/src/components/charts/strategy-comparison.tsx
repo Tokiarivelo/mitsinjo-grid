@@ -11,6 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 import type { SimulationResult, StrategyId } from '@mitsinjo/engine';
+import { fmtKwh, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
 
 export interface StrategyComparisonChartProps {
@@ -25,6 +26,7 @@ interface CustomTooltipProps {
     name: string;
     value: number;
     color: string;
+    payload?: { unit?: string };
   }>;
   label?: string;
 }
@@ -47,7 +49,9 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
               />
               {entry.name}:
             </span>
-            <span className="font-medium text-text-primary">{entry.value}</span>
+            <span className="font-medium text-text-primary">
+              {entry.payload?.unit === '%' ? fmtPct(entry.value) : fmtKwh(entry.value)}
+            </span>
           </div>
         ))}
       </div>
@@ -102,26 +106,23 @@ export function StrategyComparisonChart({
   return (
     <div className={className} style={{ width: '100%', height }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={height}>
-        <BarChart
-          data={metrics}
-          margin={{ top: 15, right: 15, left: -10, bottom: 5 }}
-        >
+        <BarChart data={metrics} margin={{ top: 15, right: 15, left: -10, bottom: 5 }}>
           <CartesianGrid
             strokeDasharray="3 3"
-            stroke="var(--color-border, #303443)"
+            stroke="var(--color-border)"
             opacity={0.4}
             vertical={false}
           />
           <XAxis
             dataKey="metric"
-            stroke="var(--color-text-secondary, #b6bed3)"
-            tick={{ fontSize: 11, fill: 'var(--color-text-secondary, #b6bed3)' }}
+            stroke="var(--color-text-secondary)"
+            tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
             tickLine={false}
-            axisLine={{ stroke: 'var(--color-border, #303443)' }}
+            axisLine={{ stroke: 'var(--color-border)' }}
           />
           <YAxis
-            stroke="var(--color-text-muted, #7c859e)"
-            tick={{ fontSize: 11, fill: 'var(--color-text-muted, #7c859e)' }}
+            stroke="var(--color-text-muted)"
+            tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }}
             tickLine={false}
             axisLine={false}
           />
@@ -135,20 +136,20 @@ export function StrategyComparisonChart({
           <Bar
             dataKey="proportional"
             name={tStrategies('proportional')}
-            fill="#50d8e8"
+            fill="var(--color-energy-cyan)"
             radius={[4, 4, 0, 0]}
           />
           <Bar
             dataKey="essential_first"
             name={tStrategies('essential_first')}
-            fill="#ffb547"
+            fill="var(--color-solar-amber)"
             radius={[4, 4, 0, 0]}
           />
           {bal && (
             <Bar
               dataKey="balanced"
               name={tStrategies('balanced')}
-              fill="#76f7be"
+              fill="var(--color-battery-green)"
               radius={[4, 4, 0, 0]}
             />
           )}

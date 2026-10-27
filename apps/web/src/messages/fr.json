@@ -275,7 +275,7 @@
     "emptyTitle": "Aucun résultat de simulation pour le moment",
     "emptyDesc": "Lancez la simulation pour calculer la distribution d'énergie et inspecter la couverture communautaire.",
     "solarGen": "Production solaire totale",
-    "batteryNet": "Flux net de batterie",
+    "batteryNet": "SoC batterie (début → fin)",
     "servedEnergy": "Énergie totale desservie",
     "unservedTotal": "Énergie totale non desservie",
     "energyOverTimeTitle": "Énergie dans le temps (24h)",
@@ -283,15 +283,16 @@
     "energyOverTimeSummary": "Chronologie sur 24 heures de la production solaire, de la demande communautaire totale, de l'énergie fournie en kW et du pourcentage d'état de charge de la batterie.",
     "clinicWarningInsight": "Le délestage proportionnel affecte les services essentiels du dispensaire. Basculez sur Priorité Essentielle dans le Labo Stratégies pour préserver les charges vitales.",
     "solarArrayNode": "Champ solaire PV",
-    "solarArrayCapacity": "Capacité 40 kWc",
+    "solarArrayCapacity": "Capacité crête {kw}",
     "batteryStorageNode": "Stockage LiFePO4",
-    "batteryStorageCapacity": "Banque 120 kWh",
+    "batteryStorageCapacity": "Banque {kwh}",
     "gridBusLabel": "Bus AC Micro-réseau 230V",
     "schematicBadge": "SCHÉMA 2D",
-    "atHour": "à {hour}:00",
+    "atHour": "à {hour}",
     "charging": "+{kw} chg",
     "discharging": "{kw} déc",
-    "idle": "veille"
+    "idle": "veille",
+    "criticalTag": "CRIT"
   },
   "strategies": {
     "subtitle": "Comparaison côte à côte des algorithmes d'allocation sous conditions identiques",
@@ -320,7 +321,7 @@
     "emptyTitle": "Aucune comparaison de stratégies effectuée",
     "emptyDesc": "Lancez la comparaison pour évaluer les compromis entre politiques Proportionnelle et Priorité Essentielle sous le scénario actif.",
     "summaryHeroTitle": "Protection vitale des services critiques sous déficit",
-    "summaryHeroDesc": "La priorité essentielle élimine les pannes critiques (0,0 kWh non desservi pour le dispensaire et l'eau contre {propUnserved} en Proportionnel), protégeant les services vitaux.",
+    "summaryHeroDesc": "La priorité essentielle élimine les pannes critiques ({essUnserved} non desservi pour le dispensaire et l'eau contre {propUnserved} en Proportionnel), protégeant les services vitaux.",
     "summaryNominalTitle": "Couverture nominale optimale",
     "summaryNominalDesc": "Sous les conditions actuelles, la production et le stockage disponibles satisfont 100% de la demande communautaire sur toutes les stratégies sans déficit.",
     "summaryStressTitle": "Déficit sévère : isolation des charges vitales recommandée",
@@ -330,7 +331,11 @@
     "bestEssentialBadge": "Meilleure protection vitale",
     "lowestUnmetBadge": "Plus faible déficit",
     "highestSocBadge": "Meilleure réserve",
-    "copilotPromoDesc": "Découvrez pourquoi les services essentiels ont été affectés et testez des ajustements solaires ou de batterie avec le Copilote."
+    "copilotPromoDesc": "Découvrez pourquoi les services essentiels ont été affectés et testez des ajustements solaires ou de batterie avec le Copilote.",
+    "badgeTop": "TOP",
+    "badgeBest": "MEILLEUR",
+    "badgeMin": "MIN",
+    "badgeMax": "MAX"
   },
   "charts": {
     "hourAxis": "Heure du jour",
@@ -345,6 +350,9 @@
     "deliveredEnergy": "Livré (kWh)",
     "criticalCoverage": "Essentiel (%)",
     "unservedEnergy": "Non satisfait (kWh)",
-    "endSoc": "SoC final (%)"
+    "endSoc": "SoC final (%)",
+    "tooltipCoverage": "Couverture",
+    "tooltipServedDemand": "Fourni / Demande",
+    "tooltipUnmet": "Non satisfait"
   }
 }

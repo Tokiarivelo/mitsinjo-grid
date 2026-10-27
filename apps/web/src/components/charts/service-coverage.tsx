@@ -34,6 +34,7 @@ interface CustomTooltipProps {
 }
 
 function CustomTooltip({ active, payload }: CustomTooltipProps) {
+  const tCharts = useTranslations('charts');
   if (!active || !payload || payload.length === 0) return null;
   const item = payload[0]?.payload;
   if (!item) return null;
@@ -45,18 +46,18 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
       </p>
       <div className="flex flex-col gap-1">
         <div className="flex justify-between gap-4">
-          <span className="text-text-secondary">Coverage:</span>
+          <span className="text-text-secondary">{tCharts('tooltipCoverage')}:</span>
           <span className="font-semibold text-text-primary">{fmtPct(item.coveragePct)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-text-secondary">Served / Demand:</span>
+          <span className="text-text-secondary">{tCharts('tooltipServedDemand')}:</span>
           <span className="text-text-primary">
             {fmtKwh(item.servedKwh)} / {fmtKwh(item.demandKwh)}
           </span>
         </div>
         {item.unservedKwh > 0 && (
           <div className="flex justify-between gap-4 text-critical-red">
-            <span>Unmet:</span>
+            <span>{tCharts('tooltipUnmet')}:</span>
             <span>{fmtKwh(item.unservedKwh)}</span>
           </div>
         )}
@@ -92,14 +93,10 @@ export function ServiceCoverageChart({
   return (
     <div className={className} style={{ width: '100%', height }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={height}>
-        <BarChart
-          data={data}
-          layout="vertical"
-          margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
-        >
+        <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
           <CartesianGrid
             strokeDasharray="3 3"
-            stroke="var(--color-border, #303443)"
+            stroke="var(--color-border)"
             opacity={0.4}
             horizontal={false}
           />
@@ -107,17 +104,17 @@ export function ServiceCoverageChart({
             type="number"
             domain={[0, 100]}
             unit="%"
-            stroke="var(--color-text-muted, #7c859e)"
-            tick={{ fontSize: 11, fill: 'var(--color-text-muted, #7c859e)' }}
+            stroke="var(--color-text-muted)"
+            tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }}
             tickLine={false}
-            axisLine={{ stroke: 'var(--color-border, #303443)' }}
+            axisLine={{ stroke: 'var(--color-border)' }}
           />
           <YAxis
             type="category"
             dataKey="name"
             width={120}
-            stroke="var(--color-text-secondary, #b6bed3)"
-            tick={{ fontSize: 11, fill: 'var(--color-text-secondary, #b6bed3)' }}
+            stroke="var(--color-text-secondary)"
+            tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
             tickLine={false}
             axisLine={false}
           />
@@ -129,9 +126,12 @@ export function ServiceCoverageChart({
             barSize={16}
           >
             {data.map((entry) => {
-              let fill = '#76f7be'; // battery green
+              let fill = 'var(--color-battery-green)';
               if (entry.coveragePct < 99.9) {
-                fill = entry.id === 'health' || entry.id === 'water' ? '#ffb4ab' : '#ffb547';
+                fill =
+                  entry.id === 'health' || entry.id === 'water'
+                    ? 'var(--color-critical-red)'
+                    : 'var(--color-solar-amber)';
               }
               return <Cell key={`cell-${entry.id}`} fill={fill} />;
             })}

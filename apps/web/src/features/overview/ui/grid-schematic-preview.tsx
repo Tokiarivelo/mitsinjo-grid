@@ -12,20 +12,22 @@ import {
   Sun,
   Waves,
 } from 'lucide-react';
-import type { SimulationResult } from '@mitsinjo/engine';
+import type { SimulationInput, SimulationResult } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
-import { fmtKw, fmtPct } from '@/lib/format';
+import { fmtHour, fmtKw, fmtKwh, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 
 export interface GridSchematicPreviewProps {
   result?: SimulationResult;
+  input: SimulationInput;
   hour?: number;
   className?: string;
 }
 
 export function GridSchematicPreview({
   result,
+  input,
   hour = 12,
   className,
 }: GridSchematicPreviewProps) {
@@ -95,15 +97,12 @@ export function GridSchematicPreview({
               {tOverview('schematicBadge')}
             </span>
           </div>
-          <p className="text-xs text-text-secondary mt-0.5">
-            {tOverview('previewSubtitle')}
-          </p>
+          <p className="text-xs text-text-secondary mt-0.5">{tOverview('previewSubtitle')}</p>
         </div>
 
-        <Link href="/simulation">
-          <Button variant="ghost" size="sm" icon={<ExternalLink className="h-3.5 w-3.5" />}>
-            {tOverview('openLive')}
-          </Button>
+        <Link href="/simulation" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
+          <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>{tOverview('openLive')}</span>
         </Link>
       </div>
 
@@ -122,16 +121,16 @@ export function GridSchematicPreview({
                   {tOverview('solarArrayNode')}
                 </span>
                 <span className="text-[11px] font-mono text-text-muted">
-                  {tOverview('solarArrayCapacity')}
+                  {tOverview('solarArrayCapacity', { kw: fmtKw(input.solar.peakKw, 0) })}
                 </span>
               </div>
             </div>
             <div className="text-right font-mono">
               <span className="text-sm font-semibold text-solar-amber block">
-                {result ? fmtKw(solarKw) : '-- kW'}
+                {fmtKw(result ? solarKw : null)}
               </span>
               <span className="text-[10px] text-text-muted">
-                {tOverview('atHour', { hour })}
+                {tOverview('atHour', { hour: fmtHour(hour) })}
               </span>
             </div>
           </div>
@@ -147,13 +146,15 @@ export function GridSchematicPreview({
                   {tOverview('batteryStorageNode')}
                 </span>
                 <span className="text-[11px] font-mono text-text-muted">
-                  {tOverview('batteryStorageCapacity')}
+                  {tOverview('batteryStorageCapacity', {
+                    kwh: fmtKwh(input.battery.capacityKwh, 0),
+                  })}
                 </span>
               </div>
             </div>
             <div className="text-right font-mono">
               <span className="text-sm font-semibold text-battery-green block">
-                {result ? fmtPct(socPct) : '--%'}
+                {fmtPct(result ? socPct : null)}
               </span>
               <span className="text-[10px] text-text-muted">
                 {result
@@ -187,12 +188,10 @@ export function GridSchematicPreview({
                 className="flex flex-col justify-between p-2.5 rounded-control bg-surface border border-border/80"
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <div className="p-1 rounded-control-sm bg-surface-elevated">
-                    {sec.icon}
-                  </div>
+                  <div className="p-1 rounded-control-sm bg-surface-elevated">{sec.icon}</div>
                   {sec.critical && (
                     <span className="text-[9px] font-mono text-critical-red bg-critical-red/10 border border-critical-red/30 px-1 rounded-control-sm">
-                      CRIT
+                      {tOverview('criticalTag')}
                     </span>
                   )}
                 </div>
@@ -205,7 +204,7 @@ export function GridSchematicPreview({
                       {fmtKw(served)}
                     </span>
                   ) : (
-                    '--'
+                    fmtKw(null)
                   )}
                 </span>
               </div>

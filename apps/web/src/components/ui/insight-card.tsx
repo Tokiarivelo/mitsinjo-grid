@@ -36,9 +36,7 @@ export function InsightCard({
     <div
       className={cn(
         'relative flex flex-col justify-between p-4 rounded-card bg-surface border transition-all',
-        isAi
-          ? 'border-ai-violet/50 shadow-[0_0_12px_rgba(168,85,247,0.08)]'
-          : 'border-border/80 shadow-sm',
+        isAi ? 'border-ai-violet/50 shadow-md shadow-ai-violet/10' : 'border-border/80 shadow-sm',
         className
       )}
     >
@@ -52,7 +50,12 @@ export function InsightCard({
                 isAi ? 'bg-ai-violet/15 text-ai-violet' : 'bg-surface-elevated text-solar-amber'
               )}
             >
-              {icon || (isAi ? <Cpu className="h-4 w-4" aria-hidden="true" /> : <Lightbulb className="h-4 w-4" aria-hidden="true" />)}
+              {icon ||
+                (isAi ? (
+                  <Cpu className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Lightbulb className="h-4 w-4" aria-hidden="true" />
+                ))}
             </div>
             <StatusBadge
               variant={isAi ? 'ai' : 'simulated'}
@@ -72,9 +75,7 @@ export function InsightCard({
         <h4 className="font-display text-sm font-semibold text-text-primary tracking-tight">
           {title}
         </h4>
-        <p className="mt-1 text-xs text-text-secondary leading-relaxed">
-          {text}
-        </p>
+        <p className="mt-1 text-xs text-text-secondary leading-relaxed">{text}</p>
       </div>
 
       {/* Action */}

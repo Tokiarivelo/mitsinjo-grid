@@ -2,14 +2,7 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import {
-  BatteryCharging,
-  Factory,
-  HeartPulse,
-  Play,
-  Sun,
-  Zap,
-} from 'lucide-react';
+import { BatteryCharging, Factory, HeartPulse, Play, Sun, Zap } from 'lucide-react';
 import {
   selectActiveMetrics,
   selectActiveResult,
@@ -19,11 +12,12 @@ import {
   selectInput,
   selectIsRunning,
   selectScenarioId,
+  selectTimeIndex,
   useSimulationStore,
 } from '@/stores';
-import { fmtKwh, fmtPct } from '@/lib/format';
+import { fmtKwh, fmtNum, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { MetricCard } from '@/components/ui/metric-card';
 import { EnergyBar } from '@/components/ui/energy-bar';
 import { ChartCard } from '@/components/ui/chart-card';
@@ -47,20 +41,15 @@ export function OverviewPage() {
   const metrics = useSimulationStore(selectActiveMetrics);
   const steps = useSimulationStore(selectActiveSteps);
   const warnings = useSimulationStore(selectActiveWarnings);
+  const timeIndex = useSimulationStore(selectTimeIndex);
 
   const runSimulation = useSimulationStore((s) => s.run);
 
-  // Derived peak solar kW
-  const peakSolarKw = useMemo(() => {
-    if (!steps || steps.length === 0) return 0;
-    return Math.max(...steps.map((s) => s.solarKw));
-  }, [steps]);
-
-  // Net battery flow (sum of batteryKw: + = charge, - = discharge)
-  const netBatteryKwh = useMemo(() => {
-    if (!steps || steps.length === 0) return 0;
-    return steps.reduce((acc, s) => acc + s.batteryKw, 0);
-  }, [steps]);
+  // Peak of the engine's hourly solar output (selection only, no energy math)
+  const peakSolarKw = useMemo(
+    () => (steps.length > 0 ? Math.max(...steps.map((s) => s.solarKw)) : null),
+    [steps]
+  );
 
   const scenarioName = tScenarios(`${scenarioId}.name` as const);
 
@@ -71,16 +60,12 @@ export function OverviewPage() {
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <StatusBadge variant="simulated" label={tCommon('simulatedData')} />
-            <span className="text-xs font-mono text-text-muted">
-              {scenarioName}
-            </span>
+            <span className="text-xs font-mono text-text-muted">{scenarioName}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold font-display text-text-primary tracking-tight">
             {tCommon('appName')}
           </h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            {tOverview('subtitle')}
-          </p>
+          <p className="mt-1 text-sm text-text-secondary">{tOverview('subtitle')}</p>
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
@@ -95,14 +80,9 @@ export function OverviewPage() {
               {isRunning ? tOverview('simulating') : tOverview('runSimulation')}
             </Button>
           ) : (
-            <Link href="/simulation">
-              <Button
-                variant="primary"
-                size="md"
-                icon={<Zap className="h-4 w-4" />}
-              >
-                {tOverview('openLive')}
-              </Button>
+            <Link href="/simulation" className={buttonVariants({ variant: 'primary', size: 'md' })}>
+              <Zap className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{tOverview('openLive')}</span>
             </Link>
           )}
         </div>
@@ -114,7 +94,7 @@ export function OverviewPage() {
         <MetricCard
           variant="solar"
           label={tOverview('solarPeak')}
-          value={hasResults ? peakSolarKw.toFixed(1) : '--'}
+          value={hasResults ? fmtNum(peakSolarKw) : fmtNum(null)}
           unit="kW"
           empty={!hasResults}
           loading={isRunning}
@@ -130,7 +110,7 @@ export function OverviewPage() {
         <MetricCard
           variant="battery"
           label={tOverview('batterySoc')}
-          value={hasResults && metrics ? metrics.socEndPct.toFixed(0) : '--'}
+          value={fmtNum(hasResults ? metrics?.socEndPct : null, 0)}
           unit="%"
           empty={!hasResults}
           loading={isRunning}
@@ -142,24 +122,15 @@ export function OverviewPage() {
                 })
               : undefined
           }
-          status={
-            metrics && metrics.socEndPct < input.battery.minSocPct + 5
-              ? 'warning'
-              : 'normal'
-          }
-          icon={
-            <BatteryCharging
-              className="h-4 w-4 text-battery-green"
-              aria-hidden="true"
-            />
-          }
+          status={metrics && metrics.socEndPct < input.battery.minSocPct + 5 ? 'warning' : 'normal'}
+          icon={<BatteryCharging className="h-4 w-4 text-battery-green" aria-hidden="true" />}
         />
 
         {/* Total Demand Card */}
         <MetricCard
           variant="demand"
           label={tOverview('totalDemand')}
-          value={hasResults && metrics ? metrics.demandKwh.toFixed(1) : '--'}
+          value={fmtNum(hasResults ? metrics?.demandKwh : null)}
           unit="kWh"
           empty={!hasResults}
           loading={isRunning}
@@ -170,9 +141,7 @@ export function OverviewPage() {
                 })
               : undefined
           }
-          status={
-            metrics && metrics.unservedKwh > 0.1 ? 'warning' : 'normal'
-          }
+          status={metrics && metrics.unservedKwh > 0.1 ? 'warning' : 'normal'}
           icon={<Factory className="h-4 w-4 text-energy-cyan" aria-hidden="true" />}
         />
 
@@ -180,19 +149,11 @@ export function OverviewPage() {
         <MetricCard
           variant="essential"
           label={tOverview('essentialServices')}
-          value={
-            hasResults && metrics
-              ? metrics.criticalCoveragePct.toFixed(1)
-              : '--'
-          }
+          value={fmtNum(hasResults ? metrics?.criticalCoveragePct : null)}
           unit="%"
           empty={!hasResults}
           loading={isRunning}
-          status={
-            metrics && metrics.criticalUnservedKwh > 0.05
-              ? 'critical'
-              : 'normal'
-          }
+          status={metrics && metrics.criticalUnservedKwh > 0.05 ? 'critical' : 'normal'}
           caption={
             hasResults && metrics
               ? metrics.criticalUnservedKwh > 0.05
@@ -219,7 +180,7 @@ export function OverviewPage() {
       {/* 2. Middle Row: 2D Grid Schematic Preview + 24h Energy Balance */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <GridSchematicPreview result={result} hour={12} />
+          <GridSchematicPreview result={result} input={input} hour={timeIndex} />
         </div>
 
         {/* 24h Energy Balance Card */}
@@ -229,9 +190,7 @@ export function OverviewPage() {
               <h3 className="font-display text-sm font-semibold text-text-primary tracking-tight">
                 {tOverview('energyBalanceTitle')}
               </h3>
-              <p className="text-xs text-text-secondary mt-0.5">
-                {tOverview('energyBalanceDesc')}
-              </p>
+              <p className="text-xs text-text-secondary mt-0.5">{tOverview('energyBalanceDesc')}</p>
             </div>
 
             <div className="mt-4 flex flex-col gap-3 font-mono text-xs">
@@ -241,7 +200,7 @@ export function OverviewPage() {
                   {tOverview('solarGen')}:
                 </span>
                 <span className="font-semibold text-solar-amber">
-                  {hasResults && metrics ? fmtKwh(metrics.solarKwh) : '-- kWh'}
+                  {fmtKwh(hasResults ? metrics?.solarKwh : null)}
                 </span>
               </div>
 
@@ -251,9 +210,9 @@ export function OverviewPage() {
                   {tOverview('batteryNet')}:
                 </span>
                 <span className="font-semibold text-text-primary">
-                  {hasResults
-                    ? `${netBatteryKwh >= 0 ? '+' : ''}${fmtKwh(netBatteryKwh)}`
-                    : '-- kWh'}
+                  {hasResults && metrics
+                    ? `${fmtPct(metrics.socStartPct, 0)} → ${fmtPct(metrics.socEndPct, 0)}`
+                    : fmtPct(null)}
                 </span>
               </div>
 
@@ -263,7 +222,7 @@ export function OverviewPage() {
                   {tOverview('servedEnergy')}:
                 </span>
                 <span className="font-semibold text-battery-green">
-                  {hasResults && metrics ? fmtKwh(metrics.servedKwh) : '-- kWh'}
+                  {fmtKwh(hasResults ? metrics?.servedKwh : null)}
                 </span>
               </div>
 
@@ -279,7 +238,7 @@ export function OverviewPage() {
                       : 'font-semibold text-text-muted'
                   }
                 >
-                  {hasResults && metrics ? fmtKwh(metrics.unservedKwh) : '-- kWh'}
+                  {fmtKwh(hasResults ? metrics?.unservedKwh : null)}
                 </span>
               </div>
             </div>
@@ -312,9 +271,7 @@ export function OverviewPage() {
             empty={!hasResults}
             loading={isRunning}
           >
-            {hasResults && steps.length > 0 && (
-              <EnergyOverTimeChart steps={steps} height={260} />
-            )}
+            {hasResults && steps.length > 0 && <EnergyOverTimeChart steps={steps} height={260} />}
           </ChartCard>
         </div>
 
@@ -334,33 +291,21 @@ export function OverviewPage() {
             <div className="mt-4 flex flex-col divide-y divide-border/40">
               <EnergyBar
                 label={tSectors('health')}
-                valuePct={
-                  hasResults && metrics
-                    ? metrics.perSector.health?.coveragePct ?? 0
-                    : 0
-                }
+                valuePct={hasResults && metrics ? (metrics.perSector.health?.coveragePct ?? 0) : 0}
                 servedKwh={metrics?.perSector.health?.servedKwh}
                 demandKwh={metrics?.perSector.health?.demandKwh}
                 priority="critical"
               />
               <EnergyBar
                 label={tSectors('water')}
-                valuePct={
-                  hasResults && metrics
-                    ? metrics.perSector.water?.coveragePct ?? 0
-                    : 0
-                }
+                valuePct={hasResults && metrics ? (metrics.perSector.water?.coveragePct ?? 0) : 0}
                 servedKwh={metrics?.perSector.water?.servedKwh}
                 demandKwh={metrics?.perSector.water?.demandKwh}
                 priority="critical"
               />
               <EnergyBar
                 label={tSectors('school')}
-                valuePct={
-                  hasResults && metrics
-                    ? metrics.perSector.school?.coveragePct ?? 0
-                    : 0
-                }
+                valuePct={hasResults && metrics ? (metrics.perSector.school?.coveragePct ?? 0) : 0}
                 servedKwh={metrics?.perSector.school?.servedKwh}
                 demandKwh={metrics?.perSector.school?.demandKwh}
                 priority="medium"
@@ -368,9 +313,7 @@ export function OverviewPage() {
               <EnergyBar
                 label={tSectors('households')}
                 valuePct={
-                  hasResults && metrics
-                    ? metrics.perSector.households?.coveragePct ?? 0
-                    : 0
+                  hasResults && metrics ? (metrics.perSector.households?.coveragePct ?? 0) : 0
                 }
                 servedKwh={metrics?.perSector.households?.servedKwh}
                 demandKwh={metrics?.perSector.households?.demandKwh}
@@ -378,11 +321,7 @@ export function OverviewPage() {
               />
               <EnergyBar
                 label={tSectors('market')}
-                valuePct={
-                  hasResults && metrics
-                    ? metrics.perSector.market?.coveragePct ?? 0
-                    : 0
-                }
+                valuePct={hasResults && metrics ? (metrics.perSector.market?.coveragePct ?? 0) : 0}
                 servedKwh={metrics?.perSector.market?.servedKwh}
                 demandKwh={metrics?.perSector.market?.demandKwh}
                 priority="low"

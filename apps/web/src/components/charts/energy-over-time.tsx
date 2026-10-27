@@ -65,11 +65,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   );
 }
 
-export function EnergyOverTimeChart({
-  steps,
-  height = 260,
-  className,
-}: EnergyOverTimeChartProps) {
+export function EnergyOverTimeChart({ steps, height = 260, className }: EnergyOverTimeChartProps) {
   const tCharts = useTranslations('charts');
 
   const chartData = steps.map((s) => ({
@@ -83,42 +79,39 @@ export function EnergyOverTimeChart({
   return (
     <div className={className} style={{ width: '100%', height }}>
       <ResponsiveContainer width="100%" height="100%" minHeight={height}>
-        <ComposedChart
-          data={chartData}
-          margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
-        >
+        <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
           <defs>
             <linearGradient id="solarGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#ffb547" stopOpacity={0.35} />
-              <stop offset="95%" stopColor="#ffb547" stopOpacity={0.0} />
+              <stop offset="5%" stopColor="var(--color-solar-amber)" stopOpacity={0.35} />
+              <stop offset="95%" stopColor="var(--color-solar-amber)" stopOpacity={0.0} />
             </linearGradient>
             <linearGradient id="servedGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#76f7be" stopOpacity={0.25} />
-              <stop offset="95%" stopColor="#76f7be" stopOpacity={0.0} />
+              <stop offset="5%" stopColor="var(--color-battery-green)" stopOpacity={0.25} />
+              <stop offset="95%" stopColor="var(--color-battery-green)" stopOpacity={0.0} />
             </linearGradient>
           </defs>
 
           <CartesianGrid
             strokeDasharray="3 3"
-            stroke="var(--color-border, #303443)"
+            stroke="var(--color-border)"
             opacity={0.4}
             vertical={false}
           />
 
           <XAxis
             dataKey="hour"
-            tickFormatter={(val) => `${val}h`}
-            stroke="var(--color-text-muted, #7c859e)"
-            tick={{ fontSize: 11, fill: 'var(--color-text-muted, #7c859e)' }}
+            tickFormatter={(val: number) => fmtHour(val)}
+            stroke="var(--color-text-muted)"
+            tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }}
             tickLine={false}
-            axisLine={{ stroke: 'var(--color-border, #303443)' }}
+            axisLine={{ stroke: 'var(--color-border)' }}
           />
 
           {/* Left Y Axis: Power in kW */}
           <YAxis
             yAxisId="power"
-            stroke="var(--color-text-muted, #7c859e)"
-            tick={{ fontSize: 11, fill: 'var(--color-text-muted, #7c859e)' }}
+            stroke="var(--color-text-muted)"
+            tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }}
             tickLine={false}
             axisLine={false}
             unit=" kW"
@@ -129,8 +122,8 @@ export function EnergyOverTimeChart({
             yAxisId="soc"
             orientation="right"
             domain={[0, 100]}
-            stroke="var(--color-battery-green, #76f7be)"
-            tick={{ fontSize: 11, fill: 'var(--color-battery-green, #76f7be)' }}
+            stroke="var(--color-battery-green)"
+            tick={{ fontSize: 11, fill: 'var(--color-battery-green)' }}
             tickLine={false}
             axisLine={false}
             unit="%"
@@ -144,7 +137,7 @@ export function EnergyOverTimeChart({
             type="monotone"
             dataKey="solarKw"
             name={tCharts('solar')}
-            stroke="#ffb547"
+            stroke="var(--color-solar-amber)"
             strokeWidth={2}
             fillOpacity={1}
             fill="url(#solarGradient)"
@@ -156,7 +149,7 @@ export function EnergyOverTimeChart({
             type="monotone"
             dataKey="demandKw"
             name={tCharts('demand')}
-            stroke="#50d8e8"
+            stroke="var(--color-energy-cyan)"
             strokeWidth={1.5}
             strokeDasharray="4 4"
             dot={false}
@@ -168,7 +161,7 @@ export function EnergyOverTimeChart({
             type="monotone"
             dataKey="servedKw"
             name={tCharts('served')}
-            stroke="#76f7be"
+            stroke="var(--color-battery-green)"
             strokeWidth={2}
             fillOpacity={1}
             fill="url(#servedGradient)"
@@ -180,7 +173,7 @@ export function EnergyOverTimeChart({
             type="monotone"
             dataKey="socPct"
             name={tCharts('soc')}
-            stroke="#10b981"
+            stroke="var(--color-battery-green)"
             strokeWidth={1.75}
             strokeDasharray="3 3"
             dot={false}

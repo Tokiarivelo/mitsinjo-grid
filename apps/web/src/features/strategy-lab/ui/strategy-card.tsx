@@ -46,7 +46,7 @@ export function StrategyCard({
       className={cn(
         'flex flex-col justify-between p-5 rounded-card bg-surface border transition-all shadow-sm',
         isActive
-          ? 'border-energy-cyan/60 ring-1 ring-energy-cyan/30 shadow-[0_0_15px_rgba(80,216,232,0.08)]'
+          ? 'border-energy-cyan/60 ring-1 ring-energy-cyan/30 shadow-md shadow-energy-cyan/10'
           : 'border-border/80 hover:border-border',
         className
       )}
@@ -66,9 +66,7 @@ export function StrategyCard({
                 </span>
               )}
             </div>
-            <p className="text-xs text-text-secondary mt-1 leading-relaxed">
-              {rule}
-            </p>
+            <p className="text-xs text-text-secondary mt-1 leading-relaxed">{rule}</p>
           </div>
         </div>
 
@@ -83,12 +81,12 @@ export function StrategyCard({
               {bestMetrics?.delivered && hasResults && (
                 <span className="text-[9px] font-mono text-battery-green bg-battery-green/15 border border-battery-green/30 px-1 py-0.5 rounded-control-sm flex items-center gap-0.5">
                   <Award className="h-2.5 w-2.5" aria-hidden="true" />
-                  TOP
+                  {tStrategies('badgeTop')}
                 </span>
               )}
             </div>
             <span className="text-base font-display font-semibold text-text-primary mt-1 font-mono">
-              {hasResults && metrics ? fmtKwh(metrics.servedKwh) : '-- kWh'}
+              {fmtKwh(metrics?.servedKwh)}
             </span>
           </div>
 
@@ -108,7 +106,7 @@ export function StrategyCard({
               {bestMetrics?.essential && hasResults && (
                 <span className="text-[9px] font-mono text-battery-green bg-battery-green/15 border border-battery-green/30 px-1 py-0.5 rounded-control-sm flex items-center gap-0.5">
                   <ShieldCheck className="h-2.5 w-2.5" aria-hidden="true" />
-                  BEST
+                  {tStrategies('badgeBest')}
                 </span>
               )}
             </div>
@@ -120,48 +118,42 @@ export function StrategyCard({
                   : 'text-battery-green'
               )}
             >
-              {hasResults && metrics ? fmtPct(metrics.criticalCoveragePct) : '--%'}
+              {fmtPct(metrics?.criticalCoveragePct)}
             </span>
           </div>
 
           {/* Unmet Demand */}
           <div className="p-3 rounded-control bg-surface-elevated/70 border border-border/60 flex flex-col justify-between">
             <div className="flex items-center justify-between gap-1">
-              <span className="text-[11px] font-sans text-text-muted">
-                {tStrategies('unmet')}
-              </span>
+              <span className="text-[11px] font-sans text-text-muted">{tStrategies('unmet')}</span>
               {bestMetrics?.unmet && hasResults && (
                 <span className="text-[9px] font-mono text-battery-green bg-battery-green/15 border border-battery-green/30 px-1 py-0.5 rounded-control-sm">
-                  MIN
+                  {tStrategies('badgeMin')}
                 </span>
               )}
             </div>
             <span
               className={cn(
                 'text-base font-display font-semibold mt-1 font-mono',
-                metrics && metrics.unservedKwh > 0.05
-                  ? 'text-warning-amber'
-                  : 'text-text-muted'
+                metrics && metrics.unservedKwh > 0.05 ? 'text-warning-amber' : 'text-text-muted'
               )}
             >
-              {hasResults && metrics ? fmtKwh(metrics.unservedKwh) : '-- kWh'}
+              {fmtKwh(metrics?.unservedKwh)}
             </span>
           </div>
 
           {/* Ending Battery SoC */}
           <div className="p-3 rounded-control bg-surface-elevated/70 border border-border/60 flex flex-col justify-between">
             <div className="flex items-center justify-between gap-1">
-              <span className="text-[11px] font-sans text-text-muted">
-                {tStrategies('socEnd')}
-              </span>
+              <span className="text-[11px] font-sans text-text-muted">{tStrategies('socEnd')}</span>
               {bestMetrics?.soc && hasResults && (
                 <span className="text-[9px] font-mono text-battery-green bg-battery-green/15 border border-battery-green/30 px-1 py-0.5 rounded-control-sm">
-                  MAX
+                  {tStrategies('badgeMax')}
                 </span>
               )}
             </div>
             <span className="text-base font-display font-semibold text-text-primary mt-1 font-mono">
-              {hasResults && metrics ? fmtPct(metrics.socEndPct, 0) : '--%'}
+              {fmtPct(metrics?.socEndPct, 0)}
             </span>
           </div>
         </div>
@@ -170,35 +162,35 @@ export function StrategyCard({
         <div className="pt-2 border-t border-border/40 flex flex-col divide-y divide-border/30">
           <EnergyBar
             label={tSectors('health')}
-            valuePct={hasResults && metrics ? metrics.perSector.health?.coveragePct ?? 0 : 0}
+            valuePct={hasResults && metrics ? (metrics.perSector.health?.coveragePct ?? 0) : 0}
             servedKwh={metrics?.perSector.health?.servedKwh}
             demandKwh={metrics?.perSector.health?.demandKwh}
             priority="critical"
           />
           <EnergyBar
             label={tSectors('water')}
-            valuePct={hasResults && metrics ? metrics.perSector.water?.coveragePct ?? 0 : 0}
+            valuePct={hasResults && metrics ? (metrics.perSector.water?.coveragePct ?? 0) : 0}
             servedKwh={metrics?.perSector.water?.servedKwh}
             demandKwh={metrics?.perSector.water?.demandKwh}
             priority="critical"
           />
           <EnergyBar
             label={tSectors('school')}
-            valuePct={hasResults && metrics ? metrics.perSector.school?.coveragePct ?? 0 : 0}
+            valuePct={hasResults && metrics ? (metrics.perSector.school?.coveragePct ?? 0) : 0}
             servedKwh={metrics?.perSector.school?.servedKwh}
             demandKwh={metrics?.perSector.school?.demandKwh}
             priority="medium"
           />
           <EnergyBar
             label={tSectors('households')}
-            valuePct={hasResults && metrics ? metrics.perSector.households?.coveragePct ?? 0 : 0}
+            valuePct={hasResults && metrics ? (metrics.perSector.households?.coveragePct ?? 0) : 0}
             servedKwh={metrics?.perSector.households?.servedKwh}
             demandKwh={metrics?.perSector.households?.demandKwh}
             priority="low"
           />
           <EnergyBar
             label={tSectors('market')}
-            valuePct={hasResults && metrics ? metrics.perSector.market?.coveragePct ?? 0 : 0}
+            valuePct={hasResults && metrics ? (metrics.perSector.market?.coveragePct ?? 0) : 0}
             servedKwh={metrics?.perSector.market?.servedKwh}
             demandKwh={metrics?.perSector.market?.demandKwh}
             priority="low"

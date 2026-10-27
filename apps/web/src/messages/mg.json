@@ -275,7 +275,7 @@
     "emptyTitle": "Mbola tsy misy valin'ny simulation",
     "emptyDesc": "Alefaso ny simulation mba hanisana ny fizarana herinaratra sy hijerena ny fahafaham-po.",
     "solarGen": "Totalin'ny famokarana masoandro",
-    "batteryNet": "Fikoriana net amin'ny bateria",
+    "batteryNet": "Tahirin'ny bateria (fiandohana → farany)",
     "servedEnergy": "Totalin'ny angovo voazara",
     "unservedTotal": "Totalin'ny angovo tsy voazara",
     "energyOverTimeTitle": "Angovo araka ny fotoana (24 ora)",
@@ -283,15 +283,16 @@
     "energyOverTimeSummary": "Fivoaran'ny famokarana masoandro, fitakiana manontolo, angovo voazara amin'ny kW ary tahirin'ny bateria mandritra ny 24 ora.",
     "clinicWarningInsight": "Miantraika amin'ny tolotra fototra ao amin'ny tobim-pahasalamana ny fizarana mitovy lenta. Mifindrà amin'ny Laharam-pahamehana fototra ao amin'ny Labo Paikady mba hiarovana ny aina.",
     "solarArrayNode": "Taratry ny masoandro PV",
-    "solarArrayCapacity": "Hery 40 kWp",
+    "solarArrayCapacity": "Hery ambony indrindra {kw}",
     "batteryStorageNode": "Tahiry LiFePO4",
-    "batteryStorageCapacity": "Bateria 120 kWh",
+    "batteryStorageCapacity": "Bateria {kwh}",
     "gridBusLabel": "Tambajotra AC 230V",
     "schematicBadge": "SARY 2D",
-    "atHour": "amin'ny {hour}:00",
+    "atHour": "amin'ny {hour}",
     "charging": "+{kw} mameno",
     "discharging": "{kw} mivoaka",
-    "idle": "mijanona"
+    "idle": "mijanona",
+    "criticalTag": "MAIKA"
   },
   "strategies": {
     "subtitle": "Fampitahana mifanila ny fomba fizarana herinaratra amin'ny toe-javatra mitovy",
@@ -320,7 +321,7 @@
     "emptyTitle": "Mbola tsy nisy fampitahana paikady",
     "emptyDesc": "Alefaso ny fampitahana mba hahitana ny fahasamihafana eo amin'ny Fizarana mitovy sy ny Laharam-pahamehana fototra.",
     "summaryHeroTitle": "Fiarovana ny tolotra fototra amin'ny fotoana tsy fahampiana",
-    "summaryHeroDesc": "Ny Laharam-pahamehana fototra dia misoroka ny fahatapahan'ny tobim-pahasalamana sy rano (0,0 kWh tsy ampy raha {propUnserved} amin'ny Fizarana mitovy).",
+    "summaryHeroDesc": "Ny Laharam-pahamehana fototra dia misoroka ny fahatapahan'ny tobim-pahasalamana sy rano ({essUnserved} tsy ampy raha {propUnserved} amin'ny Fizarana mitovy).",
     "summaryNominalTitle": "Fahafaham-po tanteraka amin'ny andro mahazatra",
     "summaryNominalDesc": "Amin'ny toe-javatra ankehitriny, mahafeno 100% ny filana rehetra ny famokarana sy ny bateria amin'ny paikady rehetra.",
     "summaryStressTitle": "Tsy fahampiana lehibe: ilaina ny miaro ny tolotra aina",
@@ -330,7 +331,11 @@
     "bestEssentialBadge": "Fiarovana aina tsara indrindra",
     "lowestUnmetBadge": "Tsy ampy kely indrindra",
     "highestSocBadge": "Tahiry tsara indrindra",
-    "copilotPromoDesc": "Fantaro ny antony nahatonga ny tolotra fototra ho tapaka ary manandrama fanovana herin'ny masoandro na bateria miaraka amin'ny Copilot."
+    "copilotPromoDesc": "Fantaro ny antony nahatonga ny tolotra fototra ho tapaka ary manandrama fanovana herin'ny masoandro na bateria miaraka amin'ny Copilot.",
+    "badgeTop": "AMBONY",
+    "badgeBest": "TSARA INDRINDRA",
+    "badgeMin": "MIN",
+    "badgeMax": "MAX"
   },
   "charts": {
     "hourAxis": "Ora amin'ny andro",
@@ -345,6 +350,9 @@
     "deliveredEnergy": "Voazara (kWh)",
     "criticalCoverage": "Fototra (%)",
     "unservedEnergy": "Tsy ampy (kWh)",
-    "endSoc": "SoC farany (%)"
+    "endSoc": "SoC farany (%)",
+    "tooltipCoverage": "Fahafaham-po",
+    "tooltipServedDemand": "Voazara / Fitakiana",
+    "tooltipUnmet": "Tsy ampy"
   }
 }

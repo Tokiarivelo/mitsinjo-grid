@@ -2,12 +2,7 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import {
-  ArrowRight,
-  CheckCircle2,
-  GitCompare,
-  Sparkles,
-} from 'lucide-react';
+import { ArrowRight, CheckCircle2, GitCompare, Sparkles } from 'lucide-react';
 import type { StrategyId } from '@mitsinjo/engine';
 import {
   selectActiveStrategy,
@@ -19,7 +14,7 @@ import {
   useSimulationStore,
 } from '@/stores';
 import { useTranslations } from '@/lib/i18n';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { ChartCard } from '@/components/ui/chart-card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { InsightCard } from '@/components/ui/insight-card';
@@ -185,20 +180,14 @@ export function StrategyLabPage() {
           empty={!hasResults}
           loading={isRunning}
         >
-          {hasResults && (
-            <StrategyComparisonChart comparison={comparison} height={280} />
-          )}
+          {hasResults && <StrategyComparisonChart comparison={comparison} height={280} />}
         </ChartCard>
       </div>
 
       {/* 3. Bottom Row: Active Warnings & Copilot Link */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          {activeResult && activeResult.warnings.length > 0 ? (
-            <ImpactBanner warnings={activeResult.warnings} />
-          ) : (
-            <ImpactBanner warnings={[]} />
-          )}
+          <ImpactBanner warnings={activeResult?.warnings ?? []} />
         </div>
 
         {/* AI Copilot Explanation CTA */}
@@ -217,15 +206,12 @@ export function StrategyLabPage() {
           </div>
 
           <div className="mt-4 pt-3 border-t border-border/60">
-            <Link href="/copilot">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="w-full"
-                icon={<ArrowRight className="h-3.5 w-3.5" />}
-              >
-                {tStrategies('explainInCopilot')}
-              </Button>
+            <Link
+              href="/copilot"
+              className={buttonVariants({ variant: 'secondary', size: 'sm', className: 'w-full' })}
+            >
+              <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>{tStrategies('explainInCopilot')}</span>
             </Link>
           </div>
         </div>

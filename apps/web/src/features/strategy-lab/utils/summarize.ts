@@ -95,18 +95,16 @@ export function summarizeComparison(
   }
 
   // Rule 2: Essential First protects clinic/water while Proportional drops critical power
-  if (
-    ess.metrics.criticalUnservedKwh === 0 &&
-    prop.metrics.criticalUnservedKwh > 0.01
-  ) {
+  if (ess.metrics.criticalUnservedKwh < 0.01 && prop.metrics.criticalUnservedKwh > 0.01) {
     return {
       recommendedStrategy: 'essential_first',
       titleKey: 'summaryHeroTitle',
       descriptionKey: 'summaryHeroDesc',
       descriptionParams: {
+        essUnserved: fmtKwh(ess.metrics.criticalUnservedKwh),
         propUnserved: fmtKwh(prop.metrics.criticalUnservedKwh),
       },
-      evidenceRef: `criticalUnservedKwh: ess=0.0 vs prop=${prop.metrics.criticalUnservedKwh.toFixed(1)}`,
+      evidenceRef: `criticalUnservedKwh: ess=${ess.metrics.criticalUnservedKwh.toFixed(1)} vs prop=${prop.metrics.criticalUnservedKwh.toFixed(1)}`,
       bestDelivered,
       bestEssentialCoverage: 'essential_first',
       lowestUnmet,
@@ -114,9 +112,9 @@ export function summarizeComparison(
     };
   }
 
-  // Rule 3: Severe deficit where even essential tier has deficit or both have shortfall
+  // Rule 3: Severe deficit — recommend whichever strategy best protects the essential tier
   return {
-    recommendedStrategy: 'essential_first',
+    recommendedStrategy: bestEssential,
     titleKey: 'summaryStressTitle',
     descriptionKey: 'summaryStressDesc',
     evidenceRef: `criticalCoveragePct: ess=${ess.metrics.criticalCoveragePct.toFixed(1)}% vs prop=${prop.metrics.criticalCoveragePct.toFixed(1)}%`,

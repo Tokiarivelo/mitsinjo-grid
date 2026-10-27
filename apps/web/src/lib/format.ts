@@ -75,3 +75,18 @@ export function fmtDeltaPct(
   const sign = delta > 0 ? '+' : '';
   return `${sign}${delta.toFixed(decimals)}%`;
 }
+
+/**
+ * Format a bare number (unit shown separately, e.g. by MetricCard).
+ * e.g. fmtNum(40.23) => "40.2"
+ */
+export function fmtNum(
+  value: number | null | undefined,
+  decimals = 1,
+  fallback = EMPTY_PLACEHOLDER
+): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return fallback;
+  }
+  return value.toFixed(decimals);
+}
