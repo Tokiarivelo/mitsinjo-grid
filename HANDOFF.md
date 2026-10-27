@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-27 · **By:** Antigravity (Bento Overview & 3D Twin) · **Branch:** `feat/3d-fidelity`
+**Updated:** 2026-10-27 · **By:** Antigravity (Bento Overview & 3D Twin) · **Branch:** `feat/3d-fidelity` (PR #17)
 
 ## State
 
