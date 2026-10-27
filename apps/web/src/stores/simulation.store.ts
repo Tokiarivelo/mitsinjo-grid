@@ -141,9 +141,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   applyProposal: (patch?: InputPatch, strategy?: StrategyId) => {
     try {
       const patched =
-        patch && Object.keys(patch).length > 0
-          ? applyPatch(get().input, patch)
-          : get().input;
+        patch && Object.keys(patch).length > 0 ? applyPatch(get().input, patch) : get().input;
       const nextStrategy = strategy ?? get().activeStrategy;
 
       set({

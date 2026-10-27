@@ -4,10 +4,7 @@ import { Menu, RotateCcw, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { StatusBadge, type StatusBadgeVariant } from '@/components/ui/status-badge';
-import {
-  ScenarioSelector,
-  type ScenarioOption,
-} from '@/components/ui/scenario-selector';
+import { ScenarioSelector, type ScenarioOption } from '@/components/ui/scenario-selector';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useTranslations } from '@/lib/i18n';
 

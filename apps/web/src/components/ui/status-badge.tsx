@@ -24,13 +24,7 @@ export interface StatusBadgeProps {
   className?: string;
 }
 
-export function StatusBadge({
-  variant,
-  label,
-  icon,
-  size = 'md',
-  className,
-}: StatusBadgeProps) {
+export function StatusBadge({ variant, label, icon, size = 'md', className }: StatusBadgeProps) {
   const tStatus = useTranslations('status');
   const text = label || tStatus(variant);
 
@@ -60,7 +54,12 @@ export function StatusBadge({
       case 'modified':
         return <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />;
       case 'running':
-        return <Cpu className="h-3 w-3 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />;
+        return (
+          <Cpu
+            className="h-3 w-3 shrink-0 animate-spin motion-reduce:animate-none"
+            aria-hidden="true"
+          />
+        );
       case 'complete':
         return <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" />;
       case 'error':

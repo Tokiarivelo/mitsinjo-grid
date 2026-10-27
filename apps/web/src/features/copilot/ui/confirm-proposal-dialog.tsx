@@ -130,13 +130,9 @@ export function ConfirmProposalDialog({
             key={idx}
             className="p-2.5 rounded-lg bg-surface border border-border/40 flex flex-col justify-between"
           >
-            <span className="text-[10px] text-text-muted uppercase truncate">
-              {item.label}
-            </span>
+            <span className="text-[10px] text-text-muted uppercase truncate">{item.label}</span>
             <div className="mt-1.5 flex items-center gap-1.5 flex-wrap text-xs">
-              <span className="line-through text-text-muted/70">
-                {item.current}
-              </span>
+              <span className="line-through text-text-muted/70">{item.current}</span>
               <ArrowRight className="h-3 w-3 text-energy-cyan shrink-0" aria-hidden="true" />
               <span className="text-secondary font-semibold bg-energy-cyan/10 px-1.5 py-0.5 rounded border border-energy-cyan/30 text-energy-cyan">
                 {item.proposed}

@@ -41,7 +41,12 @@ export function SimControl({
   const errorId = `${id}-error`;
 
   return (
-    <div className={cn('flex flex-col gap-2 p-3.5 rounded-card bg-surface border border-border', className)}>
+    <div
+      className={cn(
+        'flex flex-col gap-2 p-3.5 rounded-card bg-surface border border-border',
+        className
+      )}
+    >
       {/* Header: Label, current value + unit */}
       <div className="flex items-center justify-between text-xs">
         <label htmlFor={id} className="font-sans font-medium text-text-primary">
@@ -107,7 +112,11 @@ export function SimControl({
 
       {/* Error display */}
       {error && (
-        <div id={errorId} role="alert" className="mt-1 flex items-center gap-1.5 text-xs text-critical-red font-sans">
+        <div
+          id={errorId}
+          role="alert"
+          className="mt-1 flex items-center gap-1.5 text-xs text-critical-red font-sans"
+        >
           <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span>{error}</span>
         </div>

@@ -1,12 +1,6 @@
 import 'server-only';
 
-import type {
-  LlmProvider,
-  ChatMessage,
-  ToolDefinition,
-  LlmTurn,
-  ToolCall,
-} from '../provider';
+import type { LlmProvider, ChatMessage, ToolDefinition, LlmTurn, ToolCall } from '../provider';
 
 /** Model id reported (and accepted) when `LLM_PROVIDER=mock`. */
 export const MOCK_MODEL_ID = 'mock-deterministic-v1';
@@ -223,7 +217,10 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
       };
     } else if (
       (query.includes('solar') || query.includes('solaire')) &&
-      (query.includes('drop') || query.includes('chute') || query.includes('baisse') || query.includes('40'))
+      (query.includes('drop') ||
+        query.includes('chute') ||
+        query.includes('baisse') ||
+        query.includes('40'))
     ) {
       toolCall = {
         id: 'call_run_drop',
@@ -370,7 +367,13 @@ Try setting the solar drop percentage to a valid value between 0% and 90%.`,
       const coveragePct = data.coveragePct ?? 0;
       const rawSector = (data.sector ?? 'sector') as string;
       const sector = fr
-        ? (rawSector === 'health' ? 'santé' : rawSector === 'water' ? 'eau' : rawSector === 'education' ? 'éducation' : rawSector)
+        ? rawSector === 'health'
+          ? 'santé'
+          : rawSector === 'water'
+            ? 'eau'
+            : rawSector === 'education'
+              ? 'éducation'
+              : rawSector
         : rawSector;
 
       if (fr) {
@@ -413,9 +416,15 @@ Switch the dispatch strategy to Essential-First to protect high-priority loads.`
     }
 
     if (toolName === 'compare_strategies') {
-      const prop = data.proportional as { metrics: { criticalCoveragePct: number; unservedKwh: number; servedKwh: number } } | undefined;
-      const ess = data.essential_first as { metrics: { criticalCoveragePct: number; unservedKwh: number; servedKwh: number } } | undefined;
-      const bal = data.balanced as { metrics: { criticalCoveragePct: number; unservedKwh: number; servedKwh: number } } | undefined;
+      const prop = data.proportional as
+        | { metrics: { criticalCoveragePct: number; unservedKwh: number; servedKwh: number } }
+        | undefined;
+      const ess = data.essential_first as
+        | { metrics: { criticalCoveragePct: number; unservedKwh: number; servedKwh: number } }
+        | undefined;
+      const bal = data.balanced as
+        | { metrics: { criticalCoveragePct: number; unservedKwh: number; servedKwh: number } }
+        | undefined;
 
       const propCov = prop?.metrics.criticalCoveragePct ?? 0;
       const essCov = ess?.metrics.criticalCoveragePct ?? 0;
@@ -506,10 +515,15 @@ Compare allocation strategies to evaluate how essential services can be safeguar
 
     if (toolName === 'propose_change') {
       const propId = (data.proposalId as string) || (payload.proposalId as string) || 'PROP-01';
-      const reason = (data.reason as string) || (payload.reason as string) || 'Optimize essential service protection';
+      const reason =
+        (data.reason as string) ||
+        (payload.reason as string) ||
+        'Optimize essential service protection';
       const strat = (data.strategy as string) || (payload.strategy as string);
       const stratLine = strat ? `\nStrategy Switch: ${strat}` : '';
-      const patch = (data.patch as Record<string, unknown> | undefined) || (payload.patch as Record<string, unknown> | undefined);
+      const patch =
+        (data.patch as Record<string, unknown> | undefined) ||
+        (payload.patch as Record<string, unknown> | undefined);
       const patchLine = patch ? `\nProposed Patch: ${JSON.stringify(patch)}` : '';
 
       if (fr) {

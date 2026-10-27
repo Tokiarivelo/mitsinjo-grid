@@ -1,9 +1,4 @@
-import type {
-  SectorId,
-  SimulationInput,
-  SimulationResult,
-  StrategyId,
-} from '@mitsinjo/engine';
+import type { SectorId, SimulationInput, SimulationResult, StrategyId } from '@mitsinjo/engine';
 import type {
   BuildingSceneModel,
   BuildingStatus,
@@ -42,13 +37,7 @@ export interface ToSceneModelOptions {
  * Adheres strictly to P7-T1: zero energy math inside components.
  */
 export function toSceneModel(options: ToSceneModelOptions): SceneModel {
-  const {
-    input,
-    result,
-    timeIndex = 12,
-    isModified = false,
-    strategy = 'proportional',
-  } = options;
+  const { input, result, timeIndex = 12, isModified = false, strategy = 'proportional' } = options;
 
   const validTime = Math.max(0, Math.min(23, Math.floor(timeIndex)));
   const step = result?.steps[validTime];
@@ -56,16 +45,13 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
 
   // Sun & Daylight physics
   const isDaytime = validTime >= 6 && validTime <= 18;
-  const sunElevation = isDaytime
-    ? Math.sin(((validTime - 6) / 12) * Math.PI)
-    : 0;
+  const sunElevation = isDaytime ? Math.sin(((validTime - 6) / 12) * Math.PI) : 0;
   const sunIntensity = Math.max(0, sunElevation);
 
   // 1. Solar model
   const peakKw = input.solar.peakKw;
   const currentSolarKw = step ? step.solarKw : 0;
-  const glowIntensity =
-    peakKw > 0 ? Math.min(1, Math.max(0, currentSolarKw / peakKw)) : 0;
+  const glowIntensity = peakKw > 0 ? Math.min(1, Math.max(0, currentSolarKw / peakKw)) : 0;
   const isGenerating = currentSolarKw > 0.05;
 
   const solar = {
@@ -119,8 +105,8 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     const coveragePct = !sectorStep
       ? null
       : demandKw > 0
-      ? Math.round((servedKw / demandKw) * 100)
-      : 100;
+        ? Math.round((servedKw / demandKw) * 100)
+        : 100;
 
     let status: BuildingStatus = sectorStep ? 'full' : 'unknown';
     if (sectorStep && demandKw > 0 && servedKw < demandKw - 0.05) {

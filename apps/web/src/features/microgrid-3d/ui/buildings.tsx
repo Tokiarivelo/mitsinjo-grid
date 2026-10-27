@@ -107,9 +107,7 @@ function BuildingFrame({
             aria-hidden="true"
           />
           <span className="font-semibold text-text-primary">{sectorName}</span>
-          <span className="font-mono text-text-muted text-[10px]">
-            {fmtPct(coveragePct, 0)}
-          </span>
+          <span className="font-mono text-text-muted text-[10px]">{fmtPct(coveragePct, 0)}</span>
           {isCritical && (
             <span className="px-1 rounded text-[9px] font-mono uppercase bg-critical-red/20 text-critical-red border border-critical-red/30">
               {priorityLabel}
@@ -210,7 +208,12 @@ function SchoolBody() {
   );
 }
 
-const HUTS: { pos: [number, number, number]; wall: [number, number, number]; color: string; roof: number }[] = [
+const HUTS: {
+  pos: [number, number, number];
+  wall: [number, number, number];
+  color: string;
+  roof: number;
+}[] = [
   { pos: [-1.2, 0, -0.6], wall: [1.5, 1.2, 1.5], color: '#d97706', roof: 1.3 },
   { pos: [1.2, 0, -0.4], wall: [1.6, 1.2, 1.4], color: '#c2410c', roof: 1.4 },
   { pos: [0, 0, 1.0], wall: [1.4, 1.0, 1.3], color: '#b45309', roof: 1.2 },

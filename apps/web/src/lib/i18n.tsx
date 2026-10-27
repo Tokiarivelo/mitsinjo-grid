@@ -1,16 +1,7 @@
 'use client';
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useSyncExternalStore,
-  type ReactNode,
-} from 'react';
-import {
-  NextIntlClientProvider,
-  useTranslations as nextIntlUseTranslations,
-} from 'next-intl';
+import { createContext, useContext, useEffect, useSyncExternalStore, type ReactNode } from 'react';
+import { NextIntlClientProvider, useTranslations as nextIntlUseTranslations } from 'next-intl';
 
 import enMessages from '@/messages/en.json';
 import frMessages from '@/messages/fr.json';
@@ -176,4 +167,3 @@ export function useTranslations(namespace?: string) {
     return fallbackTranslate;
   }
 }
-

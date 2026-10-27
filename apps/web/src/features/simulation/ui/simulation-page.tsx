@@ -1,15 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Activity,
-  BatteryCharging,
-  Check,
-  Copy,
-  Download,
-  Factory,
-  Sun,
-} from 'lucide-react';
+import { Activity, BatteryCharging, Check, Copy, Download, Factory, Sun } from 'lucide-react';
 import {
   useSimulationStore,
   selectActiveMetrics,
@@ -110,10 +102,10 @@ export function SimulationPage() {
                 status === 'modified'
                   ? 'warning'
                   : status === 'complete'
-                  ? 'complete'
-                  : status === 'running'
-                  ? 'running'
-                  : 'ready'
+                    ? 'complete'
+                    : status === 'running'
+                      ? 'running'
+                      : 'ready'
               }
               size="sm"
             />
@@ -121,9 +113,7 @@ export function SimulationPage() {
           <h1 className="text-xl sm:text-2xl font-bold font-display text-text-primary tracking-tight">
             {tSim('title')}
           </h1>
-          <p className="text-text-secondary text-xs sm:text-sm mt-0.5">
-            {tSim('description')}
-          </p>
+          <p className="text-text-secondary text-xs sm:text-sm mt-0.5">{tSim('description')}</p>
         </div>
 
         {/* Header Action Buttons: Copy Summary & Download JSON */}
@@ -335,9 +325,7 @@ export function SimulationPage() {
       </div>
 
       {/* 5. Bottom Impact Alerts Banner (driven only by result.warnings) */}
-      {result && result.warnings.length > 0 && (
-        <ImpactBanner warnings={result.warnings} />
-      )}
+      {result && result.warnings.length > 0 && <ImpactBanner warnings={result.warnings} />}
     </div>
   );
 }

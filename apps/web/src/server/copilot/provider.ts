@@ -27,9 +27,5 @@ export interface LlmTurn {
 
 export interface LlmProvider {
   readonly name: string;
-  chat(
-    messages: ChatMessage[],
-    tools: ToolDefinition[],
-    signal?: AbortSignal
-  ): Promise<LlmTurn>;
+  chat(messages: ChatMessage[], tools: ToolDefinition[], signal?: AbortSignal): Promise<LlmTurn>;
 }

@@ -55,11 +55,7 @@ export function EmptyState({
 
       {actionLabel && onAction && (
         <div className="mt-4">
-          <Button
-            variant={tone === 'error' ? 'danger' : 'primary'}
-            size="sm"
-            onClick={onAction}
-          >
+          <Button variant={tone === 'error' ? 'danger' : 'primary'} size="sm" onClick={onAction}>
             {actionLabel}
           </Button>
         </div>

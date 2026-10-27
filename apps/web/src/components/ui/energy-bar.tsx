@@ -33,12 +33,7 @@ export function EnergyBar({
 
   // Determine status if not explicitly passed
   const resolvedStatus: EnergyBarStatus =
-    status ||
-    (clampedPct >= 99.9
-      ? 'full'
-      : priority === 'critical'
-      ? 'critical'
-      : 'partial');
+    status || (clampedPct >= 99.9 ? 'full' : priority === 'critical' ? 'critical' : 'partial');
 
   const fillClass = {
     full: 'bg-battery-green',
@@ -53,8 +48,8 @@ export function EnergyBar({
         priority === 'critical'
           ? 'bg-critical-red/15 text-critical-red border-critical-red/30'
           : priority === 'high'
-          ? 'bg-warning-amber/12 text-warning-amber border-warning-amber/30'
-          : 'bg-surface-elevated text-text-muted border-border'
+            ? 'bg-warning-amber/12 text-warning-amber border-warning-amber/30'
+            : 'bg-surface-elevated text-text-muted border-border'
       )}
     >
       {tPriorities(priority)}
@@ -81,8 +76,8 @@ export function EnergyBar({
               resolvedStatus === 'full'
                 ? 'text-battery-green'
                 : resolvedStatus === 'critical'
-                ? 'text-critical-red'
-                : 'text-warning-amber'
+                  ? 'text-critical-red'
+                  : 'text-warning-amber'
             )}
           >
             {clampedPct}%

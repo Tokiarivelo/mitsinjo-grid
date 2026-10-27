@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  resetSimulationStore,
-  useSimulationStore,
-} from '../simulation.store';
+import { resetSimulationStore, useSimulationStore } from '../simulation.store';
 import {
   selectActiveMetrics,
   selectActiveResult,

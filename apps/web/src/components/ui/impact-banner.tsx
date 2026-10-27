@@ -10,11 +10,7 @@ export interface ImpactBannerProps {
   showNominal?: boolean;
 }
 
-export function ImpactBanner({
-  warnings,
-  className,
-  showNominal = true,
-}: ImpactBannerProps) {
+export function ImpactBanner({ warnings, className, showNominal = true }: ImpactBannerProps) {
   const tWarnings = useTranslations('warnings');
   const tSectors = useTranslations('sectors');
 
@@ -43,7 +39,11 @@ export function ImpactBanner({
   }
 
   return (
-    <div className={cn('flex flex-col gap-2.5', className)} role="region" aria-label={tWarnings('title')}>
+    <div
+      className={cn('flex flex-col gap-2.5', className)}
+      role="region"
+      aria-label={tWarnings('title')}
+    >
       {warnings.map((w, idx) => {
         const key = `${w.code}-${w.sector ?? 'all'}-${w.fromHour}-${w.toHour}-${idx}`;
         const fromStr = fmtHour(w.fromHour);
@@ -71,8 +71,8 @@ export function ImpactBanner({
               w.sector === 'water'
                 ? tWarnings('waterPartiallyUnmet')
                 : w.sector === 'health'
-                ? tWarnings('clinicSupplyBelowTarget')
-                : tWarnings('sectorPartialTitle');
+                  ? tWarnings('clinicSupplyBelowTarget')
+                  : tWarnings('sectorPartialTitle');
             desc = tWarnings('sectorPartialDesc', { sector: sectorName, from: fromStr, to: toStr });
             break;
           }
@@ -105,12 +105,8 @@ export function ImpactBanner({
                 {icon}
               </div>
               <div>
-                <h4 className="font-display font-semibold text-text-primary text-xs">
-                  {title}
-                </h4>
-                <p className="mt-0.5 text-text-secondary leading-relaxed text-xs">
-                  {desc}
-                </p>
+                <h4 className="font-display font-semibold text-text-primary text-xs">{title}</h4>
+                <p className="mt-0.5 text-text-secondary leading-relaxed text-xs">{desc}</p>
               </div>
             </div>
 

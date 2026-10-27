@@ -1,9 +1,4 @@
-import type {
-  Comparison,
-  SimulationInput,
-  SimulationResult,
-  StrategyId,
-} from '@mitsinjo/engine';
+import type { Comparison, SimulationInput, SimulationResult, StrategyId } from '@mitsinjo/engine';
 import { fmtHour, fmtKw, fmtKwh, fmtPct } from './format';
 
 export interface ExportData {
@@ -147,8 +142,12 @@ export function generateSummaryMarkdown(
     lines.push('', `## ${e('warnings', { count: result.warnings.length })}`);
     if (result.warnings.length === 0) lines.push(`- ${e('noWarnings')}`);
     for (const w of result.warnings) {
-      const sector = w.sector ? `${e('warningSector', { sector: t(`sectors.${w.sector}`) })} · ` : '';
-      lines.push(`- [${w.code}] ${sector}${e('warningHours', { from: fmtHour(w.fromHour), to: fmtHour(w.toHour) })}`);
+      const sector = w.sector
+        ? `${e('warningSector', { sector: t(`sectors.${w.sector}`) })} · `
+        : '';
+      lines.push(
+        `- [${w.code}] ${sector}${e('warningHours', { from: fmtHour(w.fromHour), to: fmtHour(w.toHour) })}`
+      );
     }
   }
 

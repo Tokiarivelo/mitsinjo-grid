@@ -1,14 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Pause,
-  Play,
-  RotateCcw,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Pause, Play, RotateCcw } from 'lucide-react';
 import type { StepResult } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtHour, fmtKw, fmtPct } from '@/lib/format';
@@ -87,9 +80,7 @@ export function TimelineScrubber({
             <h3 className="text-xs font-display font-semibold uppercase tracking-wider text-text-primary">
               {tSim('timelineTitle')}
             </h3>
-            <p className="text-[11px] text-text-secondary">
-              {tSim('timelineSubtitle')}
-            </p>
+            <p className="text-[11px] text-text-secondary">{tSim('timelineSubtitle')}</p>
           </div>
         </div>
 
@@ -186,30 +177,22 @@ export function TimelineScrubber({
       {hasResults && stepResult && (
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2 border-t border-border/40 text-xs font-mono">
           <div className="p-2 rounded-control bg-surface-elevated/70 border border-border/60">
-            <span className="text-[10px] text-text-muted block font-sans">
-              {tSim('stepSolar')}
-            </span>
-            <span className="font-semibold text-solar-amber">
-              {fmtKw(stepResult.solarKw)}
-            </span>
+            <span className="text-[10px] text-text-muted block font-sans">{tSim('stepSolar')}</span>
+            <span className="font-semibold text-solar-amber">{fmtKw(stepResult.solarKw)}</span>
           </div>
 
           <div className="p-2 rounded-control bg-surface-elevated/70 border border-border/60">
             <span className="text-[10px] text-text-muted block font-sans">
               {tSim('stepDemand')}
             </span>
-            <span className="font-semibold text-energy-cyan">
-              {fmtKw(stepResult.demandKw)}
-            </span>
+            <span className="font-semibold text-energy-cyan">{fmtKw(stepResult.demandKw)}</span>
           </div>
 
           <div className="p-2 rounded-control bg-surface-elevated/70 border border-border/60">
             <span className="text-[10px] text-text-muted block font-sans">
               {tSim('stepServed')}
             </span>
-            <span className="font-semibold text-battery-green">
-              {fmtKw(stepResult.servedKw)}
-            </span>
+            <span className="font-semibold text-battery-green">{fmtKw(stepResult.servedKw)}</span>
           </div>
 
           <div className="p-2 rounded-control bg-surface-elevated/70 border border-border/60">
@@ -231,9 +214,7 @@ export function TimelineScrubber({
             <span className="text-[10px] text-text-muted block font-sans">
               {tSim('stepBatterySoc')}
             </span>
-            <span className="font-semibold text-battery-green">
-              {fmtPct(stepResult.socPct)}
-            </span>
+            <span className="font-semibold text-battery-green">{fmtPct(stepResult.socPct)}</span>
           </div>
         </div>
       )}

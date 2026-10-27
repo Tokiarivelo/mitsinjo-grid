@@ -6,11 +6,7 @@ import { cn } from '@/lib/utils';
 import { fmtPct } from '@/lib/format';
 import { BATTERY_POSITION } from '../utils/to-scene-model';
 import type { BatterySceneModel, BatteryStatusColor } from '../types';
-import {
-  BATTERY_STATUS_BG_CLASS,
-  BATTERY_STATUS_HEX,
-  TOKEN_HEX,
-} from '../utils/scene-palette';
+import { BATTERY_STATUS_BG_CLASS, BATTERY_STATUS_HEX, TOKEN_HEX } from '../utils/scene-palette';
 
 export interface BatteryUnitProps {
   model: BatterySceneModel;
@@ -29,8 +25,8 @@ export function BatteryUnit({ model, statusLabels, socLabel, htmlPortal }: Batte
   const flowHex = isCharging
     ? TOKEN_HEX.batteryGreen
     : isDischarging
-    ? TOKEN_HEX.solarAmber
-    : TOKEN_HEX.idle;
+      ? TOKEN_HEX.solarAmber
+      : TOKEN_HEX.idle;
 
   // 5 LED gauge levels (0-20%, 20-40%, 40-60%, 60-80%, 80-100%)
   const ledLevels = useMemo(() => {
@@ -55,11 +51,7 @@ export function BatteryUnit({ model, statusLabels, socLabel, htmlPortal }: Batte
       {/* Main Container Enclosure (White/Silver Weatherproof ISO Container) */}
       <mesh position={[0, 1.1, 0]}>
         <boxGeometry args={[3.8, 2.0, 2.2]} />
-        <meshStandardMaterial
-          color="#e2e8f0"
-          metalness={0.4}
-          roughness={0.3}
-        />
+        <meshStandardMaterial color="#e2e8f0" metalness={0.4} roughness={0.3} />
       </mesh>
 
       {/* Container Roof Trim */}
@@ -96,9 +88,7 @@ export function BatteryUnit({ model, statusLabels, socLabel, htmlPortal }: Batte
         {ledLevels.map((led, idx) => (
           <mesh key={idx} position={[0, led.y, 0.01]}>
             <planeGeometry args={[0.22, 0.14]} />
-            <meshBasicMaterial
-              color={led.isLit ? statusHexColor : '#334155'}
-            />
+            <meshBasicMaterial color={led.isLit ? statusHexColor : '#334155'} />
           </mesh>
         ))}
       </group>
@@ -132,12 +122,7 @@ export function BatteryUnit({ model, statusLabels, socLabel, htmlPortal }: Batte
 
       {/* Active Power Glow */}
       {(isCharging || isDischarging) && (
-        <pointLight
-          position={[0, 1.5, 1.5]}
-          color={flowHex}
-          intensity={0.8}
-          distance={5}
-        />
+        <pointLight position={[0, 1.5, 1.5]} color={flowHex} intensity={0.8} distance={5} />
       )}
     </group>
   );

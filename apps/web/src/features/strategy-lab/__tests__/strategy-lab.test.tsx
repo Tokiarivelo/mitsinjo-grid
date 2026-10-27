@@ -16,9 +16,7 @@ describe('StrategyLabPage (P4-T5, P4-T7)', () => {
     expect(screen.getByText('Essential-First Priority')).toBeInTheDocument();
     expect(screen.getByText('Balanced Distribution')).toBeInTheDocument();
 
-    expect(
-      screen.getByRole('button', { name: /compare strategies/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /compare strategies/i })).toBeInTheDocument();
   });
 
   it('compares strategies and displays metrics and decision summary on cloudy_afternoon', () => {
@@ -29,9 +27,7 @@ describe('StrategyLabPage (P4-T5, P4-T7)', () => {
     fireEvent.click(compareBtn);
 
     // Decision summary should recommend essential_first due to clinic protection
-    expect(
-      screen.getByText(/Critical Lifeline Protection Under Deficit/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Critical Lifeline Protection Under Deficit/i)).toBeInTheDocument();
 
     // Check that each strategy column shows delivered and essential metrics
     const deliveredLabels = screen.getAllByText('Delivered Energy');

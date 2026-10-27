@@ -82,8 +82,7 @@ export function CameraController({
 
     if (
       camera.position.distanceTo(targetPos.current) < 0.1 &&
-      (!controlsRef.current ||
-        controlsRef.current.target.distanceTo(targetLook.current) < 0.1)
+      (!controlsRef.current || controlsRef.current.target.distanceTo(targetLook.current) < 0.1)
     ) {
       isTransitioning.current = false;
     }

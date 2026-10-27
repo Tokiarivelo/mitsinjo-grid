@@ -3,10 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Radar } from 'lucide-react';
-import {
-  scenarios,
-  type ScenarioId,
-} from '@mitsinjo/engine';
+import { scenarios, type ScenarioId } from '@mitsinjo/engine';
 import {
   useSimulationStore,
   selectActiveResult,
@@ -105,9 +102,7 @@ export function ScenariosPage() {
         <h1 className="text-xl sm:text-2xl font-bold font-display text-text-primary tracking-tight">
           {tScenarios('title')}
         </h1>
-        <p className="text-text-secondary text-xs sm:text-sm mt-0.5">
-          {tScenarios('description')}
-        </p>
+        <p className="text-text-secondary text-xs sm:text-sm mt-0.5">{tScenarios('description')}</p>
       </div>
 
       {/* 2. Main Split Layout: Scenario Cards Grid (Left) + Assumptions Inspector (Right) */}
@@ -132,8 +127,8 @@ export function ScenariosPage() {
                     ? status === 'modified'
                       ? 'warning'
                       : status === 'complete'
-                      ? 'complete'
-                      : 'ready'
+                        ? 'complete'
+                        : 'ready'
                     : 'ready'
                 }
                 onSelect={handleSelectScenario}

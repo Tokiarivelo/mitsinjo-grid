@@ -108,9 +108,7 @@ export function AssumptionsInspector({
               {scenarioName} ({scenarioId})
             </span>
           </div>
-          <p className="text-xs text-text-secondary mt-0.5">
-            {tScenarios('assumptionsSubtitle')}
-          </p>
+          <p className="text-xs text-text-secondary mt-0.5">{tScenarios('assumptionsSubtitle')}</p>
         </div>
 
         {/* Reset to Defaults button */}
@@ -173,9 +171,7 @@ export function AssumptionsInspector({
             min={1}
             max={2000}
             step={10}
-            onChange={(val) =>
-              validateAndPatch('batteryCapacityKwh', { batteryCapacityKwh: val })
-            }
+            onChange={(val) => validateAndPatch('batteryCapacityKwh', { batteryCapacityKwh: val })}
             error={errors.batteryCapacityKwh}
           />
 
@@ -186,9 +182,7 @@ export function AssumptionsInspector({
             min={0}
             max={100}
             step={5}
-            onChange={(val) =>
-              validateAndPatch('initialSocPct', { initialSocPct: val })
-            }
+            onChange={(val) => validateAndPatch('initialSocPct', { initialSocPct: val })}
             error={errors.initialSocPct}
           />
         </div>
@@ -221,7 +215,8 @@ export function AssumptionsInspector({
               {tScenarios('chargeDischargeEff')}
             </span>
             <span className="font-semibold text-battery-green">
-              {fmtPct(input.battery.chargeEff * 100, 0)} / {fmtPct(input.battery.dischargeEff * 100, 0)}
+              {fmtPct(input.battery.chargeEff * 100, 0)} /{' '}
+              {fmtPct(input.battery.dischargeEff * 100, 0)}
             </span>
           </div>
 
@@ -267,7 +262,9 @@ export function AssumptionsInspector({
                       {tSectors(sec.id)}
                     </span>
                     <span className="text-[10px] font-mono text-text-muted">
-                      {tScenarios('criticalShareLabel', { share: Math.round(sec.criticalShare * 100) })}
+                      {tScenarios('criticalShareLabel', {
+                        share: Math.round(sec.criticalShare * 100),
+                      })}
                       {sec.flexible ? ` · ${tScenarios('flexibleLoad')}` : ''}
                     </span>
                   </div>

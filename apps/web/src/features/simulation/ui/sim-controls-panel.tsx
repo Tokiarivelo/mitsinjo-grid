@@ -1,17 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  AlertTriangle,
-  Play,
-  RotateCcw,
-  Sliders,
-} from 'lucide-react';
-import {
-  type InputPatch,
-  type SimulationInput,
-  type StrategyId,
-} from '@mitsinjo/engine';
+import { AlertTriangle, Play, RotateCcw, Sliders } from 'lucide-react';
+import { type InputPatch, type SimulationInput, type StrategyId } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { SimControl } from '@/components/ui/sim-control';
 import { Button } from '@/components/ui/button';
@@ -46,9 +37,7 @@ export function SimControlsPanel({
 
   // Derive existing parameters from current input
   const existingSolarDrop = input.events.find((e) => e.type === 'solar_drop');
-  const currentDropPct = existingSolarDrop
-    ? Math.round((1 - existingSolarDrop.factor) * 100)
-    : 0;
+  const currentDropPct = existingSolarDrop ? Math.round((1 - existingSolarDrop.factor) * 100) : 0;
   const currentDropStart = existingSolarDrop ? existingSolarDrop.startHour : 12;
   const currentDropDuration = existingSolarDrop ? existingSolarDrop.durationH : 3;
 
@@ -133,10 +122,10 @@ export function SimControlsPanel({
               status === 'modified'
                 ? 'warning'
                 : status === 'complete'
-                ? 'complete'
-                : status === 'running'
-                ? 'running'
-                : 'ready'
+                  ? 'complete'
+                  : status === 'running'
+                    ? 'running'
+                    : 'ready'
             }
             size="sm"
           />
@@ -269,14 +258,14 @@ export function SimControlsPanel({
               strat === 'proportional'
                 ? tStrategies('proportional')
                 : strat === 'essential_first'
-                ? tStrategies('essential_first')
-                : tStrategies('balanced');
+                  ? tStrategies('essential_first')
+                  : tStrategies('balanced');
             const stratRule =
               strat === 'proportional'
                 ? tStrategies('proportionalRule')
                 : strat === 'essential_first'
-                ? tStrategies('essentialFirstRule')
-                : tStrategies('balancedRule');
+                  ? tStrategies('essentialFirstRule')
+                  : tStrategies('balancedRule');
 
             return (
               <button
@@ -301,9 +290,7 @@ export function SimControlsPanel({
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-text-muted line-clamp-2">
-                  {stratRule}
-                </p>
+                <p className="text-[11px] text-text-muted line-clamp-2">{stratRule}</p>
               </button>
             );
           })}

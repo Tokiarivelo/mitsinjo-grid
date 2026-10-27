@@ -47,13 +47,13 @@ export function AppShell({
     (storeStatus === 'modified'
       ? 'modified'
       : storeStatus === 'complete'
-      ? 'complete'
-      : storeStatus === 'running'
-      ? 'running'
-      : storeStatus === 'error'
-      ? 'error'
-      : 'ready');
-  const resolvedModified = modified ?? (storeStatus === 'modified');
+        ? 'complete'
+        : storeStatus === 'running'
+          ? 'running'
+          : storeStatus === 'error'
+            ? 'error'
+            : 'ready');
+  const resolvedModified = modified ?? storeStatus === 'modified';
   const resolvedActiveScenarioId = activeScenarioId ?? storeScenarioId;
   const resolvedOnScenarioChange =
     onScenarioChange ?? ((id: string) => loadScenario(id as ScenarioId));
@@ -85,11 +85,7 @@ export function AppShell({
   return (
     <div className="relative flex h-full w-full overflow-hidden bg-canvas text-text-primary">
       {/* Sidebar (desktop fixed / mobile drawer) */}
-      <Sidebar
-        status={resolvedStatus}
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
+      <Sidebar status={resolvedStatus} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main Column */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
@@ -104,9 +100,7 @@ export function AppShell({
           onScenarioChange={resolvedOnScenarioChange}
           onReset={resolvedOnReset}
           copilotOpen={copilotOpen && !isCopilotRoute}
-          onCopilotToggle={
-            !isCopilotRoute ? () => setCopilotOpen((prev) => !prev) : undefined
-          }
+          onCopilotToggle={!isCopilotRoute ? () => setCopilotOpen((prev) => !prev) : undefined}
           onMenuToggle={() => setSidebarOpen(true)}
         />
 
@@ -124,10 +118,7 @@ export function AppShell({
 
           {/* Right Copilot Panel (when not on /copilot page) */}
           {!isCopilotRoute && (
-            <CopilotPanel
-              open={copilotOpen}
-              onClose={() => setCopilotOpen(false)}
-            />
+            <CopilotPanel open={copilotOpen} onClose={() => setCopilotOpen(false)} />
           )}
         </div>
       </div>

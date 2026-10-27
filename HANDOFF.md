@@ -1,34 +1,33 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-27 · **By:** Antigravity (P8 follow-up, `feat/p8-quality`) · **Day:** 9 / 10
+**Updated:** 2026-10-27 · **By:** Antigravity (P9 ship, `feat/p9-ship`) · **Day:** 10 / 10
 
 ## State
 
-- Phase: **P8 — Quality, performance, accessibility** completed (P8-T1..P8-T6 done).
-- Monorepo healthy: `make check` 100% green (154 tests, tsc, lint, i18n parity), `pnpm build` clean.
-- Playwright E2E: `make e2e` runs `e2e/demo-path.spec.ts` (demo path, 3× loop, responsive 1440/1024/390px); CI job `e2e` runs it too.
-- Scrollbar Hardening:
-  - Eliminated double scrollbar by setting `html, body { height: 100%; overflow: hidden; }` and making `ChartCard` / `main` `relative` (contained `p.sr-only` that was leaking to root viewport).
-  - Removed duplicate nested `overflow-y-auto` in `overview-page.tsx` and `strategy-lab-page.tsx`.
-  - Added modern macOS-style floating translucent rounded scrollbar (`scrollbar-width: thin;` + `::-webkit-scrollbar` with `border: 2px solid transparent; background-clip: content-box;`).
+- Phase: **P9 — Deploy, demo, submission** completed (P9-T1..P9-T4 done, P9-T5..P9-T6 human recording & submit).
+- Production deployed & verified: `https://mitsinjo-grid.vercel.app` (200/307 OK, rate limited SSE copilot ready).
+- Zero secrets in repo (git history verified, `.env` / `.env.local` gitignored).
+- Monorepo healthy: `make check` 100% green (242 tests, tsc, lint, i18n parity across EN/FR/MG), `pnpm build` clean.
+- Docs ready: `docs/assumptions.md` (physics & boundary formulas), `docs/demo-script.md` (3-minute demo script), and comprehensive `README.md` with Mermaid architecture diagram.
 
 ## Next task
 
-- `docs/tasks/P9-ship.md` (Day 10: Deploy, demo script, assumptions, submission prep).
+- Record 3-minute video per `docs/demo-script.md` (P9-T5) and submit project with tag `v1.0.0` (P9-T6).
 
 ## Decisions taken
 
-- App shell root uses `h-full w-full overflow-hidden` with `main` as the sole scrolling container.
-- Floating macOS scrollbar thumb uses `rgba(168, 182, 201, 0.28)` with smooth hover brightening.
+- Public URL: `https://mitsinjo-grid.vercel.app` with `LLM_PROVIDER=mock` active and Meta provider fallback.
+- Retained strict non-negotiable invariants: all energy numbers originate exclusively from `@mitsinjo/engine`.
 
 ## Open questions / blockers
 
-- PR #13 reviewed and merged (review fixes: mock model id kept out of Meta filter, inline proposal card not `aria-modal`, generic CRITICAL_UNMET title, scrollbar uses tokens, e2e in CI, docs facts corrected).
-- fps on a real integrated GPU still needs a manual check (`/simulation?perf=1`, target ≥45 fps).
+- PR created from `feat/p9-ship` (waiting for user review & merge).
+- Human tasks remaining: video recording and final hackathon portal submission.
 
 ## Files touched this session
 
-- `apps/web/src/app/{globals.css,layout.tsx}`, `apps/web/src/components/layout/app-shell.tsx`
-- `apps/web/src/components/ui/chart-card.tsx`, `features/overview/ui/overview-page.tsx`, `features/strategy-lab/ui/strategy-lab-page.tsx`
+- `docs/assumptions.md` (created)
+- `docs/demo-script.md` (created)
+- `README.md` (updated with architecture, problem, demo walkthrough, tour)
+- `docs/tasks/P9-ship.md` (tasks P9-T1..P9-T4 ticked)
 - `HANDOFF.md`
-- Review fix: `server/copilot/providers/{meta,mock}.ts`, `app/api/copilot/{route,models/route}.ts`, `impact-banner.tsx`, `confirm-proposal-dialog.tsx`, `.github/workflows/ci.yml`, `docs/known-limitations.md`

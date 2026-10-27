@@ -28,7 +28,9 @@ describe('Copilot Loop (P6-T3)', () => {
     const activity = events.find((e) => e.name === 'activity');
     expect(activity?.data.label).toBeDefined();
     // UI translates from `tool`, never shows the English label.
-    expect(events.filter((e) => e.name === 'activity').every((e) => typeof e.data.tool === 'string')).toBe(true);
+    expect(
+      events.filter((e) => e.name === 'activity').every((e) => typeof e.data.tool === 'string')
+    ).toBe(true);
 
     // Verify evidence has resultId and numeric fields
     const evidence = events.find((e) => e.name === 'evidence');
@@ -36,7 +38,10 @@ describe('Copilot Loop (P6-T3)', () => {
     expect(evidence?.data.fields).toBeDefined();
 
     // Verify delta contains markdown sections
-    const deltas = events.filter((e) => e.name === 'delta').map((e) => e.data.text).join('');
+    const deltas = events
+      .filter((e) => e.name === 'delta')
+      .map((e) => e.data.text)
+      .join('');
     expect(deltas).toContain('### What happened');
     expect(deltas).toContain('### Computed evidence');
     expect(deltas).toContain('### Why it matters');

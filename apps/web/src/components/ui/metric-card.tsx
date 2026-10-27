@@ -1,5 +1,13 @@
 import type { ReactNode } from 'react';
-import { ArrowDown, ArrowUp, BatteryCharging, Factory, HeartPulse, Sun, AlertTriangle } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  BatteryCharging,
+  Factory,
+  HeartPulse,
+  Sun,
+  AlertTriangle,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations } from '@/lib/i18n';
 

@@ -19,11 +19,7 @@ import { cn } from '@/lib/utils';
 import { fmtHour, fmtKw, fmtKwh, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
 import { buttonVariants } from '@/components/ui/button';
-import {
-  toSceneModel,
-  useWebGLAvailable,
-  LazyVillageCanvas,
-} from '@/features/microgrid-3d';
+import { toSceneModel, useWebGLAvailable, LazyVillageCanvas } from '@/features/microgrid-3d';
 
 export interface GridSchematicPreviewProps {
   result?: SimulationResult;

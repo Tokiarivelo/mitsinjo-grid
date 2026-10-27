@@ -14,11 +14,7 @@ import {
   Sun,
   Waves,
 } from 'lucide-react';
-import type {
-  SectorId,
-  SimulationInput,
-  SimulationResult,
-} from '@mitsinjo/engine';
+import type { SectorId, SimulationInput, SimulationResult } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtHour, fmtKw, fmtKwh, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
@@ -145,8 +141,8 @@ export function VillageViewport({
               {viewMode === '3d'
                 ? tSim('view3d')
                 : viewMode === 'schematic'
-                ? tSim('villageTopology')
-                : tSim('circuitBus')}
+                  ? tSim('villageTopology')
+                  : tSim('circuitBus')}
             </span>
             <span className="text-text-muted">· {fmtHour(timeIndex)}</span>
           </div>
@@ -315,9 +311,7 @@ export function VillageViewport({
                 <span className="text-sm font-semibold text-solar-amber block">
                   {result ? fmtKw(solarKw) : fmtKw(null)}
                 </span>
-                <span className="text-[10px] text-text-muted">
-                  {tSim('liveOutput')}
-                </span>
+                <span className="text-[10px] text-text-muted">{tSim('liveOutput')}</span>
               </div>
             </div>
 
@@ -403,17 +397,15 @@ export function VillageViewport({
                   </div>
 
                   <div className="mt-1 font-mono text-[11px] flex items-center justify-between">
-                    <span className="text-text-muted">
-                      {result ? fmtKw(demand) : fmtKw(null)}
-                    </span>
+                    <span className="text-text-muted">{result ? fmtKw(demand) : fmtKw(null)}</span>
                     <span
                       className={cn(
                         'font-semibold',
                         !result
                           ? 'text-text-muted'
                           : isDeficit
-                          ? 'text-critical-red'
-                          : 'text-battery-green'
+                            ? 'text-critical-red'
+                            : 'text-battery-green'
                       )}
                     >
                       {result ? fmtKw(served) : fmtKw(null)}
@@ -428,14 +420,8 @@ export function VillageViewport({
 
       {/* Bottom status hint bar */}
       <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-[11px] text-text-muted font-sans pointer-events-none">
-        <span>
-          {viewMode === '3d'
-            ? tSim('hint3d')
-            : tSim('clickNodeToInspect')}
-        </span>
-        <span className="font-mono text-[10px] text-energy-cyan">
-          {tCommon('simulatedData')}
-        </span>
+        <span>{viewMode === '3d' ? tSim('hint3d') : tSim('clickNodeToInspect')}</span>
+        <span className="font-mono text-[10px] text-energy-cyan">{tCommon('simulatedData')}</span>
       </div>
     </div>
   );

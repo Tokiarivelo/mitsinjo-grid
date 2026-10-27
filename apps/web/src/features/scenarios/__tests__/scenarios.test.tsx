@@ -32,7 +32,9 @@ describe('ScenariosPage (P5-T3, P5-T6)', () => {
     // Provenance notice
     expect(screen.getAllByText('SIMULATED DATA').length).toBeGreaterThanOrEqual(1);
     expect(
-      screen.getByText(/all scenarios use synthetic mathematical models calibrated for solar microgrids/i)
+      screen.getByText(
+        /all scenarios use synthetic mathematical models calibrated for solar microgrids/i
+      )
     ).toBeInTheDocument();
 
     // 5 Predefined scenario cards

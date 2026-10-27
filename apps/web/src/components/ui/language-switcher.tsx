@@ -73,9 +73,7 @@ export function LanguageSwitcher({
           </option>
         ))}
       </select>
-      <span className="absolute right-2 text-text-muted pointer-events-none text-[9px]">
-        ▼
-      </span>
+      <span className="absolute right-2 text-text-muted pointer-events-none text-[9px]">▼</span>
     </div>
   );
 }

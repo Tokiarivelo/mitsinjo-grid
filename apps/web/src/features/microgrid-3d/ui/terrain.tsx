@@ -21,21 +21,13 @@ export function VillageTerrain() {
       {/* Main Ground Disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
         <circleGeometry args={[26, 48]} />
-        <meshStandardMaterial
-          color="#151d2a"
-          roughness={0.9}
-          metalness={0.1}
-        />
+        <meshStandardMaterial color="#151d2a" roughness={0.9} metalness={0.1} />
       </mesh>
 
       {/* Sub-disc rim / landscape plateau */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.15, 0]}>
         <circleGeometry args={[27.5, 48]} />
-        <meshStandardMaterial
-          color="#0d1420"
-          roughness={1}
-          metalness={0}
-        />
+        <meshStandardMaterial color="#0d1420" roughness={1} metalness={0} />
       </mesh>
 
       {/* Village Path Network (Dirt / gravel trails connecting sectors) */}

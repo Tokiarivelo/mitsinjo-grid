@@ -1,4 +1,9 @@
-import { HORIZON_H, InputPatchSchema, type InputPatch, type SimulationInput } from '@mitsinjo/engine';
+import {
+  HORIZON_H,
+  InputPatchSchema,
+  type InputPatch,
+  type SimulationInput,
+} from '@mitsinjo/engine';
 
 /** i18n key (under `features.simulation.errors`) + params for an invalid patch field. */
 export interface PatchError {
