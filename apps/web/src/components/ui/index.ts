@@ -7,3 +7,5 @@ export * from './empty-state';
 export * from './chart-card';
 export * from './scenario-selector';
 export * from './language-switcher';
+export * from './insight-card';
+export * from './impact-banner';

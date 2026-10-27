@@ -82,6 +82,7 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 - Props: variant: primary|secondary|ghost|danger; size: sm|md; loading?; disabled?; icon?; children.
 - primary: solar-amber bg, dark text. secondary: surface + border. ghost: transparent, text-secondary. danger: critical-red, destructive only.
 - States: hover, active, disabled, focus-visible, loading (spinner + label retained, aria-busy).
+- Links styled as buttons: `<Link className={buttonVariants({ variant, size })}>`; never nest `<Button>` in `<Link>`.
 
 ## EmptyState
 

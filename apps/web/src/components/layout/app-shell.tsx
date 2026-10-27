@@ -9,6 +9,8 @@ import { CopilotPanel, type CopilotMessage } from './copilot-panel';
 import type { StatusBadgeVariant } from '@/components/ui/status-badge';
 import type { ScenarioOption } from '@/components/ui/scenario-selector';
 import { useTranslations } from '@/lib/i18n';
+import { useSimulationStore } from '@/stores';
+import type { ScenarioId } from '@mitsinjo/engine';
 
 export interface AppShellProps {
   children: ReactNode;
@@ -27,14 +29,33 @@ export function AppShell({
   children,
   title,
   subtitle,
-  status = 'ready',
-  modified = false,
+  status,
+  modified,
   scenarios,
   activeScenarioId,
   onScenarioChange,
   onReset,
   className,
 }: AppShellProps) {
+  const storeStatus = useSimulationStore((s) => s.status);
+  const storeScenarioId = useSimulationStore((s) => s.scenarioId);
+  const loadScenario = useSimulationStore((s) => s.loadScenario);
+  const resetScenario = useSimulationStore((s) => s.reset);
+
+  const resolvedStatus: StatusBadgeVariant =
+    status ??
+    (storeStatus === 'modified'
+      ? 'warning'
+      : storeStatus === 'complete'
+      ? 'complete'
+      : storeStatus === 'running'
+      ? 'running'
+      : 'ready');
+  const resolvedModified = modified ?? (storeStatus === 'modified');
+  const resolvedActiveScenarioId = activeScenarioId ?? storeScenarioId;
+  const resolvedOnScenarioChange =
+    onScenarioChange ?? ((id: string) => loadScenario(id as ScenarioId));
+  const resolvedOnReset = onReset ?? resetScenario;
   const pathname = usePathname();
   const tRoutes = useTranslations('routes');
   const tCommon = useTranslations('common');
@@ -75,7 +96,7 @@ export function AppShell({
     <div className="flex h-screen w-screen overflow-hidden bg-canvas text-text-primary">
       {/* Sidebar (desktop fixed / mobile drawer) */}
       <Sidebar
-        status={status}
+        status={resolvedStatus}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -86,12 +107,12 @@ export function AppShell({
         <Header
           title={resolvedTitle}
           subtitle={resolvedSubtitle}
-          status={status}
-          modified={modified}
+          status={resolvedStatus}
+          modified={resolvedModified}
           scenarios={scenarios}
-          activeScenarioId={activeScenarioId}
-          onScenarioChange={onScenarioChange}
-          onReset={onReset}
+          activeScenarioId={resolvedActiveScenarioId}
+          onScenarioChange={resolvedOnScenarioChange}
+          onReset={resolvedOnReset}
           copilotOpen={copilotOpen && !isCopilotRoute}
           onCopilotToggle={
             !isCopilotRoute ? () => setCopilotOpen((prev) => !prev) : undefined

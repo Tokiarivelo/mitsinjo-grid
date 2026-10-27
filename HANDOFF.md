@@ -1,36 +1,39 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-26 · **By:** Antigravity (P3 Core Engine + Strategies + Scenarios) · **Day:** 3 / 10
+**Updated:** 2026-10-27 · **By:** Antigravity (P4 2D Dashboard + Strategy Lab) · **Day:** 4 / 10
 
 ## State
 
-- Phase: **P3 — Engine** completed (P3-T1..T9 done; 100% contracts & physics, 0 violations, demo hero verified).
-- Prior phases complete: P0 Framing, P1 Repo & Tooling, P2 Design system & Strict Zero-Static i18n.
-- Engine stats: 83 tests passing, 98.8% statement coverage (exit criteria ≥ 90%), `compare()` in ~3.4 ms (< 10 ms).
-- Demo Hero verified: on `cloudy_afternoon`, `proportional` drops clinic critical power (`criticalUnservedKwh > 0`), whereas `essential_first` fully protects it (`criticalUnservedKwh === 0`, 100% critical coverage).
-- All 5 scenarios verified with 0 invariant violations across all 3 strategies (`proportional`, `essential_first`, `balanced`).
-- Monorepo healthy: `make check` (83 engine + 19 web tests = 102 passing) and `pnpm build` pass with 0 errors.
-- PR: branch `feat/p3-engine` ready for merge into `main`.
+- Phase: **P4 — 2D Dashboard + Strategy Lab** completed (P4-T0..T7 done; all gate criteria met).
+- Monorepo healthy: `make check` (84 engine + 51 web tests = 135 passing, 100% i18n parity, 0 lint/tsc errors), `pnpm build` clean.
+- Feature delivered:
+  - `stores/simulation.store.ts` + `selectors.ts` wired to `@mitsinjo/engine` `compare()` & `simulate()`.
+  - `lib/format.ts` (`fmtKw`, `fmtKwh`, `fmtPct`, `fmtHour`) with null/NaN edge guards & unit tests.
+  - Overview: 4 MetricCards, 2D Village Schematic Preview, 24h Energy Balance, 5 Sector EnergyBars, EnergyOverTime chart, warnings.
+  - Strategy Lab: 3 StrategyCards (proportional, essential_first, balanced), StrategyComparisonChart, rule-based decision summary.
+  - ImpactBanner & InsightCard driven strictly by `result.warnings` and computed numbers.
+  - Design check gate-out: screenshots captured & verified; `stitch-map.md` rows checked.
 
 ## Next task
 
-- `docs/tasks/P4-dashboard.md` → P4-T0 / P4-T1 (`simulation.store.ts` + `selectors.ts` wired to `@mitsinjo/engine`).
+- `docs/tasks/P5-3d-scene.md` → P5-T0 / P5-T1 (3D Village Digital Twin with R3F + Drei, power flow visualizer).
 
 ## Decisions taken
 
-- Implemented pure TS deterministic simulation with FNV-1a 64-bit hashing for stable `inputHash` and `SIM-XXXXXX` IDs.
-- Solar bell curve calibrated (peakKw 40, profile max 0.485 → ≈3.1 peak-sun-hours, ~124 kWh/day; spec §5 updated) to guarantee 0 unserved on `baseline` and distinct evening deficit on `cloudy_afternoon`.
-- Water-filling with priority weights (4, 3, 2, 1) implemented for stretch `balanced` strategy.
-- Spec §7 property "essential_first ≥ proportional" scoped to the critical tier (health): all-sector critical coverage is 73.2 vs 73.3 % on `essential_stress`. `applyPatch` validates the patch with `InputPatchSchema`.
-- Preallocated length-24 arrays in hot path `simulate()` for allocation-light performance.
+- `useSimulationStore` integrated with `AppShell` header/sidebar so scenario switcher and status indicators sync globally.
+- `selectActiveSteps` and `selectActiveWarnings` memoized empty arrays to prevent React 19 `useSyncExternalStore` re-render cycles.
+- Decision summary generator (`utils/summarize.ts`) operates purely on numerical engine output (zero LLM dependency).
+- PR #3 review fixes: summary stress rule recommends the best essential protector (not hardwired essential_first;
+  engine-spec §7); no numbers baked into i18n strings; chart colors via `var(--color-*)` tokens; no UI energy sums;
+  `buttonVariants()` for Link-as-button (no `<button>` inside `<a>`); badges/tooltips translated.
+- Complete strict zero-static-text i18n: all new labels extracted to `en.json`, `fr.json`, `mg.json` with 100% key parity.
 
 ## Open questions / blockers
 
-- Meta API key / endpoint credentials for live Llama inference (offline mock ready as fallback for P6).
+- None. Ready for P5 3D digital twin village scene.
 
 ## Files touched this session
 
-- `packages/engine/src/{index,constants,invariants,warnings,simulate,compare,patch,hash}.ts`
-- `packages/engine/src/{schemas,model,strategies,metrics,scenarios}/**`
-- `packages/engine/src/__tests__/{schemas,strategies,invariants,hash,patch,compare,scenarios,demo-hero,simulate,spec-invariants}.test.ts`
-- `packages/engine/package.json`, `packages/engine/vitest.config.ts`, `docs/tasks/P3-engine.md`, `HANDOFF.md`
+- `apps/web/src/stores/**`, `apps/web/src/lib/format*`, `apps/web/src/components/{charts,ui}/**`
+- `apps/web/src/features/{overview,strategy-lab}/**`, `apps/web/src/messages/{en,fr,mg}.json`
+- `apps/web/src/components/layout/app-shell.tsx`, `apps/web/src/test/setup.ts`, `components/ui/button.tsx`, `docs/**`, `HANDOFF.md`
