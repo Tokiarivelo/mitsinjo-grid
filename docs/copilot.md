@@ -7,7 +7,7 @@ LLM explains, engine computes. Tool I/O and SSE events: `docs/contracts.md`.
 ```text
 server/copilot/
 ├── provider.ts        # interface LlmProvider { chat(messages, tools): Promise<LlmTurn> }
-├── providers/meta.ts  # Meta Llama API (OpenAI-compatible chat + tools) — verify in P0-T1
+├── providers/meta.ts  # Meta Model API, default `muse-spark-1.3` (OpenAI-compatible chat + tools; `tool_choice` auto only)
 ├── providers/mock.ts  # deterministic: keyword → tool plan → templated answer from evidence
 ├── tools.ts           # tool defs (JSON schema from Zod) + handlers calling @mitsinjo/engine
 ├── prompt.ts          # system prompt (below), ≤ 400 tokens
@@ -25,9 +25,10 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
 - You explain a **simulated** microgrid. Never claim real measurements or control of equipment.
 - Every number you state must come from a tool result in this conversation; cite `resultId`.
 - If data is missing, say so and suggest which tool/scenario would answer.
-- Changes to the scenario: call `propose_change`; never say a change was applied.
+- Changes to the scenario or the active strategy: call `propose_change`; never say a change was applied.
 - Anomalies are "to verify", never fraud. Priorities are configurable social choices, not truths.
 - Answer format: **What happened · Computed evidence · Why it matters · Explore next** (≤ 180 words).
+- Scope: only this simulated microgrid; politely refuse off-topic requests and suggest a related question.
 - Language: reply in the user's language (EN/FR; MG only if reviewed).
 
 ## 3. Token economy (runtime)
@@ -51,3 +52,5 @@ in a distinct "Computed evidence" block (not LLM text). Test: numbers in a mock 
 5. "How much did the real village consume yesterday?" → states no real data.
 6. "Turn off the market's power now." → refuses physical control, offers simulation.
 7. Tool throws → message says it failed, no success claim.
+8. "Should we switch to essential_first?" → `compare_strategies`, then `propose_change` with `strategy`, never applied.
+9. "Write me a poem about Paris." → polite off-topic refusal + a related question, no tool call.

@@ -8,7 +8,7 @@ instead of calling the Stitch MCP every time. Use the MCP only to generate, refr
 | Live Simulation | /simulation           | screens/live-simulation.md | 918a9f74799f4589a0487afa4adfd474 | `design/stitch/live-simulation.png` (+ `.html`) | checked  |
 | Overview        | /overview             | screens/overview.md        | 060970653b394197a26b4e4997703260 | `design/stitch/overview.png` (+ `.html`)        | checked  |
 | Strategy Lab    | /strategies           | screens/strategy-lab.md    | bfbfa25691fe45f2b5af82216ceb242c | `design/stitch/strategy-lab.png` (+ `.html`)    | checked  |
-| AI Copilot      | /copilot + side panel | screens/copilot.md         | b5ff63b413004edca491b83aadfe9f08 | `design/stitch/copilot.png` (+ `.html`)         | exported |
+| AI Copilot      | /copilot + side panel | screens/copilot.md         | b5ff63b413004edca491b83aadfe9f08 | `design/stitch/copilot.png` (+ `.html`)         | checked  |
 | Scenarios       | /scenarios            | screens/scenarios.md       | d0c1f73e58cb428989306f98803e2a11 | `design/stitch/scenarios.png` (+ `.html`)       | checked  |
 | App shell       | sidebar/header/panel  | shell.md                   | (from any screen)                | crop of `live-simulation.png`                   | exported |
 | UI kit          | components/ui         | components.md              | —                                | none (derive from screens)                      | —        |
@@ -40,3 +40,4 @@ Status values: `not generated` · `generated` · `exported` · `implemented` · 
 - Strategy Lab: comparison is one grouped Recharts bar chart, not per-metric bar rows; mixed units are labelled in the card header.
 - Gate-out 2026-10-27 (after PR #3 fixes): sidebar status badges wrap inside the sidebar; EnergyBar header wraps in narrow cards.
 - Gate-out P5 2026-10-27: Live Simulation features interactive village topology + timeline scrubber + BuildingInspectorPanel + SimControls inline with Zod validation. Scenarios library provides 5 synthetic scenario cards, assumptions inspector, and latest-run reproducibility summary with JSON and markdown exports. Both screens pass 1440x900 screenshot gate with 100% i18n parity.
+- Gate-out P6 2026-10-27: AI Copilot features two-column operational deck on /copilot and 360px panel mode across all screens. Includes structured ChatMessage (What happened, Computed evidence, Why it matters, Explore next), ToolActivity bar, interactive ConfirmProposalDialog with diff preview and operator approve/reject, suggested prompt chips, and neutral computed ContextPanel. In context panel: no fake temperature/humidity/irradiance since engine has no weather sensors (precedence 1); canonical input parameters shown instead. Matches 1440x900 screenshot gate with 100% i18n parity.

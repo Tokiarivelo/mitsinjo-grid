@@ -31,7 +31,7 @@ export interface SimulationState {
   selectStrategy: (strategy: StrategyId) => void;
   selectSector: (sector: SectorId | null) => void;
   setTimeIndex: (timeIndex: number) => void;
-  applyProposal: (patch: InputPatch) => void;
+  applyProposal: (patch?: InputPatch, strategy?: StrategyId) => void;
 }
 
 export function cloneInput(input: SimulationInput): SimulationInput {
@@ -138,11 +138,17 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     set({ timeIndex: clamped });
   },
 
-  applyProposal: (patch: InputPatch) => {
+  applyProposal: (patch?: InputPatch, strategy?: StrategyId) => {
     try {
-      const patched = applyPatch(get().input, patch);
+      const patched =
+        patch && Object.keys(patch).length > 0
+          ? applyPatch(get().input, patch)
+          : get().input;
+      const nextStrategy = strategy ?? get().activeStrategy;
+
       set({
         input: patched,
+        activeStrategy: nextStrategy,
         status: 'running',
         error: null,
       });

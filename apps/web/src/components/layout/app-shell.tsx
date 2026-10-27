@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
-import { CopilotPanel, type CopilotMessage } from './copilot-panel';
+import { CopilotPanel } from './copilot-panel';
 import type { StatusBadgeVariant } from '@/components/ui/status-badge';
 import type { ScenarioOption } from '@/components/ui/scenario-selector';
 import { useTranslations } from '@/lib/i18n';
@@ -59,10 +59,8 @@ export function AppShell({
   const pathname = usePathname();
   const tRoutes = useTranslations('routes');
   const tCommon = useTranslations('common');
-  const tCopilot = useTranslations('copilot');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
-  const [messages, setMessages] = useState<CopilotMessage[]>([]);
 
   // On the /copilot route, the full page is the copilot workspace, so we hide the slide-out panel
   const isCopilotRoute = pathname === '/copilot';
@@ -81,16 +79,6 @@ export function AppShell({
 
   const resolvedTitle = title || defaultTitle;
   const resolvedSubtitle = subtitle || defaultSubtitle;
-
-  // The LLM copilot is not wired yet (later phase). Never fake an answer or evidence here:
-  // AI text must come from the real copilot, numbers only from the engine.
-  const handleSendMessage = (content: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { id: `user-${prev.length}`, role: 'user', content },
-      { id: `error-${prev.length}`, role: 'error', content: tCopilot('unavailable') },
-    ]);
-  };
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-canvas text-text-primary">
@@ -137,8 +125,6 @@ export function AppShell({
             <CopilotPanel
               open={copilotOpen}
               onClose={() => setCopilotOpen(false)}
-              messages={messages}
-              onSendMessage={handleSendMessage}
             />
           )}
         </div>
