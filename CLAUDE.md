@@ -49,6 +49,9 @@ shadcn/ui (restyled) · Zustand · Zod · R3F + Drei · Recharts · next-intl ·
 - `app/**/page.tsx` = import + render a feature page. No logic.
 - Feature code lives in `apps/web/src/features/<name>/{ui,hooks,utils,__tests__}`; export via `index.ts`.
 - Every engine function and hook ships with a Vitest test in the same commit.
+- **No code duplication, reuse first:** search (`rg`) for an existing helper, hook, component or i18n key before writing
+  one. Logic or markup needed twice → extract it once into a reusable, tested unit and call it from both places.
+  Details: `docs/conventions.md` § Reuse.
 - Server-only code (LLM key, tools) lives in `apps/web/src/server/` and imports `server-only`.
 - **Design gate:** every frontend change (route, layout, component, 3D) goes through `/design-check`:
   spec + Stitch mockup before coding, screenshot comparison after. Contracts > design rules > mockup.
