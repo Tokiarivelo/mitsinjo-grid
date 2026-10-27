@@ -45,11 +45,11 @@
 - **Visual**:
   - The 24-hour simulation executes in under 5 ms.
   - The solar generation curve shows a sudden 40% dip at 13:00.
-  - The battery SoC drops to its critical 20% reserve line by 18:00.
-  - A bright amber banner alerts: `CRITICAL LOAD DEFICIT DETECTED (Hours 18–22)`.
+  - The battery SoC drains through the evening and reaches its 20% reserve at 23:00.
+  - The impact banner flags a critical shortfall, a partial clinic/household deficit and the reserve reached at 23:00.
 - **Narration**:
   > _"Under normal sunlight, our 40 kilowatt-peak solar array powers all 5 village sectors and charges our 120 kilowatt-hour battery. But let's trigger a realistic shock: a two-hour monsoon cloud cover at 1 PM with low initial battery reserves._  
-  > _Instantly, our pure TypeScript engine calculates all 24 hours. By 6 PM, the battery hits its 20% safety reserve limit, leaving an 8.8 kilowatt-hour deficit during the evening peak."_
+  > _Instantly, our pure TypeScript engine calculates all 24 hours. The battery drains through the evening peak and hits its 20% safety reserve at 11 PM, leaving the village short of power that hour."_
 
 ---
 
@@ -60,12 +60,12 @@
   2. Click **Compare Strategies**.
 - **Visual**:
   - Side-by-side comparison between **Proportional Allocation** and **Essential-First Priority**.
-  - Under `Proportional`: Red metric highlight showing `8.8 kWh Critical Unmet Energy` and `84.2% Essential Coverage`.
-  - Under `Essential-First`: Green badge showing `100% Critical Coverage (0.0 kWh unmet)`, with non-critical market and household loads safely curtailed.
+  - Under `Proportional`: essential coverage below 100% (≈ 99.4%) — the clinic misses ≈ 0.2 kWh of its essential need at 23:00.
+  - Under `Essential-First`: 100% essential coverage (0 kWh critical unmet); households absorb the shortfall instead.
   - Decision Summary card highlights the trade-off.
 - **Narration**:
-  > _"Most automated microgrid controllers use naive proportional load shedding—reducing power equally across all circuits. Here in the Strategy Lab, we see the danger: proportional shedding starves the health clinic of 8.8 kilowatt-hours, threatening vaccine spoilage!_  
-  > _Switching to our Essential-First algorithm guarantees 100% power to the clinic by gracefully shedding non-critical market kiosks and secondary household circuits first. The engine verifies zero energy balance violations."_
+  > _"Most automated microgrid controllers use naive proportional load shedding—reducing power equally across all circuits. Here in the Strategy Lab, we see the danger: proportional shedding cuts the health clinic below its essential need—even a small gap at night can threaten the vaccine cold chain!_  
+  > _Switching to our Essential-First algorithm guarantees 100% power to the clinic by shedding household circuits first. The engine verifies zero energy balance violations."_
 
 ---
 
@@ -83,7 +83,7 @@
      - **Explore next**
   5. The Copilot outputs an interactive Proposal Card:  
      `Switch strategy to essential_first`.
-  6. Click **Review & Adopt Proposal** → Modal opens with parameter diff → Click **Apply Proposal**.
+  6. Review the inline proposal card (current → proposed diff) → Click **Approve & Apply Scenario**.
 - **Narration**:
   > _"For an operator in the field, raw telemetry can be overwhelming. This is where our Meta AI Copilot steps in._  
   > _We ask: 'Why is the clinic receiving less energy?'_  

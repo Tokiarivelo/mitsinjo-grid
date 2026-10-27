@@ -12,7 +12,7 @@
 > **⚠️ SIMULATED DATA NOTICE**: All energy metrics, solar generation curves, battery state-of-charge figures, and load balances presented in this system are synthetic and generated for simulation, educational, and decision-support purposes. They do not represent real-time measurements from physical microgrid hardware.
 
 **Public Production Deployment**: [https://mitsinjo-grid.vercel.app](https://mitsinjo-grid.vercel.app)  
-**Demo Video (3 Minutes)**: [Watch on YouTube / Submission Link](https://mitsinjo-grid.vercel.app) _(or see [docs/demo-script.md](docs/demo-script.md))_  
+**Demo Video (3 Minutes)**: _Pending recording (P9-T5) — script in [docs/demo-script.md](docs/demo-script.md)_  
 **Documentation**: [docs/](docs/) · [docs/assumptions.md](docs/assumptions.md) · [docs/demo-script.md](docs/demo-script.md) · [docs/known-limitations.md](docs/known-limitations.md)
 
 ---
@@ -48,13 +48,13 @@ Under proportional shedding, a severe deficit reduces power to the **Health Clin
 The platform is designed around a single, robust demonstration path that highlights the interplay between physical energy balance and AI reasoning:
 
 ```text
-[ 1. Weather Shock ]       Unforeseen 40% solar drop at 13:00 depletes battery to 20% reserve.
+[ 1. Weather Shock ]       40% solar drop at 13:00 (2 h) on a low battery; reserve (20%) is reached at 23:00.
          │
          ▼
-[ 2. Strategy Lab ]        Proportional shedding starves the Health Clinic of 8.8 kWh critical energy.
+[ 2. Strategy Lab ]        Proportional shedding cuts the Health Clinic below its essential need at 23:00.
          │                 Essential-First priority reroutes power, guaranteeing 100% lifeline coverage.
          ▼
-[ 3. Meta AI Copilot ]     Operator asks "Why is the clinic losing power?".
+[ 3. Meta AI Copilot ]     Operator asks "Why is the clinic receiving less energy?".
          │                 Copilot calls get_grid_state() & compare_strategies(), diagnosing the root cause.
          ▼
 [ 4. Computed Evidence ]   AI streams structured evidence (with exact Simulation Run IDs) and
@@ -115,13 +115,13 @@ flowchart TD
 
 ## 5. Visual Tour
 
-| Screen                              | Description                                                                                                                              | Mockup / Screenshot                                                      |
-| :---------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------- |
-| **Overview** (`/overview`)          | Executive health dashboard, current KPI summary cards, quick scenario links, and 24h battery/solar graph.                                | [`design/stitch/overview.png`](design/stitch/overview.png)               |
-| **Live Simulation** (`/simulation`) | 24-hour simulation runner with interactive sliders, 3D village digital twin, hourly telemetry table, and timeline scrubber.              | [`design/stitch/live-simulation.png`](design/stitch/live-simulation.png) |
-| **Strategy Lab** (`/strategies`)    | Side-by-side comparison matrix of Proportional vs. Essential-First vs. Balanced strategies with delta highlights and decision summaries. | [`design/stitch/strategy-lab.png`](design/stitch/strategy-lab.png)       |
-| **AI Copilot** (`/copilot`)         | Streaming conversational copilot with 4-part structured reasoning, verifiable simulation IDs, and interactive one-click proposal cards.  | [`design/stitch/copilot.png`](design/stitch/copilot.png)                 |
-| **Scenarios** (`/scenarios`)        | Scenario library featuring pre-tuned community benchmarks: Baseline, Cloudy Afternoon, Evening Surge, and Battery Constraint.            | [`design/stitch/scenarios.png`](design/stitch/scenarios.png)             |
+| Screen                              | Description                                                                                                                                           | Mockup / Screenshot                                                      |
+| :---------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------- |
+| **Overview** (`/overview`)          | Executive health dashboard, current KPI summary cards, quick scenario links, and 24h battery/solar graph.                                             | [`design/stitch/overview.png`](design/stitch/overview.png)               |
+| **Live Simulation** (`/simulation`) | 24-hour simulation runner with interactive sliders, 3D village digital twin, hourly telemetry table, and timeline scrubber.                           | [`design/stitch/live-simulation.png`](design/stitch/live-simulation.png) |
+| **Strategy Lab** (`/strategies`)    | Side-by-side comparison matrix of Proportional vs. Essential-First vs. Balanced strategies with delta highlights and decision summaries.              | [`design/stitch/strategy-lab.png`](design/stitch/strategy-lab.png)       |
+| **AI Copilot** (`/copilot`)         | Streaming conversational copilot with 4-part structured reasoning, verifiable simulation IDs, and interactive one-click proposal cards.               | [`design/stitch/copilot.png`](design/stitch/copilot.png)                 |
+| **Scenarios** (`/scenarios`)        | Scenario library featuring pre-tuned community benchmarks: Baseline, Cloudy Afternoon, High Evening Demand, Battery Constraint, and Essential Stress. | [`design/stitch/scenarios.png`](design/stitch/scenarios.png)             |
 
 ---
 
