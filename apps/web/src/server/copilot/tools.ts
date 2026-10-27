@@ -51,47 +51,31 @@ export const GetGridStateSchema = z.object({});
 
 export const RunScenarioSchema = z.object({
   scenarioId: z
-    .enum([
-      'baseline',
-      'cloudy_afternoon',
-      'high_demand',
-      'battery_constraint',
-      'essential_stress',
-    ])
+    .enum(['baseline', 'cloudy_afternoon', 'high_demand', 'battery_constraint', 'essential_stress'])
     .optional(),
   patch: InputPatchSchema.optional(),
-  strategy: z
-    .enum(['proportional', 'essential_first', 'balanced'])
-    .default('proportional'),
+  strategy: z.enum(['proportional', 'essential_first', 'balanced']).default('proportional'),
 });
 
 export const CompareStrategiesSchema = z.object({
-  strategies: z
-    .array(z.enum(['proportional', 'essential_first', 'balanced']))
-    .optional(),
+  strategies: z.array(z.enum(['proportional', 'essential_first', 'balanced'])).optional(),
 });
 
 export const GetSectorMetricsSchema = z.object({
   sector: z.enum(['health', 'water', 'school', 'households', 'market']),
-  strategy: z
-    .enum(['proportional', 'essential_first', 'balanced'])
-    .default('proportional'),
+  // Omitted → the user's active strategy (not always proportional).
+  strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
 });
 
 export const ProposeChangeSchema = z
   .object({
     patch: InputPatchSchema.optional(),
-    strategy: z
-      .enum(['proportional', 'essential_first', 'balanced'])
-      .optional(),
+    strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
     reason: z.string().min(1).max(500),
   })
-  .refine(
-    (data) => data.patch !== undefined || data.strategy !== undefined,
-    {
-      message: 'At least one of patch or strategy must be specified.',
-    }
-  );
+  .refine((data) => data.patch !== undefined || data.strategy !== undefined, {
+    message: 'At least one of patch or strategy must be specified.',
+  });
 
 export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
@@ -199,7 +183,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
         strategy: {
           type: 'string',
           enum: ['proportional', 'essential_first', 'balanced'],
-          description: 'The dispatch strategy to inspect.',
+          description: 'The dispatch strategy to inspect (default: the active strategy).',
         },
       },
       required: ['sector'],
@@ -261,11 +245,7 @@ export interface ToolResult {
   evidence?: Record<string, number | string>;
 }
 
-export function executeTool(
-  toolName: string,
-  rawArgs: unknown,
-  ctx: ToolContext
-): ToolResult {
+export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext): ToolResult {
   switch (toolName) {
     case 'get_grid_state': {
       const parsed = GetGridStateSchema.safeParse(rawArgs);
@@ -395,7 +375,7 @@ export function executeTool(
         };
       }
       const sectorId = parsed.data.sector;
-      const strategy = parsed.data.strategy;
+      const strategy: StrategyId = parsed.data.strategy ?? ctx.activeStrategy ?? 'proportional';
       const result = simulate(ctx.input, strategy);
       const secMetrics = result.metrics.perSector[sectorId];
       const sectorConfig = ctx.input.sectors.find((s) => s.id === sectorId);

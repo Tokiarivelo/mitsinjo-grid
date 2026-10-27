@@ -18,7 +18,8 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
 ```
 
 `LLM_PROVIDER=mock` is the default in dev/tests and the automatic fallback when the Meta call fails or when `META_API_KEY` is unset
-(UI shows "AI unavailable — showing deterministic explanation"). In P0-T1, `META_API_KEY` is not present in `.env`, so dev/test runs default to `LLM_PROVIDER=mock`. If a key is configured later, `providers/meta.ts` uses OpenAI-compatible tool calling format (`chat/completions` with `tools` array).
+(UI shows "AI unavailable — showing deterministic explanation").
+Models: only standard-mode `muse-spark-*` ids are listed or accepted (`isCopilotModel`); `-contributor`, image, voice and SAM ids are rejected. In P0-T1, `META_API_KEY` is not present in `.env`, so dev/test runs default to `LLM_PROVIDER=mock`. If a key is configured later, `providers/meta.ts` uses OpenAI-compatible tool calling format (`chat/completions` with `tools` array).
 
 ## 2. System prompt (outline)
 

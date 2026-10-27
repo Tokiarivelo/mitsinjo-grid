@@ -77,4 +77,15 @@ describe('suggestPrompts (P6-T10)', () => {
 
     expect(prompts.length).toBeLessThanOrEqual(6);
   });
+
+  it('never asks about a deficit when the only timed warning is curtailment', () => {
+    const result = simulate(scenarios.baseline.input, 'proportional');
+    const curtailOnly = {
+      ...result,
+      metrics: { ...result.metrics, unservedKwh: 0, criticalUnservedKwh: 0 },
+      warnings: [{ code: 'CURTAILMENT' as const, fromHour: 11, toHour: 14 }],
+    };
+    const prompts = suggestPrompts({ result: curtailOnly });
+    expect(prompts.find((p) => p.key === 'promptDeficitHours')).toBeUndefined();
+  });
 });

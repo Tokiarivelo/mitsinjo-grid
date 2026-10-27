@@ -12,6 +12,15 @@ export interface CopilotProposal {
   reason: string;
 }
 
+/** Tool activity shown while the copilot works; translated in the UI. */
+export interface CopilotActivity {
+  tool: string; // 'start' | tool name
+  sector?: string;
+}
+
+/** i18n keys under `features.copilot` for copilot errors (raw server text is never shown). */
+export type CopilotErrorKey = 'errorProviderFallback' | 'errorRateLimited' | 'errorGeneric';
+
 export interface MessageSections {
   whatHappened?: string;
   computedEvidence?: string;
@@ -24,7 +33,8 @@ export interface ChatMessageData {
   role: 'user' | 'assistant' | 'error';
   content: string;
   sections?: MessageSections;
-  evidence?: CopilotEvidence;
+  evidence?: CopilotEvidence[]; // one entry per tool result, in call order
   proposal?: CopilotProposal;
+  errorKey?: CopilotErrorKey;
   timestamp?: string;
 }

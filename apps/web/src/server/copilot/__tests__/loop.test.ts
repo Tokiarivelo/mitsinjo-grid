@@ -27,6 +27,8 @@ describe('Copilot Loop (P6-T3)', () => {
     // Verify activity label
     const activity = events.find((e) => e.name === 'activity');
     expect(activity?.data.label).toBeDefined();
+    // UI translates from `tool`, never shows the English label.
+    expect(events.filter((e) => e.name === 'activity').every((e) => typeof e.data.tool === 'string')).toBe(true);
 
     // Verify evidence has resultId and numeric fields
     const evidence = events.find((e) => e.name === 'evidence');

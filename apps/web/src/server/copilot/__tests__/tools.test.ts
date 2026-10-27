@@ -126,6 +126,20 @@ describe('Copilot Tools (P6-T2)', () => {
       expect(res.evidence?.health_demandKwh).toBeDefined();
     });
 
+    it('get_sector_metrics defaults to the active strategy', () => {
+      const stressed = {
+        input: scenarios.essential_stress.input,
+        activeStrategy: 'essential_first' as const,
+      };
+      const implicit = executeTool('get_sector_metrics', { sector: 'health' }, stressed);
+      const explicit = executeTool(
+        'get_sector_metrics',
+        { sector: 'health', strategy: 'essential_first' },
+        stressed
+      );
+      expect(implicit.resultId).toBe(explicit.resultId);
+    });
+
     it('executes propose_change without mutating state', () => {
       const res = executeTool(
         'propose_change',
@@ -144,11 +158,7 @@ describe('Copilot Tools (P6-T2)', () => {
     });
 
     it('returns structured error for invalid args without throwing', () => {
-      const res = executeTool(
-        'run_scenario',
-        { patch: { solarDropPct: 150 } },
-        ctx
-      );
+      const res = executeTool('run_scenario', { patch: { solarDropPct: 150 } }, ctx);
       expect(res.error).toBeDefined();
       expect(res.error).toContain('Invalid args for run_scenario');
     });

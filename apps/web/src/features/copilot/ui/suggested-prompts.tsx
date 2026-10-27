@@ -25,6 +25,8 @@ export function SuggestedPrompts({
   scenarioId,
 }: SuggestedPromptsProps) {
   const tCopilot = useTranslations('features.copilot');
+  const tSectors = useTranslations('sectors');
+  const tStrategies = useTranslations('strategies');
 
   const promptItems = useMemo(
     () => suggestPrompts({ result, activeStrategy, scenarioId }),
@@ -39,7 +41,17 @@ export function SuggestedPrompts({
       </div>
       <div className="flex flex-wrap gap-2">
         {promptItems.map((item, idx) => {
-          const promptText = tCopilot(item.key, item.params);
+          // Ids from the engine (health, essential_first) → localized names.
+          const params = item.params && {
+            ...item.params,
+            ...(typeof item.params.sector === 'string' && {
+              sector: tSectors(item.params.sector),
+            }),
+            ...(typeof item.params.strategy === 'string' && {
+              strategy: tStrategies(item.params.strategy),
+            }),
+          };
+          const promptText = tCopilot(item.key, params);
           return (
             <button
               key={`${item.key}-${idx}`}

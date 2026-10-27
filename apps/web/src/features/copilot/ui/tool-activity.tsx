@@ -2,13 +2,31 @@
 
 import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslations } from '@/lib/i18n';
+import type { CopilotActivity } from '../types';
+
+const KNOWN_TOOLS = new Set([
+  'start',
+  'get_grid_state',
+  'run_scenario',
+  'compare_strategies',
+  'get_sector_metrics',
+  'propose_change',
+]);
+const KNOWN_SECTORS = new Set(['health', 'water', 'school', 'households', 'market']);
 
 export interface ToolActivityProps {
-  label: string;
+  activity: CopilotActivity;
   className?: string;
 }
 
-export function ToolActivity({ label, className }: ToolActivityProps) {
+export function ToolActivity({ activity, className }: ToolActivityProps) {
+  const tCopilot = useTranslations('features.copilot');
+  const tSectors = useTranslations('sectors');
+  const tool = KNOWN_TOOLS.has(activity.tool) ? activity.tool : 'default';
+  const sector =
+    activity.sector && KNOWN_SECTORS.has(activity.sector) ? tSectors(activity.sector) : '';
+  const label = tCopilot(`activity.${tool}`, { sector });
   return (
     <div
       role="status"
@@ -21,13 +39,11 @@ export function ToolActivity({ label, className }: ToolActivityProps) {
       <div className="flex items-center gap-2.5">
         <span className="w-2 h-2 rounded-full bg-ai-violet animate-pulse" />
         <Sparkles className="h-4 w-4 text-ai-violet animate-spin" aria-hidden="true" />
-        <span className="text-text-primary text-xs font-medium font-sans">
-          {label}
-        </span>
+        <span className="text-text-primary text-xs font-medium font-sans">{label}</span>
       </div>
       <div className="flex items-center gap-2 text-[10px] text-text-muted">
         <span className="px-1.5 py-0.5 rounded bg-surface border border-border">
-          DETERMINISTIC
+          {tCopilot('activityBadge')}
         </span>
       </div>
     </div>

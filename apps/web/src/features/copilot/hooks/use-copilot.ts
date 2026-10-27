@@ -1,16 +1,33 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useSimulationStore } from '@/stores';
-import type { ChatMessageData, CopilotEvidence, CopilotProposal } from '../types';
+import type {
+  ChatMessageData,
+  CopilotActivity,
+  CopilotErrorKey,
+  CopilotEvidence,
+  CopilotProposal,
+} from '../types';
 import { parseMessageSections } from '../utils/parse-sections';
+
+class CopilotHttpError extends Error {
+  constructor(readonly key: CopilotErrorKey) {
+    super(key);
+  }
+}
+
+/** Messages the API accepts: no error bubbles, no empty assistant turns (schema requires content ≥ 1). */
+export function toPayloadMessages(messages: ChatMessageData[]) {
+  return messages
+    .filter((m) => m.role !== 'error' && m.content.trim().length > 0)
+    .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+}
 
 export function useCopilot() {
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [pending, setPending] = useState(false);
-  const [toolActivity, setToolActivity] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pendingProposal, setPendingProposal] = useState<CopilotProposal | null>(
-    null
-  );
+  const [toolActivity, setToolActivity] = useState<CopilotActivity | null>(null);
+  const [error, setError] = useState<CopilotErrorKey | null>(null);
+  const [pendingProposal, setPendingProposal] = useState<CopilotProposal | null>(null);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
 
@@ -77,10 +94,7 @@ export function useCopilot() {
       abortRef.current = abortController;
 
       try {
-        const payloadMessages = updatedHistory.map((m) => ({
-          role: m.role === 'error' ? 'assistant' : m.role,
-          content: m.content,
-        }));
+        const payloadMessages = toPayloadMessages(updatedHistory);
 
         const res = await fetch('/api/copilot', {
           method: 'POST',
@@ -95,21 +109,18 @@ export function useCopilot() {
         });
 
         if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(
-            (errData as { error?: string }).error || `HTTP error ${res.status}`
-          );
+          throw new CopilotHttpError(res.status === 429 ? 'errorRateLimited' : 'errorGeneric');
         }
 
         if (!res.body) {
-          throw new Error('Response body stream is empty');
+          throw new CopilotHttpError('errorGeneric');
         }
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
         let streamedContent = '';
-        let collectedEvidence: CopilotEvidence | undefined;
+        let collectedEvidence: CopilotEvidence[] = [];
         let collectedProposal: CopilotProposal | undefined;
 
         while (true) {
@@ -144,8 +155,9 @@ export function useCopilot() {
 
             switch (event) {
               case 'activity': {
-                const label = dataObj.label as string;
-                if (label) setToolActivity(label);
+                const tool = typeof dataObj.tool === 'string' ? dataObj.tool : 'start';
+                const sector = typeof dataObj.sector === 'string' ? dataObj.sector : undefined;
+                setToolActivity({ tool, sector });
                 break;
               }
               case 'delta': {
@@ -169,12 +181,10 @@ export function useCopilot() {
                 break;
               }
               case 'evidence': {
-                collectedEvidence = dataObj as unknown as CopilotEvidence;
+                collectedEvidence = [...collectedEvidence, dataObj as unknown as CopilotEvidence];
                 setMessages((prev) =>
                   prev.map((msg) =>
-                    msg.id === assistantMsgId
-                      ? { ...msg, evidence: collectedEvidence }
-                      : msg
+                    msg.id === assistantMsgId ? { ...msg, evidence: collectedEvidence } : msg
                   )
                 );
                 break;
@@ -184,17 +194,15 @@ export function useCopilot() {
                 setPendingProposal(collectedProposal);
                 setMessages((prev) =>
                   prev.map((msg) =>
-                    msg.id === assistantMsgId
-                      ? { ...msg, proposal: collectedProposal }
-                      : msg
+                    msg.id === assistantMsgId ? { ...msg, proposal: collectedProposal } : msg
                   )
                 );
                 break;
               }
               case 'error': {
-                const errMsg =
-                  (dataObj.message as string) || 'AI copilot error occurred';
-                setError(errMsg);
+                setError(
+                  dataObj.code === 'PROVIDER_FALLBACK' ? 'errorProviderFallback' : 'errorGeneric'
+                );
                 break;
               }
               case 'done': {
@@ -206,24 +214,21 @@ export function useCopilot() {
         }
       } catch (err: unknown) {
         if ((err as Error)?.name === 'AbortError') return;
-        const msg =
-          err instanceof Error
-            ? err.message
-            : 'AI service unavailable. Showing deterministic simulation results.';
-        setError(msg);
+        const errorKey: CopilotErrorKey =
+          err instanceof CopilotHttpError ? err.key : 'errorGeneric';
+        setError(errorKey);
 
         // Keep assistant message or show error message
         setMessages((prev) => {
-          const hasAssistant = prev.some(
-            (m) => m.id === assistantMsgId && m.content.length > 0
-          );
+          const hasAssistant = prev.some((m) => m.id === assistantMsgId && m.content.length > 0);
           if (hasAssistant) return prev;
           return prev.map((m) =>
             m.id === assistantMsgId
               ? {
                   ...m,
                   role: 'error' as const,
-                  content: msg,
+                  content: '',
+                  errorKey,
                 }
               : m
           );
