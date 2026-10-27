@@ -15,6 +15,20 @@
 - Styling: Tailwind tokens from `globals.css @theme` only; no raw hex in components.
 - Files: components `PascalCase.tsx`, hooks `useX.ts`, utils `kebab-case.ts`, tests `*.test.ts(x)`.
 
+## Reuse (no duplication)
+
+- Before writing code, search for what already exists (`rg`): engine helpers, `lib/format.ts`, `lib/utils.ts`,
+  `components/ui`, feature `hooks/` and `utils/`, i18n keys (`common.*` first).
+- Same logic, markup or copy in 2+ places → extract it once and reuse it. No copy-paste, even "just a few lines".
+- Where reusable code lives:
+  - engine math → `packages/engine/src/model` or the owning module, exported through `src/index.ts` if the web needs it;
+  - pure web logic → feature `utils/` (one feature) or `apps/web/src/lib/` (shared);
+  - React logic → feature `hooks/`; shared UI → `components/ui` or `components/layout`;
+  - repeated text or formats (units, ranges) → one i18n key, usually in `common`.
+- Write reusable units generic: typed params instead of hardcoded values, no hidden store or global access in `utils/`.
+- Every extracted unit ships with its own test (same commit). Then delete the old copies.
+- When you touch duplicated code, extract it in the same change instead of adding one more copy.
+
 ## Tests
 
 - Engine: Vitest, ≥ 90 % lines. Web: Vitest + Testing Library for hooks/interactive UI.

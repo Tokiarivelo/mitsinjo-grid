@@ -16,7 +16,8 @@ Follow `.claude/rules/review.md`. Steps:
    - i18n: literals in JSX, `aria-label`s, error copy, untranslated enum values (priorities, statuses), key parity.
    - Feature-slice layout, `page.tsx` has no logic, narrow store selectors, token-only styling, `SIMULATED DATA` label.
    - Tests: every new hook/util/engine function has a Vitest test; tests query by role/label.
-   - Duplication worth extracting into `utils/` (with a test).
+   - Duplication (blocking): repeated logic/markup/copy or a re-implemented existing helper (`rg` for it) →
+     extract once per `docs/conventions.md` § Reuse (with a test), replace every copy.
    - Docs/Makefile/`.env.example`/`HANDOFF.md` kept in sync (`maintenance` rule).
    - Frontend change → design gate-out done (stitch-map row `checked`, screenshots).
 5. **Fix** on the branch, `make check`, commit `fix(<scope>): address PR #<n> review`, push.
