@@ -6,7 +6,7 @@
 
 - Phase: **P8 — Quality, performance, accessibility** completed (P8-T1..P8-T6 done).
 - Monorepo healthy: `make check` 100% green (154 tests, tsc, lint, i18n parity), `pnpm build` clean.
-- Playwright E2E: 17/17 tests passing in `make e2e` (`demo-path.spec.ts` + 3x loop, `responsive.spec.ts` 1440/1024/390px).
+- Playwright E2E: `make e2e` runs `e2e/demo-path.spec.ts` (demo path, 3× loop, responsive 1440/1024/390px); CI job `e2e` runs it too.
 - Scrollbar Hardening:
   - Eliminated double scrollbar by setting `html, body { height: 100%; overflow: hidden; }` and making `ChartCard` / `main` `relative` (contained `p.sr-only` that was leaking to root viewport).
   - Removed duplicate nested `overflow-y-auto` in `overview-page.tsx` and `strategy-lab-page.tsx`.
@@ -23,10 +23,12 @@
 
 ## Open questions / blockers
 
-- PR #13 created on `feat/p8-quality` against `main`. User directed not to review and not to merge.
+- PR #13 reviewed and merged (review fixes: mock model id kept out of Meta filter, inline proposal card not `aria-modal`, generic CRITICAL_UNMET title, scrollbar uses tokens, e2e in CI, docs facts corrected).
+- fps on a real integrated GPU still needs a manual check (`/simulation?perf=1`, target ≥45 fps).
 
 ## Files touched this session
 
 - `apps/web/src/app/{globals.css,layout.tsx}`, `apps/web/src/components/layout/app-shell.tsx`
 - `apps/web/src/components/ui/chart-card.tsx`, `features/overview/ui/overview-page.tsx`, `features/strategy-lab/ui/strategy-lab-page.tsx`
 - `HANDOFF.md`
+- Review fix: `server/copilot/providers/{meta,mock}.ts`, `app/api/copilot/{route,models/route}.ts`, `impact-banner.tsx`, `confirm-proposal-dialog.tsx`, `.github/workflows/ci.yml`, `docs/known-limitations.md`

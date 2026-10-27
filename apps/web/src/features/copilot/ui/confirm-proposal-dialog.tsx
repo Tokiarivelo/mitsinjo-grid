@@ -86,7 +86,7 @@ export function ConfirmProposalDialog({
     <div
       role="dialog"
       aria-labelledby={`proposal-title-${proposal.proposalId}`}
-      aria-modal="true"
+      aria-modal="false"
       tabIndex={-1}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {

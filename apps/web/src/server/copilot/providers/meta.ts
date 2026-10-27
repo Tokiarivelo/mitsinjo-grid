@@ -11,7 +11,7 @@ export const DEFAULT_META_BASE_URL = 'https://api.meta.ai/v1';
  * Excludes image/voice/SAM models (no chat tools) and `-contributor` ids (inputs may train Meta models).
  */
 export function isCopilotModel(id: string): boolean {
-  return id === 'mock-deterministic-v1' || /^muse-spark-\d+(\.\d+)*$/.test(id);
+  return /^muse-spark-\d+(\.\d+)*$/.test(id);
 }
 
 export class MetaLlmProvider implements LlmProvider {

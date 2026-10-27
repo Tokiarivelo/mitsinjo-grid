@@ -7,9 +7,9 @@ This document outlines the current known limitations of the Mitsinjo Grid simula
 - **No Continuous Multi-Day Roll-Over**: Weather variations (e.g. consecutive cloudy days, seasonal monsoon) are evaluated through discrete scenario inputs rather than continuous multi-day state progression.
 
 ## 2. Physical & Electrical Modeling
-- **Simplified Battery Degradation**: Battery State of Charge (SoC), charge/discharge efficiency, and minimum/maximum constraints ($SoC \in [0.10, 0.95]$) are modeled deterministically. Long-term cycle degradation, thermal derating, and cell balancing dynamics are abstracted.
+- **Simplified Battery**: State of Charge, charge/discharge efficiency, charge/discharge power limits and a minimum-SoC reserve are modeled deterministically (see `docs/engine-spec.md`). Cycle degradation, thermal derating and cell balancing are not modeled.
 - **Single-Phase Balance**: Grid power flows represent aggregate real power ($kW$). Reactive power ($kVAR$), power factor, voltage sag, frequency regulation, and three-phase unbalances are not modeled.
-- **Inverter Efficiency Curve**: Inverter efficiency is modeled with a fixed baseline efficiency coefficient rather than a load-dependent non-linear efficiency curve.
+- **No Inverter Model**: Solar output goes straight to the energy balance; inverter losses and clipping are not modeled.
 
 ## 3. WebGL & Hardware Acceleration
 - **Headless & Software Rendering in CI**: In CI environments lacking hardware GPU acceleration (e.g., GitHub Actions, SwiftShader software rasterizer), 3D framerates will drop below the 45 fps target (~15–20 fps). However, draw call count ($\le 97$ vs 150 budget) and triangle count ($\approx 6,248$ vs 150,000 budget) remain strictly within budget.
@@ -20,7 +20,7 @@ This document outlines the current known limitations of the Mitsinjo Grid simula
 
 ## 5. AI Copilot & Provider Integrations
 - **Mock Mode by Default**: For offline development, zero-credential CI, and deterministic testing, `LLM_PROVIDER=mock` provides instantaneous synthetic analysis.
-- **Meta Llama Integration**: In production (`LLM_PROVIDER=meta`), the copilot communicates with Meta Llama models via OpenAI-compatible Server-Sent Events. API latency and rate limits are subject to the upstream provider.
+- **Meta Model API**: With `LLM_PROVIDER=meta`, the copilot calls Meta Muse Spark (`muse-spark-*`) through the OpenAI-compatible chat API and streams answers to the UI over SSE. API latency and rate limits are subject to the upstream provider.
 
 ## 6. Synthetic Village Data Notice
 - All solar profiles, load curves, and village node properties are synthetic archetypes inspired by rural Madagascar off-grid electrification scenarios. They are intended for decision support, trade-off exploration, and education, not direct industrial SCADA or PLC actuation.

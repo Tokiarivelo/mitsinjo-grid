@@ -59,7 +59,7 @@ export function ImpactBanner({
           case 'CRITICAL_UNMET':
             toneClass = 'border-critical-red/40 bg-critical-red/10 text-critical-red';
             icon = <ZapOff className="h-4 w-4 text-critical-red" aria-hidden="true" />;
-            title = tWarnings('clinicSupplyBelowTarget');
+            title = tWarnings('criticalUnmetTitle');
             desc = tWarnings('criticalUnmetDesc', { from: fromStr, to: toStr });
             break;
 

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { SimulationInputSchema } from '@mitsinjo/engine';
 import { env } from '@/lib/env';
 import { runCopilotLoop } from '@/server/copilot/loop';
-import { MockLlmProvider } from '@/server/copilot/providers/mock';
+import { MockLlmProvider, MOCK_MODEL_ID } from '@/server/copilot/providers/mock';
 import { MetaLlmProvider, isCopilotModel } from '@/server/copilot/providers/meta';
 
 // In-memory rate limiter: max 30 requests per minute per client
@@ -50,7 +50,11 @@ const RequestBodySchema = z.object({
     .min(1),
   input: SimulationInputSchema,
   strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
-  model: z.string().max(64).refine(isCopilotModel).optional(),
+  model: z
+    .string()
+    .max(64)
+    .refine((id) => id === MOCK_MODEL_ID || isCopilotModel(id))
+    .optional(),
 });
 
 export async function POST(req: NextRequest) {

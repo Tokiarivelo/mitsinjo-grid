@@ -57,7 +57,7 @@ plus `META_API_KEY`, `META_MODEL`, `META_BASE_URL` when switching to `meta`.
 
 See [docs/known-limitations.md](docs/known-limitations.md) for full architectural boundaries and assumptions:
 - **Simulation Horizon**: Discrete 24-hour cycle at 1-hour resolution ($t \in [0, 23]$).
-- **Physical Modeling**: Deterministic BESS SoC and single-phase real-power balance; thermal derating and reactive power are abstracted.
+- **Physical Modeling**: Deterministic battery SoC and aggregate real-power balance; degradation, inverter losses and reactive power are not modeled.
 - **Headless WebGL in CI**: Headless Linux CI renders 3D scenes via software rasterizer (SwiftShader); hardware GPU is recommended for 60 fps client rendering.
 - **Decision Support Archetypes**: All village load and solar models are synthetic archetypes for trade-off evaluation rather than direct SCADA control.
 
