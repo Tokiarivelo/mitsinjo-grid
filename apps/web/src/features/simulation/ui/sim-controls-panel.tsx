@@ -34,6 +34,8 @@ export function SimControlsPanel({
   const tSim = useTranslations('features.simulation');
   const tStrategies = useTranslations('strategies');
   const tCommon = useTranslations('common');
+  const tSectors = useTranslations('sectors');
+  const tPriorities = useTranslations('priorities');
 
   // Derive existing parameters from current input
   const existingSolarDrop = input.events.find((e) => e.type === 'solar_drop');
@@ -244,6 +246,39 @@ export function SimControlsPanel({
           error={errors.initialSocPct}
           description={tSim('initialSocDesc')}
         />
+      </div>
+
+      {/* Active Sector Priorities & Caps (PY-T4) */}
+      <div className="pt-2 border-t border-border/60 flex flex-col gap-2">
+        <div className="flex items-center justify-between text-xs font-semibold text-text-primary">
+          <span>{tSim('sectorPrioritiesAndCaps')}</span>
+          {input.sectorCaps && input.sectorCaps.length > 0 && (
+            <span className="text-[10px] font-mono text-energy-cyan bg-energy-cyan/15 px-1.5 py-0.5 rounded border border-energy-cyan/30">
+              {tSim('capsActiveCount', { count: input.sectorCaps.length })}
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          {input.sectors.map((sec) => {
+            const cap = input.sectorCaps?.find((c) => c.sector === sec.id);
+            return (
+              <div
+                key={sec.id}
+                className="p-2 rounded-control bg-surface-elevated/40 border border-border/60 flex flex-col gap-1 text-xs"
+              >
+                <span className="font-medium text-text-primary truncate">{tSectors(sec.id)}</span>
+                <span className="text-[10px] font-mono uppercase text-text-muted">
+                  {tPriorities(sec.priority)}
+                </span>
+                {cap && (
+                  <span className="text-[9px] font-mono text-energy-cyan bg-energy-cyan/10 px-1 py-0.5 rounded border border-energy-cyan/20 truncate">
+                    {tCommon('capRange', { maxKw: cap.maxKw, from: cap.fromHour, to: cap.toHour })}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Strategy Selection Row */}

@@ -27,6 +27,28 @@ export function applyPatch(input: SimulationInput, rawPatch: InputPatch): Simula
     cloned.battery.minSocPct = patch.minSocPct;
   }
 
+  if (patch.priorities !== undefined) {
+    for (const [secId, priority] of Object.entries(patch.priorities)) {
+      const s = cloned.sectors.find((sec) => sec.id === secId);
+      if (s && priority) {
+        s.priority = priority;
+      }
+    }
+  }
+
+  if (patch.sectorCaps !== undefined) {
+    cloned.sectorCaps = patch.sectorCaps;
+  }
+
+  if (patch.meterReadings !== undefined) {
+    for (const [secId, readings] of Object.entries(patch.meterReadings)) {
+      const s = cloned.sectors.find((sec) => sec.id === secId);
+      if (s && readings) {
+        s.meterReadings = readings;
+      }
+    }
+  }
+
   const existingDrop = cloned.events.find((e) => e.type === 'solar_drop') as
     SolarDropEvent | undefined;
 

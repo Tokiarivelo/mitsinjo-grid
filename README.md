@@ -237,10 +237,13 @@ make deploy        # Manual production deployment from clean origin/main
 - **Electrical Dynamics**: Single-phase aggregate real-power balance. Reactive power ($kVAR$), voltage drop along distribution lines, and frequency regulation are omitted.
 - **Hardware Acceleration**: 3D Digital Twin targets 60 fps on hardware GPUs. In headless Linux CI without a hardware GPU, software rasterization (SwiftShader) is utilized for testing.
 
+### Stretch Features (shipped, simulated only)
+
+- **PX Anomaly Signal**: optional per-sector `meterReadings`; a persistent gap > 25 % vs the expected profile for ≥ 2 h raises `ANOMALY_TO_VERIFY` (a signal to verify, never a fraud or fault conclusion). Synthetic `meter_anomaly` scenario.
+- **PY Sector Control Proposals**: hourly `sectorCaps` and priority overrides the copilot can only _propose_; the user confirms, the engine recomputes. No real equipment control.
+
 ### Future Roadmap
 
-- **PX Anomaly Detection**: Statistical detector for unmetered consumption, persistent meter divergence (>25%), and distribution line faults.
-- **PY Dynamic Sector Control**: Granular hourly sector capacity caps (`sectorCaps: { sector, maxKw, fromHour, toHour }`) and dynamic priority reassignment.
 - **Hardware Gateway (SCADA/IoT)**: MQTT / Modbus TCP ingestion adapters for physical microgrid telemetry in Madagascar.
 
 ---

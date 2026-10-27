@@ -1,5 +1,6 @@
 import { EPS } from './constants';
-import type { BatteryConfig, SectorId, SimWarning, StepResult } from './schemas';
+import { computeProfileDemandKw } from './model/demand';
+import type { BatteryConfig, SectorId, SimulationInput, SimWarning, StepResult } from './schemas';
 
 interface RawWarning {
   code: SimWarning['code'];
@@ -9,7 +10,8 @@ interface RawWarning {
 
 export function generateWarnings(
   steps: readonly StepResult[],
-  battery: BatteryConfig
+  battery: BatteryConfig,
+  input?: SimulationInput
 ): SimWarning[] {
   const raw: RawWarning[] = [];
 
@@ -57,7 +59,66 @@ export function generateWarnings(
     if (step.curtailedKw > EPS) {
       raw.push({ code: 'CURTAILMENT', hour: t });
     }
+
+    // 5. SECTOR_CAPPED: active capacity cap constrained this sector in step t
+    if (input?.sectorCaps && input.sectorCaps.length > 0) {
+      for (const cap of input.sectorCaps) {
+        if (t >= cap.fromHour && t < cap.toHour) {
+          const s = step.sectors[cap.sector];
+          if (s && s.demandKw > cap.maxKw + EPS && s.servedKw <= cap.maxKw + EPS) {
+            raw.push({ code: 'SECTOR_CAPPED', sector: cap.sector, hour: t });
+          }
+        }
+      }
+    }
   }
+
+  // 6. ANOMALY_TO_VERIFY: detector for persistent gap vs profile > 25% for >= 2 h
+  if (input?.sectors) {
+    for (const s of input.sectors) {
+      if (s.meterReadings && s.meterReadings.length === steps.length) {
+        const divergentHours: number[] = [];
+        for (let t = 0; t < steps.length; t++) {
+          const expectedKw = computeProfileDemandKw(s, input.demandMultiplier, input.events, t);
+          const meterKw = s.meterReadings[t] ?? 0;
+
+          let gap = 0;
+          if (expectedKw > EPS) {
+            gap = Math.abs(meterKw - expectedKw) / expectedKw;
+          } else if (meterKw > EPS) {
+            gap = 1.0;
+          }
+
+          if (gap > 0.25) {
+            divergentHours.push(t);
+          }
+        }
+
+        let currentRun: number[] = [];
+        for (let i = 0; i < divergentHours.length; i++) {
+          const h = divergentHours[i]!;
+          if (currentRun.length === 0 || h === currentRun[currentRun.length - 1]! + 1) {
+            currentRun.push(h);
+          } else {
+            if (currentRun.length >= 2) {
+              for (const hour of currentRun) {
+                raw.push({ code: 'ANOMALY_TO_VERIFY', sector: s.id, hour });
+              }
+            }
+            currentRun = [h];
+          }
+        }
+        if (currentRun.length >= 2) {
+          for (const hour of currentRun) {
+            raw.push({ code: 'ANOMALY_TO_VERIFY', sector: s.id, hour });
+          }
+        }
+      }
+    }
+  }
+
+  // Sort raw warnings by hour before merging consecutive intervals
+  raw.sort((a, b) => a.hour - b.hour);
 
   // Merge consecutive hours into ranges
   const merged: SimWarning[] = [];

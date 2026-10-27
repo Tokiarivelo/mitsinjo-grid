@@ -8,13 +8,14 @@ const ALL_STRATEGIES: readonly StrategyId[] = ['proportional', 'essential_first'
 describe('Scenarios Presets & Invariants', () => {
   const scenarioKeys = Object.keys(scenarios) as (keyof typeof scenarios)[];
 
-  it('provides all 5 documented scenarios', () => {
+  it('provides all documented scenarios including synthetic anomaly (PX-T3)', () => {
     expect(scenarioKeys).toEqual([
       'baseline',
       'cloudy_afternoon',
       'high_demand',
       'battery_constraint',
       'essential_stress',
+      'meter_anomaly',
     ]);
   });
 
@@ -39,5 +40,14 @@ describe('Scenarios Presets & Invariants', () => {
     expect(sim.metrics.criticalUnservedKwh).toBe(0);
     expect(sim.metrics.criticalCoveragePct).toBe(100);
     expect(sim.metrics.affectedSectors).toEqual([]);
+  });
+
+  it('meter_anomaly scenario detects persistent divergence and emits ANOMALY_TO_VERIFY warning (PX-T2, PX-T3)', () => {
+    const sim = simulate(scenarios.meter_anomaly.input, 'proportional');
+    const anomalyWarn = sim.warnings.find((w) => w.code === 'ANOMALY_TO_VERIFY');
+    expect(anomalyWarn).toBeDefined();
+    expect(anomalyWarn?.sector).toBe('market');
+    expect(anomalyWarn?.fromHour).toBe(11);
+    expect(anomalyWarn?.toHour).toBe(14);
   });
 });

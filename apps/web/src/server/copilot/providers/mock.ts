@@ -139,14 +139,48 @@ Run one of the preset scenarios (Baseline or Monsoon Cloud Cover) to inspect sim
       };
     }
 
+    // Cut the market tonight -> Simulated cap proposal via propose_change (PY-T3)
+    if (
+      (query.includes('cut the market') ||
+        query.includes('limit the market') ||
+        (query.includes('market') && query.includes('cut')) ||
+        (query.includes('marché') && query.includes('couper')) ||
+        (query.includes('marché') && query.includes('limiter'))) &&
+      (query.includes('tonight') || query.includes('ce soir'))
+    ) {
+      const capToolCall: ToolCall = {
+        id: 'call_cap_market_tonight',
+        name: 'propose_change',
+        args: {
+          patch: {
+            sectorCaps: [
+              {
+                sector: 'market',
+                maxKw: 0,
+                fromHour: 18,
+                toHour: 24,
+              },
+            ],
+          },
+          reason: fr
+            ? "Proposition de plafonnement simulé du marché à 0 kW ce soir (18h-24h) pour préserver les réserves (contrôle simulé soumis à approbation, aucun actionneur physique)."
+            : "Simulated sector cap proposal to limit market power to 0 kW tonight (18:00-24:00) to protect reserves for priority services (simulation advisory only, no physical hardware control).",
+        },
+      };
+      return {
+        content: '',
+        toolCalls: [capToolCall],
+      };
+    }
+
     if (
       query.includes('turn off') ||
       query.includes('shut down') ||
       query.includes("market's power") ||
       query.includes('switch off') ||
       query.includes('éteindre') ||
-      query.includes('couper') ||
-      query.includes('marché')
+      (query.includes('couper') && query.includes('maintenant')) ||
+      (query.includes('couper') && query.includes('marché') && !query.includes('ce soir'))
     ) {
       if (fr) {
         return {
@@ -182,7 +216,26 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
     // Determine tool call based on keywords (EN + FR)
     let toolCall: ToolCall;
 
-    if (query.includes('150') || query.includes('drop to 150')) {
+    if (query.includes('invalid cap') || query.includes('limit the market to -5')) {
+      // Deliberate out-of-bounds sector cap test case (PY-T3)
+      toolCall = {
+        id: 'call_invalid_cap',
+        name: 'propose_change',
+        args: {
+          patch: {
+            sectorCaps: [
+              {
+                sector: 'market',
+                maxKw: -5,
+                fromHour: 18,
+                toHour: 22,
+              },
+            ],
+          },
+          reason: 'Invalid negative sector cap',
+        },
+      };
+    } else if (query.includes('150') || query.includes('drop to 150')) {
       // Deliberate out-of-bounds test case
       toolCall = {
         id: 'call_drop_150',

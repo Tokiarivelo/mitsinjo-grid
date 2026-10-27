@@ -20,7 +20,8 @@
     "supplied": "Voazara",
     "curtailed": "Voafetra",
     "loading": "Am-panatanterahana...",
-    "idLabel": "ID: {id}"
+    "idLabel": "ID: {id}",
+    "capRange": "{maxKw} kW ({from}:00–{to}:00)"
   },
   "nav": {
     "overview": "Topimaso",
@@ -96,6 +97,10 @@
     "essential_stress": {
       "name": "Fisedrana Mafy (-60%)",
       "description": "Fahatapahan'ny masoandro 4 ora amin'ny 11-15h miaraka amin'ny bateria 25%"
+    },
+    "meter_anomaly": {
+      "name": "Fahatapahana fandrefesana namboarina",
+      "description": "Fahasamihafana amin'ny fandrefesana (>25% mandritra ny 4 ora) ho an'ny tsena (mila fanamarinana)"
     }
   },
   "features": {
@@ -136,6 +141,8 @@
       "initialSoc": "Fiampangana Voalohany (SoC)",
       "initialSocDesc": "Taham-pamenoana amin ny fiandohan ny 24h",
       "selectStrategy": "Paikady Fizarana Herinaratra",
+      "sectorPrioritiesAndCaps": "Laharam-pahamehana sy fetra mavitrika isaky ny sehatra",
+      "capsActiveCount": "Fetra mavitrika {count}",
       "runSimulation": "Alefaso ny simulation",
       "resetScenario": "Avereno ny scénario",
       "errors": {
@@ -230,7 +237,8 @@
       "deltaDemandSpike": "+{pct}% filàna ({from}–{to})",
       "deltaGlobalLoad": "{pct}% totalin'ny enta",
       "horizonValue": "{hours} o (dingana {step} o)",
-      "chargeDischargeEff": "Fahombiazan'ny fiampangana / fandaniana"
+      "chargeDischargeEff": "Fahombiazan'ny fiampangana / fandaniana",
+      "capBadge": "FETRA: {maxKw} kW ({from}h–{to}h)"
     },
     "copilot": {
       "title": "Mpanampy Mitsinjo",
@@ -266,6 +274,9 @@
       "diffBatteryCapacity": "Fahafahan'ny bateria",
       "diffInitialSoc": "Fametrahana voalohany (SoC)",
       "diffMinSoc": "Tahiry kely indrindra (SoC)",
+      "diffPriorityLabel": "Laharam-pahamehana",
+      "diffCapLabel": "Fetra farafahany",
+      "noCap": "Tsy misy fetra",
       "contextPanelAria": "Toe-javatra simulation miasa",
       "contextTitle": "TOE-JAVATRA MIASA (VOAPAIKA)",
       "contextActiveScenario": "Scenario miasa",
@@ -310,7 +321,8 @@
         "get_sector_metrics": "Fandinihana ny angon-drakitry ny sehatra {sector}",
         "propose_change": "Fanomanana tolo-kevitra ho hamarinina",
         "default": "Fandinihana ny valiny voakajy"
-      }
+      },
+      "unknownValue": "Tsy fantatra"
     }
   },
   "copilot": {
@@ -455,6 +467,10 @@
     "reserveReachedDesc": "Tonga amin'ny tahiry farany ambany ny bateria teo anelanelan'ny {from} sy {to}.",
     "curtailmentTitle": "Famehezana ny herin'ny masoandro",
     "curtailmentDesc": "Nisy angovo masoandro tsy nampiasaina teo anelanelan'ny {from} sy {to} noho ny bateria feno.",
+    "anomalyToVerifyTitle": "Fambara tsy fanarahan-dalàna tokony hamarinina",
+    "anomalyToVerifyDesc": "Fahasamihafana mihoatra ny 25% voamarika amin'ny {sector} teo anelanelan'ny {from} sy {to}. Ilaina ny manamarina (aza tsoahina avy hatrany ho halatra na fahasimbana).",
+    "sectorCappedTitle": "Famerana herinaratra mavitrika",
+    "sectorCappedDesc": "Ny herinaratra ho an'ny {sector} dia noferana tamin'ny fetran'ny mpitantana teo anelanelan'ny {from} sy {to}.",
     "hoursRange": "{from} - {to}"
   },
   "overview": {

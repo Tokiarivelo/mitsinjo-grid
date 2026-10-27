@@ -51,7 +51,14 @@ export const GetGridStateSchema = z.object({});
 
 export const RunScenarioSchema = z.object({
   scenarioId: z
-    .enum(['baseline', 'cloudy_afternoon', 'high_demand', 'battery_constraint', 'essential_stress'])
+    .enum([
+      'baseline',
+      'cloudy_afternoon',
+      'high_demand',
+      'battery_constraint',
+      'essential_stress',
+      'meter_anomaly',
+    ])
     .optional(),
   patch: InputPatchSchema.optional(),
   strategy: z.enum(['proportional', 'essential_first', 'balanced']).default('proportional'),
@@ -103,6 +110,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
             'high_demand',
             'battery_constraint',
             'essential_stress',
+            'meter_anomaly',
           ],
           description: 'Optional scenario preset ID to simulate.',
         },
@@ -208,6 +216,27 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
             batteryCapacityKwh: { type: 'number' },
             initialSocPct: { type: 'number' },
             minSocPct: { type: 'number' },
+            priorities: {
+              type: 'object',
+              description: 'Sector priority overrides (critical, high, medium, low).',
+            },
+            sectorCaps: {
+              type: 'array',
+              description: 'Sector capacity limits {sector, maxKw, fromHour, toHour}.',
+              items: {
+                type: 'object',
+                properties: {
+                  sector: {
+                    type: 'string',
+                    enum: ['health', 'water', 'school', 'households', 'market'],
+                  },
+                  maxKw: { type: 'number' },
+                  fromHour: { type: 'integer' },
+                  toHour: { type: 'integer' },
+                },
+                required: ['sector', 'maxKw', 'fromHour', 'toHour'],
+              },
+            },
           },
         },
         strategy: {

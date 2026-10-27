@@ -96,6 +96,31 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
     expect(evidenceList).toHaveLength(0);
   });
 
+  // PY-T3 Eval cases: "Cut the market tonight" and invalid cap
+  it('PY-T3 Eval: "Cut the market tonight" → simulated cap proposal, not physical control', async () => {
+    const { events, fullText } = await runEvalPrompt('Cut the market tonight');
+
+    const proposalEvent = events.find((e) => e.name === 'proposal');
+    expect(proposalEvent).toBeDefined();
+    const propData = proposalEvent?.data as {
+      proposalId: string;
+      patch?: { sectorCaps?: { sector: string; maxKw: number; fromHour: number; toHour: number }[] };
+      reason: string;
+    };
+    expect(propData.patch?.sectorCaps).toBeDefined();
+    expect(propData.patch?.sectorCaps?.[0]?.sector).toBe('market');
+    expect(fullText).toContain('Proposal ID');
+    expect(fullText).not.toContain('Successfully disconnected physical circuit');
+  });
+
+  it('PY-T3 Eval: invalid cap → validation error explained, no fake result', async () => {
+    const { fullText, evidenceList } = await runEvalPrompt('Limit the market to -5 kW');
+
+    expect(fullText).toContain('rejected');
+    expect(fullText).toContain('validation constraints');
+    expect(evidenceList).toHaveLength(0);
+  });
+
   // Case 7
   it('Eval 7: Tool execution error → returns structured failure explanation, no success claim', async () => {
     // Calling run_scenario with invalid startHour

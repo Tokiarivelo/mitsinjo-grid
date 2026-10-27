@@ -46,6 +46,7 @@ export function ScenariosPage() {
     'high_demand',
     'battery_constraint',
     'essential_stress',
+    'meter_anomaly',
   ];
 
   const handleSelectScenario = (id: ScenarioId) => {

@@ -18,6 +18,13 @@ export function canonicalJson(obj: unknown): string {
   for (const k of keys) {
     const val = (obj as Record<string, unknown>)[k];
     if (val !== undefined) {
+      if (
+        (k === 'sectorCaps' || k === 'meterReadings') &&
+        Array.isArray(val) &&
+        val.length === 0
+      ) {
+        continue;
+      }
       entries.push(JSON.stringify(k) + ':' + canonicalJson(val));
     }
   }
