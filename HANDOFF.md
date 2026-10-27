@@ -1,39 +1,36 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-27 · **By:** Antigravity (P4 2D Dashboard + Strategy Lab) · **Day:** 4 / 10
+**Updated:** 2026-10-27 · **By:** Antigravity (P5 Controls, Scenarios, Timeline, Export) · **Day:** 5 / 10
 
 ## State
 
-- Phase: **P4 — 2D Dashboard + Strategy Lab** completed (P4-T0..T7 done; all gate criteria met).
-- Monorepo healthy: `make check` (84 engine + 51 web tests = 135 passing, 100% i18n parity, 0 lint/tsc errors), `pnpm build` clean.
-- Feature delivered:
-  - `stores/simulation.store.ts` + `selectors.ts` wired to `@mitsinjo/engine` `compare()` & `simulate()`.
-  - `lib/format.ts` (`fmtKw`, `fmtKwh`, `fmtPct`, `fmtHour`) with null/NaN edge guards & unit tests.
-  - Overview: 4 MetricCards, 2D Village Schematic Preview, 24h Energy Balance, 5 Sector EnergyBars, EnergyOverTime chart, warnings.
-  - Strategy Lab: 3 StrategyCards (proportional, essential_first, balanced), StrategyComparisonChart, rule-based decision summary.
-  - ImpactBanner & InsightCard driven strictly by `result.warnings` and computed numbers.
-  - Design check gate-out: screenshots captured & verified; `stitch-map.md` rows checked.
+- Phase: **P5 — Controls, scenarios, timeline, export** completed (P5-T0..P5-T6 done; gate-out passed).
+- Monorepo healthy: `make check` (84 engine + 71 web tests = 155 passing, 100% i18n parity, 0 lint/tsc errors), `pnpm build` clean.
+- Features delivered:
+  - Live Simulation (`/simulation`): SimControlsPanel (Zod-validated inline errors, never silent clamp), 24h TimelineScrubber with play/pause, interactive VillageViewport with node selection, BuildingInspectorPanel with live telemetry, EnergyOverTimeChart with timeline cursor, 5 EnergyBars, ImpactBanner.
+  - Scenarios (`/scenarios`): 5 predefined synthetic scenario cards, AssumptionsInspector with editable sliders + read-only engine invariants, ReproducibilitySummary with Result ID and deterministic stats.
+  - Export system (`lib/export.ts`): "Copy summary" (Markdown) + "Download JSON" (input, metrics, resultIds).
+  - Design check gate-out: screenshots captured (`simulation.png`, `scenarios.png`), rows in `stitch-map.md` set to `checked`.
 
 ## Next task
 
-- `docs/tasks/P5-3d-scene.md` → P5-T0 / P5-T1 (3D Village Digital Twin with R3F + Drei, power flow visualizer).
+- `docs/tasks/P6-copilot.md` → P6-T0..P6-T2 (Meta copilot provider, mock fallback, tools, SSE loop).
 
 ## Decisions taken
 
-- `useSimulationStore` integrated with `AppShell` header/sidebar so scenario switcher and status indicators sync globally.
-- `selectActiveSteps` and `selectActiveWarnings` memoized empty arrays to prevent React 19 `useSyncExternalStore` re-render cycles.
-- Decision summary generator (`utils/summarize.ts`) operates purely on numerical engine output (zero LLM dependency).
-- PR #3 review fixes: summary stress rule recommends the best essential protector (not hardwired essential_first;
-  engine-spec §7); no numbers baked into i18n strings; chart colors via `var(--color-*)` tokens; no UI energy sums;
-  `buttonVariants()` for Link-as-button (no `<button>` inside `<a>`); badges/tooltips translated.
-- Complete strict zero-static-text i18n: all new labels extracted to `en.json`, `fr.json`, `mg.json` with 100% key parity.
+- SimControls validate candidate patches against `InputPatchSchema` and cross-field constraints (`dropStart + dropDuration ≤ 24`, `initialSoc > minSoc`), displaying inline error feedback and disabling Run without crashing or silently clamping.
+- Timeline scrubber auto-advances every 750ms in play mode and updates live step telemetry and chart cursor simultaneously.
+- Zero-static-text i18n preserved with 100% key parity across EN, FR, and MG in `apps/web/src/messages/{en,fr,mg}.json`.
+- PR #6 review fixes: patch validation shared in `features/simulation/utils/validate-patch.ts` (i18n error keys); sector priority read from engine input (water = `high`, not critical); no UI-computed or hardcoded energy values; `fmtPct` takes 0–100.
+- Export payload packages exact canonical input, computed metrics, Result IDs (`SIM-xxxxxx`), and engine version for verifiable demo provenance.
 
 ## Open questions / blockers
 
-- None. Ready for P5 3D digital twin village scene.
+- None. Ready for P6 Meta Copilot integration with tool-calling and SSE streaming.
 
 ## Files touched this session
 
-- `apps/web/src/stores/**`, `apps/web/src/lib/format*`, `apps/web/src/components/{charts,ui}/**`
-- `apps/web/src/features/{overview,strategy-lab}/**`, `apps/web/src/messages/{en,fr,mg}.json`
-- `apps/web/src/components/layout/app-shell.tsx`, `apps/web/src/test/setup.ts`, `components/ui/button.tsx`, `docs/**`, `HANDOFF.md`
+- `apps/web/src/features/simulation/**`, `apps/web/src/features/scenarios/**`
+- `apps/web/src/lib/export.ts`, `apps/web/src/lib/__tests__/export.test.ts`, `features/simulation/utils/validate-patch.ts`
+- `apps/web/src/components/charts/energy-over-time.tsx`, `apps/web/src/messages/{en,fr,mg}.json`
+- `docs/tasks/P5-controls.md`, `docs/design/stitch-map.md`, `HANDOFF.md`
