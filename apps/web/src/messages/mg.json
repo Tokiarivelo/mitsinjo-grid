@@ -20,7 +20,8 @@
     "supplied": "Voazara",
     "curtailed": "Voafetra",
     "loading": "Am-panatanterahana...",
-    "idLabel": "ID: {id}"
+    "idLabel": "ID: {id}",
+    "capRange": "{maxKw} kW ({from}:00–{to}:00)"
   },
   "nav": {
     "overview": "Topimaso",
@@ -320,7 +321,8 @@
         "get_sector_metrics": "Fandinihana ny angon-drakitry ny sehatra {sector}",
         "propose_change": "Fanomanana tolo-kevitra ho hamarinina",
         "default": "Fandinihana ny valiny voakajy"
-      }
+      },
+      "unknownValue": "Tsy fantatra"
     }
   },
   "copilot": {

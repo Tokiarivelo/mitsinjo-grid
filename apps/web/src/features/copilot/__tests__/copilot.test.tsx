@@ -166,7 +166,7 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
     expect(
       screen.getByText('Limit market to 1 kW and raise water to critical')
     ).toBeInTheDocument();
-    expect(screen.getByText('1 kW (18:00 - 22:00)')).toBeInTheDocument();
+    expect(screen.getByText('1 kW (18:00–22:00)')).toBeInTheDocument();
   });
 
   it('renders ContextPanel with active baseline, specs, and runs simulation', () => {

@@ -17,6 +17,30 @@ export interface DemandStepResult {
   sectorList: SectorDemandStep[];
 }
 
+/**
+ * Expected (profile-based) demand of one sector at hour t:
+ * profileKw[t] × demandMultiplier × active demand_spike factors. Ignores meterReadings.
+ */
+export function computeProfileDemandKw(
+  sector: SectorConfig,
+  demandMultiplier: number,
+  events: readonly ScenarioEvent[],
+  t: number
+): number {
+  let spikeMultiplier = 1;
+  for (const event of events) {
+    if (
+      event.type === 'demand_spike' &&
+      (event.sector === 'all' || event.sector === sector.id) &&
+      t >= event.startHour &&
+      t < event.startHour + event.durationH
+    ) {
+      spikeMultiplier *= event.factor;
+    }
+  }
+  return Math.max(0, (sector.profileKw[t] ?? 0) * demandMultiplier * spikeMultiplier);
+}
+
 export function computeDemandStep(
   sectors: readonly SectorConfig[],
   demandMultiplier: number,
@@ -29,21 +53,7 @@ export function computeDemandStep(
   let totalCriticalDemandKw = 0;
 
   for (const s of sectors) {
-    let spikeMultiplier = 1;
-
-    for (const event of events) {
-      if (
-        event.type === 'demand_spike' &&
-        (event.sector === 'all' || event.sector === s.id) &&
-        t >= event.startHour &&
-        t < event.startHour + event.durationH
-      ) {
-        spikeMultiplier *= event.factor;
-      }
-    }
-
-    const baseDemandKw = s.profileKw[t] ?? 0;
-    const profileDemandKw = Math.max(0, baseDemandKw * demandMultiplier * spikeMultiplier);
+    const profileDemandKw = computeProfileDemandKw(s, demandMultiplier, events, t);
     const hasMeterOverride = s.meterReadings !== undefined && s.meterReadings[t] !== undefined;
     const demandKw = hasMeterOverride ? Math.max(0, s.meterReadings![t] ?? 0) : profileDemandKw;
     const criticalDemandKw = demandKw * s.criticalShare;

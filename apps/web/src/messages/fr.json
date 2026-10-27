@@ -20,7 +20,8 @@
     "supplied": "Fourni",
     "curtailed": "Écrêté",
     "loading": "Chargement...",
-    "idLabel": "ID : {id}"
+    "idLabel": "ID : {id}",
+    "capRange": "{maxKw} kW ({from}:00–{to}:00)"
   },
   "nav": {
     "overview": "Aperçu",
@@ -320,7 +321,8 @@
         "get_sector_metrics": "Analyse des données du secteur {sector}",
         "propose_change": "Préparation d'une proposition à valider",
         "default": "Analyse des résultats calculés"
-      }
+      },
+      "unknownValue": "Inconnu"
     }
   },
   "copilot": {

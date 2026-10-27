@@ -20,7 +20,8 @@
     "supplied": "Supplied",
     "curtailed": "Curtailed",
     "loading": "Loading...",
-    "idLabel": "ID: {id}"
+    "idLabel": "ID: {id}",
+    "capRange": "{maxKw} kW ({from}:00–{to}:00)"
   },
   "nav": {
     "overview": "Overview",
@@ -320,7 +321,8 @@
         "get_sector_metrics": "Reviewing {sector} sector data",
         "propose_change": "Preparing a proposal for your review",
         "default": "Reviewing computed results"
-      }
+      },
+      "unknownValue": "Unknown"
     }
   },
   "copilot": {

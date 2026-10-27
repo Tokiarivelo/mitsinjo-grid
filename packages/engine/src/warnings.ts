@@ -1,4 +1,5 @@
 import { EPS } from './constants';
+import { computeProfileDemandKw } from './model/demand';
 import type { BatteryConfig, SectorId, SimulationInput, SimWarning, StepResult } from './schemas';
 
 interface RawWarning {
@@ -78,19 +79,7 @@ export function generateWarnings(
       if (s.meterReadings && s.meterReadings.length === steps.length) {
         const divergentHours: number[] = [];
         for (let t = 0; t < steps.length; t++) {
-          let spikeMultiplier = 1;
-          for (const ev of input.events) {
-            if (
-              ev.type === 'demand_spike' &&
-              (ev.sector === 'all' || ev.sector === s.id) &&
-              t >= ev.startHour &&
-              t < ev.startHour + ev.durationH
-            ) {
-              spikeMultiplier *= ev.factor;
-            }
-          }
-          const baseDemand = s.profileKw[t] ?? 0;
-          const expectedKw = baseDemand * input.demandMultiplier * spikeMultiplier;
+          const expectedKw = computeProfileDemandKw(s, input.demandMultiplier, input.events, t);
           const meterKw = s.meterReadings[t] ?? 0;
 
           let gap = 0;

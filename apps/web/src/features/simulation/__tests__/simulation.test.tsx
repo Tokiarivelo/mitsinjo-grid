@@ -37,6 +37,16 @@ describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
     expect(screen.getByLabelText(/initial charge/i)).toBeInTheDocument();
   });
 
+  it('shows active sector caps with translated format (PY-T4)', () => {
+    const input = structuredClone(useSimulationStore.getState().input);
+    input.sectorCaps = [{ sector: 'market', maxKw: 1, fromHour: 18, toHour: 22 }];
+    useSimulationStore.setState({ input });
+    render(<SimulationPage />);
+
+    expect(screen.getByText('1 Active Caps')).toBeInTheDocument();
+    expect(screen.getByText('1 kW (18:00–22:00)')).toBeInTheDocument();
+  });
+
   it('sets status to modified when a control slider is changed', () => {
     render(<SimulationPage />);
 

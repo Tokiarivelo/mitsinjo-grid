@@ -24,6 +24,7 @@ export function ConfirmProposalDialog({
   const tCopilot = useTranslations('features.copilot');
   const tSectors = useTranslations('sectors');
   const tPriorities = useTranslations('priorities');
+  const tCommon = useTranslations('common');
   const currentInput = useSimulationStore((s) => s.input);
   const currentStrategy = useSimulationStore((s) => s.activeStrategy);
 
@@ -46,7 +47,7 @@ export function ConfirmProposalDialog({
         const currentSecPrio = currentInput.sectors.find((s) => s.id === secId)?.priority;
         diffItems.push({
           label: `${tSectors(secId as SectorId)} ${tCopilot('diffPriorityLabel')}`,
-          current: currentSecPrio ? tPriorities(currentSecPrio) : 'default',
+          current: currentSecPrio ? tPriorities(currentSecPrio) : tCopilot('unknownValue'),
           proposed: tPriorities(prio),
         });
       }
@@ -57,12 +58,16 @@ export function ConfirmProposalDialog({
     for (const cap of patch.sectorCaps) {
       const existingCap = currentInput.sectorCaps?.find((c) => c.sector === cap.sector);
       const existingStr = existingCap
-        ? `${existingCap.maxKw} kW (${existingCap.fromHour}:00 - ${existingCap.toHour}:00)`
+        ? tCommon('capRange', {
+            maxKw: existingCap.maxKw,
+            from: existingCap.fromHour,
+            to: existingCap.toHour,
+          })
         : tCopilot('noCap');
       diffItems.push({
         label: `${tSectors(cap.sector)} ${tCopilot('diffCapLabel')}`,
         current: existingStr,
-        proposed: `${cap.maxKw} kW (${cap.fromHour}:00 - ${cap.toHour}:00)`,
+        proposed: tCommon('capRange', { maxKw: cap.maxKw, from: cap.fromHour, to: cap.toHour }),
       });
     }
   }
