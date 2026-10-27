@@ -1,10 +1,15 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Battery,
   Box,
   Camera,
+  Gauge,
+  Maximize2,
+  Minimize2,
+  Sparkles,
+  Zap,
   HeartPulse,
   Home,
   MapPin,
@@ -22,7 +27,10 @@ import {
   toSceneModel,
   useWebGLAvailable,
   LazyVillageCanvas,
+  useFullscreen,
+  useSceneQuality,
   type CameraPreset,
+  type SceneQuality,
 } from '@/features/microgrid-3d';
 
 export interface VillageViewportProps {
@@ -35,6 +43,11 @@ export interface VillageViewportProps {
   isModified?: boolean;
   className?: string;
 }
+
+const QUALITY_KEYS: { id: SceneQuality; labelKey: string }[] = [
+  { id: 'high', labelKey: 'qualityHigh' },
+  { id: 'low', labelKey: 'qualityLow' },
+];
 
 const CAMERA_PRESET_KEYS: { id: CameraPreset; labelKey: string }[] = [
   { id: 'village', labelKey: 'presetVillage' },
@@ -58,6 +71,13 @@ export function VillageViewport({
   const tPriorities = useTranslations('priorities');
 
   const hasWebGL = useWebGLAvailable();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const {
+    isFullscreen,
+    toggle: toggleFullscreen,
+    supported: fullscreenSupported,
+  } = useFullscreen(rootRef);
+  const { quality, userChosen, setQuality } = useSceneQuality();
   const [userViewMode, setUserViewMode] = useState<'3d' | 'schematic' | 'circuit' | null>(null);
   const viewMode = userViewMode ?? (hasWebGL ? '3d' : 'schematic');
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>('village');
@@ -72,6 +92,7 @@ export function VillageViewport({
   const solarKw = step?.solarKw ?? 0;
   const batteryKw = step?.batteryKw ?? 0;
   const socPct = step?.socPct ?? input.battery.initialSocPct;
+  const demandKw = step?.demandKw ?? null;
 
   // Scene model for 3D visualization (pure mapping)
   const sceneModel = useMemo(
@@ -126,8 +147,10 @@ export function VillageViewport({
 
   return (
     <div
+      ref={rootRef}
       className={cn(
         'relative flex flex-col justify-between rounded-card bg-canvas-sunken border border-border overflow-hidden shadow-inner min-h-[460px]',
+        isFullscreen && 'rounded-none border-0',
         className
       )}
     >
@@ -185,6 +208,55 @@ export function VillageViewport({
             >
               <RotateCcw className="h-3 w-3" aria-hidden="true" />
             </button>
+          </div>
+        )}
+
+        {/* Render quality tier + fullscreen (3D only) */}
+        {viewMode === '3d' && hasWebGL && (
+          <div className="flex items-center gap-1 p-0.5 rounded-control bg-surface-elevated/90 backdrop-blur border border-border pointer-events-auto shadow-xs">
+            <div
+              className="flex items-center gap-1 px-1.5 text-[11px] font-mono text-text-muted border-r border-border pr-2"
+              title={!userChosen && quality === 'low' ? tSim('qualityAutoLowered') : undefined}
+            >
+              {quality === 'high' ? (
+                <Sparkles className="h-3 w-3 text-solar-amber" aria-hidden="true" />
+              ) : (
+                <Gauge className="h-3 w-3 text-text-secondary" aria-hidden="true" />
+              )}
+              <span className="hidden md:inline">{tSim('qualityLabel')}</span>
+            </div>
+            {QUALITY_KEYS.map(({ id, labelKey }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setQuality(id)}
+                aria-pressed={quality === id}
+                className={cn(
+                  'px-2 py-0.5 rounded-control-sm text-xs font-sans transition-colors cursor-pointer',
+                  quality === id
+                    ? 'bg-energy-cyan/20 text-energy-cyan font-medium'
+                    : 'text-text-muted hover:text-text-primary'
+                )}
+              >
+                {tSim(labelKey)}
+              </button>
+            ))}
+            {fullscreenSupported && (
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                aria-pressed={isFullscreen}
+                aria-label={isFullscreen ? tSim('fullscreenExit') : tSim('fullscreenEnter')}
+                title={isFullscreen ? tSim('fullscreenExit') : tSim('fullscreenEnter')}
+                className="p-1 rounded-control-sm text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer ml-1 border-l border-border pl-1.5"
+              >
+                {isFullscreen ? (
+                  <Minimize2 className="h-3 w-3" aria-hidden="true" />
+                ) : (
+                  <Maximize2 className="h-3 w-3" aria-hidden="true" />
+                )}
+              </button>
+            )}
           </div>
         )}
 
@@ -253,6 +325,40 @@ export function VillageViewport({
               className="absolute top-14 left-1/2 -translate-x-1/2 z-10 px-2.5 py-1 rounded-control bg-surface-elevated/90 backdrop-blur border border-warning-amber/40 text-[11px] font-sans text-warning-amber"
             >
               {tSim('scenarioModified3D')}
+            </div>
+          )}
+
+          {/* Fullscreen stats strip: engine values for the selected hour */}
+          {isFullscreen && (
+            <div className="absolute bottom-24 left-3 z-10 flex items-center gap-4 px-4 py-2.5 rounded-card bg-surface/85 backdrop-blur border border-border">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-text-muted border-r border-border pr-4">
+                {tCommon('simulatedData')}
+              </span>
+              <div className="flex items-center gap-2">
+                <Sun className="h-4 w-4 text-solar-amber" aria-hidden="true" />
+                <div className="leading-tight">
+                  <span className="block text-[10px] text-text-muted">{tSim('liveOutput')}</span>
+                  <span className="font-mono text-sm text-text-primary">
+                    {result ? fmtKw(solarKw) : fmtKw(null)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Battery className="h-4 w-4 text-battery-green" aria-hidden="true" />
+                <div className="leading-tight">
+                  <span className="block text-[10px] text-text-muted">{tSim('bessBattery')}</span>
+                  <span className="font-mono text-sm text-text-primary">
+                    {tSim('socValue', { pct: fmtPct(socPct) })}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-energy-cyan" aria-hidden="true" />
+                <div className="leading-tight">
+                  <span className="block text-[10px] text-text-muted">{tSim('villageDemand')}</span>
+                  <span className="font-mono text-sm text-text-primary">{fmtKw(demandKw)}</span>
+                </div>
+              </div>
             </div>
           )}
 

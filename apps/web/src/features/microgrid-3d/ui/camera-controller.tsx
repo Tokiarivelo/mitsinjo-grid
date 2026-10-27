@@ -10,21 +10,22 @@ export const CAMERA_PRESETS: Record<
   CameraPreset,
   { position: [number, number, number]; target: [number, number, number] }
 > = {
+  // Front three-quarter view: village in front, hills, lake and sunset behind.
   village: {
-    position: [24, 20, 24],
-    target: [0, 0, 0],
+    position: [2, 10.5, 28],
+    target: [0, 2.5, -8],
   },
   solar: {
-    position: [-2, 10, 0],
-    target: [-10, 1, -8],
+    position: [-4, 10, 4],
+    target: [-10, 0.5, -8],
   },
   battery: {
     position: [6, 7, 5],
     target: [0, 1, -2],
   },
   essential: {
-    position: [18, 14, 12],
-    target: [5, 1, 0],
+    position: [14, 13, 16],
+    target: [4, 1, -2],
   },
 };
 
@@ -95,7 +96,7 @@ export function CameraController({
       dampingFactor={0.05}
       maxPolarAngle={Math.PI / 2.15}
       minDistance={6}
-      maxDistance={48}
+      maxDistance={70}
       onStart={() => {
         isTransitioning.current = false;
       }}

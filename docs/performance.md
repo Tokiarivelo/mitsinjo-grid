@@ -11,7 +11,8 @@ React re-renders, chart redraws, 3D, or bundle size. Fix those before optimising
 | LCP /overview (desktop, prod build)                   | ≤ 2.0 s                                         |
 | INP while dragging a slider                           | ≤ 100 ms                                        |
 | `compare()` all strategies                            | ≤ 10 ms                                         |
-| 3D frame rate on integrated GPU                       | ≥ 45 fps · draw calls ≤ 150 · triangles ≤ 150 k |
+| 3D `low` tier (integrated GPU)                        | ≥ 45 fps · draw calls < 150 · triangles ≤ 150 k |
+| 3D `high` tier (default, discrete GPU)                | ≥ 30 fps · draw calls < 400 · triangles ≤ 800 k |
 | Copilot first token visible                           | ≤ 2 s after send (activity shown at once)       |
 | Lighthouse performance (desktop)                      | ≥ 90                                            |
 
@@ -40,16 +41,27 @@ React re-renders, chart redraws, 3D, or bundle size. Fix those before optimising
 
 ## 5. 3D
 
-Rules in `.claude/rules/three.md`. Key wins: `frameloop="demand"`, instancing, shared materials,
-baked `ContactShadows`, `dpr={[1, 1.75]}`, Drei `<PerformanceMonitor>` to lower DPR on slow devices,
-`<AdaptiveDpr pixelated />` during camera moves, lazy chunk via `next/dynamic({ ssr:false })`,
-preload the chunk on sidebar hover of "Live Simulation".
+Rules in `.claude/rules/three.md`. Two quality tiers (`useSceneQuality`, toggle in the 3D card):
+
+- `high` (default): HDRI env light, real-time sun shadow map (2048, near trees only), N8AO +
+  bloom + ACES grade (`@react-three/postprocessing`, 2× MSAA), dense forest (2 000 trees),
+  `dpr={[1, 1.5]}`.
+- `low`: no post-processing, one baked `ContactShadows`, 700 low-detail trees, `dpr={[1, 1.25]}`.
+- Auto-downgrade: a 3.5 s fps probe after the high tier mounts switches to `low` when the median
+  is < 28 fps, unless the user picked a tier (saved in `localStorage`). `?quality=high|low`
+  forces a tier (audits, screenshots).
+
+Key wins: `frameloop="demand"`, instancing (vegetation: one `InstancedMesh` per model part and
+band), merged static parts (`utils/merge-parts`: windows, fences, lattice, market woodwork,
+each vehicle), shared materials, near/far vegetation bands (far trees: no shadow pass, low
+detail), lazy chunk via `next/dynamic({ ssr:false })`, assets ≈ 1.7 MB (`public/3d`, meshopt).
 
 Measure: add `?perf=1` to `/simulation` or `/overview` for a live draw-call / fps readout
-(sampled at 2 Hz from `gl.info`). `make scene-audit` (server running) checks draw calls and
-triangles against the budget and saves `design/shots/{simulation,overview}-3d.png`. It runs
-headless Chromium on SwiftShader (software GL): draw calls and triangles are exact, fps is
-not a GPU number. Check fps by hand on an integrated-GPU laptop with `?perf=1`.
+(sampled at 2 Hz from `gl.info`, whole frame incl. shadow and post passes). `make scene-audit`
+(server running) checks both tiers against their budgets and saves
+`design/shots/{simulation,overview}-3d{,-low}.png`. Default is SwiftShader (software GL): draw
+calls and triangles are exact, fps is not a GPU number. `make scene-audit-gpu` runs the same
+audit on the real GPU (meaningful fps).
 In-scene `<Html>` labels take `portal` = a stable container ref so drei never re-targets
 them after mount (re-targeting races React root unmounts and can leave a label empty).
 

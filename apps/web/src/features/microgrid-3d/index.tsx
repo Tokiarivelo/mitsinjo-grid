@@ -10,6 +10,8 @@ export * from './utils/to-scene-model';
 export * from './utils/webgl';
 export { useWebGLAvailable } from './hooks/use-webgl-available';
 export { useReducedMotion } from './hooks/use-reduced-motion';
+export { useFullscreen } from './hooks/use-fullscreen';
+export { useSceneQuality, type SceneQuality } from './hooks/use-scene-quality';
 
 export function VillageScenePlaceholder({ className }: { className?: string }) {
   const t = useTranslations('features.simulation');

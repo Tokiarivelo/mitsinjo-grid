@@ -1,12 +1,20 @@
 'use client';
 
-import { type ReactNode, type RefObject, useState } from 'react';
+import { type ReactNode, type RefObject, useMemo, useState } from 'react';
+import * as THREE from 'three';
 import { Html } from '@react-three/drei';
+import { HeartPulse, Droplet, GraduationCap, Home, Store } from 'lucide-react';
 import type { Priority, SectorId } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtPct } from '@/lib/format';
 import type { BuildingSceneModel } from '../types';
-import { STATUS_BG_CLASS, STATUS_HEX, TOKEN_HEX } from '../utils/scene-palette';
+import {
+  STATUS_BG_CLASS,
+  STATUS_HEX,
+  TOKEN_HEX,
+  WINDOW_GLOW_BY_STATUS,
+} from '../utils/scene-palette';
+import { BODY_LAYOUT, BuildingBody } from './building-bodies';
 
 export interface VillageBuildingsProps {
   buildings: Record<SectorId, BuildingSceneModel>;
@@ -16,15 +24,17 @@ export interface VillageBuildingsProps {
   priorityLabels: Record<Priority, string>;
   /** Stable DOM parent for labels (see VillageCanvas). */
   htmlPortal?: RefObject<HTMLElement | null>;
+  /** Time-of-day lamp factor from the sky palette (dusk/night → 1, afternoon → low). */
+  lampGlow?: number;
 }
 
-/** Per-building layout of the shared frame (selection ring, status light, badge). */
 interface FrameLayout {
   ringInner: number;
   ledY: number;
 }
 
 interface BuildingFrameProps extends FrameLayout {
+  id: SectorId;
   model: BuildingSceneModel;
   isSelected: boolean;
   onSelect: () => void;
@@ -37,7 +47,38 @@ interface BuildingFrameProps extends FrameLayout {
 const SELECTED_RING_HEX = TOKEN_HEX.energyCyan;
 const HOVER_RING_HEX = '#94a3b8';
 
+function getSectorIcon(id: SectorId) {
+  switch (id) {
+    case 'health':
+      return <HeartPulse className="w-3.5 h-3.5 text-critical-red" aria-hidden="true" />;
+    case 'water':
+      return <Droplet className="w-3.5 h-3.5 text-energy-cyan" aria-hidden="true" />;
+    case 'school':
+      return <GraduationCap className="w-3.5 h-3.5 text-warning-amber" aria-hidden="true" />;
+    case 'households':
+      return <Home className="w-3.5 h-3.5 text-solar-amber" aria-hidden="true" />;
+    case 'market':
+      return <Store className="w-3.5 h-3.5 text-solar-amber" aria-hidden="true" />;
+  }
+}
+
+function getSectorIconBg(id: SectorId) {
+  switch (id) {
+    case 'health':
+      return 'bg-critical-red/20 border-critical-red/40';
+    case 'water':
+      return 'bg-energy-cyan/20 border-energy-cyan/40';
+    case 'school':
+      return 'bg-warning-amber/20 border-warning-amber/40';
+    case 'households':
+      return 'bg-solar-amber/20 border-solar-amber/40';
+    case 'market':
+      return 'bg-solar-amber/20 border-solar-amber/40';
+  }
+}
+
 function BuildingFrame({
+  id,
   model,
   isSelected,
   onSelect,
@@ -49,7 +90,12 @@ function BuildingFrame({
   children,
 }: BuildingFrameProps) {
   const [hovered, setHovered] = useState(false);
-  const { position, statusColor, coveragePct, isCritical } = model;
+  const { position, statusColor, coveragePct, priority } = model;
+  // Brighter than 1 so the bloom pass gives the status beacon a halo.
+  const beaconColor = useMemo(
+    () => new THREE.Color(STATUS_HEX[statusColor]).multiplyScalar(2),
+    [statusColor]
+  );
 
   return (
     <group
@@ -68,24 +114,24 @@ function BuildingFrame({
 
       {(isSelected || hovered) && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
-          <ringGeometry args={[ringInner, ringInner + 0.2, 32]} />
+          <ringGeometry args={[ringInner, ringInner + 0.25, 32]} />
           <meshBasicMaterial
             color={isSelected ? SELECTED_RING_HEX : HOVER_RING_HEX}
             transparent
-            opacity={0.8}
+            opacity={0.85}
           />
         </mesh>
       )}
 
-      {/* Status light */}
+      {/* Building Apex Status Beacon */}
       <mesh position={[0, ledY, 0]}>
-        <sphereGeometry args={[0.16, 12, 12]} />
-        <meshBasicMaterial color={STATUS_HEX[statusColor]} />
+        <sphereGeometry args={[0.16, 16, 12]} />
+        <meshBasicMaterial color={beaconColor} toneMapped={false} />
       </mesh>
 
-      {/* 2D label badge (keyboard-focusable button) */}
+      {/* Sleek Glassmorphic Floating Telemetry Badge */}
       <Html
-        position={[0, ledY + 0.6, 0]}
+        position={[0, ledY + 0.75, 0]}
         center
         distanceFactor={18}
         portal={htmlPortal as RefObject<HTMLElement>}
@@ -96,205 +142,44 @@ function BuildingFrame({
           onClick={onSelect}
           aria-pressed={isSelected}
           className={cn(
-            'flex items-center gap-1.5 px-2 py-1 rounded-control shadow-md backdrop-blur text-[11px] font-sans border transition-all cursor-pointer whitespace-nowrap',
+            'flex items-center gap-2 px-3 py-1.5 rounded-full shadow-xl backdrop-blur-md text-[11px] font-sans border transition-all cursor-pointer whitespace-nowrap',
             isSelected
-              ? 'bg-surface-elevated/95 border-energy-cyan ring-2 ring-energy-cyan/40 scale-105'
-              : 'bg-surface/90 border-border hover:border-text-secondary'
+              ? 'bg-[#0e1726]/95 border-energy-cyan ring-2 ring-energy-cyan/50 scale-105'
+              : 'bg-[#0a101d]/90 border-border hover:border-text-secondary hover:bg-[#111a2d]/95'
           )}
         >
-          <span
-            className={cn('w-2 h-2 rounded-full shrink-0', STATUS_BG_CLASS[statusColor])}
-            aria-hidden="true"
-          />
-          <span className="font-semibold text-text-primary">{sectorName}</span>
-          <span className="font-mono text-text-muted text-[10px]">{fmtPct(coveragePct, 0)}</span>
-          {isCritical && (
-            <span className="px-1 rounded text-[9px] font-mono uppercase bg-critical-red/20 text-critical-red border border-critical-red/30">
-              {priorityLabel}
-            </span>
-          )}
+          <div
+            className={cn(
+              'w-5 h-5 rounded-full flex items-center justify-center shrink-0 border',
+              getSectorIconBg(id)
+            )}
+          >
+            {getSectorIcon(id)}
+          </div>
+          <div className="flex flex-col text-left leading-tight">
+            <span className="font-semibold text-text-primary text-[11px]">{sectorName}</span>
+            <div className="flex items-center gap-1.5 font-mono text-[10px]">
+              <span
+                className={cn('w-1.5 h-1.5 rounded-full shrink-0', STATUS_BG_CLASS[statusColor])}
+                aria-hidden="true"
+              />
+              <span className="text-text-muted">
+                {priority === 'critical' ? (
+                  <span className="text-critical-red font-semibold">{priorityLabel}</span>
+                ) : (
+                  <span>{priorityLabel}</span>
+                )}
+              </span>
+              <span className="text-text-secondary">· {fmtPct(coveragePct, 0)}</span>
+            </div>
+          </div>
         </button>
       </Html>
     </group>
   );
 }
 
-function HealthClinicBody({ isSelected }: { isSelected: boolean }) {
-  return (
-    <>
-      <mesh position={[0, 0.1, 0]}>
-        <boxGeometry args={[4.2, 0.2, 3.2]} />
-        <meshStandardMaterial color="#334155" roughness={0.9} />
-      </mesh>
-      <mesh position={[0, 1.1, 0]}>
-        <boxGeometry args={[3.8, 1.8, 2.8]} />
-        <meshStandardMaterial color={isSelected ? '#f8fafc' : '#e2e8f0'} roughness={0.4} />
-      </mesh>
-      <mesh position={[0, 2.4, 0]} rotation={[0, Math.PI / 4, 0]}>
-        <coneGeometry args={[2.8, 1.1, 4]} />
-        <meshStandardMaterial color="#0284c7" roughness={0.3} metalness={0.6} />
-      </mesh>
-      {/* Medical cross emblem */}
-      <group position={[0, 1.4, 1.42]}>
-        <mesh>
-          <planeGeometry args={[0.6, 0.18]} />
-          <meshBasicMaterial color={TOKEN_HEX.criticalRed} />
-        </mesh>
-        <mesh>
-          <planeGeometry args={[0.18, 0.6]} />
-          <meshBasicMaterial color={TOKEN_HEX.criticalRed} />
-        </mesh>
-      </group>
-    </>
-  );
-}
-
-function WaterPumpBody() {
-  return (
-    <>
-      <mesh position={[0, 0.1, 0]}>
-        <cylinderGeometry args={[1.8, 2.0, 0.2, 16]} />
-        <meshStandardMaterial color="#334155" roughness={0.9} />
-      </mesh>
-      {[-0.8, 0.8].map((x) =>
-        [-0.8, 0.8].map((z) => (
-          <mesh key={`${x}-${z}`} position={[x, 1.4, z]}>
-            <cylinderGeometry args={[0.06, 0.08, 2.8, 6]} />
-            <meshStandardMaterial color="#64748b" metalness={0.7} roughness={0.3} />
-          </mesh>
-        ))
-      )}
-      <mesh position={[0, 3.4, 0]}>
-        <cylinderGeometry args={[1.4, 1.4, 1.8, 20]} />
-        <meshStandardMaterial color="#0284c7" metalness={0.6} roughness={0.3} />
-      </mesh>
-      <mesh position={[0, 4.4, 0]}>
-        <sphereGeometry args={[1.4, 20, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color="#0369a1" metalness={0.6} roughness={0.3} />
-      </mesh>
-      <mesh position={[0, 0.6, 0]}>
-        <boxGeometry args={[1.3, 1.0, 1.3]} />
-        <meshStandardMaterial color="#475569" roughness={0.6} />
-      </mesh>
-      <mesh position={[0.7, 2.0, 0]}>
-        <cylinderGeometry args={[0.07, 0.07, 3.0, 8]} />
-        <meshStandardMaterial color="#38bdf8" metalness={0.8} roughness={0.2} />
-      </mesh>
-    </>
-  );
-}
-
-function SchoolBody() {
-  return (
-    <>
-      <mesh position={[0, 0.1, 0]}>
-        <boxGeometry args={[5.2, 0.2, 2.6]} />
-        <meshStandardMaterial color="#334155" roughness={0.9} />
-      </mesh>
-      <mesh position={[0, 1.0, 0]}>
-        <boxGeometry args={[4.8, 1.6, 2.2]} />
-        <meshStandardMaterial color="#fef08a" roughness={0.6} />
-      </mesh>
-      <mesh position={[0, 2.1, 0]}>
-        <coneGeometry args={[3.2, 1.0, 4]} />
-        <meshStandardMaterial color="#b45309" roughness={0.8} />
-      </mesh>
-      {/* Rooftop demo panel */}
-      <mesh position={[0, 2.4, 0.6]} rotation={[-0.4, 0, 0]}>
-        <boxGeometry args={[1.2, 0.04, 0.7]} />
-        <meshStandardMaterial color="#1e3a8a" metalness={0.7} roughness={0.3} />
-      </mesh>
-    </>
-  );
-}
-
-const HUTS: {
-  pos: [number, number, number];
-  wall: [number, number, number];
-  color: string;
-  roof: number;
-}[] = [
-  { pos: [-1.2, 0, -0.6], wall: [1.5, 1.2, 1.5], color: '#d97706', roof: 1.3 },
-  { pos: [1.2, 0, -0.4], wall: [1.6, 1.2, 1.4], color: '#c2410c', roof: 1.4 },
-  { pos: [0, 0, 1.0], wall: [1.4, 1.0, 1.3], color: '#b45309', roof: 1.2 },
-];
-
-function HousesBody() {
-  return (
-    <>
-      {HUTS.map((hut, idx) => {
-        const wallH = hut.wall[1];
-        return (
-          <group key={idx} position={hut.pos}>
-            <mesh position={[0, wallH / 2 + 0.1, 0]}>
-              <boxGeometry args={hut.wall} />
-              <meshStandardMaterial color={hut.color} roughness={0.9} />
-            </mesh>
-            <mesh position={[0, wallH + 0.5, 0]} rotation={[0, Math.PI / 4, 0]}>
-              <coneGeometry args={[hut.roof, wallH * 0.75, 4]} />
-              <meshStandardMaterial color="#78350f" roughness={1} />
-            </mesh>
-          </group>
-        );
-      })}
-    </>
-  );
-}
-
-function MarketBody() {
-  return (
-    <>
-      <mesh position={[0, 0.1, 0]}>
-        <boxGeometry args={[4.4, 0.15, 3.4]} />
-        <meshStandardMaterial color="#334155" roughness={0.9} />
-      </mesh>
-      {[-1.6, 0, 1.6].map((x) =>
-        [-1.2, 1.2].map((z) => (
-          <mesh key={`${x}-${z}`} position={[x, 1.0, z]}>
-            <cylinderGeometry args={[0.06, 0.06, 1.9, 6]} />
-            <meshStandardMaterial color="#78350f" roughness={0.9} />
-          </mesh>
-        ))
-      )}
-      <mesh position={[0, 2.05, 0]}>
-        <boxGeometry args={[4.2, 0.1, 3.2]} />
-        <meshStandardMaterial color="#e11d48" roughness={0.8} />
-      </mesh>
-      {[-0.8, 0.8].map((x) => (
-        <mesh key={x} position={[x, 0.45, 0]}>
-          <boxGeometry args={[1.2, 0.6, 1.8]} />
-          <meshStandardMaterial color="#92400e" roughness={0.8} />
-        </mesh>
-      ))}
-    </>
-  );
-}
-
-/** Fixed order = keyboard tab order of the badges. */
 const BUILDING_ORDER: SectorId[] = ['health', 'water', 'school', 'households', 'market'];
-
-const LAYOUT: Record<SectorId, FrameLayout> = {
-  health: { ringInner: 2.5, ledY: 3.2 },
-  water: { ringInner: 2.2, ledY: 4.9 },
-  school: { ringInner: 3.0, ledY: 3.0 },
-  households: { ringInner: 2.6, ledY: 2.5 },
-  market: { ringInner: 2.6, ledY: 2.7 },
-};
-
-function BuildingBody({ id, isSelected }: { id: SectorId; isSelected: boolean }) {
-  switch (id) {
-    case 'health':
-      return <HealthClinicBody isSelected={isSelected} />;
-    case 'water':
-      return <WaterPumpBody />;
-    case 'school':
-      return <SchoolBody />;
-    case 'households':
-      return <HousesBody />;
-    case 'market':
-      return <MarketBody />;
-  }
-}
 
 export function VillageBuildings({
   buildings,
@@ -303,6 +188,7 @@ export function VillageBuildings({
   sectorNames,
   priorityLabels,
   htmlPortal,
+  lampGlow = 1,
 }: VillageBuildingsProps) {
   return (
     <group name="village-buildings">
@@ -312,15 +198,19 @@ export function VillageBuildings({
         return (
           <BuildingFrame
             key={id}
+            id={id}
             model={model}
             isSelected={isSelected}
             onSelect={() => onSelectSector(isSelected ? null : id)}
             sectorName={sectorNames[id]}
             priorityLabel={priorityLabels[model.priority]}
             htmlPortal={htmlPortal}
-            {...LAYOUT[id]}
+            {...BODY_LAYOUT[id]}
           >
-            <BuildingBody id={id} isSelected={isSelected} />
+            <BuildingBody
+              id={id}
+              glow={WINDOW_GLOW_BY_STATUS[model.status] * (0.3 + 0.7 * lampGlow)}
+            />
           </BuildingFrame>
         );
       })}

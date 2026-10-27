@@ -30,7 +30,7 @@ Under proportional shedding, a severe deficit reduces power to the **Health Clin
 1. **Deterministic Microgrid Simulation**: Pure TypeScript simulation engine running identical, mathematically proven energy balance logic in under 3 ms on both client and server.
 2. **Strategy Comparison Lab**: Direct quantitative comparison between proportional allocation, lexicographic essential-first priority, and balanced distribution.
 3. **Meta AI Copilot**: Grounded AI assistant utilizing Meta Muse Spark with tool calling to inspect grid state, run counterfactual simulations, and provide evidence-backed dispatch recommendations.
-4. **3D Village Digital Twin**: Interactive spatial visualization of power flows, battery states, and infrastructure health.
+4. **3D Village Digital Twin**: Interactive spatial visualization of power flows, battery states, and infrastructure health. Golden-hour stylized village (forested hills, mountains, sunset sky, glowing lines and windows that go dark when a sector is unserved), `High`/`Low` quality toggle with auto-downgrade on slow GPUs, and a fullscreen view.
 5. **Complete Localization**: Zero static text, featuring full English, French, and native Malagasy (`MG`) translations with 100% key parity.
 
 ---
@@ -144,7 +144,7 @@ _For complete modeling formulas and boundary conditions, see [docs/assumptions.m
 
 - **Framework**: [Next.js 15](https://nextjs.org/) (App Router, Server Components, Route Handlers).
 - **Frontend**: [React 19](https://react.dev/), [Tailwind CSS 4](https://tailwindcss.com/) (`@theme` tokens), [shadcn/ui](https://ui.shadcn.com/) (custom restyled).
-- **3D Visualization**: [React Three Fiber](https://r3f.docs.pmnd.rs/) (Three.js) + [@react-three/drei](https://github.com/pmndrs/drei).
+- **3D Visualization**: [React Three Fiber](https://r3f.docs.pmnd.rs/) (Three.js) + [@react-three/drei](https://github.com/pmndrs/drei) + [@react-three/postprocessing](https://github.com/pmndrs/react-postprocessing) (high tier). CC0 assets: [Kenney](https://kenney.nl) models, [Poly Haven](https://polyhaven.com) HDRI (`apps/web/public/3d/CREDITS.md`).
 - **Data Analytics**: [Recharts](https://recharts.org/) (responsive SVG charts with dark-mode styling).
 - **State Management**: [Zustand](https://github.com/pmndrs/zustand) with client-side persistence and scenario caching.
 - **Validation**: [Zod](https://zod.dev/) schemas defining simulation contracts and tool I/O.
@@ -192,6 +192,10 @@ make e2e
 
 # Run production build
 make build
+
+# 3D budgets per quality tier (server running; -gpu = real GPU fps)
+make scene-audit
+make scene-audit-gpu
 ```
 
 ---
@@ -235,7 +239,7 @@ make deploy        # Manual production deployment from clean origin/main
 
 - **Simulation Time Horizon**: Discrete 24-hour cycle at 1-hour resolution ($t \in [0, 23]$). Multi-day roll-over is not modeled.
 - **Electrical Dynamics**: Single-phase aggregate real-power balance. Reactive power ($kVAR$), voltage drop along distribution lines, and frequency regulation are omitted.
-- **Hardware Acceleration**: 3D Digital Twin targets 60 fps on hardware GPUs. In headless Linux CI without a hardware GPU, software rasterization (SwiftShader) is utilized for testing.
+- **Hardware Acceleration**: the `High` 3D tier targets ≥ 30 fps on a discrete GPU; integrated GPUs fall back to `Low` (≥ 45 fps target) automatically. In headless Linux CI without a hardware GPU, software rasterization (SwiftShader) is used (`make scene-audit`; `make scene-audit-gpu` on a real GPU).
 
 ### Stretch Features (shipped, simulated only)
 
