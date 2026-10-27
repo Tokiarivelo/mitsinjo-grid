@@ -151,7 +151,7 @@ describe('UI Kit — P2-T6 Design Gate Tests', () => {
       const bar = screen.getByRole('progressbar', { name: /health clinic energy coverage/i });
       expect(bar).toHaveAttribute('aria-valuenow', '92.5');
       expect(screen.getByText('92.5%')).toBeInTheDocument();
-      expect(screen.getByText('CRITICAL')).toBeInTheDocument();
+      expect(screen.getByText('Critical')).toBeInTheDocument();
     });
 
     it('EmptyState renders title, description, and action button', () => {

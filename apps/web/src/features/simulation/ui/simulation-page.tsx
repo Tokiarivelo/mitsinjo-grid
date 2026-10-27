@@ -29,6 +29,7 @@ import {
   copyToClipboard,
   downloadJsonFile,
   generateSummaryMarkdown,
+  type Translate,
 } from '@/lib/export';
 import { useTranslations } from '@/lib/i18n';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -49,6 +50,8 @@ export function SimulationPage() {
   const tOverview = useTranslations('overview');
   const tSectors = useTranslations('sectors');
   const tActions = useTranslations('actions');
+  const tRootRaw = useTranslations();
+  const tRoot: Translate = (key, values) => tRootRaw(key as never, values as never);
 
   const input = useSimulationStore(selectInput);
   const status = useSimulationStore(selectStatus);
@@ -77,7 +80,7 @@ export function SimulationPage() {
   const peakSolarKw = input.solar.peakKw;
 
   const handleCopySummary = async () => {
-    const md = generateSummaryMarkdown(input, result, comparison, activeStrategy);
+    const md = generateSummaryMarkdown(tRoot, input, result, comparison, activeStrategy);
     const success = await copyToClipboard(md);
     if (success) {
       setCopied(true);

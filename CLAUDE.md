@@ -15,9 +15,11 @@ Demo path that must always work: **solar drop → strategy comparison → AI exp
 ## Skills & rules (auto, cheap)
 
 - Skills (`.claude/skills/`, loaded only when invoked): `/start` · `/handoff` · `/verify` · `/engine-change` ·
-  `/ui-feature` · `/copilot-tool` · `/scene-3d` · `/perf-audit` · `/design-dispatch` · `/design-check`.
+  `/ui-feature` · `/copilot-tool` · `/scene-3d` · `/designer-3d` · `/perf-audit` · `/design-dispatch` · `/design-check` ·
+  `/review-pr`.
 - Rules (`.claude/rules/`, loaded only when matching files are touched): engine · web-ui · three · copilot · tests.
   `maintenance` is always on: new useful command → Makefile target; feature change → update its doc (same commit).
+  `review` is always on: rebase onto latest `main` (`make rebase-main`) before any review, fix or merge.
   Don't restate them here; this file stays global-only.
 
 ## Doc map

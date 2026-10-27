@@ -129,6 +129,9 @@ env-export: ## Print .env as export lines — use: eval "$$(make -s env-export)"
 mcp: ## List MCP servers (checks Stitch connection)
 	claude mcp list
 
+rebase-main: ## Rebase the current branch onto the latest origin/main (do before review/merge)
+	git fetch origin main && git rebase origin/main
+
 status: ## Show current phase/next task from HANDOFF.md
 	@sed -n '/^## State/,/^## Decisions/p' HANDOFF.md | sed '$$d'
 

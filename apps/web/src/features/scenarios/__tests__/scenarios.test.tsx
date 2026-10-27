@@ -57,6 +57,17 @@ describe('ScenariosPage (P5-T3, P5-T6)', () => {
     expect(useSimulationStore.getState().scenarioId).toBe('cloudy_afternoon');
   });
 
+  it('selects a scenario from the keyboard via its title button', () => {
+    render(<ScenariosPage />);
+
+    const titleBtn = screen.getByRole('button', { name: 'High Evening Demand (+30%)' });
+    titleBtn.focus();
+    expect(titleBtn).toHaveFocus();
+    fireEvent.click(titleBtn); // Enter/Space on a native button fires click
+    expect(useSimulationStore.getState().scenarioId).toBe('high_demand');
+    expect(titleBtn).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('navigates to /simulation when clicking Open in Simulation', () => {
     render(<ScenariosPage />);
 

@@ -110,7 +110,17 @@ export function ScenarioCard({
 
         {/* Title & Description */}
         <h3 className="font-display text-base font-semibold text-text-primary group-hover:text-energy-cyan transition-colors tracking-tight">
-          {name}
+          <button
+            type="button"
+            aria-pressed={isActive}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(id);
+            }}
+            className="text-left cursor-pointer rounded-control-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+          >
+            {name}
+          </button>
         </h3>
         <p className="text-xs text-text-secondary mt-1 line-clamp-2 leading-relaxed">
           {description}
