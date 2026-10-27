@@ -36,10 +36,50 @@
   --duration-panel: 220ms;
 }
 
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   background: var(--color-canvas);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
+}
+
+/* MacBook / macOS-style floating translucent rounded scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 182, 201, 0.3) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(168, 182, 201, 0.28);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(168, 182, 201, 0.55);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: rgba(244, 247, 251, 0.7);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

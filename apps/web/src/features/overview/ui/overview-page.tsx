@@ -54,7 +54,7 @@ export function OverviewPage() {
   const scenarioName = tScenarios(`${scenarioId}.name` as const);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
       {/* Top bar: Simulated Badge & Hero Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border/60">
         <div>

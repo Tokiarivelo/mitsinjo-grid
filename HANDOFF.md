@@ -1,19 +1,16 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-27 · **By:** Antigravity (P8 quality, `feat/p8-quality`) · **Day:** 9 / 10
+**Updated:** 2026-10-27 · **By:** Antigravity (P8 follow-up, `feat/p8-quality`) · **Day:** 9 / 10
 
 ## State
 
 - Phase: **P8 — Quality, performance, accessibility** completed (P8-T1..P8-T6 done).
 - Monorepo healthy: `make check` 100% green (154 tests, tsc, lint, i18n parity), `pnpm build` clean.
 - Playwright E2E: 17/17 tests passing in `make e2e` (`demo-path.spec.ts` + 3x loop, `responsive.spec.ts` 1440/1024/390px).
-- Features & Hardening:
-  - Playwright E2E suite with SwiftShader headless Chrome and mock LLM provider.
-  - States & Copy: `modified` & `error` badges across EN/FR/MG, empty chart states, warning banner titles.
-  - A11y: `prefers-reduced-motion` global CSS, full ARIA on SimControl, dialog Escape handlers.
-  - Performance: `compare()` ~2ms (<10ms budget), 97 draw calls (<150 budget), 6.2k triangles (<=150k budget).
-  - Responsive: Zero layout overflow across 1440px / 1024px / 390px, mobile drawer navigation.
-  - Known Limitations: Authored `docs/known-limitations.md` and linked in `README.md`.
+- Scrollbar Hardening:
+  - Eliminated double scrollbar by setting `html, body { height: 100%; overflow: hidden; }` and making `ChartCard` / `main` `relative` (contained `p.sr-only` that was leaking to root viewport).
+  - Removed duplicate nested `overflow-y-auto` in `overview-page.tsx` and `strategy-lab-page.tsx`.
+  - Added modern macOS-style floating translucent rounded scrollbar (`scrollbar-width: thin;` + `::-webkit-scrollbar` with `border: 2px solid transparent; background-clip: content-box;`).
 
 ## Next task
 
@@ -21,18 +18,15 @@
 
 ## Decisions taken
 
-- Added `mock-deterministic-v1` to `isCopilotModel` so mock LLM mode in E2E passes route validation cleanly.
-- Preserved drawer mobile accessibility by using backdrop interaction for drawer dismiss.
-- Playwright config uses `--use-gl=angle --use-angle=swiftshader` for consistent headless 3D WebGL in CI.
+- App shell root uses `h-full w-full overflow-hidden` with `main` as the sole scrolling container.
+- Floating macOS scrollbar thumb uses `rgba(168, 182, 201, 0.28)` with smooth hover brightening.
 
 ## Open questions / blockers
 
-- None. Ready for PR creation against `main`.
+- PR #13 created on `feat/p8-quality` against `main`. User directed not to review and not to merge.
 
 ## Files touched this session
 
-- `apps/web/playwright.config.ts`, `apps/web/e2e/demo-path.spec.ts`, `apps/web/e2e/responsive.spec.ts`
-- `apps/web/src/components/ui/{status-badge,chart-card,sim-control,impact-banner}.tsx`, `app-shell.tsx`, `globals.css`
-- `apps/web/src/features/{copilot/ui/confirm-proposal-dialog.tsx,strategies/ui/strategy-lab-page.tsx}`
-- `apps/web/src/server/copilot/providers/meta.ts`, `messages/{en,fr,mg}.json`
-- `docs/known-limitations.md`, `README.md`, `docs/tasks/P8-quality.md`, `HANDOFF.md`
+- `apps/web/src/app/{globals.css,layout.tsx}`, `apps/web/src/components/layout/app-shell.tsx`
+- `apps/web/src/components/ui/chart-card.tsx`, `features/overview/ui/overview-page.tsx`, `features/strategy-lab/ui/strategy-lab-page.tsx`
+- `HANDOFF.md`

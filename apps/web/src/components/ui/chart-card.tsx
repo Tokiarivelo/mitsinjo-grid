@@ -39,7 +39,7 @@ export function ChartCard({
   return (
     <div
       className={cn(
-        'flex flex-col p-5 rounded-card bg-surface border border-border shadow-sm',
+        'relative flex flex-col p-5 rounded-card bg-surface border border-border shadow-sm',
         className
       )}
     >
