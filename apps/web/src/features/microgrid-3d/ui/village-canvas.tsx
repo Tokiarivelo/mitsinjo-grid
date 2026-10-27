@@ -2,10 +2,10 @@
 
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei';
-import type { SectorId } from '@mitsinjo/engine';
+import type { Priority, SectorId } from '@mitsinjo/engine';
 import { useTranslations } from '@/lib/i18n';
 import type { CameraPreset, SceneModel } from '../types';
-import { useReducedMotion } from '../utils/webgl';
+import { useReducedMotion } from '../hooks/use-reduced-motion';
 import { VillageTerrain } from './terrain';
 import { SolarArray } from './solar-array';
 import { BatteryUnit } from './battery-unit';
@@ -18,6 +18,8 @@ export interface VillageCanvasProps {
   selectedSector: SectorId | null;
   onSelectSector: (sector: SectorId | null) => void;
   cameraPreset?: CameraPreset;
+  /** Bump to re-apply the current preset (reset camera after the user orbits). */
+  cameraResetKey?: number;
   className?: string;
 }
 
@@ -26,12 +28,15 @@ export function VillageCanvas({
   selectedSector,
   onSelectSector,
   cameraPreset = 'village',
+  cameraResetKey = 0,
   className,
 }: VillageCanvasProps) {
   const tSectors = useTranslations('sectors');
   const tPriorities = useTranslations('priorities');
 
   const reducedMotion = useReducedMotion();
+  // A modified scenario shows the last result frozen: no flow animation.
+  const animate = !reducedMotion && !model.isModified;
 
   const sectorNames: Record<SectorId, string> = {
     health: tSectors('health'),
@@ -41,7 +46,7 @@ export function VillageCanvas({
     market: tSectors('market'),
   };
 
-  const priorityLabels: Record<string, string> = {
+  const priorityLabels: Record<Priority, string> = {
     critical: tPriorities('critical'),
     high: tPriorities('high'),
     medium: tPriorities('medium'),
@@ -67,7 +72,7 @@ export function VillageCanvas({
       <Canvas
         camera={{ position: [24, 20, 24], fov: 42 }}
         dpr={[1, 1.75]}
-        frameloop={reducedMotion ? 'demand' : 'always'}
+        frameloop="demand"
         style={{ background: bgColor }}
       >
         {/* Sky / Environment Lighting */}
@@ -85,7 +90,7 @@ export function VillageCanvas({
         <VillageTerrain />
         <SolarArray model={model.solar} />
         <BatteryUnit model={model.battery} />
-        <DistributionLines lines={model.lines} reducedMotion={reducedMotion} />
+        <DistributionLines lines={model.lines} animate={animate} />
         <VillageBuildings
           buildings={model.buildings}
           selectedSector={selectedSector}
@@ -106,7 +111,11 @@ export function VillageCanvas({
         />
 
         {/* Camera Control & Presets */}
-        <CameraController preset={cameraPreset} reducedMotion={reducedMotion} />
+        <CameraController
+          preset={cameraPreset}
+          resetKey={cameraResetKey}
+          reducedMotion={reducedMotion}
+        />
       </Canvas>
     </div>
   );

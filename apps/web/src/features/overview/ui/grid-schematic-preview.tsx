@@ -110,7 +110,7 @@ export function GridSchematicPreview({
               {tOverview('previewTitle')}
             </h3>
             <span className="text-[10px] font-mono text-energy-cyan px-1.5 py-0.5 rounded-control-sm bg-energy-cyan/10 border border-energy-cyan/30">
-              {viewMode === '3d' ? '3D DIGITAL TWIN' : tOverview('schematicBadge')}
+              {viewMode === '3d' ? tOverview('badge3d') : tOverview('schematicBadge')}
             </span>
           </div>
           <p className="text-xs text-text-secondary mt-0.5">{tOverview('previewSubtitle')}</p>

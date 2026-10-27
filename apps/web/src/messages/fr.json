@@ -173,7 +173,10 @@
       "solarArrayCapacity": "PV solaire {kw}c",
       "batteryStorageCapacity": "Stockage {kwh}",
       "socValue": "{pct} SoC",
-      "siteLocation": "Madagascar S 18,91° E 47,53°"
+      "siteLocation": "Madagascar S 18,91° E 47,53°",
+      "loading3d": "Initialisation du jumeau numérique 3D…",
+      "cameraLabel": "Caméra :",
+      "hint3d": "Cliquez sur un bâtiment pour l’inspecter · Glissez pour pivoter · Molette pour zoomer"
     },
     "strategyLab": {
       "title": "Labo Stratégies",
@@ -494,7 +497,8 @@
     "chartTitle": "Production vs Demande 24h",
     "chartSubtitle": "Solaire PV, demande communautaire totale, puissance fournie et SoC batterie",
     "emptyChartNotice": "Lancez la simulation pour visualiser les courbes énergétiques sur 24h.",
-    "sectorsCount": "{count} secteurs"
+    "sectorsCount": "{count} secteurs",
+    "badge3d": "JUMEAU NUMÉRIQUE 3D"
   },
   "strategies": {
     "subtitle": "Comparaison côte à côte des algorithmes d'allocation sous conditions identiques",

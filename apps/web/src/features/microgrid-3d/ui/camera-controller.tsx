@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { type ComponentRef, useEffect, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -30,16 +30,19 @@ export const CAMERA_PRESETS: Record<
 
 export interface CameraControllerProps {
   preset: CameraPreset;
+  /** Changing this re-applies `preset` even when it is unchanged. */
+  resetKey?: number;
   reducedMotion?: boolean;
 }
 
 export function CameraController({
   preset,
+  resetKey = 0,
   reducedMotion = false,
 }: CameraControllerProps) {
-  const { camera } = useThree();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const controlsRef = useRef<any>(null);
+  const camera = useThree((s) => s.camera);
+  const invalidate = useThree((s) => s.invalidate);
+  const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null);
 
   const targetPos = useRef(new THREE.Vector3(...CAMERA_PRESETS.village.position));
   const targetLook = useRef(new THREE.Vector3(...CAMERA_PRESETS.village.target));
@@ -60,13 +63,16 @@ export function CameraController({
     } else {
       isTransitioning.current = true;
     }
-  }, [preset, camera, reducedMotion]);
+    // frameloop="demand": render the jump, or start the tween loop.
+    invalidate();
+  }, [preset, resetKey, camera, reducedMotion, invalidate]);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (!isTransitioning.current || reducedMotion) return;
+    state.invalidate();
 
-    // Smooth lerp towards target
-    const lerpFactor = Math.min(1, delta * 3.5);
+    // Smooth lerp towards target (delta capped for the first demand frame)
+    const lerpFactor = Math.min(1, Math.min(delta, 0.1) * 3.5);
     camera.position.lerp(targetPos.current, lerpFactor);
 
     if (controlsRef.current) {

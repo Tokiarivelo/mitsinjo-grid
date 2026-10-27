@@ -173,7 +173,10 @@
       "solarArrayCapacity": "PV masoandro {kw}p",
       "batteryStorageCapacity": "Fitehirizana {kwh}",
       "socValue": "{pct} SoC",
-      "siteLocation": "Madagasikara S 18.91° E 47.53°"
+      "siteLocation": "Madagasikara S 18.91° E 47.53°",
+      "loading3d": "Manomana ny kambana nomerika 3D…",
+      "cameraLabel": "Fakantsary:",
+      "hint3d": "Tsindrio ny trano iray hijerena azy · Sintony mba hihodina · Ahodino ny kodiarana hanakaikezana"
     },
     "strategyLab": {
       "title": "Paikady fizarana",
@@ -494,7 +497,8 @@
     "chartTitle": "Famokarana sy Filàna 24h",
     "chartSubtitle": "Masoandro PV, filàna manontolo, herinaratra voazara ary SoC bateria",
     "emptyChartNotice": "Alefaso ny simulation hijerena ny firafitry ny herinaratra mandritra ny 24 ora.",
-    "sectorsCount": "Sokajy {count}"
+    "sectorsCount": "Sokajy {count}",
+    "badge3d": "KAMBANA NOMERIKA 3D"
   },
   "strategies": {
     "subtitle": "Fampitahana mifanila ny fomba fizarana herinaratra amin'ny toe-javatra mitovy",

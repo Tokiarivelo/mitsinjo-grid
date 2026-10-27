@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { BATTERY_POSITION } from '../utils/to-scene-model';
 import type { BatterySceneModel } from '../types';
+import { BATTERY_STATUS_HEX, TOKEN_HEX } from '../utils/scene-palette';
 
 export interface BatteryUnitProps {
   model: BatterySceneModel;
@@ -11,12 +12,12 @@ export interface BatteryUnitProps {
 export function BatteryUnit({ model }: BatteryUnitProps) {
   const { socPct, isCharging, isDischarging, statusColor } = model;
 
-  const statusHexColor =
-    statusColor === 'healthy'
-      ? '#22c55e'
-      : statusColor === 'warning'
-      ? '#f59e0b'
-      : '#ef4444';
+  const statusHexColor = BATTERY_STATUS_HEX[statusColor];
+  const flowHex = isCharging
+    ? TOKEN_HEX.batteryGreen
+    : isDischarging
+    ? TOKEN_HEX.solarAmber
+    : TOKEN_HEX.idle;
 
   // 5 LED gauge levels (0-20%, 20-40%, 40-60%, 60-80%, 80-100%)
   const ledLevels = useMemo(() => {
@@ -92,16 +93,14 @@ export function BatteryUnit({ model }: BatteryUnitProps) {
       {/* Charging / Discharging Status Light */}
       <mesh position={[-1.3, 1.5, 1.12]}>
         <circleGeometry args={[0.1, 16]} />
-        <meshBasicMaterial
-          color={isCharging ? '#22c55e' : isDischarging ? '#f59e0b' : '#64748b'}
-        />
+        <meshBasicMaterial color={flowHex} />
       </mesh>
 
       {/* Active Power Glow */}
       {(isCharging || isDischarging) && (
         <pointLight
           position={[0, 1.5, 1.5]}
-          color={isCharging ? '#22c55e' : '#f59e0b'}
+          color={flowHex}
           intensity={0.8}
           distance={5}
         />

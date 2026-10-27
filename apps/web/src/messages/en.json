@@ -173,7 +173,10 @@
       "solarArrayCapacity": "{kw}p solar PV",
       "batteryStorageCapacity": "{kwh} storage",
       "socValue": "{pct} SoC",
-      "siteLocation": "Madagascar S 18.91° E 47.53°"
+      "siteLocation": "Madagascar S 18.91° E 47.53°",
+      "loading3d": "Initializing 3D digital twin…",
+      "cameraLabel": "Camera:",
+      "hint3d": "Click a building to inspect · Drag to orbit · Scroll to zoom"
     },
     "strategyLab": {
       "title": "Strategy Lab",
@@ -494,7 +497,8 @@
     "chartTitle": "24h Generation vs Demand",
     "chartSubtitle": "Solar PV, total community demand, served power, and battery SoC",
     "emptyChartNotice": "Run the simulation to view 24h energy curves.",
-    "sectorsCount": "{count} sectors"
+    "sectorsCount": "{count} sectors",
+    "badge3d": "3D DIGITAL TWIN"
   },
   "strategies": {
     "subtitle": "Side-by-side comparison of allocation algorithms under identical conditions",

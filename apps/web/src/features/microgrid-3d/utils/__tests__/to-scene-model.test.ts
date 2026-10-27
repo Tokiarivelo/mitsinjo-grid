@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { scenarios, simulate } from '@mitsinjo/engine';
 import { toSceneModel, SECTOR_POSITIONS } from '../to-scene-model';
+import { STATUS_HEX } from '../scene-palette';
 
 describe('toSceneModel pure mapping (P7-T1)', () => {
   const baselineInput = scenarios.baseline.input;
@@ -120,5 +121,21 @@ describe('toSceneModel pure mapping (P7-T1)', () => {
     expect(model.buildings.school.position).toEqual(SECTOR_POSITIONS.school);
     expect(model.buildings.households.position).toEqual(SECTOR_POSITIONS.households);
     expect(model.buildings.market.position).toEqual(SECTOR_POSITIONS.market);
+  });
+});
+
+describe('toSceneModel palette & modified flag (PR #10 review)', () => {
+  const input = scenarios.baseline.input;
+  const result = simulate(input, 'proportional');
+
+  it('colors sector lines with the design-token status color', () => {
+    const model = toSceneModel({ input, result, timeIndex: 12 });
+    for (const b of Object.values(model.buildings)) {
+      expect(model.lines.busToSectors[b.id].color).toBe(STATUS_HEX[b.statusColor]);
+    }
+  });
+
+  it('passes the modified flag through so the scene can freeze', () => {
+    expect(toSceneModel({ input, result, isModified: true }).isModified).toBe(true);
   });
 });
