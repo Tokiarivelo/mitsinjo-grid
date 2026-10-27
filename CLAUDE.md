@@ -39,7 +39,7 @@ Demo path that must always work: **solar drop → strategy comparison → AI exp
 ## Stack
 
 pnpm workspace + Turborepo · Next.js 15 App Router · React 19 · TS strict · Tailwind 4 (`@theme`) ·
-shadcn/ui (restyled) · Zustand · Zod · R3F + Drei · Recharts · next-intl · Vitest · Playwright · Meta Llama API.
+shadcn/ui (restyled) · Zustand · Zod · R3F + Drei · Recharts · next-intl · Vitest · Playwright · Meta Model API (Muse Spark).
 
 ## Non-negotiable rules
 
