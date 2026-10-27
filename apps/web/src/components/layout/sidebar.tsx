@@ -156,7 +156,7 @@ export function Sidebar({
             <span className="text-[10px] font-mono text-text-muted uppercase tracking-wider">
               {tCommon('engineStatus')}
             </span>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center gap-1.5">
               <StatusBadge variant={status} size="sm" />
               <StatusBadge variant="simulated" size="sm" />
             </div>

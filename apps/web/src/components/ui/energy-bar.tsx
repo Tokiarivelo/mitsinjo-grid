@@ -63,12 +63,12 @@ export function EnergyBar({
   return (
     <div className={cn('flex flex-col gap-1.5 py-1.5', className)}>
       {/* Top line: Label, Priority, Values and Percentage */}
-      <div className="flex items-center justify-between text-xs font-sans">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-sans">
         <div className="flex items-center gap-2">
           <span className="font-medium text-text-primary">{label}</span>
           {priorityBadge}
         </div>
-        <div className="flex items-center gap-3 font-mono text-xs">
+        <div className="ml-auto flex items-center gap-3 font-mono text-xs whitespace-nowrap">
           {showValues && servedKwh !== undefined && demandKwh !== undefined && (
             <span className="text-text-muted text-[11px]">
               {servedKwh.toFixed(1)} / {demandKwh.toFixed(1)} kWh
