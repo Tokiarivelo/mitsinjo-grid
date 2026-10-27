@@ -8,19 +8,11 @@ import {
   computeDischargeMaxKw,
   computeSolarStep,
 } from './model';
-import type {
-  SimulationInput,
-  SimulationResult,
-  StepResult,
-  StrategyId,
-} from './schemas';
+import type { SimulationInput, SimulationResult, StepResult, StrategyId } from './schemas';
 import { executeStrategy } from './strategies';
 import { generateWarnings } from './warnings';
 
-export function simulate(
-  input: SimulationInput,
-  strategy: StrategyId
-): SimulationResult {
+export function simulate(input: SimulationInput, strategy: StrategyId): SimulationResult {
   const inputHash = computeInputHash(input);
   const id = computeResultId(inputHash, strategy);
 
@@ -30,12 +22,7 @@ export function simulate(
 
   for (let t = 0; t < HORIZON_H; t++) {
     const solarKw = computeSolarStep(input.solar, input.events, t);
-    const demandResult = computeDemandStep(
-      input.sectors,
-      input.demandMultiplier,
-      input.events,
-      t
-    );
+    const demandResult = computeDemandStep(input.sectors, input.demandMultiplier, input.events, t);
 
     const { dischargeMaxKw } = computeDischargeMaxKw(input.battery, storedKwh);
     const availableKw = solarKw + dischargeMaxKw;
@@ -50,12 +37,7 @@ export function simulate(
       }
     }
 
-    const batteryResult = computeBatteryStep(
-      input.battery,
-      storedKwh,
-      solarKw,
-      servedKw
-    );
+    const batteryResult = computeBatteryStep(input.battery, storedKwh, solarKw, servedKw);
 
     const unservedKw = Math.max(0, demandResult.demandKw - servedKw);
 

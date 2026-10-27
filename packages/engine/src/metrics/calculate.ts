@@ -1,11 +1,5 @@
 import { EPS } from '../constants';
-import type {
-  BatteryConfig,
-  Metrics,
-  SectorId,
-  SectorMetrics,
-  StepResult,
-} from '../schemas';
+import type { BatteryConfig, Metrics, SectorId, SectorMetrics, StepResult } from '../schemas';
 import { SECTOR_IDS } from '../schemas';
 
 export function calculateMetrics(
@@ -75,10 +69,7 @@ export function calculateMetrics(
     criticalDemandKwh > EPS
       ? Math.max(
           0,
-          Math.min(
-            100,
-            ((criticalDemandKwh - criticalUnservedKwh) / criticalDemandKwh) * 100
-          )
+          Math.min(100, ((criticalDemandKwh - criticalUnservedKwh) / criticalDemandKwh) * 100)
         )
       : 100;
 
@@ -89,9 +80,7 @@ export function calculateMetrics(
     const acc = perSectorAccum[secId]!;
     const unserved = Math.max(0, acc.unservedKwh);
     const coveragePct =
-      acc.demandKwh > EPS
-        ? Math.max(0, Math.min(100, (acc.servedKwh / acc.demandKwh) * 100))
-        : 100;
+      acc.demandKwh > EPS ? Math.max(0, Math.min(100, (acc.servedKwh / acc.demandKwh) * 100)) : 100;
 
     perSector[secId] = {
       demandKwh: acc.demandKwh,

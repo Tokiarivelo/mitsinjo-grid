@@ -96,4 +96,10 @@ describe('applyPatch (P3-T7)', () => {
       })
     ).toThrow(ZodError);
   });
+
+  it('rejects out-of-bounds patch fields even when the result would be a valid input', () => {
+    const input = createBaselineInput();
+    // 95 % drop → factor 0.05 is a valid event, but InputPatch caps solarDropPct at 90.
+    expect(() => applyPatch(input, { solarDropPct: 95 })).toThrow(ZodError);
+  });
 });

@@ -42,9 +42,7 @@ describe('compare strategies (P3-T7)', () => {
     const median = times[Math.floor(times.length / 2)] ?? 0;
     const min = times[0] ?? 0;
 
-    console.log(
-      `compare() latency: min=${min.toFixed(3)} ms, median=${median.toFixed(3)} ms`
-    );
+    console.log(`compare() latency: min=${min.toFixed(3)} ms, median=${median.toFixed(3)} ms`);
     expect(median).toBeLessThan(10);
   });
 });

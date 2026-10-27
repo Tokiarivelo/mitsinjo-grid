@@ -58,15 +58,15 @@ Warnings: merge consecutive hours into ranges. `CRITICAL_UNMET` (any critical sh
 
 ## 5. Default parameters
 
-| Item                                 | Value                                                                            |
-| ------------------------------------ | -------------------------------------------------------------------------------- |
-| PV peak                              | 40 kWp; profile = bell 06–18 h, peak 12–13 h (≈ 5 peak-sun-hours → ~200 kWh/day) |
-| Battery                              | 120 kWh, init 60 %, min 20 %, max ±25 kW, charge/discharge eff 0.95              |
-| health (critical, criticalShare 0.8) | 0.6 kW night, 1.2 kW 08–18 → ~20 kWh/day                                         |
-| water (high, 0.3, flexible)          | 3 kW 08–16, 0 otherwise → 24 kWh/day                                             |
-| school (medium, 0.1)                 | 1.5 kW 07–16 → ~14 kWh/day                                                       |
-| households (medium, 0.2)             | 1 kW day, 6 kW 18–22, 1.5 kW night → ~50 kWh/day                                 |
-| market (low, 0.1)                    | 2 kW 08–18 → ~20 kWh/day                                                         |
+| Item                                 | Value                                                                                                            |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| PV peak                              | 40 kWp; profile = bell 06–18 h, max 0.485 at 12 h (≈ 3.1 peak-sun-hours → ~124 kWh/day; tuned for the demo hero) |
+| Battery                              | 120 kWh, init 60 %, min 20 %, max ±25 kW, charge/discharge eff 0.95                                              |
+| health (critical, criticalShare 0.8) | 0.6 kW night, 1.2 kW 08–18 → ~20 kWh/day                                                                         |
+| water (high, 0.3, flexible)          | 3 kW 08–16, 0 otherwise → 24 kWh/day                                                                             |
+| school (medium, 0.1)                 | 1.5 kW 07–16 → ~14 kWh/day                                                                                       |
+| households (medium, 0.2)             | 1 kW day, 6 kW 18–22, 1.5 kW night → ~50 kWh/day                                                                 |
+| market (low, 0.1)                    | 2 kW 08–18 → ~20 kWh/day                                                                                         |
 
 Total ≈ 128 kWh/day. Tune so that: `baseline` → 0 unserved; `cloudy_afternoon`
 (solar ×0.6 for 2 h at 13–15 h, plus low initial SoC 35 %) → visible evening deficit where
@@ -86,6 +86,8 @@ Total ≈ 128 kWh/day. Tune so that: `baseline` → 0 unserved; `cloudy_afternoo
 
 nominal no-deficit · solar drop changes results · never below reserve · never above capacity ·
 impossible demand reports unserved · invalid input throws ZodError · same input → identical result & id ·
-essential_first ≥ proportional on critical coverage (property test over all scenarios) ·
+essential_first ≥ proportional on critical-tier (health) coverage (property test over all scenarios; the all-sector
+`criticalCoveragePct` can be slightly lower for essential_first, e.g. `essential_stress`, because it serves health's
+non-critical load before other sectors' critical shares) ·
 energy balance per step: `servedKw = solarKw − batteryKw − curtailedKw` and
 `ΔstoredKwh = max(batteryKw,0)·chargeEff − max(−batteryKw,0)/dischargeEff` (both within ε).

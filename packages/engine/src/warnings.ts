@@ -16,7 +16,10 @@ export function generateWarnings(
   for (let t = 0; t < steps.length; t++) {
     const step = steps[t];
     if (!step) continue;
-    const sectorEntries = Object.entries(step.sectors) as [SectorId, (typeof step.sectors)[SectorId]][];
+    const sectorEntries = Object.entries(step.sectors) as [
+      SectorId,
+      (typeof step.sectors)[SectorId],
+    ][];
 
     // 1. CRITICAL_UNMET: any critical shortfall in this step
     let hasCriticalUnmet = false;

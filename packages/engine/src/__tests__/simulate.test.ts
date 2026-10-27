@@ -53,12 +53,9 @@ describe('simulate (P3-T5)', () => {
       expect(w.fromHour).toBeLessThanOrEqual(w.toHour);
       expect(w.fromHour).toBeGreaterThanOrEqual(0);
       expect(w.toHour).toBeLessThanOrEqual(23);
-      expect([
-        'CRITICAL_UNMET',
-        'SECTOR_PARTIAL',
-        'RESERVE_REACHED',
-        'CURTAILMENT',
-      ]).toContain(w.code);
+      expect(['CRITICAL_UNMET', 'SECTOR_PARTIAL', 'RESERVE_REACHED', 'CURTAILMENT']).toContain(
+        w.code
+      );
     }
   });
 });

@@ -19,8 +19,9 @@
 ## Decisions taken
 
 - Implemented pure TS deterministic simulation with FNV-1a 64-bit hashing for stable `inputHash` and `SIM-XXXXXX` IDs.
-- Solar bell curve calibrated (≈5 peak-sun-hours, peakKw 40 kW) to guarantee 0 unserved on `baseline` and distinct evening deficit on `cloudy_afternoon`.
+- Solar bell curve calibrated (peakKw 40, profile max 0.485 → ≈3.1 peak-sun-hours, ~124 kWh/day; spec §5 updated) to guarantee 0 unserved on `baseline` and distinct evening deficit on `cloudy_afternoon`.
 - Water-filling with priority weights (4, 3, 2, 1) implemented for stretch `balanced` strategy.
+- Spec §7 property "essential_first ≥ proportional" scoped to the critical tier (health): all-sector critical coverage is 73.2 vs 73.3 % on `essential_stress`. `applyPatch` validates the patch with `InputPatchSchema`.
 - Preallocated length-24 arrays in hot path `simulate()` for allocation-light performance.
 
 ## Open questions / blockers

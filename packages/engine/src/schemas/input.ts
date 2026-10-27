@@ -67,10 +67,7 @@ export const DemandSpikeEventSchema = BaseDemandSpikeEventSchema.refine(
 export type DemandSpikeEvent = z.infer<typeof DemandSpikeEventSchema>;
 
 export const ScenarioEventSchema = z
-  .discriminatedUnion('type', [
-    BaseSolarDropEventSchema,
-    BaseDemandSpikeEventSchema,
-  ])
+  .discriminatedUnion('type', [BaseSolarDropEventSchema, BaseDemandSpikeEventSchema])
   .refine((e) => e.startHour + e.durationH <= 24, {
     message: 'startHour + durationH must be <= 24',
     path: ['durationH'],
@@ -94,7 +91,8 @@ export const SimulationInputSchema = z.object({
         return ids.size === 5 && REQUIRED_SECTORS.every((id) => ids.has(id));
       },
       {
-        message: 'Must contain exactly 5 sectors with unique ids (health, water, school, households, market)',
+        message:
+          'Must contain exactly 5 sectors with unique ids (health, water, school, households, market)',
         path: ['sectors'],
       }
     ),

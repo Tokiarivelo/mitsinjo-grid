@@ -14,12 +14,7 @@ export const SECTOR_IDS: readonly SectorId[] = [
 export const PrioritySchema = z.enum(['critical', 'high', 'medium', 'low']);
 export type Priority = z.infer<typeof PrioritySchema>;
 
-export const PRIORITY_ORDER: readonly Priority[] = [
-  'critical',
-  'high',
-  'medium',
-  'low',
-] as const;
+export const PRIORITY_ORDER: readonly Priority[] = ['critical', 'high', 'medium', 'low'] as const;
 
 export const StrategyIdSchema = z.enum(['proportional', 'essential_first', 'balanced']);
 export type StrategyId = z.infer<typeof StrategyIdSchema>;

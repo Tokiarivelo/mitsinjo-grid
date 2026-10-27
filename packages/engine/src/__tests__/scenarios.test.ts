@@ -3,11 +3,7 @@ import { scenarios } from '../scenarios';
 import { simulate } from '../simulate';
 import type { StrategyId } from '../schemas';
 
-const ALL_STRATEGIES: readonly StrategyId[] = [
-  'proportional',
-  'essential_first',
-  'balanced',
-];
+const ALL_STRATEGIES: readonly StrategyId[] = ['proportional', 'essential_first', 'balanced'];
 
 describe('Scenarios Presets & Invariants', () => {
   const scenarioKeys = Object.keys(scenarios) as (keyof typeof scenarios)[];

@@ -73,9 +73,7 @@ export function checkStepInvariants(params: InvariantCheckParams): number {
   }
 
   // 6. Energy balance: servedKw == solarKw - batteryKw - curtailedKw
-  const balanceDiff = Math.abs(
-    step.servedKw - (step.solarKw - step.batteryKw - step.curtailedKw)
-  );
+  const balanceDiff = Math.abs(step.servedKw - (step.solarKw - step.batteryKw - step.curtailedKw));
   if (balanceDiff > EPS) {
     violations++;
   }

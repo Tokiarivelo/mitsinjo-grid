@@ -12,8 +12,7 @@ export function runProportionalStrategy(
     totalDemandKw += s.demandKw;
   }
 
-  const ratio =
-    totalDemandKw > 0 ? Math.min(1, Math.max(0, availableKw) / totalDemandKw) : 1;
+  const ratio = totalDemandKw > 0 ? Math.min(1, Math.max(0, availableKw) / totalDemandKw) : 1;
 
   for (const s of sectors) {
     const servedKw = Math.min(s.demandKw, s.demandKw * ratio);

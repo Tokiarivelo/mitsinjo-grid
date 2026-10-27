@@ -38,12 +38,8 @@ describe('Demo Hero Scenario (cloudy_afternoon)', () => {
       expect(propHealth).toBeDefined();
 
       if (essHealth && propHealth) {
-        expect(essHealth.coveragePct).toBeGreaterThanOrEqual(
-          propHealth.coveragePct - 1e-9
-        );
-        expect(essHealth.unservedKwh).toBeLessThanOrEqual(
-          propHealth.unservedKwh + 1e-9
-        );
+        expect(essHealth.coveragePct).toBeGreaterThanOrEqual(propHealth.coveragePct - 1e-9);
+        expect(essHealth.unservedKwh).toBeLessThanOrEqual(propHealth.unservedKwh + 1e-9);
       }
     }
   });

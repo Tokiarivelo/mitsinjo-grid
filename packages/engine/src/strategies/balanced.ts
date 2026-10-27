@@ -52,7 +52,8 @@ export function runBalancedStrategy(
   const EPS = 1e-9;
   for (let iteration = 0; iteration < sectors.length + 1 && remainingKw > EPS; iteration++) {
     const active = sectors.filter((s) => {
-      const remainingDemand = s.demandKw - (pass1Served[s.sectorId] ?? 0) - (pass2Served[s.sectorId] ?? 0);
+      const remainingDemand =
+        s.demandKw - (pass1Served[s.sectorId] ?? 0) - (pass2Served[s.sectorId] ?? 0);
       return remainingDemand > EPS;
     });
 
@@ -60,7 +61,8 @@ export function runBalancedStrategy(
 
     let sumWeightRem = 0;
     for (const s of active) {
-      const remainingDemand = s.demandKw - (pass1Served[s.sectorId] ?? 0) - (pass2Served[s.sectorId] ?? 0);
+      const remainingDemand =
+        s.demandKw - (pass1Served[s.sectorId] ?? 0) - (pass2Served[s.sectorId] ?? 0);
       sumWeightRem += remainingDemand * PRIORITY_WEIGHTS[s.priority];
     }
 
@@ -69,7 +71,8 @@ export function runBalancedStrategy(
     // Check caps
     let hasCap = false;
     for (const s of active) {
-      const remainingDemand = s.demandKw - (pass1Served[s.sectorId] ?? 0) - (pass2Served[s.sectorId] ?? 0);
+      const remainingDemand =
+        s.demandKw - (pass1Served[s.sectorId] ?? 0) - (pass2Served[s.sectorId] ?? 0);
       const trialShare =
         (remainingKw * (remainingDemand * PRIORITY_WEIGHTS[s.priority])) / sumWeightRem;
       if (trialShare >= remainingDemand - EPS) {
@@ -80,7 +83,8 @@ export function runBalancedStrategy(
 
     if (hasCap) {
       for (const s of active) {
-        const remainingDemand = s.demandKw - (pass1Served[s.sectorId] ?? 0) - (pass2Served[s.sectorId] ?? 0);
+        const remainingDemand =
+          s.demandKw - (pass1Served[s.sectorId] ?? 0) - (pass2Served[s.sectorId] ?? 0);
         const trialShare =
           (remainingKw * (remainingDemand * PRIORITY_WEIGHTS[s.priority])) / sumWeightRem;
         if (trialShare >= remainingDemand - EPS) {
@@ -90,7 +94,8 @@ export function runBalancedStrategy(
       }
     } else {
       for (const s of active) {
-        const remainingDemand = s.demandKw - (pass1Served[s.sectorId] ?? 0) - (pass2Served[s.sectorId] ?? 0);
+        const remainingDemand =
+          s.demandKw - (pass1Served[s.sectorId] ?? 0) - (pass2Served[s.sectorId] ?? 0);
         const trialShare =
           (remainingKw * (remainingDemand * PRIORITY_WEIGHTS[s.priority])) / sumWeightRem;
         pass2Served[s.sectorId] = (pass2Served[s.sectorId] ?? 0) + trialShare;

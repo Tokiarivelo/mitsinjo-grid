@@ -20,18 +20,30 @@ describe('Schema validation & bounds (P3-T1)', () => {
 
   describe('SolarConfig bounds', () => {
     it('accepts peakKw within [0, 500]', () => {
-      expect(SolarConfigSchema.safeParse({ peakKw: 0, profile: new Array(24).fill(0) }).success).toBe(true);
-      expect(SolarConfigSchema.safeParse({ peakKw: 500, profile: new Array(24).fill(0) }).success).toBe(true);
+      expect(
+        SolarConfigSchema.safeParse({ peakKw: 0, profile: new Array(24).fill(0) }).success
+      ).toBe(true);
+      expect(
+        SolarConfigSchema.safeParse({ peakKw: 500, profile: new Array(24).fill(0) }).success
+      ).toBe(true);
     });
 
     it('rejects peakKw < 0 or > 500', () => {
-      expect(SolarConfigSchema.safeParse({ peakKw: -1, profile: new Array(24).fill(0) }).success).toBe(false);
-      expect(SolarConfigSchema.safeParse({ peakKw: 501, profile: new Array(24).fill(0) }).success).toBe(false);
+      expect(
+        SolarConfigSchema.safeParse({ peakKw: -1, profile: new Array(24).fill(0) }).success
+      ).toBe(false);
+      expect(
+        SolarConfigSchema.safeParse({ peakKw: 501, profile: new Array(24).fill(0) }).success
+      ).toBe(false);
     });
 
     it('rejects profile with length != 24', () => {
-      expect(SolarConfigSchema.safeParse({ peakKw: 40, profile: new Array(23).fill(0) }).success).toBe(false);
-      expect(SolarConfigSchema.safeParse({ peakKw: 40, profile: new Array(25).fill(0) }).success).toBe(false);
+      expect(
+        SolarConfigSchema.safeParse({ peakKw: 40, profile: new Array(23).fill(0) }).success
+      ).toBe(false);
+      expect(
+        SolarConfigSchema.safeParse({ peakKw: 40, profile: new Array(25).fill(0) }).success
+      ).toBe(false);
     });
 
     it('rejects profile values < 0 or > 1', () => {
@@ -61,20 +73,36 @@ describe('Schema validation & bounds (P3-T1)', () => {
     });
 
     it('rejects capacity < 1 or > 2000', () => {
-      expect(BatteryConfigSchema.safeParse({ ...validBattery, capacityKwh: 0.5 }).success).toBe(false);
-      expect(BatteryConfigSchema.safeParse({ ...validBattery, capacityKwh: 2001 }).success).toBe(false);
+      expect(BatteryConfigSchema.safeParse({ ...validBattery, capacityKwh: 0.5 }).success).toBe(
+        false
+      );
+      expect(BatteryConfigSchema.safeParse({ ...validBattery, capacityKwh: 2001 }).success).toBe(
+        false
+      );
     });
 
     it('rejects when minSocPct >= initialSocPct', () => {
-      expect(BatteryConfigSchema.safeParse({ ...validBattery, minSocPct: 60, initialSocPct: 60 }).success).toBe(false);
-      expect(BatteryConfigSchema.safeParse({ ...validBattery, minSocPct: 70, initialSocPct: 60 }).success).toBe(false);
+      expect(
+        BatteryConfigSchema.safeParse({ ...validBattery, minSocPct: 60, initialSocPct: 60 }).success
+      ).toBe(false);
+      expect(
+        BatteryConfigSchema.safeParse({ ...validBattery, minSocPct: 70, initialSocPct: 60 }).success
+      ).toBe(false);
     });
 
     it('rejects efficiencies < 0.5 or > 1.0', () => {
-      expect(BatteryConfigSchema.safeParse({ ...validBattery, chargeEff: 0.4 }).success).toBe(false);
-      expect(BatteryConfigSchema.safeParse({ ...validBattery, chargeEff: 1.1 }).success).toBe(false);
-      expect(BatteryConfigSchema.safeParse({ ...validBattery, dischargeEff: 0.4 }).success).toBe(false);
-      expect(BatteryConfigSchema.safeParse({ ...validBattery, dischargeEff: 1.05 }).success).toBe(false);
+      expect(BatteryConfigSchema.safeParse({ ...validBattery, chargeEff: 0.4 }).success).toBe(
+        false
+      );
+      expect(BatteryConfigSchema.safeParse({ ...validBattery, chargeEff: 1.1 }).success).toBe(
+        false
+      );
+      expect(BatteryConfigSchema.safeParse({ ...validBattery, dischargeEff: 0.4 }).success).toBe(
+        false
+      );
+      expect(BatteryConfigSchema.safeParse({ ...validBattery, dischargeEff: 1.05 }).success).toBe(
+        false
+      );
     });
   });
 
@@ -152,15 +180,25 @@ describe('Schema validation & bounds (P3-T1)', () => {
 
       const duplicate = {
         ...input,
-        sectors: [input.sectors[0], input.sectors[0], input.sectors[2], input.sectors[3], input.sectors[4]],
+        sectors: [
+          input.sectors[0],
+          input.sectors[0],
+          input.sectors[2],
+          input.sectors[3],
+          input.sectors[4],
+        ],
       };
       expect(SimulationInputSchema.safeParse(duplicate).success).toBe(false);
     });
 
     it('rejects demandMultiplier < 0.5 or > 2.0', () => {
       const input = createBaselineInput();
-      expect(SimulationInputSchema.safeParse({ ...input, demandMultiplier: 0.4 }).success).toBe(false);
-      expect(SimulationInputSchema.safeParse({ ...input, demandMultiplier: 2.1 }).success).toBe(false);
+      expect(SimulationInputSchema.safeParse({ ...input, demandMultiplier: 0.4 }).success).toBe(
+        false
+      );
+      expect(SimulationInputSchema.safeParse({ ...input, demandMultiplier: 2.1 }).success).toBe(
+        false
+      );
     });
 
     it('parseInput throws ZodError on invalid raw object', () => {
@@ -173,7 +211,10 @@ describe('Schema validation & bounds (P3-T1)', () => {
   describe('InputPatchSchema', () => {
     it('accepts valid partial patches', () => {
       expect(InputPatchSchema.safeParse({ demandMultiplier: 1.3 }).success).toBe(true);
-      expect(InputPatchSchema.safeParse({ solarDropPct: 40, dropStartHour: 12, dropDurationH: 3 }).success).toBe(true);
+      expect(
+        InputPatchSchema.safeParse({ solarDropPct: 40, dropStartHour: 12, dropDurationH: 3 })
+          .success
+      ).toBe(true);
       expect(InputPatchSchema.safeParse({ initialSocPct: 50, minSocPct: 20 }).success).toBe(true);
     });
 

@@ -36,10 +36,7 @@ export function computeBatteryStep(
       0,
       Math.min(surplus, battery.maxChargeKw, spaceKwh / battery.chargeEff)
     );
-    const nextStoredKwh = Math.min(
-      battery.capacityKwh,
-      storedKwh + chargeKw * battery.chargeEff
-    );
+    const nextStoredKwh = Math.min(battery.capacityKwh, storedKwh + chargeKw * battery.chargeEff);
     const curtailedKw = Math.max(0, surplus - chargeKw);
     const batteryKw = chargeKw;
     const socPct = (nextStoredKwh / battery.capacityKwh) * 100;
@@ -53,10 +50,7 @@ export function computeBatteryStep(
   }
 
   const drawKw = Math.min(servedKw - solarKw, dischargeMaxKw);
-  const nextStoredKwh = Math.max(
-    reserveKwh,
-    storedKwh - drawKw / battery.dischargeEff
-  );
+  const nextStoredKwh = Math.max(reserveKwh, storedKwh - drawKw / battery.dischargeEff);
   const curtailedKw = 0;
   const batteryKw = -drawKw;
   const socPct = (nextStoredKwh / battery.capacityKwh) * 100;

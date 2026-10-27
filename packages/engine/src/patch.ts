@@ -1,14 +1,13 @@
-import { parseInput } from './schemas';
+import { InputPatchSchema, parseInput } from './schemas';
 import type { InputPatch, SimulationInput, SolarDropEvent } from './schemas';
 
 /**
  * Applies a partial patch to a SimulationInput, returning a new validated SimulationInput.
- * Does not mutate the original input. Throws ZodError if the patched input violates contract bounds.
+ * Does not mutate the original input. Throws ZodError if the patch or the patched input violates contract bounds.
  */
-export function applyPatch(
-  input: SimulationInput,
-  patch: InputPatch
-): SimulationInput {
+export function applyPatch(input: SimulationInput, rawPatch: InputPatch): SimulationInput {
+  // Patches may come from the LLM: enforce InputPatch bounds (e.g. solarDropPct ≤ 90).
+  const patch = InputPatchSchema.parse(rawPatch);
   const cloned = structuredClone(input);
   cloned.scenarioId = 'custom';
 
@@ -28,9 +27,8 @@ export function applyPatch(
     cloned.battery.minSocPct = patch.minSocPct;
   }
 
-  const existingDrop = cloned.events.find(
-    (e) => e.type === 'solar_drop'
-  ) as SolarDropEvent | undefined;
+  const existingDrop = cloned.events.find((e) => e.type === 'solar_drop') as
+    SolarDropEvent | undefined;
 
   if (patch.solarDropPct !== undefined) {
     if (patch.solarDropPct === 0) {
