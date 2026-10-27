@@ -176,7 +176,11 @@
       "siteLocation": "Madagascar S 18.91° E 47.53°",
       "loading3d": "Initializing 3D digital twin…",
       "cameraLabel": "Camera:",
-      "hint3d": "Click a building to inspect · Drag to orbit · Scroll to zoom"
+      "hint3d": "Click a building to inspect · Drag to orbit · Scroll to zoom",
+      "batteryHealthy": "Healthy",
+      "batteryLow": "Low",
+      "batteryDepleted": "Depleted",
+      "perfOverlay": "{calls} draw calls · {fps} fps"
     },
     "strategyLab": {
       "title": "Strategy Lab",

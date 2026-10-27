@@ -17,6 +17,7 @@ export const STATUS_HEX: Record<StatusColor, string> = {
   'battery-green': TOKEN_HEX.batteryGreen,
   'warning-amber': TOKEN_HEX.warningAmber,
   'critical-red': TOKEN_HEX.criticalRed,
+  idle: TOKEN_HEX.idle,
 };
 
 export const BATTERY_STATUS_HEX: Record<BatteryStatusColor, string> = {
@@ -30,4 +31,11 @@ export const STATUS_BG_CLASS: Record<StatusColor, string> = {
   'battery-green': 'bg-battery-green',
   'warning-amber': 'bg-warning-amber',
   'critical-red': 'bg-critical-red',
+  idle: 'bg-text-muted',
+};
+
+export const BATTERY_STATUS_BG_CLASS: Record<BatteryStatusColor, string> = {
+  healthy: 'bg-battery-green',
+  warning: 'bg-warning-amber',
+  critical: 'bg-critical-red',
 };

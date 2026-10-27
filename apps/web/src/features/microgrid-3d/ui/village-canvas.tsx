@@ -1,11 +1,19 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei';
 import type { Priority, SectorId } from '@mitsinjo/engine';
 import { useTranslations } from '@/lib/i18n';
-import type { CameraPreset, SceneModel } from '../types';
+import type { BatteryStatusColor, CameraPreset, SceneModel } from '../types';
 import { useReducedMotion } from '../hooks/use-reduced-motion';
+import { usePerfFlag } from '../hooks/use-perf-flag';
+import {
+  createSceneStats,
+  sampleSceneStats,
+  type SceneStatsSample,
+} from '../utils/scene-stats';
+import { SceneStatsProbe } from './scene-stats-probe';
 import { VillageTerrain } from './terrain';
 import { SolarArray } from './solar-array';
 import { BatteryUnit } from './battery-unit';
@@ -33,6 +41,7 @@ export function VillageCanvas({
 }: VillageCanvasProps) {
   const tSectors = useTranslations('sectors');
   const tPriorities = useTranslations('priorities');
+  const tSim = useTranslations('features.simulation');
 
   const reducedMotion = useReducedMotion();
   // A modified scenario shows the last result frozen: no flow animation.
@@ -53,6 +62,33 @@ export function VillageCanvas({
     low: tPriorities('low'),
   };
 
+  const batteryStatusLabels: Record<BatteryStatusColor, string> = {
+    healthy: tSim('batteryHealthy'),
+    warning: tSim('batteryLow'),
+    critical: tSim('batteryDepleted'),
+  };
+  const socLabel = (pct: string) => tSim('socValue', { pct });
+
+  // Fixed parent for in-scene HTML labels, so drei's <Html> never re-targets after mount.
+  const htmlPortal = useRef<HTMLDivElement>(null);
+
+  // ?perf=1 → draw calls / fps readout, sampled at 2 Hz (no per-frame React state).
+  const perfEnabled = usePerfFlag();
+  // Stable mutable counters shared with the in-canvas probe.
+  const [stats] = useState(() => createSceneStats(0));
+  const [perf, setPerf] = useState<SceneStatsSample | null>(null);
+  useEffect(() => {
+    if (!perfEnabled) return;
+    sampleSceneStats(stats, performance.now()); // start a fresh window
+    const id = window.setInterval(() => {
+      const sample = sampleSceneStats(stats, performance.now());
+      setPerf(sample);
+      // Read by `make scene-audit`.
+      (window as Window & { __mitsinjoScene?: SceneStatsSample }).__mitsinjoScene = sample;
+    }, 500);
+    return () => window.clearInterval(id);
+  }, [perfEnabled, stats]);
+
   // Daylight & Sky calculation
   const sunPos: [number, number, number] = [
     Math.cos(((model.timeIndex - 6) / 12) * Math.PI) * 20,
@@ -68,7 +104,12 @@ export function VillageCanvas({
     : '#090d16';
 
   return (
-    <div className={className} style={{ width: '100%', height: '100%' }}>
+    <div ref={htmlPortal} className={className} style={{ width: '100%', height: '100%' }}>
+      {perfEnabled && perf && (
+        <div className="absolute top-14 right-3 z-20 px-2 py-1 rounded-control bg-surface-elevated/90 border border-border text-[10px] font-mono text-text-secondary pointer-events-none">
+          {tSim('perfOverlay', { calls: perf.calls, fps: perf.fps })}
+        </div>
+      )}
       <Canvas
         camera={{ position: [24, 20, 24], fov: 42 }}
         dpr={[1, 1.75]}
@@ -89,7 +130,13 @@ export function VillageCanvas({
         {/* 3D Scene Components */}
         <VillageTerrain />
         <SolarArray model={model.solar} />
-        <BatteryUnit model={model.battery} />
+        <BatteryUnit
+          model={model.battery}
+          statusLabels={batteryStatusLabels}
+          socLabel={socLabel}
+          htmlPortal={htmlPortal}
+        />
+        {perfEnabled && <SceneStatsProbe stats={stats} />}
         <DistributionLines lines={model.lines} animate={animate} />
         <VillageBuildings
           buildings={model.buildings}
@@ -97,6 +144,7 @@ export function VillageCanvas({
           onSelectSector={onSelectSector}
           sectorNames={sectorNames}
           priorityLabels={priorityLabels}
+          htmlPortal={htmlPortal}
         />
 
         {/* Static Baked Contact Shadows (single frame, zero per-frame cost) */}

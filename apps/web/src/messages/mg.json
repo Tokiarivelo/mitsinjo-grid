@@ -176,7 +176,11 @@
       "siteLocation": "Madagasikara S 18.91° E 47.53°",
       "loading3d": "Manomana ny kambana nomerika 3D…",
       "cameraLabel": "Fakantsary:",
-      "hint3d": "Tsindrio ny trano iray hijerena azy · Sintony mba hihodina · Ahodino ny kodiarana hanakaikezana"
+      "hint3d": "Tsindrio ny trano iray hijerena azy · Sintony mba hihodina · Ahodino ny kodiarana hanakaikezana",
+      "batteryHealthy": "Salama",
+      "batteryLow": "Ambany",
+      "batteryDepleted": "Lany",
+      "perfOverlay": "{calls} antso fanaovana sary · {fps} sary/s"
     },
     "strategyLab": {
       "title": "Paikady fizarana",

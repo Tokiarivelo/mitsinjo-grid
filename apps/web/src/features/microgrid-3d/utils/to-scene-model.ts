@@ -115,16 +115,22 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     const demandKw = sectorStep ? sectorStep.demandKw : 0;
     const servedKw = sectorStep ? sectorStep.servedKw : 0;
     const unservedKw = Math.max(0, demandKw - servedKw);
-    const coveragePct =
-      demandKw > 0 ? Math.round((servedKw / demandKw) * 100) : 100;
+    // No result yet → no coverage to show (never default to "100%").
+    const coveragePct = !sectorStep
+      ? null
+      : demandKw > 0
+      ? Math.round((servedKw / demandKw) * 100)
+      : 100;
 
-    let status: BuildingStatus = 'full';
-    if (demandKw > 0 && servedKw < demandKw - 0.05) {
+    let status: BuildingStatus = sectorStep ? 'full' : 'unknown';
+    if (sectorStep && demandKw > 0 && servedKw < demandKw - 0.05) {
       status = servedKw > 0.05 ? 'partial' : 'unserved';
     }
 
     let statusColor: StatusColor = 'battery-green';
-    if (status === 'partial') {
+    if (status === 'unknown') {
+      statusColor = 'idle';
+    } else if (status === 'partial') {
       statusColor = 'warning-amber';
     } else if (status === 'unserved') {
       statusColor = 'critical-red';
