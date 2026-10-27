@@ -39,6 +39,18 @@ make typecheck
 make check
 ```
 
+### Deployment (Vercel)
+
+Only `main` is deployed. Merging into `main` deploys to production automatically; other branches and PRs are not deployed.
+
+```bash
+make deploy-link   # once per machine: link this clone to the Vercel project
+make deploy        # manual production deploy (only from a clean, up-to-date main)
+```
+
+Production env vars are set in Vercel (Project → Settings → Environment Variables): `LLM_PROVIDER` (`mock` today),
+plus `META_API_KEY`, `META_MODEL`, `META_BASE_URL` when switching to `meta`.
+
 ---
 
 ## License
