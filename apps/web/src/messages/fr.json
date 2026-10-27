@@ -280,7 +280,20 @@
       "promptSwitchStrategy": "Devrions-nous changer de stratégie pour {strategy} afin de protéger les services essentiels ?",
       "promptDeficitHours": "Pourquoi y a-t-il un déficit énergétique aux heures {hours} ?",
       "diffDispatchPolicy": "Stratégie de distribution",
-      "modelSelectorLabel": "MODÈLE :"
+      "modelSelectorLabel": "MODÈLE :",
+      "activityBadge": "DÉTERMINISTE",
+      "errorProviderFallback": "IA indisponible — explication déterministe affichée.",
+      "errorRateLimited": "Trop de requêtes. Patientez un instant avant de réessayer.",
+      "errorGeneric": "Le copilote n'a pas pu répondre. Les résultats calculés restent inchangés.",
+      "activity": {
+        "start": "Lecture de l'état de la simulation",
+        "get_grid_state": "Lecture du scénario actuel",
+        "run_scenario": "Simulation des paramètres du scénario",
+        "compare_strategies": "Comparaison des stratégies",
+        "get_sector_metrics": "Analyse des données du secteur {sector}",
+        "propose_change": "Préparation d'une proposition à valider",
+        "default": "Analyse des résultats calculés"
+      }
     }
   },
   "copilot": {

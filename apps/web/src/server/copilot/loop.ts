@@ -1,24 +1,12 @@
 import 'server-only';
 
-import {
-  type SimulationInput,
-  type StrategyId,
-} from '@mitsinjo/engine';
-import {
-  type LlmProvider,
-  type ChatMessage,
-} from './provider';
+import { type SimulationInput, type StrategyId } from '@mitsinjo/engine';
+import { type LlmProvider, type ChatMessage } from './provider';
 import { MockLlmProvider } from './providers/mock';
 import { TOOL_DEFINITIONS, executeTool, type ToolContext } from './tools';
 import { SYSTEM_PROMPT } from './prompt';
 
-export type SseEventName =
-  | 'activity'
-  | 'delta'
-  | 'evidence'
-  | 'proposal'
-  | 'error'
-  | 'done';
+export type SseEventName = 'activity' | 'delta' | 'evidence' | 'proposal' | 'error' | 'done';
 
 export type SseEmitter = (event: SseEventName, data: Record<string, unknown>) => void;
 
@@ -68,7 +56,7 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
   }
 
   try {
-    emit('activity', { label: 'Reading microgrid simulation state...' });
+    emit('activity', { tool: 'start', label: 'Reading microgrid simulation state...' });
 
     // Build context
     const toolCtx: ToolContext = {
@@ -97,25 +85,16 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
 
       let turn;
       try {
-        turn = await activeProvider.chat(
-          chatHistory,
-          TOOL_DEFINITIONS,
-          timeoutController.signal
-        );
+        turn = await activeProvider.chat(chatHistory, TOOL_DEFINITIONS, timeoutController.signal);
       } catch (err) {
         // Fall back to MockLlmProvider on provider failure/timeout
         if (activeProvider.name !== 'mock') {
           emit('error', {
             code: 'PROVIDER_FALLBACK',
-            message:
-              'AI provider unavailable — showing deterministic explanation.',
+            message: 'AI provider unavailable — showing deterministic explanation.',
           });
           activeProvider = new MockLlmProvider();
-          turn = await activeProvider.chat(
-            chatHistory,
-            TOOL_DEFINITIONS,
-            timeoutController.signal
-          );
+          turn = await activeProvider.chat(chatHistory, TOOL_DEFINITIONS, timeoutController.signal);
         } else {
           throw err;
         }
@@ -131,7 +110,12 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
         });
 
         for (const tc of turn.toolCalls) {
-          emit('activity', { label: getToolActivityLabel(tc.name, tc.args) });
+          // `label` is for logs; the UI translates from `tool` (+ `sector`).
+          emit('activity', {
+            tool: tc.name,
+            sector: typeof tc.args.sector === 'string' ? tc.args.sector : undefined,
+            label: getToolActivityLabel(tc.name, tc.args),
+          });
 
           const toolResult = executeTool(tc.name, tc.args, toolCtx);
 
@@ -152,9 +136,7 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
             name: tc.name,
             toolCallId: tc.id,
             content: JSON.stringify(
-              toolResult.error
-                ? { error: toolResult.error }
-                : toolResult.data || {}
+              toolResult.error ? { error: toolResult.error } : toolResult.data || {}
             ),
           });
         }

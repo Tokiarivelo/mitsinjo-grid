@@ -1,16 +1,18 @@
 import 'server-only';
 
 import { env } from '@/lib/env';
-import type {
-  LlmProvider,
-  ChatMessage,
-  ToolDefinition,
-  LlmTurn,
-  ToolCall,
-} from '../provider';
+import type { LlmProvider, ChatMessage, ToolDefinition, LlmTurn, ToolCall } from '../provider';
 
 export const DEFAULT_META_MODEL = 'muse-spark-1.3';
 export const DEFAULT_META_BASE_URL = 'https://api.meta.ai/v1';
+
+/**
+ * Chat + tool-calling models the copilot may use: Muse Spark, standard mode only.
+ * Excludes image/voice/SAM models (no chat tools) and `-contributor` ids (inputs may train Meta models).
+ */
+export function isCopilotModel(id: string): boolean {
+  return /^muse-spark-\d+(\.\d+)*$/.test(id);
+}
 
 export class MetaLlmProvider implements LlmProvider {
   readonly name = 'meta';
@@ -21,14 +23,8 @@ export class MetaLlmProvider implements LlmProvider {
 
   constructor(options?: { apiKey?: string; baseUrl?: string; model?: string }) {
     this.apiKey = options?.apiKey || env.META_API_KEY || '';
-    this.baseUrl =
-      options?.baseUrl ||
-      env.META_BASE_URL ||
-      DEFAULT_META_BASE_URL;
-    this.model =
-      options?.model ||
-      env.META_MODEL ||
-      DEFAULT_META_MODEL;
+    this.baseUrl = options?.baseUrl || env.META_BASE_URL || DEFAULT_META_BASE_URL;
+    this.model = options?.model || env.META_MODEL || DEFAULT_META_MODEL;
   }
 
   getModel(): string {
@@ -52,11 +48,7 @@ export class MetaLlmProvider implements LlmProvider {
     signal?: AbortSignal
   ): Promise<string[]> {
     const key = apiKey || env.META_API_KEY || '';
-    const base = (
-      baseUrl ||
-      env.META_BASE_URL ||
-      DEFAULT_META_BASE_URL
-    ).replace(/\/$/, '');
+    const base = (baseUrl || env.META_BASE_URL || DEFAULT_META_BASE_URL).replace(/\/$/, '');
     const fallbackModel = env.META_MODEL || DEFAULT_META_MODEL;
 
     if (!key) {
@@ -84,7 +76,7 @@ export class MetaLlmProvider implements LlmProvider {
 
       const models = json.data
         .map((m) => m.id)
-        .filter((id): id is string => typeof id === 'string' && id.length > 0);
+        .filter((id): id is string => typeof id === 'string' && isCopilotModel(id));
 
       return models.length > 0 ? models : [fallbackModel];
     } catch {

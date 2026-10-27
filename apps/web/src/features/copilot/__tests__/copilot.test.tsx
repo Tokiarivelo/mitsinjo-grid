@@ -18,21 +18,16 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
 
     expect(screen.getByText('Mitsinjo Copilot')).toBeInTheDocument();
     expect(screen.getByText('AI EXPLANATION')).toBeInTheDocument();
-    expect(
-      screen.getAllByText('SIMULATED DATA').length
-    ).toBeGreaterThanOrEqual(1);
-    expect(
-      screen.getByText('Explore Simulation Trade-offs with AI')
-    ).toBeInTheDocument();
+    expect(screen.getAllByText('SIMULATED DATA').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Explore Simulation Trade-offs with AI')).toBeInTheDocument();
     expect(screen.getByText('SUGGESTED EXPLORATION PROMPTS')).toBeInTheDocument();
   });
 
   it('renders ToolActivity with deterministic status', () => {
-    render(<ToolActivity label="Reviewing health sector telemetry" />);
+    render(<ToolActivity activity={{ tool: 'get_sector_metrics', sector: 'health' }} />);
 
-    expect(
-      screen.getByText('Reviewing health sector telemetry')
-    ).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/Reviewing .+ sector data/);
+    expect(screen.queryByText(/\bhealth\b/)).not.toBeInTheDocument();
     expect(screen.getByText('DETERMINISTIC')).toBeInTheDocument();
   });
 
@@ -42,34 +37,35 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
       role: 'assistant',
       content: '',
       sections: {
-        whatHappened:
-          'During the afternoon solar drop, available power fell below demand.',
-        computedEvidence:
-          'Result ID: SIM-123456\nTotal Demand: 120 kWh\nServed: 100 kWh',
-        whyItMatters:
-          'Unserved energy threatens cold-chain vaccine storage at the health clinic.',
+        whatHappened: 'During the afternoon solar drop, available power fell below demand.',
+        computedEvidence: 'Result ID: SIM-123456\nTotal Demand: 120 kWh\nServed: 100 kWh',
+        whyItMatters: 'Unserved energy threatens cold-chain vaccine storage at the health clinic.',
         exploreNext:
           'Switch allocation strategy to Essential-First to protect critical clinic power.',
       },
-      evidence: {
-        resultId: 'SIM-123456',
-        fields: {
-          solarPeakKw: 34.8,
-          criticalCoveragePct: 88.5,
+      evidence: [
+        {
+          resultId: 'SIM-123456',
+          fields: {
+            solarPeakKw: 34.8,
+            criticalCoveragePct: 88.5,
+          },
         },
-      },
+        { resultId: 'SIM-abcdef', fields: { unservedKwh: 12.5 } },
+      ],
     };
 
     render(<ChatMessageItem message={assistantMsg} />);
 
     expect(screen.getByText('What happened')).toBeInTheDocument();
     expect(
-      screen.getByText(
-        'During the afternoon solar drop, available power fell below demand.'
-      )
+      screen.getByText('During the afternoon solar drop, available power fell below demand.')
     ).toBeInTheDocument();
     expect(screen.getByText('Computed evidence')).toBeInTheDocument();
     expect(screen.getByText('SIM-123456')).toBeInTheDocument();
+    // Every tool result keeps its own evidence table (not just the last one).
+    expect(screen.getByText('SIM-abcdef')).toBeInTheDocument();
+    expect(screen.getByText('12.5')).toBeInTheDocument();
     expect(screen.getByText('Why it matters')).toBeInTheDocument();
     expect(screen.getByText('Explore next')).toBeInTheDocument();
     expect(screen.getByText('MITSINJO REASONING CORE')).toBeInTheDocument();
@@ -95,13 +91,9 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
       />
     );
 
-    expect(
-      screen.getByText('PROPOSED SCENARIO MODIFICATION')
-    ).toBeInTheDocument();
+    expect(screen.getByText('PROPOSED SCENARIO MODIFICATION')).toBeInTheDocument();
     expect(screen.getByText('PROP-01')).toBeInTheDocument();
-    expect(
-      screen.getByText('Test proposal to protect health loads')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Test proposal to protect health loads')).toBeInTheDocument();
     expect(screen.getByText('40%')).toBeInTheDocument();
 
     // Click Approve
@@ -128,9 +120,7 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
           reason: 'Switch to essential-first policy',
         }}
         onApprove={() => {
-          useSimulationStore
-            .getState()
-            .applyProposal(undefined, 'essential_first');
+          useSimulationStore.getState().applyProposal(undefined, 'essential_first');
         }}
         onReject={() => {}}
       />
@@ -175,16 +165,19 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
 
     render(<ChatMessageItem message={errorMsg} />);
 
+    expect(screen.getByText('Simulation Advisory Notice')).toBeInTheDocument();
+    expect(screen.getByText('AI provider rate limit reached.')).toBeInTheDocument();
     expect(
-      screen.getByText('Simulation Advisory Notice')
+      screen.getByText('Deterministic simulation results remain fully available and active.')
     ).toBeInTheDocument();
-    expect(
-      screen.getByText('AI provider rate limit reached.')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Deterministic simulation results remain fully available and active.'
-      )
-    ).toBeInTheDocument();
+  });
+
+  it('renders a translated error from its key, not raw server text', () => {
+    render(
+      <ChatMessageItem
+        message={{ id: 'e2', role: 'error', content: '', errorKey: 'errorRateLimited' }}
+      />
+    );
+    expect(screen.getByText(/Too many requests/)).toBeInTheDocument();
   });
 });

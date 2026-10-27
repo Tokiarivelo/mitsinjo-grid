@@ -280,7 +280,20 @@
       "promptSwitchStrategy": "Should we switch strategy to {strategy} to protect essential services?",
       "promptDeficitHours": "Why is there unserved energy during hours {hours}?",
       "diffDispatchPolicy": "Dispatch Strategy",
-      "modelSelectorLabel": "MODEL:"
+      "modelSelectorLabel": "MODEL:",
+      "activityBadge": "DETERMINISTIC",
+      "errorProviderFallback": "AI unavailable — showing deterministic explanation.",
+      "errorRateLimited": "Too many requests. Please wait a moment before trying again.",
+      "errorGeneric": "The copilot could not answer. Computed results are unchanged.",
+      "activity": {
+        "start": "Reading the simulation state",
+        "get_grid_state": "Reading current scenario",
+        "run_scenario": "Simulating scenario parameters",
+        "compare_strategies": "Running strategy comparison",
+        "get_sector_metrics": "Reviewing {sector} sector data",
+        "propose_change": "Preparing a proposal for your review",
+        "default": "Reviewing computed results"
+      }
     }
   },
   "copilot": {

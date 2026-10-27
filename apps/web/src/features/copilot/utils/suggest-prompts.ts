@@ -62,8 +62,9 @@ export function suggestPrompts(options?: SuggestPromptsOptions): SuggestedPrompt
 
   // 2. Warnings with specific hours
   if (result.warnings && result.warnings.length > 0) {
+    // Only shortage warnings: CURTAILMENT / RESERVE_REACHED are not a deficit.
     const warningWithHours = result.warnings.find(
-      (w) => typeof w.fromHour === 'number' && typeof w.toHour === 'number'
+      (w) => w.code === 'CRITICAL_UNMET' || w.code === 'SECTOR_PARTIAL'
     );
     if (warningWithHours) {
       pushPrompt({

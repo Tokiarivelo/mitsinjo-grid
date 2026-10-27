@@ -149,7 +149,7 @@ STRATEGIES: Record<StrategyId, { label: string; rule: string }>
 | `get_grid_state`     | `{}`                                                                                    | `{ scenarioId, input summary, metrics of active strategy, resultId }` |
 | `run_scenario`       | `{ scenarioId?, patch?: InputPatch, strategy }`                                         | `{ resultId, metrics, warnings }`                                     |
 | `compare_strategies` | `{ strategies?: StrategyId[] }` (on current input)                                      | `{ [strategy]: { resultId, metrics } }`                               |
-| `get_sector_metrics` | `{ sector: SectorId, strategy: StrategyId }`                                            | `SectorMetrics & { priority, hourly: {t,demandKw,servedKw}[] }`       |
+| `get_sector_metrics` | `{ sector: SectorId, strategy?: StrategyId }` (default: active)                         | `SectorMetrics & { priority, hourly: {t,demandKw,servedKw}[] }`       |
 | `propose_change`     | `{ patch?: InputPatch, strategy?: StrategyId, reason: string }` (≥ 1 of patch/strategy) | `{ proposalId }` — **not applied**; UI asks user                      |
 
 ```ts
@@ -169,5 +169,5 @@ interface InputPatch {
 
 `POST /api/copilot` body `{ messages: {role:'user'|'assistant', content:string}[], input: SimulationInput }`
 → `text/event-stream` events:
-`activity {label}` · `delta {text}` · `evidence {resultId, fields: Record<string, number|string>}` ·
+`activity {tool, sector?, label}` (UI translates `tool`; `label` is English, logs only) · `delta {text}` · `evidence {resultId, fields: Record<string, number|string>}` ·
 `proposal {proposalId, patch?, strategy?, reason}` · `error {code, message}` · `done {}`.

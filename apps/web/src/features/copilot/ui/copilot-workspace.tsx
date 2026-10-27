@@ -18,10 +18,7 @@ export interface CopilotWorkspaceProps {
   className?: string;
 }
 
-export function CopilotWorkspace({
-  mode = 'full',
-  className,
-}: CopilotWorkspaceProps) {
+export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceProps) {
   const tCopilot = useTranslations('features.copilot');
   const tCommon = useTranslations('common');
 
@@ -81,9 +78,7 @@ export function CopilotWorkspace({
                 </h1>
                 <StatusBadge variant="ai" label={tCopilot('badge')} size="sm" />
               </div>
-              <p className="text-xs text-text-secondary mt-0.5">
-                {tCopilot('subtitle')}
-              </p>
+              <p className="text-xs text-text-secondary mt-0.5">{tCopilot('subtitle')}</p>
             </div>
           </div>
 
@@ -131,7 +126,7 @@ export function CopilotWorkspace({
           className="flex-1 flex flex-col gap-4 min-w-0 min-h-0"
         >
           {/* Tool Activity Status Bar if executing */}
-          {toolActivity && <ToolActivity label={toolActivity} />}
+          {toolActivity && <ToolActivity activity={toolActivity} />}
 
           {/* Chat Stream Canvas */}
           <div
@@ -189,7 +184,7 @@ export function CopilotWorkspace({
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
                 <div className="flex flex-col gap-0.5">
                   <span className="font-semibold">{tCopilot('errorTitle')}</span>
-                  <span>{error}</span>
+                  <span>{tCopilot(error)}</span>
                 </div>
               </div>
             )}

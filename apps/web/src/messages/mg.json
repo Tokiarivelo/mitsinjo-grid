@@ -280,7 +280,20 @@
       "promptSwitchStrategy": "Tokony hanova paikady ho {strategy} ve isika mba hiarovana ny tolotra ilaina?",
       "promptDeficitHours": "Nahoana no misy tsy fahampiana angovo amin'ny ora {hours}?",
       "diffDispatchPolicy": "Paikady fitsinjarana",
-      "modelSelectorLabel": "MODELY:"
+      "modelSelectorLabel": "MODELY:",
+      "activityBadge": "VOAFARITRA MIALOHA",
+      "errorProviderFallback": "Tsy misy ny IA — fanazavana voafaritra mialoha no aseho.",
+      "errorRateLimited": "Be loatra ny fangatahana. Andraso kely vao manandrana indray.",
+      "errorGeneric": "Tsy nahavaly ny mpanampy. Tsy miova ny valiny voakajy.",
+      "activity": {
+        "start": "Famakiana ny toetry ny simulation",
+        "get_grid_state": "Famakiana ny scénario ankehitriny",
+        "run_scenario": "Simulation ny masontsivana",
+        "compare_strategies": "Fampitahana ireo paikady",
+        "get_sector_metrics": "Fandinihana ny angon-drakitry ny sehatra {sector}",
+        "propose_change": "Fanomanana tolo-kevitra ho hamarinina",
+        "default": "Fandinihana ny valiny voakajy"
+      }
     }
   },
   "copilot": {

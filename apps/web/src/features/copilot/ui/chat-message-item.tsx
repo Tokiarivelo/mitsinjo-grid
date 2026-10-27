@@ -30,9 +30,7 @@ export function ChatMessageItem({
               {tCopilot('userRole')}
             </span>
             {message.timestamp && (
-              <span className="text-[10px] font-mono text-text-muted/60">
-                {message.timestamp}
-              </span>
+              <span className="text-[10px] font-mono text-text-muted/60">{message.timestamp}</span>
             )}
           </div>
           <div className="bg-surface-elevated border border-border text-text-primary rounded-2xl rounded-tr-xs px-4 py-3 text-sm leading-relaxed shadow-xs">
@@ -56,7 +54,7 @@ export function ChatMessageItem({
           <div className="font-semibold mb-1 flex items-center gap-1.5">
             <span>{tCopilot('errorTitle')}</span>
           </div>
-          <p>{message.content}</p>
+          <p>{message.errorKey ? tCopilot(message.errorKey) : message.content}</p>
           <span className="block mt-2 text-[11px] text-text-secondary">
             {tCopilot('errorFallbackNote')}
           </span>
@@ -67,7 +65,7 @@ export function ChatMessageItem({
 
   // Assistant Message
   const sections = message.sections;
-  const evidence = message.evidence;
+  const evidenceList = (message.evidence ?? []).filter((e) => Object.keys(e.fields).length > 0);
   const proposal = message.proposal;
 
   return (
@@ -83,9 +81,7 @@ export function ChatMessageItem({
             {tCopilot('aiCoreTitle')}
           </span>
           {message.timestamp && (
-            <span className="text-[10px] font-mono text-text-muted/60">
-              {message.timestamp}
-            </span>
+            <span className="text-[10px] font-mono text-text-muted/60">{message.timestamp}</span>
           )}
           <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-surface border border-border text-text-secondary">
             {tCopilot('simulatedProvenance')}
@@ -107,18 +103,13 @@ export function ChatMessageItem({
           )}
 
           {/* Computed Evidence Section */}
-          {(sections?.computedEvidence || (evidence && Object.keys(evidence.fields).length > 0)) && (
+          {(sections?.computedEvidence || evidenceList.length > 0) && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-mono text-energy-cyan uppercase font-semibold tracking-wider">
                   <span className="w-1.5 h-1.5 rounded-full bg-energy-cyan" />
                   <span>{tCopilot('sectionEvidence')}</span>
                 </div>
-                {evidence?.resultId && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface border border-border text-energy-cyan">
-                    {evidence.resultId}
-                  </span>
-                )}
               </div>
 
               {sections?.computedEvidence && (
@@ -127,8 +118,14 @@ export function ChatMessageItem({
                 </div>
               )}
 
-              {evidence && Object.keys(evidence.fields).length > 0 && (
-                <div className="overflow-x-auto rounded-lg border border-border/60 bg-surface">
+              {evidenceList.map((evidence, idx) => (
+                <div
+                  key={`${evidence.resultId}-${idx}`}
+                  className="overflow-x-auto rounded-lg border border-border/60 bg-surface"
+                >
+                  <div className="px-3 pt-2 text-[10px] font-mono text-energy-cyan">
+                    {evidence.resultId}
+                  </div>
                   <table className="w-full text-left font-mono text-[11px]">
                     <thead>
                       <tr className="border-b border-border/40 bg-surface-elevated text-text-muted text-[10px]">
@@ -140,15 +137,13 @@ export function ChatMessageItem({
                       {Object.entries(evidence.fields).map(([k, v]) => (
                         <tr key={k} className="hover:bg-surface-elevated/40">
                           <td className="py-2 px-3 text-text-secondary">{k}</td>
-                          <td className="py-2 px-3 font-semibold text-energy-cyan">
-                            {String(v)}
-                          </td>
+                          <td className="py-2 px-3 font-semibold text-energy-cyan">{String(v)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              )}
+              ))}
             </div>
           )}
 

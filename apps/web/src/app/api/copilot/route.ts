@@ -6,7 +6,7 @@ import { SimulationInputSchema } from '@mitsinjo/engine';
 import { env } from '@/lib/env';
 import { runCopilotLoop } from '@/server/copilot/loop';
 import { MockLlmProvider } from '@/server/copilot/providers/mock';
-import { MetaLlmProvider } from '@/server/copilot/providers/meta';
+import { MetaLlmProvider, isCopilotModel } from '@/server/copilot/providers/meta';
 
 // In-memory rate limiter: max 30 requests per minute per client
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -49,10 +49,8 @@ const RequestBodySchema = z.object({
     )
     .min(1),
   input: SimulationInputSchema,
-  strategy: z
-    .enum(['proportional', 'essential_first', 'balanced'])
-    .optional(),
-  model: z.string().optional(),
+  strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
+  model: z.string().max(64).refine(isCopilotModel).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -135,8 +133,7 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         emit('error', {
           code: 'UNHANDLED_ERROR',
-          message:
-            err instanceof Error ? err.message : 'Internal streaming error',
+          message: err instanceof Error ? err.message : 'Internal streaming error',
         });
         emit('done', {});
       } finally {
