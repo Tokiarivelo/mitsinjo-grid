@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
-import { applyPatch } from '../patch';
+import { DEFAULT_DROP_DURATION_H, DEFAULT_DROP_START_HOUR } from '../constants';
+import { applyPatch, getSolarDrop } from '../patch';
 import { createBaselineInput, createCloudyAfternoonInput } from '../scenarios';
 
 describe('applyPatch (P3-T7)', () => {
@@ -168,5 +169,32 @@ describe('applyPatch (P3-T7)', () => {
         sectorCaps: [{ sector: 'market', maxKw: 1, fromHour: 24, toHour: 25 }],
       })
     ).toThrow(ZodError);
+  });
+});
+
+describe('getSolarDrop', () => {
+  it('returns defaults and 0 % when there is no drop event', () => {
+    expect(getSolarDrop(createBaselineInput())).toEqual({
+      pct: 0,
+      startHour: DEFAULT_DROP_START_HOUR,
+      durationH: DEFAULT_DROP_DURATION_H,
+    });
+  });
+
+  it('reads the existing drop event as control values', () => {
+    expect(getSolarDrop(createCloudyAfternoonInput())).toEqual({
+      pct: 40,
+      startHour: 13,
+      durationH: 2,
+    });
+  });
+
+  it('matches the window applyPatch uses for a new drop', () => {
+    const patched = applyPatch(createBaselineInput(), { solarDropPct: 30 });
+    expect(getSolarDrop(patched)).toEqual({
+      pct: 30,
+      startHour: DEFAULT_DROP_START_HOUR,
+      durationH: DEFAULT_DROP_DURATION_H,
+    });
   });
 });

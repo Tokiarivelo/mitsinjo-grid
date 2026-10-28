@@ -7,6 +7,10 @@ export const EPS = 1e-9;
 export const HORIZON_H = 24 as const;
 export const STEP_H = 1 as const;
 
+/** Solar drop window used when a patch adds a drop without start/duration. */
+export const DEFAULT_DROP_START_HOUR = 12;
+export const DEFAULT_DROP_DURATION_H = 3;
+
 export const STRATEGIES: Record<StrategyId, { label: string; rule: string }> = {
   proportional: {
     label: 'Proportional',

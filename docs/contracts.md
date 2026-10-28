@@ -158,6 +158,7 @@ simulate(input: SimulationInput, strategy: StrategyId): SimulationResult
 compare(input: SimulationInput, strategies?: StrategyId[]): Comparison
 parseInput(raw: unknown): SimulationInput             // throws ZodError
 applyPatch(input: SimulationInput, patch: InputPatch): SimulationInput
+getSolarDrop(input: SimulationInput): { pct; startHour; durationH } // defaults 12 h / 3 h (DEFAULT_DROP_*) when no drop
 scenarios: Record<ScenarioId, { title: string; description: string; input: SimulationInput }>
 STRATEGIES: Record<StrategyId, { label: string; rule: string }>
 ```
