@@ -41,7 +41,7 @@ describe('ImpactBanner titles (states-copy)', () => {
     renderBanner([
       { code: 'ANOMALY_TO_VERIFY', sector: 'market', fromHour: 11, toHour: 14 } as SimWarning,
     ]);
-    expect(screen.getByText("Anomaly Signal to Verify")).toBeInTheDocument();
+    expect(screen.getByText('Anomaly Signal to Verify')).toBeInTheDocument();
     expect(screen.getByText(/Requires verification/i)).toBeInTheDocument();
   });
 
@@ -49,6 +49,6 @@ describe('ImpactBanner titles (states-copy)', () => {
     renderBanner([
       { code: 'SECTOR_CAPPED', sector: 'market', fromHour: 18, toHour: 22 } as SimWarning,
     ]);
-    expect(screen.getByText("Sector Capacity Cap Active")).toBeInTheDocument();
+    expect(screen.getByText('Sector Capacity Cap Active')).toBeInTheDocument();
   });
 });

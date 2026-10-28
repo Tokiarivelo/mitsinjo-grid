@@ -66,8 +66,6 @@ describe('validatePatch', () => {
       )
     ).toBeNull();
 
-    expect(
-      validatePatch('priorities', { priorities: { water: 'critical' } }, input)
-    ).toBeNull();
+    expect(validatePatch('priorities', { priorities: { water: 'critical' } }, input)).toBeNull();
   });
 });

@@ -165,9 +165,7 @@ describe('simulate (P3-T5)', () => {
       const input = structuredClone(scenarios.baseline.input);
       const market = input.sectors.find((s) => s.id === 'market')!;
       // Divergence is 2.3 kW vs 2.0 kW (+15% <= 25%) for 4 hours
-      market.meterReadings = market.profileKw.map((kw, h) =>
-        h >= 10 && h < 14 ? 2.3 : kw
-      );
+      market.meterReadings = market.profileKw.map((kw, h) => (h >= 10 && h < 14 ? 2.3 : kw));
 
       const sim = simulate(input, 'proportional');
       const anomalyWarn = sim.warnings.find((w) => w.code === 'ANOMALY_TO_VERIFY');

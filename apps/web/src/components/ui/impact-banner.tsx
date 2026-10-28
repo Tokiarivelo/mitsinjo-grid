@@ -104,7 +104,11 @@ export function ImpactBanner({ warnings, className, showNominal = true }: Impact
             toneClass = 'border-ai-violet/50 bg-ai-violet/10 text-ai-violet';
             icon = <Search className="h-4 w-4 text-ai-violet" aria-hidden="true" />;
             title = tWarnings('anomalyToVerifyTitle');
-            desc = tWarnings('anomalyToVerifyDesc', { sector: sectorName, from: fromStr, to: toStr });
+            desc = tWarnings('anomalyToVerifyDesc', {
+              sector: sectorName,
+              from: fromStr,
+              to: toStr,
+            });
             break;
           }
 

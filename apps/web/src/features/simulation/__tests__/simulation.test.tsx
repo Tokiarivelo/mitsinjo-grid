@@ -101,7 +101,9 @@ describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
 
     // 2. Reduce duration to 1 -> 23 + 1 = 24 <= 24
     fireEvent.change(dropDurationSlider, { target: { value: '1' } });
-    expect(screen.queryByText(/drop start \+ duration cannot exceed 24 hours/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/drop start \+ duration cannot exceed 24 hours/i)
+    ).not.toBeInTheDocument();
     expect(dropDurationSlider).toHaveValue('1');
     expect(dropStartSlider).toHaveValue('23');
 
@@ -118,11 +120,15 @@ describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
     // Draft window 23h + 3h is rejected, then the drop % move is rejected for the same reason
     fireEvent.change(screen.getByLabelText(/drop start hour/i), { target: { value: '23' } });
     fireEvent.change(screen.getByLabelText(/solar drop/i), { target: { value: '40' } });
-    expect(screen.getAllByText(/drop start \+ duration cannot exceed 24 hours/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/drop start \+ duration cannot exceed 24 hours/i).length
+    ).toBeGreaterThan(0);
 
     // Shrinking the duration makes the window valid: every drop error clears and Run is enabled
     fireEvent.change(screen.getByLabelText(/drop duration/i), { target: { value: '1' } });
-    expect(screen.queryByText(/drop start \+ duration cannot exceed 24 hours/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/drop start \+ duration cannot exceed 24 hours/i)
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /run simulation/i })).not.toBeDisabled();
   });
 
@@ -138,7 +144,9 @@ describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
     const resetBtn = screen.getByRole('button', { name: /reset scenario/i });
     fireEvent.click(resetBtn);
 
-    expect(screen.queryByText(/drop start \+ duration cannot exceed 24 hours/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/drop start \+ duration cannot exceed 24 hours/i)
+    ).not.toBeInTheDocument();
     expect(screen.getByLabelText(/drop start hour/i)).toHaveValue('12');
   });
 

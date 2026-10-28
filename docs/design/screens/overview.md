@@ -35,6 +35,7 @@ The page uses a clean, compact Bento grid that fits standard desktop viewports (
 ## Sections & Components
 
 ### 1. Top Executive Bar
+
 - App Title: `Mitsinjo Grid` + subtitle "Understand energy availability and community impact."
 - Simulated Data Badge: `SIMULATED DATA` status pill.
 - Scenario Selector: Interactive dropdown allowing the operator to switch active scenario (`baseline`, `cloudy_afternoon`, `high_demand`, `battery_constraint`, `essential_stress`, `meter_anomaly`) directly from the overview.
@@ -43,13 +44,16 @@ The page uses a clean, compact Bento grid that fits standard desktop viewports (
   - If simulation is complete: `Open live simulation` (links to `/simulation`).
 
 ### 2. Four Telemetry Metric Cards
+
 Four cards spanning 4 columns (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`):
+
 - **Peak Solar PV**: Value in `kW` (`Math.max(...steps.map(s => s.solarKw))`), caption with total 24h generated `kWh` (`metrics.solarKwh`), amber icon and accent.
 - **Battery End SoC**: Value in `%` (`metrics.socEndPct`), caption with minimum SoC and total battery capacity `kWh`, warning state if ending SoC approaches minimum reserve.
 - **Total 24h Demand**: Value in `kWh` (`metrics.demandKwh`), caption with unserved energy `kWh` (`metrics.unservedKwh`), warning if unserved energy > 0.1 kWh.
 - **Essential Services**: Value in `%` (`metrics.criticalCoveragePct`), critical red status when `metrics.criticalUnservedKwh > 0.05`, caption detailing shortfall `kWh` and unmet hours.
 
 ### 3. Left Column (col-span-7 Bento): Digital Twin & 24h Telemetry
+
 - **Village Digital Twin Preview (`GridSchematicPreview`)**:
   - Interactive 3D microgrid digital twin (`LazyVillageCanvas`) with a 2D `GridDiagram` (topology view, electrons on
     powered lines) as toggle and as fallback for devices without WebGL.
@@ -68,6 +72,7 @@ Four cards spanning 4 columns (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`):
   - Unit: `kW / %`. Resolution: 1-hour engine step horizon.
 
 ### 4. Right Column (col-span-5 Bento): Sectors & Resilience Impact
+
 - **Service Allocation & Load Shedding Hierarchy**:
   - 5 Village Sectors ordered by resilience tier:
     1. Health Clinic (Critical Tier 1)

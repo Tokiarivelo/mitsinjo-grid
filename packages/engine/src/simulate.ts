@@ -107,10 +107,14 @@ export function simulate(input: SimulationInput, strategy: StrategyId): Simulati
     const { dischargeMaxKw } = computeDischargeMaxKw(input.battery, storedKwh);
     const availableKw = solarKw + dischargeMaxKw;
 
-    const activeCaps =
-      input.sectorCaps?.filter((c) => t >= c.fromHour && t < c.toHour) ?? [];
+    const activeCaps = input.sectorCaps?.filter((c) => t >= c.fromHour && t < c.toHour) ?? [];
 
-    const sectorSteps = allocateWithCaps(strategy, availableKw, demandResult.sectorList, activeCaps);
+    const sectorSteps = allocateWithCaps(
+      strategy,
+      availableKw,
+      demandResult.sectorList,
+      activeCaps
+    );
 
     let servedKw = 0;
     for (const sectorItem of demandResult.sectorList) {

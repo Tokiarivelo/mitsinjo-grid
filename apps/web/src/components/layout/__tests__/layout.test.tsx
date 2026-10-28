@@ -47,25 +47,15 @@ describe('Layout Components (Mobile & Theme Responsive)', () => {
     expect(links.length).toBe(5);
 
     const hrefs = links.map((l) => l.getAttribute('href'));
-    expect(hrefs).toEqual([
-      '/overview',
-      '/simulation',
-      '/strategies',
-      '/scenarios',
-      '/copilot',
-    ]);
+    expect(hrefs).toEqual(['/overview', '/simulation', '/strategies', '/scenarios', '/copilot']);
   });
 
   it('Header includes ThemeSwitcher button and triggers theme toggle', () => {
-    render(
-      <Header
-        title="Page Title"
-        onMenuToggle={vi.fn()}
-      />,
-      { wrapper }
-    );
+    render(<Header title="Page Title" onMenuToggle={vi.fn()} />, { wrapper });
 
-    const themeBtn = screen.getByRole('button', { name: /toggle color theme|changer le thème|hanova loko/i });
+    const themeBtn = screen.getByRole('button', {
+      name: /toggle color theme|changer le thème|hanova loko/i,
+    });
     expect(themeBtn).toBeInTheDocument();
 
     fireEvent.click(themeBtn);
