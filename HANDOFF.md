@@ -1,30 +1,29 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-28 · **By:** Antigravity (Neon DB Live Verified, Cloudflare R2 Guide) · **Branch:** `feat/simulation-weather-workflow`
+**Updated:** 2026-10-28 · **By:** Antigravity · **Branch:** `feat/simulation-weather-workflow` · **PR:** [#21](https://github.com/Tokiarivelo/mitsinjo-grid/pull/21)
 
 ## State
 
-- Neon PostgreSQL live connection **fully tested and verified** (`ep-hidden-king-b8d7t7ix-pooler.c-14.us-east-1.aws.neon.tech`).
-- Serverless driver adapter configured in `apps/web/src/server/db/neon.ts` with IPv4 HTTPS fetch fallback (eliminates IPv6 ENETUNREACH in dual-stack environments).
-- Neon DB tables `copilot_sessions` and `copilot_messages` automatically created and operational on user's live Neon DB; sessions CRUD API verified (`/api/copilot/sessions`).
-- Detailed French guide created for Cloudflare R2: `docs/setup/cloudflare-r2.md` explaining step-by-step account setup, bucket creation, public access URL, and S3 API credentials.
-- `.env.example`, `docs/setup/README.md`, and `docs/copilot.md` updated with R2 variables and guide references.
-- Full test suite: **50/50 test files passed (321/321 tests passing)**.
-- Formatting: `make format-changed` cleanly passed.
+- PR #21 created: `feat(copilot): add multimodal chat, interactive charts, neon db persistence, and cloudflare r2 storage`.
+- Full quality gate passed (`make check`): 51/51 test files (327/327 tests), 0 type errors, 0 lint errors, 100% i18n parity.
+- Multimodal Copilot: attachment dock, Canvas Studio, Lightbox with Canvas Inspector, embedded Recharts.
+- Cloudflare R2: presigned upload/download URLs, offline fallback, French guide at `docs/setup/cloudflare-r2.md`.
+- Neon PostgreSQL: live verified on serverless instance with auto-initialized tables and IPv4-safe adapter.
+- Multi-day weather workflow & 3D atmosphere (rain particles, clouds, fog, lightning, night palette).
 
 ## Next task
 
-- Review and PR merge for `feat/simulation-weather-workflow`.
-- Configure `R2_*` credentials from Cloudflare dashboard into `.env.local` to enable direct S3 presigned URL storage.
+- Review and merge PR #21 into `main`.
+- Add R2 credentials into `.env.local` to switch from base64 fallback to live Cloudflare R2 storage.
 
 ## Decisions taken
 
-- `neonConfig.fetchFunction` configured to prioritize IPv4 family on Node server, avoiding node-fetch undici timeout on unreachable IPv6 gateways.
-- Neon DB operations verified end-to-end with live SELECT, CREATE TABLE, session creation, and deletion.
-- Comprehensive French guide covers exact Cloudflare UI screens, S3 credentials, and public r2.dev subdomain setup.
+- All linters, TypeScript strict types, and React 19 hook guidelines strictly satisfied.
+- Transparent fallbacks for both R2 and Neon DB ensure zero breakages in offline / test environments.
 
 ## Files touched this session
 
-- DB: `apps/web/src/server/db/neon.ts`
-- Guides & Docs: `docs/setup/cloudflare-r2.md`, `docs/setup/README.md`, `docs/copilot.md`, `.env.example`
-- Tests: `apps/web/src/server/db/__tests__/neon.test.ts`
+- Copilot UI: `features/copilot/ui/*`, `features/copilot/hooks/*`, `features/copilot/utils/*`
+- Services & API: `server/storage/r2.ts`, `server/db/neon.ts`, `server/copilot/*`, `app/api/copilot/*`
+- 3D & Sim: `features/microgrid-3d/*`, `features/simulation/*`, `packages/engine/*`
+- Docs: `docs/setup/cloudflare-r2.md`, `docs/setup/README.md`, `docs/copilot.md`, `.env.example`
