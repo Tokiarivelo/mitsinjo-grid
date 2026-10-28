@@ -2,13 +2,30 @@
 
 import { useState } from 'react';
 import { AlertTriangle, Play, RotateCcw, Sliders } from 'lucide-react';
-import { type InputPatch, type SimulationInput, type StrategyId } from '@mitsinjo/engine';
+import {
+  getSolarDrop,
+  type InputPatch,
+  type SimulationInput,
+  type StrategyId,
+} from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { SimControl } from '@/components/ui/sim-control';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useTranslations } from '@/lib/i18n';
 import { validatePatch } from '../utils/validate-patch';
+
+const DROP_FIELDS: ReadonlyArray<keyof InputPatch> = [
+  'solarDropPct',
+  'dropStartHour',
+  'dropDurationH',
+];
+
+function withoutDropErrors(errors: Record<string, string>): Record<string, string> {
+  const rest = { ...errors };
+  for (const f of DROP_FIELDS) delete rest[f];
+  return rest;
+}
 
 export interface SimControlsPanelProps {
   input: SimulationInput;
@@ -37,14 +54,34 @@ export function SimControlsPanel({
   const tSectors = useTranslations('sectors');
   const tPriorities = useTranslations('priorities');
 
-  // Derive existing parameters from current input
-  const existingSolarDrop = input.events.find((e) => e.type === 'solar_drop');
-  const currentDropPct = existingSolarDrop ? Math.round((1 - existingSolarDrop.factor) * 100) : 0;
-  const currentDropStart = existingSolarDrop ? existingSolarDrop.startHour : 12;
-  const currentDropDuration = existingSolarDrop ? existingSolarDrop.durationH : 3;
+  // Committed solar drop (engine input). Start/duration sliders keep a draft so a rejected
+  // value stays visible until a compensating move makes start + duration fit the horizon.
+  const {
+    pct: currentDropPct,
+    startHour: initialDropStart,
+    durationH: initialDropDuration,
+  } = getSolarDrop(input);
+
+  const [draftStart, setDraftStart] = useState<number>(initialDropStart);
+  const [draftDuration, setDraftDuration] = useState<number>(initialDropDuration);
 
   // Validation error dictionary for inline feedback
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Track previous input & status to sync draft state during render without cascading effects
+  const [prevInput, setPrevInput] = useState(input);
+  const [prevStatus, setPrevStatus] = useState(status);
+  if (prevInput !== input || prevStatus !== status) {
+    setPrevInput(input);
+    setPrevStatus(status);
+    if (status === 'ready' || status === 'complete') {
+      // Reset or run (incl. the header Run button): drafts follow the committed input again,
+      // so their pending horizon errors no longer apply.
+      setDraftStart(initialDropStart);
+      setDraftDuration(initialDropDuration);
+      setErrors((prev) => (status === 'ready' ? {} : withoutDropErrors(prev)));
+    }
+  }
 
   const validateAndPatch = (field: keyof InputPatch, candidate: InputPatch) => {
     const error = validatePatch(field, candidate, input);
@@ -55,36 +92,42 @@ export function SimControlsPanel({
       return;
     }
     delete newErrors[field];
-    if (field === 'dropStartHour' || field === 'dropDurationH') {
-      delete newErrors.dropStartHour;
-      delete newErrors.dropDurationH;
-    }
-    setErrors(newErrors);
+    // The three drop controls are validated together: one valid move clears all of them.
+    setErrors(DROP_FIELDS.includes(field) ? withoutDropErrors(newErrors) : newErrors);
     onPatch(candidate);
   };
 
   const handleSolarDropChange = (val: number) => {
     validateAndPatch('solarDropPct', {
       solarDropPct: val,
-      dropStartHour: currentDropStart,
-      dropDurationH: currentDropDuration,
+      dropStartHour: draftStart,
+      dropDurationH: draftDuration,
     });
   };
 
   const handleDropStartChange = (val: number) => {
+    setDraftStart(val);
     validateAndPatch('dropStartHour', {
       dropStartHour: val,
-      dropDurationH: currentDropDuration,
+      dropDurationH: draftDuration,
       solarDropPct: currentDropPct,
     });
   };
 
   const handleDropDurationChange = (val: number) => {
+    setDraftDuration(val);
     validateAndPatch('dropDurationH', {
       dropDurationH: val,
-      dropStartHour: currentDropStart,
+      dropStartHour: draftStart,
       solarDropPct: currentDropPct,
     });
+  };
+
+  const handleReset = () => {
+    setErrors({});
+    setDraftStart(initialDropStart);
+    setDraftDuration(initialDropDuration);
+    onReset();
   };
 
   const handleDemandMultiplierChange = (val: number) => {
@@ -138,8 +181,14 @@ export function SimControlsPanel({
           <Button
             variant="secondary"
             size="sm"
-            onClick={onReset}
-            disabled={status === 'ready' && !isModified}
+            onClick={handleReset}
+            disabled={
+              status === 'ready' &&
+              !isModified &&
+              !hasErrors &&
+              draftStart === initialDropStart &&
+              draftDuration === initialDropDuration
+            }
             icon={<RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />}
             aria-label={tSim('resetScenario')}
           >
@@ -185,7 +234,7 @@ export function SimControlsPanel({
         {/* 2. Drop Start Hour */}
         <SimControl
           label={tSim('dropStartHour')}
-          value={currentDropStart}
+          value={draftStart}
           unit="h"
           min={0}
           max={23}
@@ -198,7 +247,7 @@ export function SimControlsPanel({
         {/* 3. Drop Duration */}
         <SimControl
           label={tSim('dropDuration')}
-          value={currentDropDuration}
+          value={draftDuration}
           unit="h"
           min={1}
           max={24}

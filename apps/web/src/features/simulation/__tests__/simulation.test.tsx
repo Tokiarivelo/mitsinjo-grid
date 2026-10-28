@@ -86,6 +86,70 @@ describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
     expect(runBtn).toBeDisabled();
   });
 
+  it('clears dropExceedsHorizon error when compensating parameter makes total <= 24h', () => {
+    render(<SimulationPage />);
+
+    fireEvent.click(screen.getByRole('tab', { name: /controls/i }));
+
+    const dropStartSlider = screen.getByLabelText(/drop start hour/i);
+    const dropDurationSlider = screen.getByLabelText(/drop duration/i);
+
+    // 1. Move start to 23 when duration is 3 -> 23 + 3 = 26 > 24
+    fireEvent.change(dropStartSlider, { target: { value: '23' } });
+    expect(screen.getByText(/drop start \+ duration cannot exceed 24 hours/i)).toBeInTheDocument();
+    expect(dropStartSlider).toHaveValue('23');
+
+    // 2. Reduce duration to 1 -> 23 + 1 = 24 <= 24
+    fireEvent.change(dropDurationSlider, { target: { value: '1' } });
+    expect(
+      screen.queryByText(/drop start \+ duration cannot exceed 24 hours/i)
+    ).not.toBeInTheDocument();
+    expect(dropDurationSlider).toHaveValue('1');
+    expect(dropStartSlider).toHaveValue('23');
+
+    // Run button is now enabled
+    const runBtn = screen.getByRole('button', { name: /run simulation/i });
+    expect(runBtn).not.toBeDisabled();
+  });
+
+  it('clears a horizon error raised on the solar drop % slider once the window fits (PR #19 review)', () => {
+    render(<SimulationPage />);
+
+    fireEvent.click(screen.getByRole('tab', { name: /controls/i }));
+
+    // Draft window 23h + 3h is rejected, then the drop % move is rejected for the same reason
+    fireEvent.change(screen.getByLabelText(/drop start hour/i), { target: { value: '23' } });
+    fireEvent.change(screen.getByLabelText(/solar drop/i), { target: { value: '40' } });
+    expect(
+      screen.getAllByText(/drop start \+ duration cannot exceed 24 hours/i).length
+    ).toBeGreaterThan(0);
+
+    // Shrinking the duration makes the window valid: every drop error clears and Run is enabled
+    fireEvent.change(screen.getByLabelText(/drop duration/i), { target: { value: '1' } });
+    expect(
+      screen.queryByText(/drop start \+ duration cannot exceed 24 hours/i)
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /run simulation/i })).not.toBeDisabled();
+  });
+
+  it('clears horizon validation error on reset button click', () => {
+    render(<SimulationPage />);
+
+    fireEvent.click(screen.getByRole('tab', { name: /controls/i }));
+
+    const dropStartSlider = screen.getByLabelText(/drop start hour/i);
+    fireEvent.change(dropStartSlider, { target: { value: '23' } });
+    expect(screen.getByText(/drop start \+ duration cannot exceed 24 hours/i)).toBeInTheDocument();
+
+    const resetBtn = screen.getByRole('button', { name: /reset scenario/i });
+    fireEvent.click(resetBtn);
+
+    expect(
+      screen.queryByText(/drop start \+ duration cannot exceed 24 hours/i)
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/drop start hour/i)).toHaveValue('12');
+  });
+
   it('keeps a header Run button outside the Controls tab (demo path stays one click)', () => {
     render(<SimulationPage />);
     const headerRun = screen.getByRole('button', { name: /run simulation/i });

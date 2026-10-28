@@ -1,4 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+import { join } from 'node:path';
+
+// Same port as `pnpm dev` (scripts/port.mjs). Run as a process: Playwright loads this config as CJS.
+const PORT = execFileSync(process.execPath, [join(__dirname, 'scripts/port.mjs')], {
+  encoding: 'utf8',
+}).trim();
+const LOCAL_URL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -11,7 +19,7 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || LOCAL_URL,
     trace: 'on-first-retry',
     viewport: { width: 1440, height: 900 },
     launchOptions: {
@@ -20,7 +28,7 @@ export default defineConfig({
   },
   webServer: {
     command: 'pnpm dev',
-    url: 'http://localhost:3000',
+    url: LOCAL_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
     env: {

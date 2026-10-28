@@ -16,8 +16,8 @@ description: Gate every frontend change through the design system and the Stitch
 **After coding (gate out)**
 
 5. Start dev server if not running (`make dev-mock`); screenshot desktop (1440×900) and mobile (390×844):
-   - Desktop: `pnpm --filter web exec playwright screenshot --viewport-size=1440,900 http://localhost:3000/<route> /tmp/impl-<name>-desktop.png`
-   - Mobile: `pnpm --filter web exec playwright screenshot --viewport-size=390,844 http://localhost:3000/<route> /tmp/impl-<name>-mobile.png`
+   - Desktop: `pnpm --filter web exec playwright screenshot --viewport-size=1440,900 http://localhost:$(make -s port)/<route> /tmp/impl-<name>-desktop.png`
+   - Mobile: `pnpm --filter web exec playwright screenshot --viewport-size=390,844 http://localhost:$(make -s port)/<route> /tmp/impl-<name>-mobile.png`
    - All routes: `make shots` (outputs to `design/shots/`).
 6. Inspect the screenshot against the mockup:
    - **Hierarchy & Proportions:** Layout zones, spacing rhythm, typography roles, SIMULATED label, AI vs computed separation, states.

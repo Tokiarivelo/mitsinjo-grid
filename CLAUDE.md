@@ -16,11 +16,14 @@ Demo path that must always work: **solar drop → strategy comparison → AI exp
 
 - Skills (`.claude/skills/`, loaded only when invoked): `/start` · `/handoff` · `/verify` · `/engine-change` ·
   `/ui-feature` · `/copilot-tool` · `/scene-3d` · `/designer-3d` · `/perf-audit` · `/design-dispatch` · `/design-check` ·
-  `/review-pr`.
+  `/review-pr` · `/format`.
 - Rules (`.claude/rules/`, loaded only when matching files are touched): engine · web-ui · three · copilot · tests.
   `maintenance` is always on: new useful command → Makefile target; feature change → update its doc (same commit).
+  `format` is always on: Prettier is the only formatter, auto-run by hooks (Claude edit hook, git pre-commit, CI).
   `review` is always on: rebase onto latest `main` (`make rebase-main`) before any review, fix or merge.
   Don't restate them here; this file stays global-only.
+- Other agents (Codex, opencode, Gemini, Cursor… via `AGENTS.md` / `GEMINI.md`): rules and skills are plain Markdown.
+  Read the always-on rules yourself; "run `/x`" = follow `.claude/skills/x/SKILL.md`. Run `make format-changed` before committing.
 
 ## Doc map
 
@@ -66,7 +69,7 @@ shadcn/ui (restyled) · Zustand · Zod · R3F + Drei · Recharts · next-intl ·
 Use the Makefile (`make help` lists everything). Most used:
 
 ```bash
-make install && make dev    # web on :3000 (make dev-mock = offline LLM)
+make install && make dev    # web on :$PORT from .env (default 3000; make port) (make dev-mock = offline LLM)
 make check                  # typecheck + lint + test — before handoff
 make test-engine            # engine only (cheapest)
 make e2e                    # playwright demo path

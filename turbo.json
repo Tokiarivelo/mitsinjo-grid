@@ -11,7 +11,8 @@
       "inputs": ["$TURBO_DEFAULT$"]
     },
     "test:e2e": {
-      "dependsOn": ["build"]
+      "dependsOn": ["build"],
+      "passThroughEnv": ["PORT", "PLAYWRIGHT_TEST_BASE_URL"]
     },
     "typecheck": {
       "dependsOn": ["^build"],
@@ -23,6 +24,7 @@
     },
     "dev": {
       "cache": false,
+      "passThroughEnv": ["PORT"],
       "persistent": true
     }
   }

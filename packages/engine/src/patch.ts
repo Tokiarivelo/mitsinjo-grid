@@ -1,5 +1,23 @@
+import { DEFAULT_DROP_DURATION_H, DEFAULT_DROP_START_HOUR } from './constants';
 import { InputPatchSchema, parseInput } from './schemas';
 import type { InputPatch, SimulationInput, SolarDropEvent } from './schemas';
+
+export interface SolarDropSettings {
+  /** Solar reduction in percent (0 = no drop event). */
+  pct: number;
+  startHour: number;
+  durationH: number;
+}
+
+/** Current solar drop as control values; defaults when the input has no drop event. */
+export function getSolarDrop(input: SimulationInput): SolarDropSettings {
+  const drop = input.events.find((e) => e.type === 'solar_drop');
+  return {
+    pct: drop ? Math.round((1 - drop.factor) * 100) : 0,
+    startHour: drop?.startHour ?? DEFAULT_DROP_START_HOUR,
+    durationH: drop?.durationH ?? DEFAULT_DROP_DURATION_H,
+  };
+}
 
 /**
  * Applies a partial patch to a SimulationInput, returning a new validated SimulationInput.
@@ -57,8 +75,8 @@ export function applyPatch(input: SimulationInput, rawPatch: InputPatch): Simula
       cloned.events = cloned.events.filter((e) => e.type !== 'solar_drop');
     } else {
       const factor = 1 - patch.solarDropPct / 100;
-      const startHour = patch.dropStartHour ?? existingDrop?.startHour ?? 12;
-      const durationH = patch.dropDurationH ?? existingDrop?.durationH ?? 3;
+      const startHour = patch.dropStartHour ?? existingDrop?.startHour ?? DEFAULT_DROP_START_HOUR;
+      const durationH = patch.dropDurationH ?? existingDrop?.durationH ?? DEFAULT_DROP_DURATION_H;
 
       cloned.events = cloned.events.filter((e) => e.type !== 'solar_drop');
       cloned.events.push({

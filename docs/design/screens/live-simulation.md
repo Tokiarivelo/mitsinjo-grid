@@ -32,10 +32,12 @@ The 3D visualization is the dominant centerpiece of the screen. To maximize 3D v
 ```
 
 ### Collapsible Panel & Full-Width 3D Mode
+
 - When the right panel is expanded: 3D Viewport takes ~72% width, side deck takes ~28% (380-420px).
 - When the right panel is collapsed (toggled off): 3D Viewport smoothly expands to 100% of workspace width. A floating button (`chevron_left` / "Open Deck") on the upper-right edge allows reopening the panel instantly.
 
 ### Persistent Curseur Temporel 24h (Bottom Dock)
+
 - Positioned permanently at the bottom edge of the 3D viewport (above bottom padding, glassmorphic HUD pill).
 - Independent of the right panel and active tabs: the operator can scrub any hour of the 24h simulation while inspecting the 3D scene, tweaking controls, or reading AI recommendations.
 - Controls:
@@ -51,6 +53,7 @@ The 3D visualization is the dominant centerpiece of the screen. To maximize 3D v
 The collapsible side deck contains four structured tabs:
 
 ### 1. Tab `Métriques & Énergie` (Telemetry & Charts)
+
 - **Top Metric Cards (Compact Strip)**:
   - Solar Generation: `18.4 kW` (with mini amber sparkline, trend vs baseline).
   - Battery State: `78%` (46.8 / 60 kWh, gradient LED charge bar).
@@ -64,6 +67,7 @@ The collapsible side deck contains four structured tabs:
   - EnergyBar list for 5 canonical sectors (Clinic, Water pump, School, Houses, Market) with priority badges and unserved flags.
 
 ### 2. Tab `Paramètres & Contrôles` (Simulation Controls)
+
 - **Scenario Selector**: Dropdown to select canonical scenarios (`Baseline Village`, `Solar Drop 50%`, `Overconsumption`, `Battery Outage`, `Clinic Emergency`).
 - **Dispatch Strategy**: Radio / segmented select (`proportional`, `essential_first`, `balanced`).
 - **Simulation Sliders**:
@@ -79,6 +83,7 @@ The collapsible side deck contains four structured tabs:
   - Status badge: `Scenario modified` (amber) / `Simulation complete` (green).
 
 ### 3. Tab `Inspection Bâtiments` (Building & Sector Inspector)
+
 - **Sector Detail Card**:
   - Shows details for the currently selected village asset in the 3D scene (or defaults to Clinic).
   - Real-time demand (kW), served power (kW), coverage percentage (%), unserved energy (kWh).
@@ -97,6 +102,7 @@ The collapsible side deck contains four structured tabs:
       and no wire passes under a label.
 
 ### 4. Tab `Copilote IA` (AI Copilot & Insights)
+
 - **Impact Banner**:
   - Contextual status alert (`Essential services fully supplied` / `Clinic supply below target` / `Battery reserve depleted`).
 - **AI Operational Analysis**:

@@ -11,11 +11,7 @@ export interface ThemeSwitcherProps {
   className?: string;
 }
 
-export function ThemeSwitcher({
-  size = 'sm',
-  variant = 'icon',
-  className,
-}: ThemeSwitcherProps) {
+export function ThemeSwitcher({ size = 'sm', variant = 'icon', className }: ThemeSwitcherProps) {
   const { toggleTheme, setTheme, isDark } = useTheme();
   const tCommon = useTranslations('common');
 
@@ -80,9 +76,15 @@ export function ThemeSwitcher({
       )}
     >
       {isDark ? (
-        <Sun className="h-4 w-4 text-solar-amber transition-transform hover:rotate-45" aria-hidden="true" />
+        <Sun
+          className="h-4 w-4 text-solar-amber transition-transform hover:rotate-45"
+          aria-hidden="true"
+        />
       ) : (
-        <Moon className="h-4 w-4 text-energy-cyan transition-transform hover:-rotate-12" aria-hidden="true" />
+        <Moon
+          className="h-4 w-4 text-energy-cyan transition-transform hover:-rotate-12"
+          aria-hidden="true"
+        />
       )}
     </button>
   );

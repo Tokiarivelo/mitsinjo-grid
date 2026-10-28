@@ -20,7 +20,9 @@ describe('ThemeSwitcher', () => {
   it('renders icon button and toggles theme on click', () => {
     render(<ThemeSwitcher variant="icon" />, { wrapper });
 
-    const btn = screen.getByRole('button', { name: /toggle color theme|changer le thème|hanova loko/i });
+    const btn = screen.getByRole('button', {
+      name: /toggle color theme|changer le thème|hanova loko/i,
+    });
     expect(btn).toBeInTheDocument();
 
     fireEvent.click(btn);

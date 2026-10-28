@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Lock, RotateCcw, Settings, Sliders } from 'lucide-react';
 import { SectorIcon } from '@/components/ui/sector-icon';
 import {
+  getSolarDrop,
   HORIZON_H,
   STEP_H,
   type InputPatch,
@@ -45,10 +46,7 @@ export function AssumptionsInspector({
   const [confirmReset, setConfirmReset] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const existingDrop = input.events.find((e) => e.type === 'solar_drop');
-  const dropPct = existingDrop ? Math.round((1 - existingDrop.factor) * 100) : 0;
-  const dropStart = existingDrop ? existingDrop.startHour : 12;
-  const dropDuration = existingDrop ? existingDrop.durationH : 3;
+  const { pct: dropPct, startHour: dropStart, durationH: dropDuration } = getSolarDrop(input);
 
   const validateAndPatch = (field: keyof InputPatch, candidate: InputPatch) => {
     const error = validatePatch(field, candidate, input);

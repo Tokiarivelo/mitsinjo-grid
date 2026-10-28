@@ -104,7 +104,9 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
     expect(proposalEvent).toBeDefined();
     const propData = proposalEvent?.data as {
       proposalId: string;
-      patch?: { sectorCaps?: { sector: string; maxKw: number; fromHour: number; toHour: number }[] };
+      patch?: {
+        sectorCaps?: { sector: string; maxKw: number; fromHour: number; toHour: number }[];
+      };
       reason: string;
     };
     expect(propData.patch?.sectorCaps).toBeDefined();
