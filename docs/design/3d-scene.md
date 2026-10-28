@@ -30,13 +30,14 @@ Reference visuals: `design/reference/Mitsinjo Grid_ Village at Sunset.png` (mast
 
 - Toolbar toggle `Quality: High | Low` (`useSceneQuality`, persisted). `high` (default) adds HDRI light, real-time sun shadows, ambient occlusion, bloom and a warm ACES grade; `low` keeps the same composition with lighter forest and a baked contact shadow. A slow device is auto-lowered once (tooltip says so) unless the user chose. Budgets: `docs/performance.md`.
 - Fullscreen button (`useFullscreen`) expands the 3D card edge-to-edge; it then shows a stats strip (SIMULATED DATA, solar output, battery SoC, village demand for the selected hour, all engine values).
-- `VillageCanvas` props: `model`, `selectedSector`, `onSelectSector`, `cameraPreset`, `cameraResetKey`, optional `quality` override (default = shared tier).
+- `VillageCanvas` props: `model`, `selectedSector`, `onSelectSector`, `cameraPreset`, `cameraResetKey` (`selectedSector` also drives camera focus), optional `quality` override (default = shared tier).
 - Assets (`apps/web/public/3d`, CC0, credits in `CREDITS.md`): `nature.glb` (Kenney palms, bushes, rocks), `ambulance|truck|van.glb` (Kenney), `sunset_1k.hdr` (Poly Haven). Broadleaf trees and all buildings are procedural.
 
 ## Camera
 
 - Default front three-quarter view (village in front, hills, lake and sunset behind); smooth orbit; limited zoom range; reset-camera button (aria-label "Reset camera").
 - Presets: `Village` (default), `Solar Array`, `Battery`, `Essential Services`. Transitions short and interruptible; never auto-move while user is exploring.
+- Selecting a building (3D badge, viewport chips or inspector list) flies the camera to it, then slowly orbits it (`utils/camera-focus`). A drag stops the orbit; deselecting returns to the current preset. Reduced motion: instant jump, no orbit; no GPU: no orbit.
 
 ## Energy visual mapping (render only; never compute flows here)
 

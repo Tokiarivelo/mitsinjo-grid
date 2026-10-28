@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { SimulationInput } from '@mitsinjo/engine';
 import { resetSimulationStore, useSimulationStore } from '../simulation.store';
 import {
   selectActiveMetrics,
@@ -10,6 +11,8 @@ import {
   selectHasResults,
   selectInput,
   selectIsModified,
+  selectIsPlaying,
+  selectPlaybackStatus,
   selectScenarioId,
   selectSectorMetrics,
   selectStatus,
@@ -149,5 +152,67 @@ describe('useSimulationStore & selectors (P4-T1)', () => {
     expect(selectStatus(updated)).toBe('complete');
     expect(selectHasResults(updated)).toBe(true);
     expect(selectInput(updated).events.some((e) => e.type === 'solar_drop')).toBe(true);
+  });
+
+  it('controls simulation playback with play, pause, stop, and restart', () => {
+    const store = useSimulationStore.getState();
+    expect(selectIsPlaying(store)).toBe(false);
+    expect(selectPlaybackStatus(store)).toBe('idle');
+
+    // 1. Play from initial state triggers run and sets isPlaying
+    store.play();
+    let state = useSimulationStore.getState();
+    expect(selectStatus(state)).toBe('complete');
+    expect(selectIsPlaying(state)).toBe(true);
+    expect(selectPlaybackStatus(state)).toBe('playing');
+
+    // 2. Pause preserves time and sets isPlaying to false
+    state.setTimeIndex(15);
+    store.pause();
+    state = useSimulationStore.getState();
+    expect(selectIsPlaying(state)).toBe(false);
+    expect(selectPlaybackStatus(state)).toBe('paused');
+    expect(selectTimeIndex(state)).toBe(15);
+
+    // 3. Stop resets time to 0 and stops playback
+    store.stop();
+    state = useSimulationStore.getState();
+    expect(selectIsPlaying(state)).toBe(false);
+    expect(selectPlaybackStatus(state)).toBe('stopped');
+    expect(selectTimeIndex(state)).toBe(0);
+
+    // 4. Restart sets time to 0 and begins playback
+    state.setTimeIndex(18);
+    store.restart();
+    state = useSimulationStore.getState();
+    expect(selectIsPlaying(state)).toBe(true);
+    expect(selectPlaybackStatus(state)).toBe('playing');
+    expect(selectTimeIndex(state)).toBe(0);
+
+    // 5. TogglePlay flips playback state
+    store.togglePlay();
+    expect(selectIsPlaying(useSimulationStore.getState())).toBe(false);
+    store.togglePlay();
+    expect(selectIsPlaying(useSimulationStore.getState())).toBe(true);
+
+    // 6. Play wraps to 0 if at end of cycle (hour 23)
+    useSimulationStore.getState().setTimeIndex(23);
+    store.play();
+    expect(selectTimeIndex(useSimulationStore.getState())).toBe(0);
+  });
+
+  it('does not start playback when the run fails', () => {
+    useSimulationStore.setState({
+      input: { broken: true } as unknown as SimulationInput,
+      status: 'modified',
+    });
+    useSimulationStore.getState().play();
+    let state = useSimulationStore.getState();
+    expect(selectStatus(state)).toBe('error');
+    expect(selectIsPlaying(state)).toBe(false);
+
+    useSimulationStore.getState().restart();
+    state = useSimulationStore.getState();
+    expect(selectIsPlaying(state)).toBe(false);
   });
 });

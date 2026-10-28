@@ -155,11 +155,55 @@ describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
     const headerRun = screen.getByRole('button', { name: /run simulation/i });
     fireEvent.click(headerRun);
     expect(useSimulationStore.getState().status).toBe('complete');
+    expect(useSimulationStore.getState().isPlaying).toBe(true);
 
-    // Controls tab has its own Run button (with validation): no duplicate.
+    // Controls tab has its own controls (with validation): no duplicate in header.
     fireEvent.click(screen.getByRole('tab', { name: /controls/i }));
-    expect(screen.getAllByRole('button', { name: /run simulation/i })).toHaveLength(1);
-  });
+    expect(
+      screen.getAllByRole('button', { name: /pause timeline playback/i }).length
+    ).toBeGreaterThanOrEqual(2);
+  }, 15000);
+
+  it('toggles playback, pauses, stops, and restarts simulation via controls', () => {
+    render(<SimulationPage />);
+
+    // 1. Initial button is "Run simulation"
+    const headerRun = screen.getByRole('button', { name: /run simulation/i });
+    fireEvent.click(headerRun);
+
+    expect(useSimulationStore.getState().status).toBe('complete');
+    expect(useSimulationStore.getState().isPlaying).toBe(true);
+
+    // 2. Button status changed to Pause (header + timeline scrubber)
+    const pauseBtns = screen.getAllByRole('button', { name: /pause timeline playback/i });
+    expect(pauseBtns.length).toBeGreaterThanOrEqual(2);
+
+    // 3. Click Pause -> stops playback, changes button to Play
+    fireEvent.click(pauseBtns[0]!);
+    expect(useSimulationStore.getState().isPlaying).toBe(false);
+    const playBtns = screen.getAllByRole('button', { name: /start timeline playback/i });
+    expect(playBtns.length).toBeGreaterThanOrEqual(2);
+
+    // 4. Click Play -> resumes playback, changes button back to Pause
+    fireEvent.click(playBtns[0]!);
+    expect(useSimulationStore.getState().isPlaying).toBe(true);
+    expect(
+      screen.getAllByRole('button', { name: /pause timeline playback/i }).length
+    ).toBeGreaterThanOrEqual(2);
+
+    // 5. Click Stop -> stops playback, resets time to 0
+    useSimulationStore.getState().setTimeIndex(14);
+    const stopBtns = screen.getAllByRole('button', { name: /stop simulation playback/i });
+    fireEvent.click(stopBtns[0]!);
+    expect(useSimulationStore.getState().isPlaying).toBe(false);
+    expect(useSimulationStore.getState().timeIndex).toBe(0);
+
+    // 6. Click Restart -> starts playback from 0
+    const restartBtns = screen.getAllByRole('button', { name: /restart simulation/i });
+    fireEvent.click(restartBtns[0]!);
+    expect(useSimulationStore.getState().isPlaying).toBe(true);
+    expect(useSimulationStore.getState().timeIndex).toBe(0);
+  }, 15000);
 
   it('runs simulation, transitions to complete, and populates metrics and step telemetry', () => {
     render(<SimulationPage />);

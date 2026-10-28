@@ -12,11 +12,14 @@ import {
 } from '@mitsinjo/engine';
 
 export type SimStatus = 'ready' | 'running' | 'complete' | 'modified' | 'error';
+export type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'stopped';
 
 export interface SimulationState {
   scenarioId: ScenarioId;
   input: SimulationInput;
   status: SimStatus;
+  isPlaying: boolean;
+  playbackStatus: PlaybackStatus;
   results: Partial<Comparison>;
   activeStrategy: StrategyId;
   selectedSector: SectorId | null;
@@ -32,6 +35,13 @@ export interface SimulationState {
   selectSector: (sector: SectorId | null) => void;
   setTimeIndex: (timeIndex: number) => void;
   applyProposal: (patch?: InputPatch, strategy?: StrategyId) => void;
+
+  // Playback Actions
+  play: () => void;
+  pause: () => void;
+  stop: () => void;
+  restart: () => void;
+  togglePlay: () => void;
 }
 
 export function cloneInput(input: SimulationInput): SimulationInput {
@@ -44,6 +54,8 @@ export const initialSimulationData = {
   scenarioId: INITIAL_SCENARIO_ID,
   input: cloneInput(scenarios[INITIAL_SCENARIO_ID].input),
   status: 'ready' as SimStatus,
+  isPlaying: false,
+  playbackStatus: 'idle' as PlaybackStatus,
   results: {} as Partial<Comparison>,
   activeStrategy: 'proportional' as StrategyId,
   selectedSector: null as SectorId | null,
@@ -58,19 +70,36 @@ export function resetSimulationStore() {
   });
 }
 
+/**
+ * Runs the engine when the current input has no up-to-date result.
+ * Returns false when there is still no result (run failed): playback must not start.
+ */
+function ensureResults(get: () => SimulationState): boolean {
+  const { status, results, run } = get();
+  if (status !== 'complete' || Object.keys(results).length === 0) run();
+  return get().status === 'complete';
+}
+
 export const useSimulationStore = create<SimulationState>((set, get) => ({
   ...initialSimulationData,
 
   loadScenario: (scenarioId: ScenarioId) => {
     const preset = scenarios[scenarioId];
     if (!preset) {
-      set({ error: `Unknown scenario: ${scenarioId}`, status: 'error' });
+      set({
+        error: `Unknown scenario: ${scenarioId}`,
+        status: 'error',
+        isPlaying: false,
+        playbackStatus: 'idle',
+      });
       return;
     }
     set({
       scenarioId,
       input: cloneInput(preset.input),
       status: 'ready',
+      isPlaying: false,
+      playbackStatus: 'idle',
       results: {},
       error: null,
     });
@@ -82,12 +111,16 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       set({
         input: patched,
         status: 'modified',
+        isPlaying: false,
+        playbackStatus: 'idle',
         error: null,
       });
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : 'Invalid patch',
         status: 'error',
+        isPlaying: false,
+        playbackStatus: 'idle',
       });
     }
   },
@@ -110,6 +143,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       set({
         status: 'error',
         error: err instanceof Error ? err.message : 'Simulation failed',
+        isPlaying: false,
+        playbackStatus: 'idle',
       });
     }
   },
@@ -120,6 +155,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     set({
       input: cloneInput(preset.input),
       status: 'ready',
+      isPlaying: false,
+      playbackStatus: 'idle',
       results: {},
       error: null,
     });
@@ -160,7 +197,47 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       set({
         status: 'error',
         error: err instanceof Error ? err.message : 'Failed to apply proposal',
+        isPlaying: false,
+        playbackStatus: 'idle',
       });
+    }
+  },
+
+  play: () => {
+    if (!ensureResults(get)) return;
+    const { timeIndex } = get();
+    set({
+      isPlaying: true,
+      playbackStatus: 'playing',
+      timeIndex: timeIndex >= 23 ? 0 : timeIndex,
+    });
+  },
+
+  pause: () => {
+    set({
+      isPlaying: false,
+      playbackStatus: 'paused',
+    });
+  },
+
+  stop: () => {
+    set({
+      isPlaying: false,
+      playbackStatus: 'stopped',
+      timeIndex: 0,
+    });
+  },
+
+  restart: () => {
+    if (!ensureResults(get)) return;
+    set({ timeIndex: 0, isPlaying: true, playbackStatus: 'playing' });
+  },
+
+  togglePlay: () => {
+    if (get().isPlaying) {
+      get().pause();
+    } else {
+      get().play();
     }
   },
 }));

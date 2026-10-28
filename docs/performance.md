@@ -54,7 +54,8 @@ Rules in `.claude/rules/three.md`. Two quality tiers (`useSceneQuality`, toggle 
 - No GPU (software GL: SwiftShader, llvmpipe — headless CI, blocked drivers): start on `low` and
   keep electrons frozen (a software frame costs ~0.5 s; a continuous loop freezes the page).
 - Camera: first placement is instant; preset tweens snap to target after 2 s of wall time, so the
-  demand loop always stops, even at 1 fps.
+  demand loop always stops, even at 1 fps. The focus orbit around a selected building keeps
+  the demand loop running until the user drags or deselects; it is off on software GL.
 
 Key wins: `frameloop="demand"`, instancing (vegetation: one `InstancedMesh` per model part and
 band), merged static parts (`utils/merge-parts`: windows, fences, lattice, market woodwork,

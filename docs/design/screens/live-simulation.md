@@ -41,7 +41,8 @@ The 3D visualization is the dominant centerpiece of the screen. To maximize 3D v
 - Positioned permanently at the bottom edge of the 3D viewport (above bottom padding, glassmorphic HUD pill).
 - Independent of the right panel and active tabs: the operator can scrub any hour of the 24h simulation while inspecting the 3D scene, tweaking controls, or reading AI recommendations.
 - Controls:
-  - Transport buttons: Step Backward `[|<]`, Play / Pause toggle `[ > / || ]`, Step Forward `[>|]`.
+  - Transport buttons: Step Backward `[|<]`, Play / Pause toggle `[ > / || ]`, Step Forward `[>|]`, Stop `[■]` (pause + back to 00:00), Restart `[↺]` (from 00:00). Stepping or dragging the track pauses playback.
+  - Playback state lives in the store (`play`/`pause`/`stop`/`restart`/`togglePlay`): one hour per 750 ms, looping over 24h. Editing inputs, loading or resetting a scenario stops it.
   - 24h interactive scrubber track with colored step markers (daylight solar hours in amber, night battery discharge in cyan).
   - Key milestone ticks: 00h (Midnight), 06h (Sunrise), 12h (Solar Zenith peak), 18h (Sunset), 24h (Night end).
   - Time badge readout: `14:00 • Daytime Solar Peak` with dynamic sun/battery icon.
@@ -78,7 +79,7 @@ The collapsible side deck contains four structured tabs:
   - Solar-drop start hour & duration (h; fixed 24h horizon).
 - **Sector Priorities & Caps**: Collapsible toggle for sector power limits.
 - **Action Buttons**:
-  - Primary button: "Run simulation" (triggers engine calculation).
+  - Primary button: "Run simulation" when there is no up-to-date result (runs the engine, then plays), else "Play" / "Pause". Stop and Restart appear once results exist. Same buttons in the page header and the Controls tab (`PlaybackActions`).
   - Secondary button: "Reset to baseline".
   - Status badge: `Scenario modified` (amber) / `Simulation complete` (green).
 

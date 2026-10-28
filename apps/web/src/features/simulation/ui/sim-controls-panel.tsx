@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, Play, RotateCcw, Sliders } from 'lucide-react';
+import { AlertTriangle, RotateCcw, Sliders } from 'lucide-react';
 import {
   getSolarDrop,
   type InputPatch,
@@ -11,6 +11,8 @@ import {
 import { cn } from '@/lib/utils';
 import { SimControl } from '@/components/ui/sim-control';
 import { Button } from '@/components/ui/button';
+import { PlaybackActions } from './playback-actions';
+import { simStatusBadgeVariant } from '../utils/playback';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useTranslations } from '@/lib/i18n';
 import { validatePatch } from '../utils/validate-patch';
@@ -31,10 +33,15 @@ export interface SimControlsPanelProps {
   input: SimulationInput;
   activeStrategy: StrategyId;
   status: 'ready' | 'running' | 'complete' | 'modified' | 'error';
+  isPlaying?: boolean;
+  hasResults?: boolean;
   onPatch: (patch: InputPatch) => void;
   onStrategyChange: (strategy: StrategyId) => void;
+  /** Run (when needed) and play; pause while playing. */
   onRun: () => void;
   onReset: () => void;
+  onStop: () => void;
+  onRestart: () => void;
   className?: string;
 }
 
@@ -42,10 +49,14 @@ export function SimControlsPanel({
   input,
   activeStrategy,
   status,
+  isPlaying = false,
+  hasResults = false,
   onPatch,
   onStrategyChange,
   onRun,
   onReset,
+  onStop,
+  onRestart,
   className,
 }: SimControlsPanelProps) {
   const tSim = useTranslations('features.simulation');
@@ -146,7 +157,6 @@ export function SimControlsPanel({
 
   const hasErrors = Object.keys(errors).length > 0;
   const isModified = status === 'modified';
-  const isRunning = status === 'running';
 
   return (
     <div
@@ -162,22 +172,11 @@ export function SimControlsPanel({
           <h3 className="font-display text-sm font-semibold text-text-primary tracking-tight">
             {tSim('controlsTitle')}
           </h3>
-          <StatusBadge
-            variant={
-              status === 'modified'
-                ? 'warning'
-                : status === 'complete'
-                  ? 'complete'
-                  : status === 'running'
-                    ? 'running'
-                    : 'ready'
-            }
-            size="sm"
-          />
+          <StatusBadge variant={simStatusBadgeVariant(status, isPlaying)} size="sm" />
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="secondary"
             size="sm"
@@ -195,16 +194,15 @@ export function SimControlsPanel({
             {tSim('resetScenario')}
           </Button>
 
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={onRun}
-            disabled={hasErrors || isRunning}
-            icon={<Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />}
-            aria-label={tSim('runSimulation')}
-          >
-            {isRunning ? tCommon('loading') : tSim('runSimulation')}
-          </Button>
+          <PlaybackActions
+            status={status}
+            isPlaying={isPlaying}
+            hasResults={hasResults}
+            disabled={hasErrors}
+            onTogglePlay={onRun}
+            onStop={onStop}
+            onRestart={onRestart}
+          />
         </div>
       </div>
 

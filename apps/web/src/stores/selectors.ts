@@ -10,11 +10,13 @@ import type {
   StepResult,
   StrategyId,
 } from '@mitsinjo/engine';
-import type { SimStatus, SimulationState } from './simulation.store';
+import type { SimStatus, PlaybackStatus, SimulationState } from './simulation.store';
 
 export const selectScenarioId = (s: SimulationState): ScenarioId => s.scenarioId;
 export const selectInput = (s: SimulationState): SimulationInput => s.input;
 export const selectStatus = (s: SimulationState): SimStatus => s.status;
+export const selectIsPlaying = (s: SimulationState): boolean => s.isPlaying;
+export const selectPlaybackStatus = (s: SimulationState): PlaybackStatus => s.playbackStatus;
 export const selectIsModified = (s: SimulationState): boolean => s.status === 'modified';
 export const selectIsRunning = (s: SimulationState): boolean => s.status === 'running';
 export const selectIsComplete = (s: SimulationState): boolean => s.status === 'complete';

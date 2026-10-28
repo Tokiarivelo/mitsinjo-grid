@@ -12,7 +12,6 @@ import {
   Factory,
   PanelRightClose,
   PanelRightOpen,
-  Play,
   Sliders,
   Sun,
 } from 'lucide-react';
@@ -24,6 +23,7 @@ import {
   selectActiveStrategy,
   selectComparison,
   selectInput,
+  selectIsPlaying,
   selectIsRunning,
   selectSelectedSector,
   selectStatus,
@@ -51,6 +51,9 @@ import { SimControlsPanel } from './sim-controls-panel';
 import { TimelineScrubber } from './timeline-scrubber';
 import { BuildingInspectorPanel } from './building-inspector-panel';
 import { VillageViewport } from './village-viewport';
+import { PlaybackActions } from './playback-actions';
+import { usePlaybackTicker } from '../hooks/use-playback-ticker';
+import { simStatusBadgeVariant } from '../utils/playback';
 
 export type SimulationTab = 'metrics' | 'controls' | 'buildings' | 'copilot';
 
@@ -80,19 +83,26 @@ export function SimulationPage() {
   const steps = useSimulationStore(selectActiveSteps);
   const comparison = useSimulationStore(selectComparison);
   const isRunning = useSimulationStore(selectIsRunning);
+  const isPlaying = useSimulationStore(selectIsPlaying);
 
   const patchInput = useSimulationStore((s) => s.patchInput);
-  const runSimulation = useSimulationStore((s) => s.run);
   const resetScenario = useSimulationStore((s) => s.reset);
   const selectStrategy = useSimulationStore((s) => s.selectStrategy);
   const selectSector = useSimulationStore((s) => s.selectSector);
   const setTimeIndex = useSimulationStore((s) => s.setTimeIndex);
+  const pauseSimulation = useSimulationStore((s) => s.pause);
+  const stopSimulation = useSimulationStore((s) => s.stop);
+  const restartSimulation = useSimulationStore((s) => s.restart);
+  const togglePlaySimulation = useSimulationStore((s) => s.togglePlay);
 
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<SimulationTab>('metrics');
   const [isPanelOpen, setIsPanelOpen] = useState(true);
 
+  usePlaybackTicker(isPlaying);
+
   const hasResults = status === 'complete' && Boolean(result);
+
   const stepAtTime = steps[timeIndex] ?? null;
 
   // Peak solar computed from input
@@ -132,18 +142,7 @@ export function SimulationPage() {
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <StatusBadge variant="simulated" label={tCommon('simulatedData')} />
-            <StatusBadge
-              variant={
-                status === 'modified'
-                  ? 'warning'
-                  : status === 'complete'
-                    ? 'complete'
-                    : status === 'running'
-                      ? 'running'
-                      : 'ready'
-              }
-              size="sm"
-            />
+            <StatusBadge variant={simStatusBadgeVariant(status, isPlaying)} size="sm" />
           </div>
           <h1 className="text-xl sm:text-2xl font-bold font-display text-text-primary tracking-tight">
             {tSim('title')}
@@ -151,20 +150,18 @@ export function SimulationPage() {
           <p className="text-text-secondary text-xs sm:text-sm mt-0.5">{tSim('description')}</p>
         </div>
 
-        {/* Header Action Buttons: Run, Toggle Deck, Copy Summary & Download JSON */}
+        {/* Header Action Buttons: Run/Play/Pause/Stop/Restart, Toggle Deck, Copy Summary & Download JSON */}
         <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
-          {/* Primary demo action stays one click away; hidden while the Controls tab
-              (which has its own Run button and inline validation) is on screen. */}
+          {/* Primary simulation transport controls outside Controls tab */}
           {!(isPanelOpen && activeTab === 'controls') && (
-            <Button
-              variant="primary"
-              size="sm"
-              loading={isRunning}
-              onClick={() => runSimulation()}
-              icon={<Play className="h-3.5 w-3.5" aria-hidden="true" />}
-            >
-              {tSim('runSimulation')}
-            </Button>
+            <PlaybackActions
+              status={status}
+              isPlaying={isPlaying}
+              hasResults={hasResults}
+              onTogglePlay={togglePlaySimulation}
+              onStop={stopSimulation}
+              onRestart={restartSimulation}
+            />
           )}
 
           <Button
@@ -253,6 +250,11 @@ export function SimulationPage() {
             onTimeChange={setTimeIndex}
             stepResult={stepAtTime}
             hasResults={hasResults}
+            isPlaying={isPlaying}
+            onTogglePlay={togglePlaySimulation}
+            onPause={pauseSimulation}
+            onStop={stopSimulation}
+            onRestart={restartSimulation}
           />
         </div>
 
@@ -479,10 +481,14 @@ export function SimulationPage() {
                   input={input}
                   activeStrategy={activeStrategy}
                   status={status}
+                  isPlaying={isPlaying}
+                  hasResults={hasResults}
                   onPatch={patchInput}
                   onStrategyChange={selectStrategy}
-                  onRun={() => runSimulation()}
+                  onRun={togglePlaySimulation}
                   onReset={resetScenario}
+                  onStop={stopSimulation}
+                  onRestart={restartSimulation}
                 />
               </div>
 

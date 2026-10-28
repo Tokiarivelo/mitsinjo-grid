@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Clock, Pause, Play, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Pause, Play, RotateCcw, Square } from 'lucide-react';
 import type { StepResult } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtHour, fmtKw, fmtPct } from '@/lib/format';
@@ -12,6 +11,11 @@ export interface TimelineScrubberProps {
   onTimeChange: (timeIndex: number) => void;
   stepResult?: StepResult | null;
   hasResults?: boolean;
+  isPlaying: boolean;
+  onTogglePlay: () => void;
+  onPause: () => void;
+  onStop: () => void;
+  onRestart: () => void;
   className?: string;
 }
 
@@ -20,47 +24,27 @@ export function TimelineScrubber({
   onTimeChange,
   stepResult,
   hasResults = false,
+  isPlaying,
+  onTogglePlay,
+  onPause,
+  onStop,
+  onRestart,
   className,
 }: TimelineScrubberProps) {
   const tSim = useTranslations('features.simulation');
-  const [isPlaying, setIsPlaying] = useState(false);
 
-  // Auto-advance loop when isPlaying is true
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    const interval = setInterval(() => {
-      onTimeChange((timeIndex + 1) % 24);
-    }, 750);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, timeIndex, onTimeChange]);
-
-  const togglePlay = () => {
-    setIsPlaying((prev) => !prev);
+  // Manual scrubbing takes over from playback.
+  const seek = (hour: number) => {
+    if (isPlaying) onPause();
+    onTimeChange(hour);
   };
 
-  const handlePrev = () => {
-    setIsPlaying(false);
-    onTimeChange((timeIndex - 1 + 24) % 24);
-  };
-
-  const handleNext = () => {
-    setIsPlaying(false);
-    onTimeChange((timeIndex + 1) % 24);
-  };
-
-  const handleResetToNoon = () => {
-    setIsPlaying(false);
-    onTimeChange(12);
-  };
+  const handlePrev = () => seek((timeIndex - 1 + 24) % 24);
+  const handleNext = () => seek((timeIndex + 1) % 24);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setIsPlaying(false);
     const nextVal = parseInt(e.target.value, 10);
-    if (!isNaN(nextVal)) {
-      onTimeChange(nextVal);
-    }
+    if (!isNaN(nextVal)) seek(nextVal);
   };
 
   return (
@@ -97,7 +81,7 @@ export function TimelineScrubber({
 
           <button
             type="button"
-            onClick={togglePlay}
+            onClick={onTogglePlay}
             aria-label={isPlaying ? tSim('pausePlayback') : tSim('startPlayback')}
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-control text-xs font-sans font-medium transition-colors cursor-pointer border',
@@ -123,6 +107,7 @@ export function TimelineScrubber({
             type="button"
             onClick={handleNext}
             aria-label={tSim('stepForward')}
+            title={tSim('stepForward')}
             className="p-1.5 rounded-control text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
           >
             <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -130,9 +115,19 @@ export function TimelineScrubber({
 
           <button
             type="button"
-            onClick={handleResetToNoon}
-            aria-label={tSim('resetToNoon')}
-            title={tSim('resetToNoon')}
+            onClick={onStop}
+            aria-label={tSim('stopPlayback')}
+            title={tSim('stopPlayback')}
+            className="p-1.5 rounded-control text-text-muted hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
+          >
+            <Square className="h-3 w-3 fill-current" aria-hidden="true" />
+          </button>
+
+          <button
+            type="button"
+            onClick={onRestart}
+            aria-label={tSim('restartPlayback')}
+            title={tSim('restartPlayback')}
             className="p-1.5 rounded-control text-text-muted hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
           >
             <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
