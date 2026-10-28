@@ -14,12 +14,14 @@ Follow `.claude/rules/review.md`. Steps:
    - Wrong numbers: values not from `@mitsinjo/engine`, math in UI, wrong unit/scale, hardcoded data that contradicts engine input.
    - Contracts: types/store/tool I/O changed without `docs/contracts.md`.
    - i18n: literals in JSX, `aria-label`s, error copy, untranslated enum values (priorities, statuses), key parity.
+   - Dual theming: UI works in both Dark (default) and Light (`html.light`) modes; semantic `@theme` tokens only (zero hardcoded hex/colors like `#0a101d`), WCAG AA contrast (>4.5:1 text, >9:1 amber button text).
+   - Responsive mobile: fluid layout down to 320px viewport, single-column reflow for cards/bento on mobile, touch targets ≥ 44px, no horizontal scroll/overflow, bottom nav clearance (`pb-20 md:pb-6`).
    - Feature-slice layout, `page.tsx` has no logic, narrow store selectors, token-only styling, `SIMULATED DATA` label.
    - Tests: every new hook/util/engine function has a Vitest test; tests query by role/label.
    - Duplication (blocking): repeated logic/markup/copy or a re-implemented existing helper (`rg` for it) →
      extract once per `docs/conventions.md` § Reuse (with a test), replace every copy.
    - Docs/Makefile/`.env.example`/`HANDOFF.md` kept in sync (`maintenance` rule).
-   - Frontend change → design gate-out done (stitch-map row `checked`, screenshots).
+   - Frontend change → design gate-out done (stitch-map row `checked`, screenshots at 1440×900 desktop and 390×844 mobile).
 5. **Fix** on the branch, `make check`, commit `fix(<scope>): address PR #<n> review`, push.
 6. **Wait for CI** (`gh pr checks <n>`, poll until no pending). Red → fix and repeat.
 7. **Merge** only if green and not behind main: `gh pr merge <n> --merge`; then `git checkout main && git pull`.

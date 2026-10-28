@@ -12,7 +12,8 @@
   `SceneModel` built by `utils/toSceneModel(result, timeIndex)` (pure, tested).
 - Formatting numbers: `lib/format.ts` (`fmtKw`, `fmtKwh`, `fmtPct`) — always with unit.
 - Multi-language (i18n) & Zero static text: Official package is `next-intl`. Zero static or hardcoded user-visible text in components or code. All strings must be extracted to `apps/web/src/messages/{en,fr,mg}.json` and consumed via `useTranslations(namespace)`. 100% key parity across `en`, `fr`, and `mg` is enforced and verified in PR validation and CI (`make check-i18n`).
-- Styling: Tailwind tokens from `globals.css @theme` only; no raw hex in components.
+- Styling & Theming: Tailwind tokens from `globals.css @theme` only; no raw hex or hardcoded colors in components. All components must support both Dark (default) and Light theme modes via CSS variables with WCAG AA contrast.
+- Responsive Mobile: Every UI surface must adapt cleanly from 320px mobile viewports to large desktop screens. Grids reflow to single column, interactive elements have touch targets $\ge 44\text{px}$, no horizontal page overflow, and layouts provide `pb-20 md:pb-6` padding for the mobile bottom nav (`MobileNav`).
 - Files: components `PascalCase.tsx`, hooks `useX.ts`, utils `kebab-case.ts`, tests `*.test.ts(x)`.
 
 ## Reuse (no duplication)

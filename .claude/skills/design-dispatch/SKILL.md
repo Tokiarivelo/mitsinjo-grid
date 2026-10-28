@@ -12,7 +12,7 @@ Spawn one subagent per independent unit; give it ONLY these paths, not this conv
 - Stitch generation → `docs/design/stitch-prompts.md`; with Stitch MCP connected an agent can generate + export to `design/stitch/` and fill `stitch-map.md`.
 
 Prompt template for the subagent:
-"Implement <unit> for Mitsinjo Grid. Read only: <paths> + `docs/design/stitch-map.md` and the mockup PNG it lists for <unit> (if any); follow `.claude/skills/design-check/SKILL.md` before and after. Write only under <target>. Use Tailwind tokens, no raw hex.
+"Implement <unit> for Mitsinjo Grid. Read only: <paths> + `docs/design/stitch-map.md` and the mockup PNG it lists for <unit> (if any); follow `.claude/skills/design-check/SKILL.md` before and after. Write only under <target>. Use Tailwind tokens, no raw hex; support both Dark (default) and Light theme modes. Ensure full mobile responsiveness: single-column reflow (320px–768px), touch targets ≥ 44px, zero horizontal overflow, and bottom nav padding (`pb-20 md:pb-6`).
 Add tests in **tests**/. Run `pnpm --filter web typecheck && pnpm --filter web test`. Reply with files changed + check results, ≤ 10 lines."
 
 Run tokens first (others depend on it); kit and shell can run in parallel afterwards; screens after kit.
