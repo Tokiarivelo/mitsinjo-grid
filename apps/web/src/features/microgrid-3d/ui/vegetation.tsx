@@ -1,0 +1,215 @@
+'use client';
+
+import { useLayoutEffect, useMemo, useRef } from 'react';
+import * as THREE from 'three';
+import { useGLTF } from '@react-three/drei';
+import {
+  scatterVegetation,
+  type NatureKind,
+  type NatureModel,
+  type ScatterItem,
+} from '../utils/scatter';
+import type { SceneQuality } from '../hooks/use-scene-quality';
+import { CANOPY_VARIANTS, createCanopyTree, type CanopyVariant } from '../utils/canopy-tree';
+import { toFloatGeometry } from '../utils/float-geometry';
+
+export const NATURE_URL = '/3d/nature.glb';
+/** Trees closer than this to the village centre get full detail and cast shadows. */
+const NEAR_BAND_RADIUS = 42;
+
+type PartRole = 'leaf' | 'canopy' | 'bark' | 'rock';
+
+interface ModelPart {
+  geometry: THREE.BufferGeometry;
+  role: PartRole;
+}
+
+const LEAF_MAT = new THREE.MeshStandardMaterial({
+  color: '#ffffff',
+  roughness: 0.82,
+  metalness: 0,
+});
+const BARK_MAT = new THREE.MeshStandardMaterial({ color: '#6b4a32', roughness: 0.9 });
+const ROCK_MAT = new THREE.MeshStandardMaterial({ color: '#8a8276', roughness: 0.92 });
+/** Procedural canopies carry a vertex shade (dark underside); GLB foliage has no colors. */
+const CANOPY_MAT = new THREE.MeshStandardMaterial({
+  color: '#ffffff',
+  vertexColors: true,
+  roughness: 0.85,
+  metalness: 0,
+  flatShading: true,
+});
+const MATERIAL_BY_ROLE: Record<PartRole, THREE.Material> = {
+  leaf: LEAF_MAT,
+  canopy: CANOPY_MAT,
+  bark: BARK_MAT,
+  rock: ROCK_MAT,
+};
+
+/** Leaf tints (sRGB) per kind: neighbours differ, like the reference canopy. */
+const LEAF_TINTS: Record<NatureKind, string[]> = {
+  broadleaf: [
+    '#3f6f24',
+    '#4b7d2a',
+    '#2f5c1f',
+    '#5a8a30',
+    '#6b8f2e',
+    '#3a6a2c',
+    '#7a9a3a',
+    '#56802a',
+  ],
+  palm: ['#5f8f2f', '#6f9a35', '#4f7f2a', '#7aa03c'],
+  bush: ['#45752a', '#557f2c', '#3a6626', '#628a32'],
+  rock: ['#5b7a34', '#6a8a3a'],
+};
+
+function roleFor(materialName: string, kind: NatureKind): PartRole {
+  if (materialName === 'leafsGreen' || materialName === 'grass') return 'leaf';
+  if (kind === 'rock') return 'rock';
+  // tree_detailed's third primitive is a second foliage layer.
+  if (materialName === '_defaultMat') return 'leaf';
+  return 'bark';
+}
+
+const canopyCache = new Map<string, ModelPart[]>();
+function canopyParts(variant: CanopyVariant, detail: number): ModelPart[] {
+  const key = `${variant}:${detail}`;
+  const hit = canopyCache.get(key);
+  if (hit) return hit;
+  const { foliage, trunk } = createCanopyTree(variant, detail);
+  const parts: ModelPart[] = [
+    { geometry: foliage, role: 'canopy' },
+    { geometry: trunk, role: 'bark' },
+  ];
+  canopyCache.set(key, parts);
+  return parts;
+}
+
+/** Bake each model's meshes into base-at-origin geometries, tagged by role. */
+function extractParts(scene: THREE.Object3D, name: string, kind: NatureKind): ModelPart[] {
+  const node = scene.getObjectByName(name);
+  if (!node) return [];
+  scene.updateMatrixWorld(true);
+  const parts: ModelPart[] = [];
+  const box = new THREE.Box3();
+  node.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const geometry = toFloatGeometry(mesh.geometry);
+    geometry.applyMatrix4(mesh.matrixWorld);
+    geometry.computeBoundingBox();
+    if (geometry.boundingBox) box.union(geometry.boundingBox);
+    const matName = (mesh.material as THREE.Material).name ?? '';
+    parts.push({ geometry, role: roleFor(matName, kind) });
+  });
+  const center = box.getCenter(new THREE.Vector3());
+  for (const p of parts) {
+    p.geometry.translate(-center.x, -box.min.y, -center.z);
+    // Kenney meshes are quantized; normals stay faceted (low-poly look).
+  }
+  return parts;
+}
+
+function PartInstances({
+  part,
+  items,
+  kind,
+  castShadow,
+}: {
+  part: ModelPart;
+  items: ScatterItem[];
+  kind: NatureKind;
+  castShadow: boolean;
+}) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const s = new THREE.Vector3();
+    const p = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
+    const color = new THREE.Color();
+    const tints = LEAF_TINTS[kind];
+    items.forEach((it, i) => {
+      q.setFromAxisAngle(up, it.rotationY);
+      s.setScalar(it.scale);
+      // Sink slightly so trunks never hover on slopes.
+      p.set(it.position[0], it.position[1] - 0.05, it.position[2]);
+      m.compose(p, q, s);
+      mesh.setMatrixAt(i, m);
+      if (part.role === 'leaf' || part.role === 'canopy') {
+        color.set(tints[Math.floor(it.tint * tints.length) % tints.length] ?? '#4b7d2a');
+        mesh.setColorAt(i, color);
+      }
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.computeBoundingSphere();
+  }, [items, kind, part.role]);
+
+  return (
+    <instancedMesh
+      ref={ref}
+      args={[part.geometry, MATERIAL_BY_ROLE[part.role], items.length]}
+      castShadow={castShadow}
+      receiveShadow
+    />
+  );
+}
+
+export interface VegetationProps {
+  quality?: SceneQuality;
+}
+
+export function Vegetation({ quality = 'high' }: VegetationProps) {
+  const { scene } = useGLTF(NATURE_URL);
+
+  const groups = useMemo(() => {
+    const items = scatterVegetation(
+      quality === 'high'
+        ? { forestCount: 2000, villageCount: 170 }
+        : { forestCount: 700, villageCount: 90 }
+    );
+    // Near band: full detail + shadow casting (high tier). Far band: light blobs, no shadow pass.
+    const byKey = new Map<string, { model: NatureModel; near: boolean; items: ScatterItem[] }>();
+    for (const it of items) {
+      // Low tier: one band (no shadows, same detail) → fewer draw calls.
+      const near =
+        quality === 'high' && Math.hypot(it.position[0], it.position[2]) < NEAR_BAND_RADIUS;
+      const key = `${it.model}|${near ? 'near' : 'far'}`;
+      const entry = byKey.get(key) ?? { model: it.model, near, items: [] };
+      entry.items.push(it);
+      byKey.set(key, entry);
+    }
+    // A model always maps to one kind (see scatter), so the first item's kind holds.
+    return [...byKey.entries()].map(([key, { model, near, items: list }]) => {
+      const kind = list[0]?.kind ?? 'broadleaf';
+      const detail = quality === 'high' && near ? 1 : 0;
+      const parts = (CANOPY_VARIANTS as readonly string[]).includes(model)
+        ? canopyParts(model as CanopyVariant, detail)
+        : extractParts(scene, model, kind);
+      return { key, kind, items: list, parts, castShadow: quality === 'high' && near };
+    });
+  }, [scene, quality]);
+
+  return (
+    <group name="vegetation">
+      {groups.map((g) =>
+        g.parts.map((part, i) => (
+          <PartInstances
+            key={`${g.key}-${i}-${quality}`}
+            part={part}
+            items={g.items}
+            kind={g.kind}
+            castShadow={g.castShadow}
+          />
+        ))
+      )}
+    </group>
+  );
+}
+
+useGLTF.preload(NATURE_URL);

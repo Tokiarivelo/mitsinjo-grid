@@ -66,7 +66,7 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
     <div className={cn('flex-1 flex flex-col min-h-0', className)}>
       {/* Header Area */}
       {isFull && (
-        <div className="px-6 lg:px-8 py-5 border-b border-border/70 bg-surface/80 backdrop-blur-md sticky top-0 z-20 flex flex-wrap items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 lg:px-8 py-3.5 sm:py-5 border-b border-border/70 bg-surface/80 backdrop-blur-md sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-ai-violet/10 border border-ai-violet/30 text-ai-violet">
               <Sparkles className="h-5 w-5" aria-hidden="true" />
@@ -116,7 +116,7 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
       {/* Main Two-Column Operational Deck */}
       <div
         className={cn(
-          'flex-1 flex gap-6 p-4 lg:p-6 min-h-0',
+          'flex-1 flex gap-6 p-3 sm:p-4 lg:p-6 min-h-0',
           isFull ? 'flex-col xl:flex-row max-w-[1720px] w-full mx-auto' : 'flex-col'
         )}
       >

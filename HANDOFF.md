@@ -1,33 +1,40 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-27 · **By:** Antigravity (PX & PY phases) + Claude (PR #15 review) · **Branch:** `feat/px-py-phases`
+**Updated:** 2026-10-28 · **By:** Claude Code (PR #17 review) + Antigravity (theme/mobile) · **Branch:** `feat/3d-fidelity`
 
 ## State
 
-- Phases: **PX (Anomaly signal)** and **PY (Sector control proposals)** completed.
-- PX: Engine `meterReadings` override + `ANOMALY_TO_VERIFY` detector (>25% gap, ≥2h). Synthetic `meter_anomaly` scenario.
-- PY: Engine `sectorCaps` + iterative water-filling reallocation, `SECTOR_CAPPED` warning, `served_s ≤ cap_s + ε` invariant.
-- Copilot: `propose_change` supports `priorities` & `sectorCaps`; prompt ensures trade-off proposals, never physical control.
-- UI: ConfirmProposalDialog shows diffs, SimControls & AssumptionsInspector show active caps/priorities, 100% i18n EN/FR/MG parity.
-- Monorepo healthy: `make check` 100% green (typecheck, lint, test), `pnpm build` clean.
+- PR #17 (3D fidelity + /simulation & /overview redesign) reviewed, fixed, merged into `main`.
+- Energy flow is explicit in every view, all driven by `toSceneModel` (no new numbers):
+  - 3D: powered cables = lit core + glowing electron dots (`ui/electron-flow.tsx`, 1 InstancedMesh); cut cables dark.
+  - 2D `GridDiagram` (`features/microgrid-3d`): Topology (village plan) and Circuit (single-line, breakers open
+    when a sector is cut). Moving electrons on powered wires, red dashes + break mark on cut ones, legend.
+  - Labels have reserved boxes (`utils/diagram-layout.ts`); tests assert no overlap and no wire under a label.
+- Light theme (`lib/theme.tsx`, `ThemeSwitcher`) and mobile layout (`MobileNav`, responsive 3D viewport).
+- Checks green: typecheck, lint, 99 engine tests, 228+ web tests, i18n parity.
 
 ## Next task
 
-- PR #15 reviewed, fixed and merged. Next: run `make shots` to screenshot-check PX/PY UI (not done in review).
+- `make e2e` + `make shots` on the merged main (light theme + new diagrams), then next unchecked task (`make todo`).
 
 ## Decisions taken
 
-- Empty/absent `sectorCaps` preserves canonical JSON hash and ID (byte-identical results).
-- Expected demand computed once (`computeProfileDemandKw`), shared by simulate and the anomaly detector.
-- Strict warning wording: "anomaly to verify" only, never "fraud" or "theft".
-- Caps and priorities presented strictly as simulated trade-offs and social choices.
+- Hub→bus feeder now carries engine `step.servedKw`, always toward the bus (was "backward" when discharging,
+  which drew current flowing from the village into the battery).
+- 2D labels are an HTML overlay sized in container units (`cqw`), not `foreignObject` (Chrome repaint bug on scroll).
+- Shared UI extracted: `SectorIcon` (was copied in 5 files), `ViewModeToggle`; `EnergyBar empty` before a run
+  (overview used to show "Essential service shortfall" before any simulation).
+- E2E fix: header Run button on /simulation (hidden while Controls tab shows its own); no-GPU devices start
+  on `low` with frozen electrons; camera snaps on mount; fps probe capped at 8 s (`docs/performance.md`).
+- CSS custom properties in `:root`/`html.light` power Tailwind `@theme` so opacity utilities work in both themes.
 
 ## Open questions / blockers
 
-- None.
+- Overview `sheddingProtocolDesc` ("below 20%") + two different site coordinates: static claims, confirm or remove.
 
 ## Files touched this session
 
-- Engine: `schemas/`, `model/demand.ts`, `simulate.ts`, `invariants.ts`, `warnings.ts`, `patch.ts`, `hash.ts`, `scenarios/`
-- Web: `server/copilot/`, `features/scenarios/`, `features/simulation/`, `features/copilot/`, `components/`, `messages/`
-- Docs: `docs/engine-spec.md`, `docs/contracts.md`, `docs/tasks/PX-anomaly.md`, `docs/tasks/PY-sector-control.md`, `HANDOFF.md`, `docs/copilot.md` (eval 10–11), `docs/design/stitch-map.md`, `README.md`
+- 3D/2D: `features/microgrid-3d/{ui/electron-flow,ui/flow-wire,ui/grid-diagram,utils/flow-path,utils/diagram-layout}`
+- Reuse: `components/ui/{sector-icon,view-mode-toggle,energy-bar}`; viewport, overview, inspectors use them.
+- Theme/mobile: `lib/theme.tsx`, `app/{globals.css,layout.tsx}`, `components/layout/*`, `components/ui/theme-switcher`
+- Docs: `docs/design/{3d-scene,components,tokens}.md`, `docs/design/screens/{live-simulation,overview}.md`

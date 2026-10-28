@@ -92,11 +92,11 @@ export function ChatMessageItem({
         <div className="bg-surface-elevated/70 border border-border/70 rounded-xl p-5 flex flex-col gap-4 shadow-sm text-xs leading-relaxed">
           {sections?.whatHappened && (
             <div className="space-y-1.5">
-              <div className="flex items-center gap-1.5 text-xs font-mono text-energy-amber uppercase font-semibold tracking-wider">
-                <span className="w-1.5 h-1.5 rounded-full bg-energy-amber" />
+              <div className="flex items-center gap-1.5 text-xs font-mono text-solar-amber uppercase font-semibold tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-solar-amber" />
                 <span>{tCopilot('sectionWhatHappened')}</span>
               </div>
-              <p className="text-text-primary text-sm leading-relaxed pl-3 border-l-2 border-energy-amber/40">
+              <p className="text-text-primary text-sm leading-relaxed pl-3 border-l-2 border-solar-amber/40">
                 {sections.whatHappened}
               </p>
             </div>

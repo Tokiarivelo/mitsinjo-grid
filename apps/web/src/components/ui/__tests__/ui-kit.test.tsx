@@ -126,6 +126,15 @@ describe('UI Kit — P2-T6 Design Gate Tests', () => {
       expect(screen.getByText('Critical')).toBeInTheDocument();
     });
 
+    it('EnergyBar empty state shows no invented shortfall before a run', () => {
+      render(<EnergyBar label="Health Clinic" valuePct={0} priority="critical" empty />);
+      const bar = screen.getByRole('progressbar', { name: /health clinic energy coverage/i });
+      expect(bar).not.toHaveAttribute('aria-valuenow');
+      expect(screen.getByText('—')).toBeInTheDocument();
+      expect(screen.queryByText('0%')).not.toBeInTheDocument();
+      expect(screen.queryByText(/shortfall/i)).not.toBeInTheDocument();
+    });
+
     it('EmptyState renders title, description, and action button', () => {
       render(
         <EmptyState

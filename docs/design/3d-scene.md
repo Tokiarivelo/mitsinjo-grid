@@ -1,31 +1,41 @@
 # 3D Microgrid Scene
 
 Signature element. React Three Fiber + Drei, lazy-loaded. Shown full on /simulation, preview on /overview. Tokens: tokens.md.
-Reference visuals: `design/reference/tableau-de-bord-solaire-futuriste.png` (3D scene in context) and `design/reference/village-3d-2d-schema.jpg` (canonical 3D & 2D village topology).
+Reference visuals: `design/reference/Mitsinjo Grid_ Village at Sunset.png` (master widescreen render at sunset), `design/reference/tableau-de-bord-solaire-futuriste.png` (3D scene in dashboard context), and `design/reference/village-3d-2d-schema.jpg` (canonical 3D & 2D village topology).
 
 ## Composition
 
-- Solar array, central battery unit, distribution poles + lines, clinic, water pumping station, school, houses, market/workshop, simple terrain, paths, few trees, subtle horizon.
-- Canonical layout (see `design/reference/village-viewport-reference.png`):
-  - Solar Array: top-left (tilted blue panels + inverter box)
-  - Central Battery BESS: center (storage container unit + glowing charge LED)
-  - Water Pump Station: mid-left (water tank tower on steel frame)
-  - Primary School: top-center (pitched roof building + rooftop solar panels)
-  - Rural Health Clinic: center-right (clinic pavilion with red cross emblem)
-  - Village Houses: bottom-left (traditional houses and thatched huts)
-  - Communal Market: bottom-center (open stalls with striped awnings)
+- Solar array, dual-container BESS battery unit, distribution poles + crossarms + lines, clinic pavilion with emergency vehicle, water pumping station + water reservoir pond, school with rooftop solar, clustered rural houses, communal market with striped canopies, Malagasy red-clay laterite paths, banana plants, acacia trees, rock boulders, horizon sunset ridges.
+- Canonical layout (see `design/reference/Mitsinjo Grid_ Village at Sunset.png`):
+  - Solar Array: top-left (multi-row ground-mounted PV field, galvanized steel racking + inverter cabinet + telemetry badge)
+  - Central Battery BESS: center (dual ISO storage container units + lightning insignia + twin rooftop HVAC pods + SoC LED gauge + security fence + telemetry badge)
+  - Water Pump Station: mid-left (elevated galvanized steel lattice water tower + tank + pump house + water reservoir pond with reflective surface)
+  - Primary School: top-center/right (elongated rural school building + veranda colonnade + rooftop solar panels + flagpole + telemetry badge)
+  - Rural Health Clinic: center-right (stucco dispensary pavilion + terracotta red hipped roof + covered veranda + red cross emblem + parked emergency vehicle + telemetry badge)
+  - Village Houses: bottom-left (cluster of 5 authentic rural houses with corrugated tin and thatch roofs + warm glowing windows + verandas)
+  - Communal Market: bottom-center/right (open stalls with striped red/yellow/blue canvas awnings + produce crates + festive evening string lights + pickup truck)
 - Madagascar-inspired, NOT a surveyed real location (label as simulated).
 - Sector mapping: health=Clinic, water=Water pump, school=School, households=Houses, market=Market.
 
 ## Style
 
-- Clean architectural viz; semi-realistic low-poly with refined materials; deep blue twilight; warm sun and amber highlights; soft contact shadows; restrained depth.
+- Stylized low-poly diorama at golden hour (reference: `Village at Sunset`): procedural sky dome with sun disc + glow, three layered mountain ridges with aerial haze (valley opened where the sun sets), rolling forested hills (`utils/landscape`), red laterite paths and dirt yards painted into terrain vertex colors, village pond + distant lake, dense rounded canopy forest + palms/bushes/rocks (`ui/vegetation`).
+- Light follows the hour (`utils/sky-palette`): golden → warm afternoon by day (sun altitude capped ~36° for long shadows), moonlit blue night; windows and street lamps glow at dusk/night.
+- Buildings share `ui/village-house` (walls, hipped roof with eaves, corrugated or tile finish, veranda, glowing windows). Clinic: white walls, slate roof, red-cross sign. Water: lattice tower + tank + pump house. School: long building, red roof, rooftop PV. Houses: 6 homes. Market: 6 striped canvas tents + string lights. Kenney ambulance, pickup and van.
 - Legible silhouettes at dashboard scale; essential services identifiable without opening a panel.
+- Sleek floating glassmorphism badges (`#0a101d/90` with border `#26364d`) with color-coded sector icons, titles, and live telemetry.
 - Avoid: toy/cartoon proportions, excess vegetation, cinematic effects hiding infrastructure.
+
+## Quality tiers & fullscreen
+
+- Toolbar toggle `Quality: High | Low` (`useSceneQuality`, persisted). `high` (default) adds HDRI light, real-time sun shadows, ambient occlusion, bloom and a warm ACES grade; `low` keeps the same composition with lighter forest and a baked contact shadow. A slow device is auto-lowered once (tooltip says so) unless the user chose. Budgets: `docs/performance.md`.
+- Fullscreen button (`useFullscreen`) expands the 3D card edge-to-edge; it then shows a stats strip (SIMULATED DATA, solar output, battery SoC, village demand for the selected hour, all engine values).
+- `VillageCanvas` props: `model`, `selectedSector`, `onSelectSector`, `cameraPreset`, `cameraResetKey`, optional `quality` override (default = shared tier).
+- Assets (`apps/web/public/3d`, CC0, credits in `CREDITS.md`): `nature.glb` (Kenney palms, bushes, rocks), `ambulance|truck|van.glb` (Kenney), `sunset_1k.hdr` (Poly Haven). Broadleaf trees and all buildings are procedural.
 
 ## Camera
 
-- Default three-quarter isometric perspective; smooth orbit; limited zoom range; reset-camera button (aria-label "Reset camera").
+- Default front three-quarter view (village in front, hills, lake and sunset behind); smooth orbit; limited zoom range; reset-camera button (aria-label "Reset camera").
 - Presets: `Village` (default), `Solar Array`, `Battery`, `Essential Services`. Transitions short and interruptible; never auto-move while user is exploring.
 
 ## Energy visual mapping (render only; never compute flows here)
@@ -38,6 +48,7 @@ Reference visuals: `design/reference/tableau-de-bord-solaire-futuriste.png` (3D 
 | Solar-to-network line lit                                                                                                                   | result.steps[t].solarKw > 0                                                                  |
 | Network-to-building line lit                                                                                                                | metrics.perSector[id].servedKwh > 0 (per step if available)                                  |
 | Building status indicator                                                                                                                   | metrics.perSector[id].coveragePct (full / partial / critical)                                |
+| Window / string-light glow                                                                                                                  | building status (full 1 · partial 0.45 · unserved 0 = lights out), scaled by time of day     |
 | Unmet demand warning (restrained)                                                                                                           | metrics.perSector[id].unservedKwh > 0                                                        |
 | Critical sector marker                                                                                                                      | health/water with unservedKwh > 0 or metrics.criticalUnservedKwh > 0                         |
 | Time shown                                                                                                                                  | selected step t (0-23), 1 h per step; per-step kW avg == kWh                                 |
@@ -51,8 +62,11 @@ Reference visuals: `design/reference/tableau-de-bord-solaire-futuriste.png` (3D 
 
 ## Motion
 
-- Gentle flow animation on active lines only; battery fill eases after run completes.
-- prefers-reduced-motion: no flow animation (use static lit lines/dashes), instant camera jumps, no pulses.
+- Powered cables: lit core + glowing "electron" dots (`ui/electron-flow.tsx`, one InstancedMesh) moving from the
+  source toward the consumers, speed from `LineFlowSceneModel.speed`. Cut/idle cables stay dark, no dots.
+- The hub→bus feeder carries the engine's `step.servedKw` and always flows toward the bus.
+- Battery fill eases after run completes.
+- prefers-reduced-motion or modified scenario: electrons frozen in place (still visible), instant camera jumps, no pulses.
 
 ## Performance
 

@@ -1,4 +1,4 @@
-import type { BatteryStatusColor, StatusColor } from '../types';
+import type { BatteryStatusColor, BuildingStatus, StatusColor } from '../types';
 
 /**
  * Three.js materials can't read Tailwind classes, so status colors mirror the
@@ -38,4 +38,23 @@ export const BATTERY_STATUS_BG_CLASS: Record<BatteryStatusColor, string> = {
   healthy: 'bg-battery-green',
   warning: 'bg-warning-amber',
   critical: 'bg-critical-red',
+};
+
+/**
+ * Interior light per building status: served buildings glow, partially served flicker
+ * at half, unserved go dark (reads as "lights out" without opening a panel).
+ */
+export const WINDOW_GLOW_BY_STATUS: Record<BuildingStatus, number> = {
+  full: 1,
+  partial: 0.45,
+  unserved: 0,
+  unknown: 0.35,
+};
+
+/** Tailwind text class per status, for 2D diagram wires (SVG uses `currentColor`). */
+export const STATUS_TEXT_CLASS: Record<StatusColor, string> = {
+  'battery-green': 'text-battery-green',
+  'warning-amber': 'text-warning-amber',
+  'critical-red': 'text-critical-red',
+  idle: 'text-text-muted',
 };

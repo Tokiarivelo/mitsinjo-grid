@@ -57,4 +57,20 @@ describe('OverviewPage (P4-T3, P4-T7)', () => {
     const shortfallElements = screen.getAllByText(/critical shortfall/i);
     expect(shortfallElements.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('switches active scenario via scenario selector', () => {
+    render(<OverviewPage />);
+    const select = screen.getByLabelText(/select simulation scenario/i);
+    fireEvent.change(select, { target: { value: 'cloudy_afternoon' } });
+
+    expect(useSimulationStore.getState().scenarioId).toBe('cloudy_afternoon');
+  });
+
+  it('updates timeIndex when clicking quick-phase buttons', () => {
+    render(<OverviewPage />);
+    const eveningBtn = screen.getByRole('button', { name: /19:00 evening peak/i });
+    fireEvent.click(eveningBtn);
+
+    expect(useSimulationStore.getState().timeIndex).toBe(19);
+  });
 });

@@ -2,7 +2,19 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { BatteryCharging, Factory, HeartPulse, Play, Sun, Zap } from 'lucide-react';
+import {
+  ArrowRight,
+  BatteryCharging,
+  Factory,
+  HeartPulse,
+  Play,
+  Shield,
+  ShieldAlert,
+  Sparkles,
+  Sun,
+  Zap,
+} from 'lucide-react';
+import { scenarios, type ScenarioId } from '@mitsinjo/engine';
 import {
   selectActiveMetrics,
   selectActiveResult,
@@ -17,11 +29,13 @@ import {
 } from '@/stores';
 import { fmtKwh, fmtNum, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { MetricCard } from '@/components/ui/metric-card';
 import { EnergyBar } from '@/components/ui/energy-bar';
 import { ChartCard } from '@/components/ui/chart-card';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { ScenarioSelector, type ScenarioOption } from '@/components/ui/scenario-selector';
 import { InsightCard } from '@/components/ui/insight-card';
 import { ImpactBanner } from '@/components/ui/impact-banner';
 import { EnergyOverTimeChart } from '@/components/charts';
@@ -35,6 +49,7 @@ export function OverviewPage() {
 
   const scenarioId = useSimulationStore(selectScenarioId);
   const input = useSimulationStore(selectInput);
+  const status = useSimulationStore((s) => s.status);
   const isRunning = useSimulationStore(selectIsRunning);
   const hasResults = useSimulationStore(selectHasResults);
   const result = useSimulationStore(selectActiveResult);
@@ -44,6 +59,8 @@ export function OverviewPage() {
   const timeIndex = useSimulationStore(selectTimeIndex);
 
   const runSimulation = useSimulationStore((s) => s.run);
+  const loadScenario = useSimulationStore((s) => s.loadScenario);
+  const setTimeIndex = useSimulationStore((s) => s.setTimeIndex);
 
   // Peak of the engine's hourly solar output (selection only, no energy math)
   const peakSolarKw = useMemo(
@@ -51,16 +68,29 @@ export function OverviewPage() {
     [steps]
   );
 
-  const scenarioName = tScenarios(`${scenarioId}.name` as const);
+  const scenarioOptions: ScenarioOption[] = useMemo(
+    () =>
+      (Object.keys(scenarios) as ScenarioId[]).map((id) => ({
+        id,
+        name: tScenarios(`${id}.name` as const),
+        description: tScenarios(`${id}.description` as const),
+      })),
+    [tScenarios]
+  );
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
-      {/* Top bar: Simulated Badge & Hero Header */}
+      {/* Top Executive Mission Control Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border/60">
         <div>
-          <div className="flex items-center gap-2 mb-1.5">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <StatusBadge variant="simulated" label={tCommon('simulatedData')} />
-            <span className="text-xs font-mono text-text-muted">{scenarioName}</span>
+            <ScenarioSelector
+              scenarios={scenarioOptions}
+              value={scenarioId}
+              modified={status === 'modified'}
+              onChange={(id) => loadScenario(id as ScenarioId)}
+            />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold font-display text-text-primary tracking-tight">
             {tCommon('appName')}
@@ -88,7 +118,7 @@ export function OverviewPage() {
         </div>
       </div>
 
-      {/* 1. Four Metric Cards */}
+      {/* 1. Four Telemetry Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Solar PV Card */}
         <MetricCard
@@ -177,92 +207,19 @@ export function OverviewPage() {
         />
       </div>
 
-      {/* 2. Middle Row: 2D Grid Schematic Preview + 24h Energy Balance */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <GridSchematicPreview result={result} input={input} hour={timeIndex} />
-        </div>
+      {/* 2. 2-Column Bento Command Center (12-col grid: 7 Left, 5 Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column (col-span-7, ~60%): Digital Twin Preview + 24h Telemetry Chart */}
+        <div className="lg:col-span-7 flex flex-col gap-6">
+          {/* Digital Twin Viewport & Docked 4-Stat Energy Balance Summary */}
+          <GridSchematicPreview
+            result={result}
+            input={input}
+            hour={timeIndex}
+            onHourChange={setTimeIndex}
+          />
 
-        {/* 24h Energy Balance Card */}
-        <div className="p-5 rounded-card bg-surface border border-border shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="pb-3 border-b border-border/60">
-              <h3 className="font-display text-sm font-semibold text-text-primary tracking-tight">
-                {tOverview('energyBalanceTitle')}
-              </h3>
-              <p className="text-xs text-text-secondary mt-0.5">{tOverview('energyBalanceDesc')}</p>
-            </div>
-
-            <div className="mt-4 flex flex-col gap-3 font-mono text-xs">
-              <div className="flex items-center justify-between py-2 border-b border-border/40">
-                <span className="text-text-secondary flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-solar-amber" />
-                  {tOverview('solarGen')}:
-                </span>
-                <span className="font-semibold text-solar-amber">
-                  {fmtKwh(hasResults ? metrics?.solarKwh : null)}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between py-2 border-b border-border/40">
-                <span className="text-text-secondary flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-battery-green" />
-                  {tOverview('batteryNet')}:
-                </span>
-                <span className="font-semibold text-text-primary">
-                  {hasResults && metrics
-                    ? `${fmtPct(metrics.socStartPct, 0)} → ${fmtPct(metrics.socEndPct, 0)}`
-                    : fmtPct(null)}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between py-2 border-b border-border/40">
-                <span className="text-text-secondary flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-energy-cyan" />
-                  {tOverview('servedEnergy')}:
-                </span>
-                <span className="font-semibold text-battery-green">
-                  {fmtKwh(hasResults ? metrics?.servedKwh : null)}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between py-2">
-                <span className="text-text-secondary flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-critical-red" />
-                  {tOverview('unservedTotal')}:
-                </span>
-                <span
-                  className={
-                    metrics && metrics.unservedKwh > 0.05
-                      ? 'font-semibold text-critical-red'
-                      : 'font-semibold text-text-muted'
-                  }
-                >
-                  {fmtKwh(hasResults ? metrics?.unservedKwh : null)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {!hasResults && (
-            <div className="mt-4 pt-3 border-t border-border/60">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="w-full"
-                onClick={() => runSimulation()}
-              >
-                {tOverview('runSimulation')}
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 3. Bottom Row: ChartCard + Service Allocation + Impact & Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Energy Over Time Chart */}
-        <div className="lg:col-span-2">
+          {/* 24h Telemetry Chart */}
           <ChartCard
             title={tOverview('energyOverTimeTitle')}
             subtitle={tOverview('energyOverTimeSubtitle')}
@@ -275,27 +232,32 @@ export function OverviewPage() {
           </ChartCard>
         </div>
 
-        {/* Right Column: Service Allocation & Scenario Impact */}
-        <div className="flex flex-col gap-6">
-          {/* Service Allocation Card */}
-          <div className="p-5 rounded-card bg-surface border border-border shadow-sm flex flex-col justify-between">
-            <div className="pb-3 border-b border-border/60">
-              <h3 className="font-display text-sm font-semibold text-text-primary tracking-tight">
-                {tOverview('serviceAllocationTitle')}
-              </h3>
-              <p className="text-xs text-text-secondary mt-0.5">
-                {tOverview('serviceAllocationDesc')}
-              </p>
+        {/* Right Column (col-span-5, ~40%): Service Allocation & Scenario Impact */}
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          {/* Service Allocation & Load Shedding Hierarchy Card */}
+          <div className="p-5 rounded-card bg-surface border border-border shadow-sm flex flex-col gap-4">
+            <div className="pb-3 border-b border-border/60 flex items-center justify-between">
+              <div>
+                <h3 className="font-display text-sm font-semibold text-text-primary tracking-tight">
+                  {tOverview('serviceAllocationTitle')}
+                </h3>
+                <p className="text-xs text-text-secondary mt-0.5">
+                  {tOverview('serviceAllocationDesc')}
+                </p>
+              </div>
+              <Shield className="h-4 w-4 text-energy-cyan shrink-0" aria-hidden="true" />
             </div>
 
-            <div className="mt-4 flex flex-col divide-y divide-border/40">
+            {/* 5 Sectors in hierarchy order */}
+            <div className="flex flex-col divide-y divide-border/40">
               {input.sectors.map((sec) => {
                 const sm = metrics?.perSector[sec.id];
                 return (
                   <EnergyBar
                     key={sec.id}
                     label={tSectors(sec.id)}
-                    valuePct={hasResults && sm ? sm.coveragePct : 0}
+                    valuePct={sm?.coveragePct ?? 0}
+                    empty={!hasResults || !sm}
                     servedKwh={sm?.servedKwh}
                     demandKwh={sm?.demandKwh}
                     priority={sec.priority}
@@ -303,17 +265,34 @@ export function OverviewPage() {
                 );
               })}
             </div>
+
+            {/* Automated shedding protocol informative note */}
+            <div className="mt-2 p-3 rounded-control bg-canvas-sunken/60 border border-border/60 text-xs font-sans text-text-secondary flex gap-2.5 items-start">
+              <ShieldAlert
+                className="h-4 w-4 text-energy-cyan shrink-0 mt-0.5"
+                aria-hidden="true"
+              />
+              <p className="leading-relaxed">
+                <span className="font-semibold text-text-primary">
+                  {tOverview('sheddingProtocolTitle')}:
+                </span>{' '}
+                {tOverview('sheddingProtocolDesc')}
+              </p>
+            </div>
           </div>
 
-          {/* Scenario Impact & Alerts */}
-          <div className="p-5 rounded-card bg-surface border border-border shadow-sm flex flex-col gap-3">
-            <div className="pb-3 border-b border-border/60">
-              <h3 className="font-display text-sm font-semibold text-text-primary tracking-tight">
-                {tOverview('scenarioImpactTitle')}
-              </h3>
-              <p className="text-xs text-text-secondary mt-0.5">
-                {tOverview('scenarioImpactDesc')}
-              </p>
+          {/* Scenario Impact & Operational Insights Card */}
+          <div className="p-5 rounded-card bg-surface border border-border shadow-sm flex flex-col gap-4">
+            <div className="pb-3 border-b border-border/60 flex items-center justify-between">
+              <div>
+                <h3 className="font-display text-sm font-semibold text-text-primary tracking-tight">
+                  {tOverview('scenarioImpactTitle')}
+                </h3>
+                <p className="text-xs text-text-secondary mt-0.5">
+                  {tOverview('scenarioImpactDesc')}
+                </p>
+              </div>
+              <Sparkles className="h-4 w-4 text-ai-violet shrink-0" aria-hidden="true" />
             </div>
 
             {hasResults ? (
@@ -331,10 +310,29 @@ export function OverviewPage() {
                     origin="computed"
                   />
                 )}
+
+                <Link
+                  href="/strategies"
+                  className={cn(
+                    buttonVariants({ variant: 'secondary', size: 'sm' }),
+                    'w-full mt-1 justify-center'
+                  )}
+                >
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span>{tOverview('compareStrategiesCta')}</span>
+                </Link>
               </div>
             ) : (
-              <div className="py-6 text-center text-xs text-text-muted">
-                {tOverview('emptyDesc')}
+              <div className="py-6 text-center text-xs text-text-muted flex flex-col items-center gap-3">
+                <p className="max-w-xs">{tOverview('emptyDesc')}</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={isRunning}
+                  onClick={() => runSimulation()}
+                >
+                  {tOverview('runSimulation')}
+                </Button>
               </div>
             )}
           </div>

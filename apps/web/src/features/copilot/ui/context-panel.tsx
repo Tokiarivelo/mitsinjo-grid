@@ -109,10 +109,10 @@ export function ContextPanel({ className }: ContextPanelProps) {
             <div className="p-3 rounded-xl bg-surface-elevated border border-border/60 flex flex-col justify-between">
               <div className="flex items-center justify-between text-text-muted">
                 <span className="text-[10px]">{tCopilot('metricSolarGen')}</span>
-                <SunMedium className="h-3.5 w-3.5 text-energy-amber" aria-hidden="true" />
+                <SunMedium className="h-3.5 w-3.5 text-solar-amber" aria-hidden="true" />
               </div>
               <div className="mt-2">
-                <div className="text-sm font-bold text-energy-amber">{metrics.solarKwh} kWh</div>
+                <div className="text-sm font-bold text-solar-amber">{metrics.solarKwh} kWh</div>
                 <div className="text-[10px] text-text-muted">
                   {metrics.curtailedKwh} kWh {tCopilot('curtailed')}
                 </div>

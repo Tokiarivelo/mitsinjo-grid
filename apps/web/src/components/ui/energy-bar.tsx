@@ -1,6 +1,7 @@
 import { AlertCircle, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations } from '@/lib/i18n';
+import { EMPTY_PLACEHOLDER } from '@/lib/format';
 
 export type SectorPriority = 'critical' | 'high' | 'medium' | 'low';
 export type EnergyBarStatus = 'full' | 'partial' | 'critical';
@@ -14,6 +15,8 @@ export interface EnergyBarProps {
   priority?: SectorPriority;
   status?: EnergyBarStatus;
   showValues?: boolean;
+  /** No simulation result yet: show a dash, an empty track and no status text. */
+  empty?: boolean;
   className?: string;
 }
 
@@ -25,6 +28,7 @@ export function EnergyBar({
   priority,
   status,
   showValues = true,
+  empty = false,
   className,
 }: EnergyBarProps) {
   const tUi = useTranslations('ui.energyBar');
@@ -65,7 +69,7 @@ export function EnergyBar({
           {priorityBadge}
         </div>
         <div className="ml-auto flex items-center gap-3 font-mono text-xs whitespace-nowrap">
-          {showValues && servedKwh !== undefined && demandKwh !== undefined && (
+          {showValues && !empty && servedKwh !== undefined && demandKwh !== undefined && (
             <span className="text-text-muted text-[11px]">
               {servedKwh.toFixed(1)} / {demandKwh.toFixed(1)} kWh
             </span>
@@ -73,14 +77,16 @@ export function EnergyBar({
           <span
             className={cn(
               'font-semibold min-w-[44px] text-right',
-              resolvedStatus === 'full'
-                ? 'text-battery-green'
-                : resolvedStatus === 'critical'
-                  ? 'text-critical-red'
-                  : 'text-warning-amber'
+              empty
+                ? 'text-text-muted'
+                : resolvedStatus === 'full'
+                  ? 'text-battery-green'
+                  : resolvedStatus === 'critical'
+                    ? 'text-critical-red'
+                    : 'text-warning-amber'
             )}
           >
-            {clampedPct}%
+            {empty ? EMPTY_PLACEHOLDER : `${clampedPct}%`}
           </span>
         </div>
       </div>
@@ -88,21 +94,23 @@ export function EnergyBar({
       {/* Progress Track */}
       <div
         role="progressbar"
-        aria-valuenow={clampedPct}
+        aria-valuenow={empty ? undefined : clampedPct}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={`${label} ${tUi('coverageLabel')}`}
-        aria-valuetext={`${label}: ${clampedPct}% ${tUi('coveredText')}`}
+        aria-valuetext={
+          empty ? EMPTY_PLACEHOLDER : `${label}: ${clampedPct}% ${tUi('coveredText')}`
+        }
         className="h-2 w-full bg-surface-elevated rounded-full overflow-hidden border border-border/40"
       >
         <div
           className={cn('h-full transition-all duration-fast rounded-full', fillClass)}
-          style={{ width: `${clampedPct}%` }}
+          style={{ width: `${empty ? 0 : clampedPct}%` }}
         />
       </div>
 
       {/* Optional status text if partial or critical */}
-      {resolvedStatus !== 'full' && (
+      {!empty && resolvedStatus !== 'full' && (
         <div className="flex items-center gap-1 text-[11px] font-sans mt-0.5">
           {resolvedStatus === 'critical' ? (
             <>

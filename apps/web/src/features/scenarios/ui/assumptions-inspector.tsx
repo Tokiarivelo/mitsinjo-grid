@@ -1,17 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  HeartPulse,
-  Home,
-  Lock,
-  RotateCcw,
-  School,
-  Settings,
-  ShoppingBag,
-  Sliders,
-  Waves,
-} from 'lucide-react';
+import { Lock, RotateCcw, Settings, Sliders } from 'lucide-react';
+import { SectorIcon } from '@/components/ui/sector-icon';
 import {
   HORIZON_H,
   STEP_H,
@@ -79,14 +70,6 @@ export function AssumptionsInspector({
     }
     setConfirmReset(false);
     onReset();
-  };
-
-  const sectorIcons = {
-    health: <HeartPulse className="h-3.5 w-3.5 text-critical-red" aria-hidden="true" />,
-    water: <Waves className="h-3.5 w-3.5 text-energy-cyan" aria-hidden="true" />,
-    school: <School className="h-3.5 w-3.5 text-warning-amber" aria-hidden="true" />,
-    households: <Home className="h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />,
-    market: <ShoppingBag className="h-3.5 w-3.5 text-solar-amber" aria-hidden="true" />,
   };
 
   return (
@@ -255,7 +238,7 @@ export function AssumptionsInspector({
               >
                 <div className="flex items-center gap-2">
                   <div className="p-1 rounded-control-sm bg-surface-elevated border border-border">
-                    {sectorIcons[sec.id]}
+                    <SectorIcon sector={sec.id} className="h-3.5 w-3.5" />
                   </div>
                   <div>
                     <span className="font-medium text-text-primary block font-sans">

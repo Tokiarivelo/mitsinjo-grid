@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { StatusBadge, type StatusBadgeVariant } from '@/components/ui/status-badge';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
+import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { useTranslations } from '@/lib/i18n';
 
 export interface NavConfig {
@@ -137,8 +138,16 @@ export function Sidebar({ status = 'ready', open = false, onClose, className }: 
           })}
         </nav>
 
-        {/* Footer Area: Language Toggle, Simulation Status & Data Label */}
+        {/* Footer Area: Theme Toggle, Language Toggle, Simulation Status & Data Label */}
         <div className="p-4 border-t border-border flex flex-col gap-3 bg-surface-elevated/30">
+          {/* Theme Switcher */}
+          <div className="flex items-center justify-between pb-2 border-b border-border/40">
+            <span className="text-[10px] font-mono text-text-muted uppercase tracking-wider">
+              {tCommon('theme')}
+            </span>
+            <ThemeSwitcher variant="tabs" size="sm" />
+          </div>
+
           {/* Language Switcher */}
           <div className="flex items-center justify-between pb-2 border-b border-border/40">
             <span className="text-[10px] font-mono text-text-muted uppercase tracking-wider">

@@ -37,7 +37,7 @@ test.describe('P8-T1 Demo Path E2E', () => {
     await expect(page.getByText('SIMULATION COMPLETE').first()).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('Peak Solar PV')).toBeVisible();
     await expect(page.getByText('Battery End SoC')).toBeVisible();
-    await expect(page.getByText('Essential Services')).toBeVisible();
+    await expect(page.getByText('Essential Services', { exact: true })).toBeVisible();
 
     // 4. Compare strategies in Strategy Lab
     await page.getByRole('link', { name: /strategy lab/i }).click();

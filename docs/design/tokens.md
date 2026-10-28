@@ -1,33 +1,34 @@
 # Tokens
 
-Dark mode only. Keep UI mostly neutral; energy colors guide attention.
+Both Dark (default) and Light theme modes supported. Keep UI mostly neutral; energy colors guide attention.
 
 ## Neutral colors
 
-| Token            | Hex     | Use                             |
-| ---------------- | ------- | ------------------------------- |
-| canvas           | #080D1A | App background                  |
-| canvas-raised    | #0D1526 | Secondary regions               |
-| surface          | #111D30 | Cards, panels, sidebar          |
-| surface-elevated | #17253A | Modals, dropdowns, raised cards |
-| surface-hover    | #1C2D45 | Hover                           |
-| border           | #26364D | Separators, outlines            |
-| border-strong    | #3B506B | Emphasis                        |
-| text-primary     | #F4F7FB | Headings, values                |
-| text-secondary   | #A8B6C9 | Supporting text                 |
-| text-muted       | #72839A | Metadata, inactive              |
+| Token            | Dark Hex | Light Hex | Use                             |
+| ---------------- | -------- | --------- | ------------------------------- |
+| canvas           | #080D1A  | #F8FAFC   | App background                  |
+| canvas-raised    | #0D1526  | #FFFFFF   | Secondary regions               |
+| canvas-sunken    | #050811  | #F1F5F9   | Recessed slots & 3D backdrops   |
+| surface          | #111D30  | #FFFFFF   | Cards, panels, sidebar          |
+| surface-elevated | #17253A  | #F8FAFC   | Modals, dropdowns, raised cards |
+| surface-hover    | #1C2D45  | #F1F5F9   | Hover                           |
+| border           | #26364D  | #E2E8F0   | Separators, outlines            |
+| border-strong    | #3B506B  | #CBD5E1   | Emphasis                        |
+| text-primary     | #F4F7FB  | #0F172A   | Headings, values                |
+| text-secondary   | #A8B6C9  | #475569   | Supporting text                 |
+| text-muted       | #72839A  | #64748B   | Metadata, inactive              |
 
 ## Energy / semantic colors
 
-| Token         | Hex     | Meaning                                      |
-| ------------- | ------- | -------------------------------------------- |
-| solar-amber   | #FFB547 | Solar production, sunlight, (primary button) |
-| energy-cyan   | #50D8E8 | Energy flow, connections, active nav edge    |
-| network-blue  | #729CFF | Distribution network, secondary series       |
-| battery-green | #53D6A0 | Healthy battery, favorable outcome           |
-| ai-violet     | #B6A0FF | AI elements only                             |
-| warning-amber | #FFCB70 | Shortage warning                             |
-| critical-red  | #FF7185 | Critical failure, unmet essential demand     |
+| Token         | Dark Hex | Light Hex | Meaning                                      |
+| ------------- | -------- | --------- | -------------------------------------------- |
+| solar-amber   | #FFB547  | #D97706   | Solar production, sunlight, (primary button) |
+| energy-cyan   | #50D8E8  | #0891B2   | Energy flow, connections, active nav edge    |
+| network-blue  | #729CFF  | #2563EB   | Distribution network, secondary series       |
+| battery-green | #53D6A0  | #059669   | Healthy battery, favorable outcome           |
+| ai-violet     | #B6A0FF  | #7C3AED   | AI elements only                             |
+| warning-amber | #FFCB70  | #D97706   | Shortage warning                             |
+| critical-red  | #FF7185  | #DC2626   | Critical failure, unmet essential demand     |
 
 Rules: amber = solar not decoration; cyan = flow; green only for healthy/favorable; violet AI only; red genuinely critical only; never color alone; no full-screen gradients.
 Background: base canvas + soft amber radial glow behind solar, very faint cyan near battery/network. No rainbow gradients, no neon borders, minimal glassmorphism.
