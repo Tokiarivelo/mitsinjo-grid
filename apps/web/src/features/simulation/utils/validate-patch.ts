@@ -25,7 +25,11 @@ export function validatePatch(
     return { key: 'outOfRange' };
   }
 
-  if (field === 'dropStartHour' || field === 'dropDurationH') {
+  if (
+    field === 'dropStartHour' ||
+    field === 'dropDurationH' ||
+    (field === 'solarDropPct' && candidate.solarDropPct !== undefined && candidate.solarDropPct > 0)
+  ) {
     const drop = input.events.find((e) => e.type === 'solar_drop');
     const start = candidate.dropStartHour ?? drop?.startHour ?? 0;
     const duration = candidate.dropDurationH ?? drop?.durationH ?? 0;

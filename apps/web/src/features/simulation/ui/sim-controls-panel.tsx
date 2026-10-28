@@ -40,11 +40,31 @@ export function SimControlsPanel({
   // Derive existing parameters from current input
   const existingSolarDrop = input.events.find((e) => e.type === 'solar_drop');
   const currentDropPct = existingSolarDrop ? Math.round((1 - existingSolarDrop.factor) * 100) : 0;
-  const currentDropStart = existingSolarDrop ? existingSolarDrop.startHour : 12;
-  const currentDropDuration = existingSolarDrop ? existingSolarDrop.durationH : 3;
+  const initialDropStart = existingSolarDrop ? existingSolarDrop.startHour : 12;
+  const initialDropDuration = existingSolarDrop ? existingSolarDrop.durationH : 3;
+
+  const [draftStart, setDraftStart] = useState<number>(initialDropStart);
+  const [draftDuration, setDraftDuration] = useState<number>(initialDropDuration);
 
   // Validation error dictionary for inline feedback
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Track previous input & status to sync draft state during render without cascading effects
+  const [prevInput, setPrevInput] = useState(input);
+  const [prevStatus, setPrevStatus] = useState(status);
+  if (prevInput !== input || prevStatus !== status) {
+    setPrevInput(input);
+    setPrevStatus(status);
+    if (status === 'ready') {
+      const drop = input.events.find((e) => e.type === 'solar_drop');
+      setDraftStart(drop ? drop.startHour : 12);
+      setDraftDuration(drop ? drop.durationH : 3);
+      setErrors({});
+    } else if (status === 'complete' && existingSolarDrop) {
+      setDraftStart(existingSolarDrop.startHour);
+      setDraftDuration(existingSolarDrop.durationH);
+    }
+  }
 
   const validateAndPatch = (field: keyof InputPatch, candidate: InputPatch) => {
     const error = validatePatch(field, candidate, input);
@@ -59,6 +79,10 @@ export function SimControlsPanel({
       delete newErrors.dropStartHour;
       delete newErrors.dropDurationH;
     }
+    if (field === 'solarDropPct' && candidate.solarDropPct === 0) {
+      delete newErrors.dropStartHour;
+      delete newErrors.dropDurationH;
+    }
     setErrors(newErrors);
     onPatch(candidate);
   };
@@ -66,25 +90,35 @@ export function SimControlsPanel({
   const handleSolarDropChange = (val: number) => {
     validateAndPatch('solarDropPct', {
       solarDropPct: val,
-      dropStartHour: currentDropStart,
-      dropDurationH: currentDropDuration,
+      dropStartHour: draftStart,
+      dropDurationH: draftDuration,
     });
   };
 
   const handleDropStartChange = (val: number) => {
+    setDraftStart(val);
     validateAndPatch('dropStartHour', {
       dropStartHour: val,
-      dropDurationH: currentDropDuration,
+      dropDurationH: draftDuration,
       solarDropPct: currentDropPct,
     });
   };
 
   const handleDropDurationChange = (val: number) => {
+    setDraftDuration(val);
     validateAndPatch('dropDurationH', {
       dropDurationH: val,
-      dropStartHour: currentDropStart,
+      dropStartHour: draftStart,
       solarDropPct: currentDropPct,
     });
+  };
+
+  const handleReset = () => {
+    setErrors({});
+    const drop = input.events.find((e) => e.type === 'solar_drop');
+    setDraftStart(drop ? drop.startHour : 12);
+    setDraftDuration(drop ? drop.durationH : 3);
+    onReset();
   };
 
   const handleDemandMultiplierChange = (val: number) => {
@@ -138,8 +172,14 @@ export function SimControlsPanel({
           <Button
             variant="secondary"
             size="sm"
-            onClick={onReset}
-            disabled={status === 'ready' && !isModified}
+            onClick={handleReset}
+            disabled={
+              status === 'ready' &&
+              !isModified &&
+              !hasErrors &&
+              draftStart === initialDropStart &&
+              draftDuration === initialDropDuration
+            }
             icon={<RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />}
             aria-label={tSim('resetScenario')}
           >
@@ -185,7 +225,7 @@ export function SimControlsPanel({
         {/* 2. Drop Start Hour */}
         <SimControl
           label={tSim('dropStartHour')}
-          value={currentDropStart}
+          value={draftStart}
           unit="h"
           min={0}
           max={23}
@@ -198,7 +238,7 @@ export function SimControlsPanel({
         {/* 3. Drop Duration */}
         <SimControl
           label={tSim('dropDuration')}
-          value={currentDropDuration}
+          value={draftDuration}
           unit="h"
           min={1}
           max={24}

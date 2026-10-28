@@ -1,26 +1,23 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-28 · **By:** Antigravity (rules/skills update) · **Branch:** `main`
+**Updated:** 2026-10-28 · **By:** Antigravity (fix simulation controls validation) · **Branch:** `fix/simulation-controls-validation`
 
 ## State
 
-- PR #18 merged into `main` (rules and skills update for dual theming & responsive mobile).
-- Light theme (`lib/theme.tsx`, `ThemeSwitcher`) and mobile responsiveness fully operational across all routes.
-- Dual theming and responsive mobile first-class rules and skills updated across repo:
-  - `CLAUDE.md`, `docs/conventions.md`, `.claude/rules/{web-ui,review,three}.md`
-  - `.claude/skills/{review-pr,ui-feature,design-check,scene-3d,designer-3d,design-dispatch}.md`
-- Checks green: typecheck, lint, 99 engine tests, 241 web tests, 100% i18n key parity.
+- Fixed dropExceedsHorizon error synchronization and draft control recovery in `SimControlsPanel`.
+- Sliders track draft values so compensating parameters (e.g., reducing duration after start exceeds 24h) correctly clear errors.
+- Added reset scenario handling to wipe error state and restore initial drop values.
+- All checks green: typecheck, lint, 99 engine tests, 243 web tests, 100% i18n key parity.
 
 ## Next task
 
-- Run `make e2e` and `make shots` for dual themes and mobile viewports, then next unchecked task (`make todo`).
+- Merge PR into `main` and run `make e2e` & `make shots` for dual themes and mobile viewports.
 
 ## Decisions taken
 
-- Responsive mobile is non-negotiable: single-column reflow, touch targets ≥ 44px, bottom nav (`MobileNav`), `pb-20 md:pb-6`.
-- Dual theming is non-negotiable: zero raw hex in JSX/CSS, semantic tokens from `@theme`, WCAG AA contrast.
-- 3D/2D overlays and HUD badges use semantic tokens (`bg-surface/90 text-text-primary border-border`) for theme parity.
-- Design gate-out requires checking both desktop (1440×900) and mobile (390×844) viewports in both Dark and Light modes.
+- `SimControlsPanel` holds local draft state for `dropStartHour` and `dropDurationH` to allow user correction when in an invalid composite state.
+- `validatePatch` clears errors when `solarDropPct` is set to 0.
+- Reset button remains active when horizon errors exist to allow quick recovery.
 
 ## Open questions / blockers
 
@@ -28,6 +25,7 @@
 
 ## Files touched this session
 
-- Rules: `.claude/rules/{web-ui,review,three}.md`, `CLAUDE.md`, `docs/conventions.md`
-- Skills: `.claude/skills/{review-pr,scene-3d,designer-3d,design-dispatch,ui-feature,design-check}/SKILL.md`
-- Verification: `make check` (all 340 tests passed across engine and web)
+- `apps/web/src/features/simulation/ui/sim-controls-panel.tsx`
+- `apps/web/src/features/simulation/utils/validate-patch.ts`
+- `apps/web/src/features/simulation/__tests__/simulation.test.tsx`
+- `HANDOFF.md`
