@@ -75,8 +75,11 @@ describe('toSceneModel pure mapping (P7-T1)', () => {
     if (noon.battery.flowKw > 0) {
       expect(noon.battery.isCharging).toBe(true);
       expect(noon.battery.isDischarging).toBe(false);
-      expect(noon.lines.batteryToBus.direction).toBe('forward');
     }
+    // The hub→bus feeder carries the engine's served power toward the village.
+    const noonStep = result.steps[12]!;
+    expect(noon.lines.batteryToBus.flowKw).toBe(noonStep.servedKw);
+    expect(noon.lines.batteryToBus.direction).toBe(noonStep.servedKw > 0.05 ? 'forward' : 'idle');
 
     // Evening discharging (e.g. 20:00)
     const evening = toSceneModel({
@@ -87,7 +90,8 @@ describe('toSceneModel pure mapping (P7-T1)', () => {
     if (evening.battery.flowKw < 0) {
       expect(evening.battery.isDischarging).toBe(true);
       expect(evening.battery.isCharging).toBe(false);
-      expect(evening.lines.batteryToBus.direction).toBe('backward');
+      // Discharging still feeds the village: never flows back into the hub.
+      expect(evening.lines.batteryToBus.direction).toBe('forward');
     }
   });
 

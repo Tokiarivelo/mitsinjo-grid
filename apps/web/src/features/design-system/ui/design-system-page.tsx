@@ -23,6 +23,8 @@ import {
   EmptyState,
   ChartCard,
   ScenarioSelector,
+  ThemeSwitcher,
+  LanguageSwitcher,
   type StatusBadgeVariant,
 } from '@/components/ui';
 
@@ -54,6 +56,8 @@ export function DesignSystemPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeSwitcher variant="icon" size="sm" />
+            <LanguageSwitcher variant="compact" size="sm" />
             <StatusBadge variant="simulated" />
             <StatusBadge variant="ai" label={tDesign('tokenAudited')} />
           </div>

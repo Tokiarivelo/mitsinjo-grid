@@ -1,33 +1,39 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-27 · **By:** Antigravity (Bento Overview & 3D Twin) · **Branch:** `feat/3d-fidelity` (PR #17)
+**Updated:** 2026-10-28 · **By:** Claude Code (PR #17 review) + Antigravity (theme/mobile) · **Branch:** `feat/3d-fidelity`
 
 ## State
 
-- `/overview` Bento Command Center implemented matching Stitch mockup (`060970653b394197a26b4e4997703260`) and spec.
-- 2-Column Bento grid (`col-span-7` Left / `col-span-5` Right) balances height perfectly on 1440×900 without scrolling.
-  - Left column: 3D Village Digital Twin Preview (`h-[300px]`, 2D fallback, HUD badges), Quick-Phase buttons (`06h`, `12h`, `19h`, `23h`), docked 4-stat Energy Balance strip (`solarGen`, `batteryNet`, `servedEnergy`, `unservedTotal`), and 24h Generation vs Demand Recharts telemetry chart.
-  - Right column: Service Allocation hierarchy (5 village sectors + automated shedding policy note) and Scenario Impact & Operational Insights (`ImpactBanner`, computed `InsightCard`, link to `/strategies`).
-- Top Executive Bar: `SIMULATED DATA` badge + interactive `ScenarioSelector` + primary CTA (`Run simulation` / `Open live simulation`).
-- 100% checks green: typecheck, lint, 99 engine tests, 197 web tests, full i18n key parity across en/fr/mg.
+- PR #17 (3D fidelity + /simulation & /overview redesign) reviewed, fixed, merged into `main`.
+- Energy flow is explicit in every view, all driven by `toSceneModel` (no new numbers):
+  - 3D: powered cables = lit core + glowing electron dots (`ui/electron-flow.tsx`, 1 InstancedMesh); cut cables dark.
+  - 2D `GridDiagram` (`features/microgrid-3d`): Topology (village plan) and Circuit (single-line, breakers open
+    when a sector is cut). Moving electrons on powered wires, red dashes + break mark on cut ones, legend.
+  - Labels have reserved boxes (`utils/diagram-layout.ts`); tests assert no overlap and no wire under a label.
+- Light theme (`lib/theme.tsx`, `ThemeSwitcher`) and mobile layout (`MobileNav`, responsive 3D viewport).
+- Checks green: typecheck, lint, 99 engine tests, 228+ web tests, i18n parity.
 
 ## Next task
 
-- Run visual verification on browser (`make dev` on :3000) or generate screenshots with `make shots`.
+- `make e2e` + `make shots` on the merged main (light theme + new diagrams), then next unchecked task (`make todo`).
 
 ## Decisions taken
 
-- Docked 4-stat Energy Balance strip placed directly below the 3D twin canvas in `GridSchematicPreview` to keep telemetry visually anchored to the physical village model.
-- Quick-phase pills enable instantaneous one-click daytime vs night energy flow inspection directly from the overview.
+- Hub→bus feeder now carries engine `step.servedKw`, always toward the bus (was "backward" when discharging,
+  which drew current flowing from the village into the battery).
+- 2D labels are an HTML overlay sized in container units (`cqw`), not `foreignObject` (Chrome repaint bug on scroll).
+- Shared UI extracted: `SectorIcon` (was copied in 5 files), `ViewModeToggle`; `EnergyBar empty` before a run
+  (overview used to show "Essential service shortfall" before any simulation).
+- CSS custom properties in `:root`/`html.light` power Tailwind `@theme` so opacity utilities work in both themes.
 
 ## Open questions / blockers
 
-- None.
+- Overview copy `sheddingProtocolDesc` ("below 20%") and the two different site coordinates are static claims,
+  not engine output; confirm or remove.
 
 ## Files touched this session
 
-- Spec & Map: `docs/design/screens/overview.md`, `docs/design/stitch-map.md`
-- Web UI: `apps/web/src/features/overview/ui/{overview-page,grid-schematic-preview}.tsx`
-- Tests: `apps/web/src/features/overview/__tests__/overview.test.tsx`
-- i18n: `apps/web/src/messages/{en,fr,mg}.json`
-- Session protocol: `HANDOFF.md`
+- 3D/2D: `features/microgrid-3d/{ui/electron-flow,ui/flow-wire,ui/grid-diagram,utils/flow-path,utils/diagram-layout}`
+- Reuse: `components/ui/{sector-icon,view-mode-toggle,energy-bar}`; viewport, overview, inspectors use them.
+- Theme/mobile: `lib/theme.tsx`, `app/{globals.css,layout.tsx}`, `components/layout/*`, `components/ui/theme-switcher`
+- Docs: `docs/design/{3d-scene,components,tokens}.md`, `docs/design/screens/{live-simulation,overview}.md`

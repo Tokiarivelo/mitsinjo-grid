@@ -50,3 +50,11 @@ export const WINDOW_GLOW_BY_STATUS: Record<BuildingStatus, number> = {
   unserved: 0,
   unknown: 0.35,
 };
+
+/** Tailwind text class per status, for 2D diagram wires (SVG uses `currentColor`). */
+export const STATUS_TEXT_CLASS: Record<StatusColor, string> = {
+  'battery-green': 'text-battery-green',
+  'warning-amber': 'text-warning-amber',
+  'critical-red': 'text-critical-red',
+  idle: 'text-text-muted',
+};

@@ -21,7 +21,11 @@
     "curtailed": "Curtailed",
     "loading": "Loading...",
     "idLabel": "ID: {id}",
-    "capRange": "{maxKw} kW ({from}:00–{to}:00)"
+    "capRange": "{maxKw} kW ({from}:00–{to}:00)",
+    "theme": "Theme",
+    "toggleTheme": "Toggle color theme",
+    "darkTheme": "Dark",
+    "lightTheme": "Light"
   },
   "nav": {
     "overview": "Overview",
@@ -175,12 +179,8 @@
       "solarArray": "Solar PV Array",
       "liveOutput": "Live Output",
       "bessBattery": "Central BESS Storage",
-      "idle": "Idle",
-      "distributionBus": "240V Microgrid Distribution Bus",
       "clickNodeToInspect": "Click any village sector node to inspect load allocation & resilience.",
       "cursorAt": "Timeline cursor: {hour}:00",
-      "solarArrayCapacity": "{kw}p solar PV",
-      "batteryStorageCapacity": "{kwh} storage",
       "socValue": "{pct} SoC",
       "siteLocation": "Madagascar S 18.91° E 47.53°",
       "loading3d": "Initializing 3D digital twin…",
@@ -209,7 +209,8 @@
       "showDeck": "Show",
       "openDeck": "Open Deck",
       "netEnergyBalance": "Net Energy Balance",
-      "autarkyIndex": "Autarky: {pct}%"
+      "autarkyIndex": "Autarky: {pct}%",
+      "viewModeLabel": "View mode"
     },
     "strategyLab": {
       "title": "Strategy Lab",
@@ -343,6 +344,30 @@
         "default": "Reviewing computed results"
       },
       "unknownValue": "Unknown"
+    },
+    "gridDiagram": {
+      "topologyLabel": "Village plan: power flow from the solar hub to each sector",
+      "circuitLabel": "Single-line circuit: sources, distribution bus and sector breakers",
+      "solar": "Solar PV",
+      "battery": "Battery hub",
+      "bus": "Bus",
+      "soc": "{pct} SoC",
+      "charging": "Charging {kw}",
+      "discharging": "Discharging {kw}",
+      "idle": "Idle",
+      "noData": "No run yet",
+      "status": {
+        "full": "Powered",
+        "partial": "Partial",
+        "unserved": "Cut",
+        "unknown": "No data",
+        "noLoad": "No load"
+      },
+      "legendTitle": "Diagram legend",
+      "legendFlow": "Current flowing (electrons)",
+      "legendPartial": "Partial supply",
+      "legendCut": "Line cut (shed)",
+      "legendIdle": "No current"
     }
   },
   "copilot": {
@@ -529,17 +554,7 @@
     "energyOverTimeSubtitle": "Solar generation, demand, served power, and battery state of charge",
     "energyOverTimeSummary": "24-hour timeline of solar generation, total community demand, served energy in kW and battery state of charge percentage.",
     "clinicWarningInsight": "Proportional shedding impacts essential health clinic services. Switch to Essential-First in Strategy Lab to preserve life-critical loads.",
-    "solarArrayNode": "Solar PV Array",
-    "solarArrayCapacity": "{kw} peak capacity",
-    "batteryStorageNode": "LiFePO4 Storage",
-    "batteryStorageCapacity": "{kwh} bank",
-    "gridBusLabel": "AC Microgrid 230V Bus",
     "schematicBadge": "2D SCHEMATIC",
-    "atHour": "at {hour}",
-    "charging": "+{kw} chg",
-    "discharging": "{kw} dis",
-    "idle": "idle",
-    "criticalTag": "CRIT",
     "chartTitle": "24h Generation vs Demand",
     "chartSubtitle": "Solar PV, total community demand, served power, and battery SoC",
     "emptyChartNotice": "Run the simulation to view 24h energy curves.",
@@ -554,7 +569,8 @@
     "sheddingProtocolDesc": "Microgrid prioritization isolates Village Market & Primary School when battery reserve drops below 20%, preserving healthcare cold chain and life-support lines.",
     "compareStrategiesCta": "Compare Strategies in Strategy Lab",
     "nodeMitsinjoBus": "NODE: MITSINJO_BUS",
-    "nodeCoordinates": "LAT -19.12° | LON 48.23°"
+    "nodeCoordinates": "LAT -19.12° | LON 48.23°",
+    "viewModeLabel": "Preview mode"
   },
   "strategies": {
     "subtitle": "Side-by-side comparison of allocation algorithms under identical conditions",

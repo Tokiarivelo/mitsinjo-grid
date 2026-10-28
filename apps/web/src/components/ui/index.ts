@@ -9,3 +9,6 @@ export * from './scenario-selector';
 export * from './language-switcher';
 export * from './insight-card';
 export * from './impact-banner';
+export * from './sector-icon';
+export * from './view-mode-toggle';
+export * from './theme-switcher';

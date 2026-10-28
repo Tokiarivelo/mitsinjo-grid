@@ -148,7 +148,7 @@ export function SolarArray({
         portal={htmlPortal as RefObject<HTMLElement>}
         className="pointer-events-auto select-none"
       >
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full shadow-xl backdrop-blur-md bg-[#0a101d]/90 border border-border text-[11px] font-sans text-white transition-all whitespace-nowrap">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full shadow-xl backdrop-blur-md bg-surface/90 border border-border text-[11px] font-sans text-text-primary transition-all whitespace-nowrap">
           <div className="w-5 h-5 rounded-full bg-solar-amber/20 flex items-center justify-center shrink-0 border border-solar-amber/40">
             <Sun className="w-3.5 h-3.5 text-solar-amber" aria-hidden="true" />
           </div>

@@ -21,7 +21,11 @@
     "curtailed": "Voafetra",
     "loading": "Am-panatanterahana...",
     "idLabel": "ID: {id}",
-    "capRange": "{maxKw} kW ({from}:00–{to}:00)"
+    "capRange": "{maxKw} kW ({from}:00–{to}:00)",
+    "theme": "Lohahevitra",
+    "toggleTheme": "Hanova loko lohahevitra",
+    "darkTheme": "Maizina",
+    "lightTheme": "Mazava"
   },
   "nav": {
     "overview": "Topimaso",
@@ -175,12 +179,8 @@
       "solarArray": "Tontolon ny Masoandro PV",
       "liveOutput": "Famokarana Mivantana",
       "bessBattery": "Fitahirizana BESS Foibe",
-      "idle": "Miato",
-      "distributionBus": "Bus Fizarana Herinaratra 240V",
       "clickNodeToInspect": "Tsindrio ny sokajin-tanàna iray hijerena ny fizarana sy ny faharetana.",
       "cursorAt": "Fotoana voatondro: {hour}:00",
-      "solarArrayCapacity": "PV masoandro {kw}p",
-      "batteryStorageCapacity": "Fitehirizana {kwh}",
       "socValue": "{pct} SoC",
       "siteLocation": "Madagasikara S 18.91° E 47.53°",
       "loading3d": "Manomana ny kambana nomerika 3D…",
@@ -209,7 +209,8 @@
       "showDeck": "Asehoy",
       "openDeck": "Sokafy ny tontonana",
       "netEnergyBalance": "Fitambaran'ny angovo",
-      "autarkyIndex": "Fahaleovantena: {pct}%"
+      "autarkyIndex": "Fahaleovantena: {pct}%",
+      "viewModeLabel": "Fomba fijery"
     },
     "strategyLab": {
       "title": "Paikady fizarana",
@@ -343,6 +344,30 @@
         "default": "Fandinihana ny valiny voakajy"
       },
       "unknownValue": "Tsy fantatra"
+    },
+    "gridDiagram": {
+      "topologyLabel": "Drafitry ny tanàna: fikorianan'ny herinaratra avy amin'ny ivon-masoandro mankany amin'ny sehatra tsirairay",
+      "circuitLabel": "Kisary tariby tokana: loharano, bus fizarana ary fanapaka isaky ny sehatra",
+      "solar": "Masoandro PV",
+      "battery": "Ivon-bateria",
+      "bus": "Bus",
+      "soc": "{pct} SoC",
+      "charging": "Mameno {kw}",
+      "discharging": "Mandany {kw}",
+      "idle": "Mijanona",
+      "noData": "Tsy mbola notsoahina",
+      "status": {
+        "full": "Misy jiro",
+        "partial": "Ampahany",
+        "unserved": "Tapaka",
+        "unknown": "Tsy misy angona",
+        "noLoad": "Tsy misy enta"
+      },
+      "legendTitle": "Fanazavana ny kisary",
+      "legendFlow": "Misy herinaratra mandeha (elektrôna)",
+      "legendPartial": "Famatsiana ampahany",
+      "legendCut": "Tariby tapaka (fanalana enta-mavesatra)",
+      "legendIdle": "Tsy misy herinaratra"
     }
   },
   "copilot": {
@@ -529,17 +554,7 @@
     "energyOverTimeSubtitle": "Famokarana masoandro, fitakiana, angovo voazara ary tahirin'ny bateria",
     "energyOverTimeSummary": "Fivoaran'ny famokarana masoandro, fitakiana manontolo, angovo voazara amin'ny kW ary tahirin'ny bateria mandritra ny 24 ora.",
     "clinicWarningInsight": "Miantraika amin'ny tolotra fototra ao amin'ny tobim-pahasalamana ny fizarana mitovy lenta. Mifindrà amin'ny Laharam-pahamehana fototra ao amin'ny Labo Paikady mba hiarovana ny aina.",
-    "solarArrayNode": "Taratry ny masoandro PV",
-    "solarArrayCapacity": "Hery ambony indrindra {kw}",
-    "batteryStorageNode": "Tahiry LiFePO4",
-    "batteryStorageCapacity": "Bateria {kwh}",
-    "gridBusLabel": "Tambajotra AC 230V",
     "schematicBadge": "SARY 2D",
-    "atHour": "amin'ny {hour}",
-    "charging": "+{kw} mameno",
-    "discharging": "{kw} mivoaka",
-    "idle": "mijanona",
-    "criticalTag": "MAIKA",
     "chartTitle": "Famokarana sy Filàna 24h",
     "chartSubtitle": "Masoandro PV, filàna manontolo, herinaratra voazara ary SoC bateria",
     "emptyChartNotice": "Alefaso ny simulation hijerena ny firafitry ny herinaratra mandritra ny 24 ora.",
@@ -554,7 +569,8 @@
     "sheddingProtocolDesc": "Manapaka voalohany ny tsenan'ny tanàna sy ny sekoly fototra rehefa latsaky ny 20% ny bateria, mba hiarovana ny vata fampangatsiahana fitsaboana.",
     "compareStrategiesCta": "Ampitahao ao amin'ny Strategy Lab",
     "nodeMitsinjoBus": "KASARY: MITSINJO_BUS",
-    "nodeCoordinates": "LAT -19.12° | LON 48.23°"
+    "nodeCoordinates": "LAT -19.12° | LON 48.23°",
+    "viewModeLabel": "Fomba fijery"
   },
   "strategies": {
     "subtitle": "Fampitahana mifanila ny fomba fizarana herinaratra amin'ny toe-javatra mitovy",

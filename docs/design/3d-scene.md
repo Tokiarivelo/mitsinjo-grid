@@ -62,8 +62,11 @@ Reference visuals: `design/reference/Mitsinjo Grid_ Village at Sunset.png` (mast
 
 ## Motion
 
-- Gentle flow animation on active lines only; battery fill eases after run completes.
-- prefers-reduced-motion: no flow animation (use static lit lines/dashes), instant camera jumps, no pulses.
+- Powered cables: lit core + glowing "electron" dots (`ui/electron-flow.tsx`, one InstancedMesh) moving from the
+  source toward the consumers, speed from `LineFlowSceneModel.speed`. Cut/idle cables stay dark, no dots.
+- The hub→bus feeder carries the engine's `step.servedKw` and always flows toward the bus.
+- Battery fill eases after run completes.
+- prefers-reduced-motion or modified scenario: electrons frozen in place (still visible), instant camera jumps, no pulses.
 
 ## Performance
 

@@ -110,10 +110,7 @@ export function OverviewPage() {
               {isRunning ? tOverview('simulating') : tOverview('runSimulation')}
             </Button>
           ) : (
-            <Link
-              href="/simulation"
-              className={buttonVariants({ variant: 'primary', size: 'md' })}
-            >
+            <Link href="/simulation" className={buttonVariants({ variant: 'primary', size: 'md' })}>
               <Zap className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span>{tOverview('openLive')}</span>
             </Link>
@@ -259,7 +256,8 @@ export function OverviewPage() {
                   <EnergyBar
                     key={sec.id}
                     label={tSectors(sec.id)}
-                    valuePct={hasResults && sm ? sm.coveragePct : 0}
+                    valuePct={sm?.coveragePct ?? 0}
+                    empty={!hasResults || !sm}
                     servedKwh={sm?.servedKwh}
                     demandKwh={sm?.demandKwh}
                     priority={sec.priority}

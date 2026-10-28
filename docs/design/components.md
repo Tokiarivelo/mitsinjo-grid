@@ -37,7 +37,7 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 
 ## EnergyBar
 
-- Props: label; sectorId?; valuePct (0-100); servedKwh?; demandKwh?; priority?; status?: full|partial|critical; showValues?.
+- Props: label; sectorId?; valuePct (0-100); servedKwh?; demandKwh?; priority?; status?: full|partial|critical; showValues?; empty? (no run yet: "—", empty track, no status text).
 - Row: icon, name, bar, `%` mono, status label. Fill: battery-green >=target, warning-amber partial, critical-red critical sector shortfall. role="progressbar" with aria-valuenow and text label.
 
 ## ScenarioSelector

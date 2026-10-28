@@ -1,6 +1,7 @@
 'use client';
 
-import { HeartPulse, Home, School, ShieldAlert, ShoppingBag, Waves, X, Zap } from 'lucide-react';
+import { ShieldAlert, X, Zap } from 'lucide-react';
+import { SectorIcon } from '@/components/ui/sector-icon';
 import type { SectorId, SimulationInput, SimulationResult } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtKw, fmtKwh, fmtPct } from '@/lib/format';
@@ -28,35 +29,6 @@ export function BuildingInspectorPanel({
   const tCommon = useTranslations('common');
   const tPriorities = useTranslations('priorities');
 
-  const sectorConfigs = {
-    health: {
-      id: 'health' as SectorId,
-      name: tSectors('health'),
-      icon: <HeartPulse className="h-4 w-4 text-critical-red" aria-hidden="true" />,
-    },
-    water: {
-      id: 'water' as SectorId,
-      name: tSectors('water'),
-      icon: <Waves className="h-4 w-4 text-energy-cyan" aria-hidden="true" />,
-    },
-    school: {
-      id: 'school' as SectorId,
-      name: tSectors('school'),
-      icon: <School className="h-4 w-4 text-warning-amber" aria-hidden="true" />,
-    },
-    households: {
-      id: 'households' as SectorId,
-      name: tSectors('households'),
-      icon: <Home className="h-4 w-4 text-text-secondary" aria-hidden="true" />,
-    },
-    market: {
-      id: 'market' as SectorId,
-      name: tSectors('market'),
-      icon: <ShoppingBag className="h-4 w-4 text-solar-amber" aria-hidden="true" />,
-    },
-  };
-
-  const currentSector = selectedSector ? sectorConfigs[selectedSector] : null;
   const sectorInput = selectedSector ? input.sectors.find((s) => s.id === selectedSector) : null;
   const sectorMetrics = selectedSector && result ? result.metrics.perSector[selectedSector] : null;
   const stepSector =
@@ -94,8 +66,7 @@ export function BuildingInspectorPanel({
 
       {/* Sector Quick Selector Buttons */}
       <div className="flex flex-wrap gap-1.5 py-3 border-b border-border/40">
-        {(Object.keys(sectorConfigs) as SectorId[]).map((id) => {
-          const sec = sectorConfigs[id];
+        {input.sectors.map(({ id }) => {
           const isSelected = selectedSector === id;
           return (
             <button
@@ -110,24 +81,24 @@ export function BuildingInspectorPanel({
                   : 'bg-surface-elevated/70 text-text-secondary border-border hover:bg-surface-hover hover:text-text-primary'
               )}
             >
-              {sec.icon}
-              <span>{sec.name}</span>
+              <SectorIcon sector={id} />
+              <span>{tSectors(id)}</span>
             </button>
           );
         })}
       </div>
 
       {/* Body: Detailed Node Telemetry or Empty State */}
-      {selectedSector && currentSector && sectorInput ? (
+      {selectedSector && sectorInput ? (
         <div className="flex flex-col gap-3 pt-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-control bg-surface-elevated border border-border">
-                {currentSector.icon}
+                <SectorIcon sector={selectedSector} />
               </div>
               <div>
                 <h4 className="font-display text-sm font-semibold text-text-primary">
-                  {currentSector.name}
+                  {tSectors(selectedSector)}
                 </h4>
                 <span className="text-[11px] font-mono text-text-muted">
                   {tCommon('idLabel', { id: selectedSector })}

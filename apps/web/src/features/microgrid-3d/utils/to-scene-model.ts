@@ -163,15 +163,17 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     color: TOKEN_HEX.solarAmber,
   };
 
-  const batteryFlowAbs = Math.abs(flowKw);
-  const batteryActive = batteryFlowAbs > 0.05;
+  // Feeder from the solar/battery hub to the village bus carries what the engine
+  // served this hour (solar + battery discharge), so it always flows toward the bus.
+  const feederKw = step ? step.servedKw : 0;
+  const feederActive = feederKw > 0.05;
   const batteryToBus: LineFlowSceneModel = {
     from: BATTERY_POSITION,
     to: BUS_POSITION,
-    active: batteryActive,
-    flowKw: batteryFlowAbs,
-    direction: isCharging ? 'forward' : isDischarging ? 'backward' : 'idle',
-    speed: Math.min(2.5, Math.max(0.5, batteryFlowAbs / 10)),
+    active: feederActive,
+    flowKw: feederKw,
+    direction: feederActive ? 'forward' : 'idle',
+    speed: Math.min(2.5, Math.max(0.5, feederKw / 10)),
     color: TOKEN_HEX.energyCyan,
   };
 

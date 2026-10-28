@@ -10,23 +10,21 @@ import {
   Minimize2,
   Sparkles,
   Zap,
-  HeartPulse,
-  Home,
   MapPin,
   RotateCcw,
-  School,
-  ShoppingBag,
   Sun,
-  Waves,
 } from 'lucide-react';
 import type { SectorId, SimulationInput, SimulationResult } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
-import { fmtHour, fmtKw, fmtKwh, fmtPct } from '@/lib/format';
+import { fmtHour, fmtKw, fmtPct } from '@/lib/format';
+import { SectorIcon } from '@/components/ui/sector-icon';
+import { ViewModeToggle } from '@/components/ui/view-mode-toggle';
 import { useTranslations } from '@/lib/i18n';
 import {
   toSceneModel,
   useWebGLAvailable,
   LazyVillageCanvas,
+  GridDiagram,
   useFullscreen,
   useSceneQuality,
   type CameraPreset,
@@ -68,7 +66,6 @@ export function VillageViewport({
   const tSim = useTranslations('features.simulation');
   const tSectors = useTranslations('sectors');
   const tCommon = useTranslations('common');
-  const tPriorities = useTranslations('priorities');
 
   const hasWebGL = useWebGLAvailable();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -90,7 +87,6 @@ export function VillageViewport({
 
   const step = result?.steps[timeIndex];
   const solarKw = step?.solarKw ?? 0;
-  const batteryKw = step?.batteryKw ?? 0;
   const socPct = step?.socPct ?? input.battery.initialSocPct;
   const demandKw = step?.demandKw ?? null;
 
@@ -107,49 +103,13 @@ export function VillageViewport({
     [input, result, timeIndex, isModified]
   );
 
-  const nodes = [
-    {
-      id: 'health' as SectorId,
-      name: tSectors('health'),
-      icon: <HeartPulse className="h-4 w-4" aria-hidden="true" />,
-      step: step?.sectors.health,
-      color: 'critical-red',
-    },
-    {
-      id: 'water' as SectorId,
-      name: tSectors('water'),
-      icon: <Waves className="h-4 w-4" aria-hidden="true" />,
-      step: step?.sectors.water,
-      color: 'energy-cyan',
-    },
-    {
-      id: 'school' as SectorId,
-      name: tSectors('school'),
-      icon: <School className="h-4 w-4" aria-hidden="true" />,
-      step: step?.sectors.school,
-      color: 'warning-amber',
-    },
-    {
-      id: 'households' as SectorId,
-      name: tSectors('households'),
-      icon: <Home className="h-4 w-4" aria-hidden="true" />,
-      step: step?.sectors.households,
-      color: 'text-secondary',
-    },
-    {
-      id: 'market' as SectorId,
-      name: tSectors('market'),
-      icon: <ShoppingBag className="h-4 w-4" aria-hidden="true" />,
-      step: step?.sectors.market,
-      color: 'solar-amber',
-    },
-  ];
+  const sectorIds = input.sectors.map((sec) => sec.id);
 
   return (
     <div
       ref={rootRef}
       className={cn(
-        'relative flex flex-col justify-between rounded-card bg-canvas-sunken border border-border overflow-hidden shadow-inner min-h-[460px]',
+        'relative flex flex-col justify-between rounded-card bg-canvas-sunken border border-border overflow-hidden shadow-inner min-h-[360px] sm:min-h-[460px]',
         isFullscreen && 'rounded-none border-0',
         className
       )}
@@ -178,8 +138,8 @@ export function VillageViewport({
 
         {/* Center: 3D Camera Presets & Reset (visible in 3D mode) */}
         {viewMode === '3d' && hasWebGL && (
-          <div className="flex items-center gap-1 p-0.5 rounded-control bg-surface-elevated/90 backdrop-blur border border-border pointer-events-auto shadow-xs">
-            <div className="flex items-center gap-1 px-1.5 text-[11px] font-mono text-text-muted border-r border-border pr-2">
+          <div className="flex items-center gap-1 p-0.5 rounded-control bg-surface-elevated/90 backdrop-blur border border-border pointer-events-auto shadow-xs overflow-x-auto max-w-full">
+            <div className="flex items-center gap-1 px-1.5 text-[11px] font-mono text-text-muted border-r border-border pr-2 shrink-0">
               <Camera className="h-3 w-3 text-energy-cyan" aria-hidden="true" />
               <span className="hidden md:inline">{tSim('cameraLabel')}</span>
             </div>
@@ -190,7 +150,7 @@ export function VillageViewport({
                 onClick={() => applyPreset(id)}
                 aria-pressed={cameraPreset === id}
                 className={cn(
-                  'px-2 py-0.5 rounded-control-sm text-xs font-sans transition-colors cursor-pointer',
+                  'px-1.5 sm:px-2 py-0.5 rounded-control-sm text-[11px] sm:text-xs font-sans transition-colors cursor-pointer shrink-0',
                   cameraPreset === id
                     ? 'bg-energy-cyan/20 text-energy-cyan font-medium'
                     : 'text-text-muted hover:text-text-primary'
@@ -204,7 +164,7 @@ export function VillageViewport({
               onClick={() => applyPreset('village')}
               aria-label={tSim('resetCamera')}
               title={tSim('resetCamera')}
-              className="p-1 rounded-control-sm text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer ml-1"
+              className="p-1 rounded-control-sm text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer ml-0.5 shrink-0"
             >
               <RotateCcw className="h-3 w-3" aria-hidden="true" />
             </button>
@@ -261,52 +221,30 @@ export function VillageViewport({
         )}
 
         {/* Right: View Mode Toggle (3D vs 2D Topology vs Circuit) */}
-        <div className="flex items-center gap-1 p-0.5 rounded-control bg-surface-elevated/90 backdrop-blur border border-border pointer-events-auto shadow-xs">
-          {hasWebGL && (
-            <button
-              type="button"
-              onClick={() => setUserViewMode('3d')}
-              className={cn(
-                'px-2 py-0.5 rounded-control-sm text-xs font-sans transition-colors cursor-pointer flex items-center gap-1',
-                viewMode === '3d'
-                  ? 'bg-energy-cyan/20 text-energy-cyan font-medium'
-                  : 'text-text-muted hover:text-text-primary'
-              )}
-            >
-              <Box className="h-3 w-3" aria-hidden="true" />
-              <span>{tSim('view3d')}</span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setUserViewMode('schematic')}
-            className={cn(
-              'px-2 py-0.5 rounded-control-sm text-xs font-sans transition-colors cursor-pointer',
-              viewMode === 'schematic'
-                ? 'bg-energy-cyan/20 text-energy-cyan font-medium'
-                : 'text-text-muted hover:text-text-primary'
-            )}
-          >
-            {tSim('viewTopology')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setUserViewMode('circuit')}
-            className={cn(
-              'px-2 py-0.5 rounded-control-sm text-xs font-sans transition-colors cursor-pointer',
-              viewMode === 'circuit'
-                ? 'bg-energy-cyan/20 text-energy-cyan font-medium'
-                : 'text-text-muted hover:text-text-primary'
-            )}
-          >
-            {tSim('viewCircuit')}
-          </button>
-        </div>
+        <ViewModeToggle
+          label={tSim('viewModeLabel')}
+          value={viewMode}
+          onChange={setUserViewMode}
+          className="pointer-events-auto shadow-xs"
+          options={[
+            ...(hasWebGL
+              ? [
+                  {
+                    id: '3d' as const,
+                    label: tSim('view3d'),
+                    icon: <Box className="h-3 w-3" aria-hidden="true" />,
+                  },
+                ]
+              : []),
+            { id: 'schematic' as const, label: tSim('viewTopology') },
+            { id: 'circuit' as const, label: tSim('viewCircuit') },
+          ]}
+        />
       </div>
 
       {/* Main Viewport Content Area */}
       {viewMode === '3d' && hasWebGL ? (
-        <div className="relative flex-1 w-full h-full min-h-[460px]">
+        <div className="relative flex-1 w-full h-full min-h-[360px] sm:min-h-[460px]">
           <LazyVillageCanvas
             model={sceneModel}
             selectedSector={selectedSector}
@@ -364,13 +302,13 @@ export function VillageViewport({
 
           {/* Adjacent 2D Sector Selector mirror bar (bottom-left) for quick accessibility */}
           <div className="absolute bottom-9 left-3 right-3 z-10 hidden sm:flex items-center overflow-x-auto gap-1.5 bg-surface/85 backdrop-blur p-1.5 rounded-control border border-border">
-            {nodes.map((node) => {
-              const isSelected = selectedSector === node.id;
+            {sectorIds.map((id) => {
+              const isSelected = selectedSector === id;
               return (
                 <button
-                  key={node.id}
+                  key={id}
                   type="button"
-                  onClick={() => onSelectSector(isSelected ? null : node.id)}
+                  onClick={() => onSelectSector(isSelected ? null : id)}
                   aria-pressed={isSelected}
                   className={cn(
                     'px-2 py-1 rounded-control-sm text-xs font-sans flex items-center gap-1 border transition-all cursor-pointer shrink-0 whitespace-nowrap',
@@ -379,148 +317,29 @@ export function VillageViewport({
                       : 'border-border/60 text-text-secondary hover:text-text-primary hover:border-text-secondary'
                   )}
                 >
-                  <span className="scale-75">{node.icon}</span>
-                  <span>{node.name}</span>
+                  <SectorIcon sector={id} tinted={!isSelected} className="h-3 w-3" />
+                  <span>{tSectors(id)}</span>
                 </button>
               );
             })}
           </div>
         </div>
       ) : (
-        /* 2D Schematic & Circuit Fallback View */
-        <div className="flex-1 flex flex-col justify-center p-4 pt-14 pb-12">
+        /* 2D village plan / single-line circuit: same model as the 3D twin */
+        <div className="flex-1 flex flex-col gap-2 p-3 sm:p-4 pt-14 pb-12 min-h-[360px] sm:min-h-[460px]">
           {!hasWebGL && (
-            <div className="max-w-2xl mx-auto w-full mb-3 p-2 rounded-control bg-surface-elevated/80 border border-border text-[11px] font-sans text-text-muted flex items-center gap-2">
+            <div className="max-w-2xl mx-auto w-full p-2 rounded-control bg-surface-elevated/80 border border-border text-[11px] font-sans text-text-muted flex items-center gap-2">
               <Box className="h-3.5 w-3.5 text-solar-amber shrink-0" aria-hidden="true" />
               <span>{tSim('webglUnavailable')}</span>
             </div>
           )}
-
-          {/* Top Tier: Solar PV Array & Central BESS Battery Storage */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto w-full mb-4">
-            {/* Solar Array Node */}
-            <div className="p-3 rounded-card bg-surface/90 border border-solar-amber/40 shadow-sm backdrop-blur flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-control bg-solar-amber/15 text-solar-amber border border-solar-amber/30">
-                  <Sun className="h-5 w-5" aria-hidden="true" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-text-primary block">
-                    {tSim('solarArray')}
-                  </span>
-                  <span className="text-[11px] font-mono text-text-muted">
-                    {tSim('solarArrayCapacity', { kw: fmtKw(input.solar.peakKw, 0) })}
-                  </span>
-                </div>
-              </div>
-              <div className="text-right font-mono">
-                <span className="text-sm font-semibold text-solar-amber block">
-                  {result ? fmtKw(solarKw) : fmtKw(null)}
-                </span>
-                <span className="text-[10px] text-text-muted">{tSim('liveOutput')}</span>
-              </div>
-            </div>
-
-            {/* Central BESS Storage */}
-            <div className="p-3 rounded-card bg-surface/90 border border-battery-green/40 shadow-sm backdrop-blur flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-control bg-battery-green/15 text-battery-green border border-battery-green/30">
-                  <Battery className="h-5 w-5" aria-hidden="true" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-text-primary block">
-                    {tSim('bessBattery')}
-                  </span>
-                  <span className="text-[11px] font-mono text-text-muted">
-                    {tSim('batteryStorageCapacity', { kwh: fmtKwh(input.battery.capacityKwh, 0) })}
-                  </span>
-                </div>
-              </div>
-              <div className="text-right font-mono">
-                <span className="text-sm font-semibold text-battery-green block">
-                  {tSim('socValue', { pct: fmtPct(socPct) })}
-                </span>
-                <span className="text-[10px] text-text-muted">
-                  {result
-                    ? batteryKw >= 0
-                      ? `+${fmtKw(batteryKw)}`
-                      : `-${fmtKw(Math.abs(batteryKw))}`
-                    : tSim('idle')}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Central Glowing Grid Bus Cable */}
-          <div className="relative my-2 max-w-3xl mx-auto w-full">
-            <div className="h-1 rounded-full bg-gradient-to-r from-solar-amber via-energy-cyan to-battery-green shadow-[0_0_12px_rgba(80,216,232,0.4)]" />
-            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-surface-elevated border border-border text-[10px] font-mono text-energy-cyan uppercase tracking-wider shadow-xs">
-              {tSim('distributionBus')}
-            </div>
-          </div>
-
-          {/* Bottom Tier: 5 Interactive Village Sector Nodes */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 max-w-3xl mx-auto w-full mt-4">
-            {nodes.map((node) => {
-              const isSelected = selectedSector === node.id;
-              const priority = input.sectors.find((s) => s.id === node.id)?.priority;
-              const served = node.step?.servedKw ?? 0;
-              const demand = node.step?.demandKw ?? 0;
-              const isDeficit = demand > 0 && served < demand - 0.05;
-
-              return (
-                <button
-                  key={node.id}
-                  type="button"
-                  onClick={() => onSelectSector(isSelected ? null : node.id)}
-                  aria-pressed={isSelected}
-                  className={cn(
-                    'flex flex-col justify-between p-3 rounded-card text-left transition-all cursor-pointer border',
-                    isSelected
-                      ? 'bg-surface-elevated border-energy-cyan shadow-md ring-2 ring-energy-cyan/40 scale-[1.02]'
-                      : 'bg-surface/80 border-border hover:border-text-secondary hover:bg-surface-hover'
-                  )}
-                >
-                  <div className="flex items-center justify-between w-full mb-2">
-                    <div className="p-1.5 rounded-control-sm bg-surface-elevated border border-border/60 text-text-primary">
-                      {node.icon}
-                    </div>
-                    {priority === 'critical' ? (
-                      <span className="text-[9px] font-mono px-1 rounded-control-sm text-critical-red bg-critical-red/10 border border-critical-red/30 uppercase">
-                        {tPriorities('critical')}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-mono px-1 rounded-control-sm text-text-muted bg-surface-elevated uppercase">
-                        {priority ? tPriorities(priority) : null}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mb-1">
-                    <span className="text-xs font-semibold text-text-primary font-sans block truncate">
-                      {node.name}
-                    </span>
-                  </div>
-
-                  <div className="mt-1 font-mono text-[11px] flex items-center justify-between">
-                    <span className="text-text-muted">{result ? fmtKw(demand) : fmtKw(null)}</span>
-                    <span
-                      className={cn(
-                        'font-semibold',
-                        !result
-                          ? 'text-text-muted'
-                          : isDeficit
-                            ? 'text-critical-red'
-                            : 'text-battery-green'
-                      )}
-                    >
-                      {result ? fmtKw(served) : fmtKw(null)}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          <GridDiagram
+            model={sceneModel}
+            variant={viewMode === 'circuit' ? 'circuit' : 'topology'}
+            selectedSector={selectedSector}
+            onSelectSector={onSelectSector}
+            className={cn('flex-1', isModified && 'opacity-60')}
+          />
         </div>
       )}
 

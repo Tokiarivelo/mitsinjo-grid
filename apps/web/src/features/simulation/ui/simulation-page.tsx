@@ -151,7 +151,7 @@ export function SimulationPage() {
         </div>
 
         {/* Header Action Buttons: Toggle Deck, Copy Summary & Download JSON */}
-        <div className="flex items-center gap-2 self-start md:self-auto">
+        <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
           <Button
             variant="secondary"
             size="sm"
@@ -215,7 +215,7 @@ export function SimulationPage() {
               onSelectSector={handleSelectSector}
               timeIndex={timeIndex}
               isModified={status === 'modified'}
-              className="min-h-[540px] lg:min-h-[640px] h-[640px]"
+              className="min-h-[380px] sm:min-h-[480px] lg:min-h-[640px] h-[400px] sm:h-[520px] lg:h-[640px]"
             />
 
             {/* Quick Floating Open Deck Button if panel is collapsed */}
@@ -271,7 +271,7 @@ export function SimulationPage() {
             <div
               role="tablist"
               aria-label={tSim('deckTitle')}
-              className="grid grid-cols-4 border-b border-border bg-surface-sunken/60 p-1 gap-1"
+              className="grid grid-cols-4 border-b border-border bg-canvas-sunken/60 p-1 gap-1"
             >
               {TABS.map(({ id, labelKey, icon: Icon }) => {
                 const isActive = activeTab === id;
@@ -292,7 +292,10 @@ export function SimulationPage() {
                     )}
                   >
                     <Icon
-                      className={cn('h-3.5 w-3.5', isActive ? 'text-energy-cyan' : 'text-text-muted')}
+                      className={cn(
+                        'h-3.5 w-3.5',
+                        isActive ? 'text-energy-cyan' : 'text-text-muted'
+                      )}
                       aria-hidden="true"
                     />
                     <span className="truncate max-w-full">{tSim(labelKey)}</span>
@@ -351,10 +354,7 @@ export function SimulationPage() {
                         : 'normal'
                     }
                     icon={
-                      <BatteryCharging
-                        className="h-4 w-4 text-battery-green"
-                        aria-hidden="true"
-                      />
+                      <BatteryCharging className="h-4 w-4 text-battery-green" aria-hidden="true" />
                     }
                   />
 
@@ -440,7 +440,8 @@ export function SimulationPage() {
                           key={sec}
                           sectorId={sec}
                           label={tSectors(sec)}
-                          valuePct={hasResults && secMetrics ? secMetrics.coveragePct : 0}
+                          valuePct={secMetrics?.coveragePct ?? 0}
+                          empty={!hasResults || !secMetrics}
                           demandKwh={secMetrics?.demandKwh}
                           servedKwh={secMetrics?.servedKwh}
                           priority={priority}

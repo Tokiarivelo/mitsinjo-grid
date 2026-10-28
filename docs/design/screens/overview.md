@@ -51,7 +51,9 @@ Four cards spanning 4 columns (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`):
 
 ### 3. Left Column (col-span-7 Bento): Digital Twin & 24h Telemetry
 - **Village Digital Twin Preview (`GridSchematicPreview`)**:
-  - Interactive 3D microgrid digital twin (`LazyVillageCanvas`) with 2D schematic fallback for devices without WebGL.
+  - Interactive 3D microgrid digital twin (`LazyVillageCanvas`) with a 2D `GridDiagram` (topology view, electrons on
+    powered lines) as toggle and as fallback for devices without WebGL.
+  - Community Service Allocation bars show "—" (no status) until a run exists (`EnergyBar empty`).
   - HUD Reticle Badges: `NODE: MITSINJO_CENTRAL_BUS`, camera reset, 3D/2D view toggle.
   - Quick-Phase Hour Selector: interactive pill buttons (`06:00 Dawn`, `12:00 Solar Peak`, `19:00 Evening`, `23:00 Night`) to inspect flow dynamics at critical operational hours.
   - **Docked Energy Balance Summary Strip**:

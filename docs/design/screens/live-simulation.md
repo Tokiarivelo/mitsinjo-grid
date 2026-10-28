@@ -87,7 +87,14 @@ The collapsible side deck contains four structured tabs:
   - Quick focus buttons: `Village Overview`, `Solar Array`, `BESS Battery`, `Health Clinic & Water Pump`.
   - Camera reset button.
 - **2D/3D Mode Switcher**:
-  - Fallback toggle to switch between 3D Digital Twin and 2D Circuit Schematic.
+  - View toggle (`ViewModeToggle`): 3D Scene · Topology · Circuit. Both 2D views are `GridDiagram`
+    (`features/microgrid-3d`), driven by the same `SceneModel` as the 3D twin:
+    - Topology = village plan (same relative places as 3D); Circuit = single-line diagram with a vertical
+      bus bar and one breaker per sector (closed when powered, open + red when cut).
+    - Powered wires show moving electrons; cut wires are red dashes with a break mark; no-demand sectors
+      read "No load" (neutral). Legend under the diagram.
+    - Every label has a reserved box (`utils/diagram-layout.ts`); tests assert no box overlaps another
+      and no wire passes under a label.
 
 ### 4. Tab `Copilote IA` (AI Copilot & Insights)
 - **Impact Banner**:

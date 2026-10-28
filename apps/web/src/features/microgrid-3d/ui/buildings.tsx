@@ -144,8 +144,8 @@ function BuildingFrame({
           className={cn(
             'flex items-center gap-2 px-3 py-1.5 rounded-full shadow-xl backdrop-blur-md text-[11px] font-sans border transition-all cursor-pointer whitespace-nowrap',
             isSelected
-              ? 'bg-[#0e1726]/95 border-energy-cyan ring-2 ring-energy-cyan/50 scale-105'
-              : 'bg-[#0a101d]/90 border-border hover:border-text-secondary hover:bg-[#111a2d]/95'
+              ? 'bg-surface-elevated/95 border-energy-cyan ring-2 ring-energy-cyan/50 scale-105'
+              : 'bg-surface/90 border border-border hover:border-text-secondary hover:bg-surface-hover'
           )}
         >
           <div

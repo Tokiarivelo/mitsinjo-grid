@@ -1,11 +1,11 @@
 'use client';
 
-import { type ComponentRef, useEffect, useMemo, useRef } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useMemo } from 'react';
 import { Instance, Instances, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import type { LineFlowSceneModel } from '../types';
 import { POLE_HEIGHT, routeCable } from '../utils/cable-route';
+import { ElectronFlow } from './electron-flow';
 
 export interface DistributionLinesProps {
   lines: {
@@ -13,7 +13,7 @@ export interface DistributionLinesProps {
     batteryToBus: LineFlowSceneModel;
     busToSectors: Record<string, LineFlowSceneModel>;
   };
-  /** False under reduced motion or a modified scenario: lines stay lit but static. */
+  /** False under reduced motion or a modified scenario: electrons freeze in place. */
   animate?: boolean;
   /** Street-lamp brightness from the sky palette (night → 1). */
   lampGlow?: number;
@@ -23,89 +23,47 @@ export interface DistributionLinesProps {
 
 interface SingleLineProps {
   line: LineFlowSceneModel;
-  animate: boolean;
   halo: boolean;
 }
 
-/** Cap per-frame delta so the first demand frame after idle doesn't jump. */
-const MAX_DELTA_S = 0.1;
-
-function TransmissionCable({ line, animate, halo }: SingleLineProps) {
-  const activeLineRef = useRef<ComponentRef<typeof Line>>(null);
-  const glowLineRef = useRef<ComponentRef<typeof Line>>(null);
-  const invalidate = useThree((s) => s.invalidate);
-  const isFlowing = animate && line.active;
-
-  // frameloop="demand": kick off the loop when this line starts flowing.
-  useEffect(() => {
-    if (isFlowing) invalidate();
-  }, [isFlowing, invalidate]);
-
+/** Static cable: dark conductor, plus a lit core when current flows (motion = ElectronFlow). */
+function TransmissionCable({ line, halo }: SingleLineProps) {
   // Cable hops over utility poles with a sag in each span (pure routing util).
   const points = useMemo(
     () => routeCable(line.from, line.to).points.map((p) => new THREE.Vector3(...p)),
     [line.from, line.to]
   );
 
-  useFrame((state, delta) => {
-    if (!isFlowing) return;
-    const dir = line.direction === 'backward' ? -1 : 1;
-    const move = dir * line.speed * Math.min(delta, MAX_DELTA_S) * 2.4;
-
-    if (activeLineRef.current) {
-      activeLineRef.current.material.dashOffset -= move;
-    }
-    if (glowLineRef.current) {
-      glowLineRef.current.material.dashOffset -= move;
-    }
-    state.invalidate();
-  });
-
   // Brighter than 1 + toneMapped off → the bloom pass makes active cables glow.
   const glowColor = useMemo(
-    () => new THREE.Color(line.color || '#50d8e8').multiplyScalar(2.4),
+    () => new THREE.Color(line.color || '#50d8e8').multiplyScalar(1.6),
     [line.color]
   );
-  const coreColor = useMemo(() => new THREE.Color('#e8fdff').multiplyScalar(2.6), []);
 
   return (
     <group>
-      {/* 1. Base Physical Utility Cable */}
+      {/* Physical utility cable, always visible (a cut line stays dark). */}
       <Line points={points} color="#2a2f36" lineWidth={1.4} />
 
-      {/* 2. Enhanced Surbrillance / Glowing Energy Flow (when active) */}
       {line.active && (
         <>
-          {/* Layer A: Broad Outer Glowing Aura (Neon Halo Bloom), high tier only */}
+          {/* Wide aura under powered cables, high tier only (one extra draw). */}
           {halo && (
             <Line
-              ref={glowLineRef}
               points={points}
               color={glowColor}
               lineWidth={5}
-              dashed
-              dashScale={2.2}
-              dashSize={0.8}
-              gapSize={0.4}
               transparent
-              opacity={0.5}
+              opacity={0.22}
               toneMapped={false}
             />
           )}
-
-          {/* Layer B: Intense Electric Core (High-energy highlight) */}
           <Line
-            ref={activeLineRef}
             points={points}
-            // Without the halo the core carries the status color itself.
-            color={halo ? coreColor : glowColor}
-            lineWidth={2.4}
-            dashed
-            dashScale={2.2}
-            dashSize={0.7}
-            gapSize={0.5}
+            color={glowColor}
+            lineWidth={1.8}
             transparent
-            opacity={0.95}
+            opacity={0.85}
             toneMapped={false}
           />
         </>
@@ -138,8 +96,9 @@ export function DistributionLines({
   return (
     <group name="distribution-lines">
       {allLines.map((line, idx) => (
-        <TransmissionCable key={idx} line={line} animate={animate} halo={halo} />
+        <TransmissionCable key={idx} line={line} halo={halo} />
       ))}
+      <ElectronFlow lines={allLines} animate={animate} />
 
       {/* Wooden utility poles, cross-arms, insulators and a street lamp on each */}
       <Instances limit={Math.max(1, poles.length)} name="pole-shafts" castShadow>
