@@ -1,9 +1,10 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-28 · **By:** Antigravity (rules/skills update) · **Branch:** `feat/responsive-mobile-theming-rules`
+**Updated:** 2026-10-28 · **By:** Antigravity (rules/skills update) · **Branch:** `main`
 
 ## State
 
+- PR #18 merged into `main` (rules and skills update for dual theming & responsive mobile).
 - Light theme (`lib/theme.tsx`, `ThemeSwitcher`) and mobile responsiveness fully operational across all routes.
 - Dual theming and responsive mobile first-class rules and skills updated across repo:
   - `CLAUDE.md`, `docs/conventions.md`, `.claude/rules/{web-ui,review,three}.md`
