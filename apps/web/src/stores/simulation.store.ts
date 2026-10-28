@@ -70,6 +70,16 @@ export function resetSimulationStore() {
   });
 }
 
+/**
+ * Runs the engine when the current input has no up-to-date result.
+ * Returns false when there is still no result (run failed): playback must not start.
+ */
+function ensureResults(get: () => SimulationState): boolean {
+  const { status, results, run } = get();
+  if (status !== 'complete' || Object.keys(results).length === 0) run();
+  return get().status === 'complete';
+}
+
 export const useSimulationStore = create<SimulationState>((set, get) => ({
   ...initialSimulationData,
 
@@ -194,19 +204,12 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   play: () => {
-    const state = get();
-    if (
-      state.status === 'ready' ||
-      state.status === 'modified' ||
-      Object.keys(state.results).length === 0
-    ) {
-      state.run();
-    }
-    const nextTime = state.timeIndex >= 23 ? 0 : state.timeIndex;
+    if (!ensureResults(get)) return;
+    const { timeIndex } = get();
     set({
       isPlaying: true,
       playbackStatus: 'playing',
-      timeIndex: nextTime,
+      timeIndex: timeIndex >= 23 ? 0 : timeIndex,
     });
   },
 
@@ -226,19 +229,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   restart: () => {
-    const state = get();
-    if (
-      state.status === 'ready' ||
-      state.status === 'modified' ||
-      Object.keys(state.results).length === 0
-    ) {
-      state.run();
-    }
-    set({
-      timeIndex: 0,
-      isPlaying: true,
-      playbackStatus: 'playing',
-    });
+    if (!ensureResults(get)) return;
+    set({ timeIndex: 0, isPlaying: true, playbackStatus: 'playing' });
   },
 
   togglePlay: () => {

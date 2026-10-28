@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Clock, Pause, Play, RotateCcw, Square } from 'lucide-react';
 import type { StepResult } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
@@ -12,10 +11,11 @@ export interface TimelineScrubberProps {
   onTimeChange: (timeIndex: number) => void;
   stepResult?: StepResult | null;
   hasResults?: boolean;
-  isPlaying?: boolean;
-  onTogglePlay?: () => void;
-  onStop?: () => void;
-  onRestart?: () => void;
+  isPlaying: boolean;
+  onTogglePlay: () => void;
+  onPause: () => void;
+  onStop: () => void;
+  onRestart: () => void;
   className?: string;
 }
 
@@ -24,82 +24,27 @@ export function TimelineScrubber({
   onTimeChange,
   stepResult,
   hasResults = false,
-  isPlaying: externalIsPlaying,
+  isPlaying,
   onTogglePlay,
+  onPause,
   onStop,
   onRestart,
   className,
 }: TimelineScrubberProps) {
   const tSim = useTranslations('features.simulation');
-  const [internalPlaying, setInternalPlaying] = useState(false);
-  const isPlaying = externalIsPlaying !== undefined ? externalIsPlaying : internalPlaying;
 
-  // Auto-advance loop when isPlaying is true (only if not managed externally)
-  useEffect(() => {
-    if (externalIsPlaying !== undefined) return;
-    if (!internalPlaying) return;
-
-    const interval = setInterval(() => {
-      onTimeChange((timeIndex + 1) % 24);
-    }, 750);
-
-    return () => clearInterval(interval);
-  }, [externalIsPlaying, internalPlaying, timeIndex, onTimeChange]);
-
-  const togglePlay = () => {
-    if (onTogglePlay) {
-      onTogglePlay();
-    } else {
-      setInternalPlaying((prev) => !prev);
-    }
+  // Manual scrubbing takes over from playback.
+  const seek = (hour: number) => {
+    if (isPlaying) onPause();
+    onTimeChange(hour);
   };
 
-  const handlePrev = () => {
-    if (externalIsPlaying !== undefined && isPlaying && onTogglePlay) {
-      onTogglePlay();
-    } else {
-      setInternalPlaying(false);
-    }
-    onTimeChange((timeIndex - 1 + 24) % 24);
-  };
-
-  const handleNext = () => {
-    if (externalIsPlaying !== undefined && isPlaying && onTogglePlay) {
-      onTogglePlay();
-    } else {
-      setInternalPlaying(false);
-    }
-    onTimeChange((timeIndex + 1) % 24);
-  };
-
-  const handleStop = () => {
-    if (onStop) {
-      onStop();
-    } else {
-      setInternalPlaying(false);
-      onTimeChange(0);
-    }
-  };
-
-  const handleRestart = () => {
-    if (onRestart) {
-      onRestart();
-    } else {
-      setInternalPlaying(true);
-      onTimeChange(0);
-    }
-  };
+  const handlePrev = () => seek((timeIndex - 1 + 24) % 24);
+  const handleNext = () => seek((timeIndex + 1) % 24);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (externalIsPlaying !== undefined && isPlaying && onTogglePlay) {
-      onTogglePlay();
-    } else {
-      setInternalPlaying(false);
-    }
     const nextVal = parseInt(e.target.value, 10);
-    if (!isNaN(nextVal)) {
-      onTimeChange(nextVal);
-    }
+    if (!isNaN(nextVal)) seek(nextVal);
   };
 
   return (
@@ -136,7 +81,7 @@ export function TimelineScrubber({
 
           <button
             type="button"
-            onClick={togglePlay}
+            onClick={onTogglePlay}
             aria-label={isPlaying ? tSim('pausePlayback') : tSim('startPlayback')}
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-control text-xs font-sans font-medium transition-colors cursor-pointer border',
@@ -170,7 +115,7 @@ export function TimelineScrubber({
 
           <button
             type="button"
-            onClick={handleStop}
+            onClick={onStop}
             aria-label={tSim('stopPlayback')}
             title={tSim('stopPlayback')}
             className="p-1.5 rounded-control text-text-muted hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
@@ -180,7 +125,7 @@ export function TimelineScrubber({
 
           <button
             type="button"
-            onClick={handleRestart}
+            onClick={onRestart}
             aria-label={tSim('restartPlayback')}
             title={tSim('restartPlayback')}
             className="p-1.5 rounded-control text-text-muted hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"

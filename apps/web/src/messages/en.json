@@ -128,7 +128,6 @@
       "restart": "Restart",
       "stopPlayback": "Stop simulation playback",
       "restartPlayback": "Restart simulation from beginning",
-      "resetToNoon": "Reset to 12:00",
       "stepSolar": "Solar PV",
       "stepDemand": "Total Load",
       "stepServed": "Power Served",

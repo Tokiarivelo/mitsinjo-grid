@@ -128,7 +128,6 @@
       "restart": "Avereno atombohy",
       "stopPlayback": "Atsaharo ny fandefasana ny simulation",
       "restartPlayback": "Avereno atombohy avy any am-piandohana ny simulation",
-      "resetToNoon": "Avereno amin ny 12:00",
       "stepSolar": "Masoandro PV",
       "stepDemand": "Filàna Manontolo",
       "stepServed": "Herinaratra Voazara",

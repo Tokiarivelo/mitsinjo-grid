@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { SimulationInput } from '@mitsinjo/engine';
 import { resetSimulationStore, useSimulationStore } from '../simulation.store';
 import {
   selectActiveMetrics,
@@ -198,5 +199,20 @@ describe('useSimulationStore & selectors (P4-T1)', () => {
     useSimulationStore.getState().setTimeIndex(23);
     store.play();
     expect(selectTimeIndex(useSimulationStore.getState())).toBe(0);
+  });
+
+  it('does not start playback when the run fails', () => {
+    useSimulationStore.setState({
+      input: { broken: true } as unknown as SimulationInput,
+      status: 'modified',
+    });
+    useSimulationStore.getState().play();
+    let state = useSimulationStore.getState();
+    expect(selectStatus(state)).toBe('error');
+    expect(selectIsPlaying(state)).toBe(false);
+
+    useSimulationStore.getState().restart();
+    state = useSimulationStore.getState();
+    expect(selectIsPlaying(state)).toBe(false);
   });
 });

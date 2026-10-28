@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, Pause, Play, RotateCcw, Sliders, Square } from 'lucide-react';
+import { AlertTriangle, RotateCcw, Sliders } from 'lucide-react';
 import {
   getSolarDrop,
   type InputPatch,
@@ -11,6 +11,8 @@ import {
 import { cn } from '@/lib/utils';
 import { SimControl } from '@/components/ui/sim-control';
 import { Button } from '@/components/ui/button';
+import { PlaybackActions } from './playback-actions';
+import { simStatusBadgeVariant } from '../utils/playback';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useTranslations } from '@/lib/i18n';
 import { validatePatch } from '../utils/validate-patch';
@@ -35,12 +37,11 @@ export interface SimControlsPanelProps {
   hasResults?: boolean;
   onPatch: (patch: InputPatch) => void;
   onStrategyChange: (strategy: StrategyId) => void;
+  /** Run (when needed) and play; pause while playing. */
   onRun: () => void;
   onReset: () => void;
-  onTogglePlay?: () => void;
-  onPause?: () => void;
-  onStop?: () => void;
-  onRestart?: () => void;
+  onStop: () => void;
+  onRestart: () => void;
   className?: string;
 }
 
@@ -54,8 +55,6 @@ export function SimControlsPanel({
   onStrategyChange,
   onRun,
   onReset,
-  onTogglePlay,
-  onPause,
   onStop,
   onRestart,
   className,
@@ -158,7 +157,6 @@ export function SimControlsPanel({
 
   const hasErrors = Object.keys(errors).length > 0;
   const isModified = status === 'modified';
-  const isRunning = status === 'running';
 
   return (
     <div
@@ -174,20 +172,7 @@ export function SimControlsPanel({
           <h3 className="font-display text-sm font-semibold text-text-primary tracking-tight">
             {tSim('controlsTitle')}
           </h3>
-          <StatusBadge
-            variant={
-              status === 'modified'
-                ? 'warning'
-                : isPlaying
-                  ? 'running'
-                  : status === 'complete'
-                    ? 'complete'
-                    : status === 'running'
-                      ? 'running'
-                      : 'ready'
-            }
-            size="sm"
-          />
+          <StatusBadge variant={simStatusBadgeVariant(status, isPlaying)} size="sm" />
         </div>
 
         {/* Action Buttons */}
@@ -209,63 +194,15 @@ export function SimControlsPanel({
             {tSim('resetScenario')}
           </Button>
 
-          {hasResults && onStop && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={onStop}
-              icon={<Square className="h-3 w-3 fill-current" aria-hidden="true" />}
-              aria-label={tSim('stopPlayback')}
-              title={tSim('stopPlayback')}
-            >
-              {tSim('stop')}
-            </Button>
-          )}
-
-          {hasResults && onRestart && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={onRestart}
-              disabled={hasErrors}
-              icon={<RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />}
-              aria-label={tSim('restartPlayback')}
-              title={tSim('restartPlayback')}
-            >
-              {tSim('restart')}
-            </Button>
-          )}
-
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={isPlaying ? (onPause ?? onTogglePlay ?? onRun) : (onTogglePlay ?? onRun)}
-            disabled={hasErrors || isRunning}
-            icon={
-              isPlaying ? (
-                <Pause className="h-3.5 w-3.5" aria-hidden="true" />
-              ) : (
-                <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
-              )
-            }
-            aria-label={
-              isRunning
-                ? tCommon('loading')
-                : isPlaying
-                  ? tSim('pausePlayback')
-                  : isModified || !hasResults
-                    ? tSim('runSimulation')
-                    : tSim('startPlayback')
-            }
-          >
-            {isRunning
-              ? tCommon('loading')
-              : isPlaying
-                ? tSim('pause')
-                : isModified || !hasResults
-                  ? tSim('runSimulation')
-                  : tSim('play')}
-          </Button>
+          <PlaybackActions
+            status={status}
+            isPlaying={isPlaying}
+            hasResults={hasResults}
+            disabled={hasErrors}
+            onTogglePlay={onRun}
+            onStop={onStop}
+            onRestart={onRestart}
+          />
         </div>
       </div>
 

@@ -128,7 +128,6 @@
       "restart": "Redémarrer",
       "stopPlayback": "Arrêter la lecture de la simulation",
       "restartPlayback": "Redémarrer la simulation depuis le début",
-      "resetToNoon": "Réinitialiser à 12h00",
       "stepSolar": "Solaire PV",
       "stepDemand": "Charge Totale",
       "stepServed": "Puissance Servie",
