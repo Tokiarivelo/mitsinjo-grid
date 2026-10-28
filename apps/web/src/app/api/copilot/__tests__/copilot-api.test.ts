@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { NextRequest } from 'next/server';
-import { POST as handleUpload } from '../upload/route';
+import { POST as handleUpload, GET as handleDownload } from '../upload/route';
 import { GET as listSessionsRoute, POST as createSessionRoute } from '../sessions/route';
 import {
   GET as getSessionRoute,
@@ -47,6 +47,37 @@ describe('Copilot Storage & Sessions API Routes', () => {
     const data = await res.json();
     expect(data).toHaveProperty('publicUrl');
     expect(data).toHaveProperty('fileKey');
+  });
+
+  it('rejects non-media uploads (HTML, SVG) in /api/copilot/upload', async () => {
+    const post = (body: unknown) =>
+      handleUpload(
+        new NextRequest('http://localhost:3000/api/copilot/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+      );
+
+    const presign = await post({ action: 'presign', filename: 'x.html', contentType: 'text/html' });
+    expect(presign.status).toBe(400);
+
+    const svg = await post({
+      action: 'upload_data_url',
+      dataUrl: 'data:image/svg+xml;base64,PHN2Zy8+',
+    });
+    expect(svg.status).toBe(415);
+  });
+
+  it('only signs download URLs for keys this route generates', async () => {
+    const get = (key: string) =>
+      handleDownload(
+        new NextRequest(`http://localhost:3000/api/copilot/upload?key=${encodeURIComponent(key)}`)
+      );
+
+    expect((await get('copilot/1730000000000-sketch.png')).status).toBe(200);
+    expect((await get('secrets/backup.sql')).status).toBe(400);
+    expect((await get('copilot/../other/1-x.png')).status).toBe(400);
   });
 
   it('creates and lists sessions via /api/copilot/sessions', async () => {

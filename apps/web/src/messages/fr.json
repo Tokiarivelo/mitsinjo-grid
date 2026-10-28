@@ -428,7 +428,8 @@
         "propose_change": "Préparation d'une proposition à valider",
         "default": "Analyse des résultats calculés"
       },
-      "unknownValue": "Inconnu"
+      "unknownValue": "Inconnu",
+      "chartType": "graphique {type}"
     },
     "gridDiagram": {
       "topologyLabel": "Plan du village : flux d'énergie du hub solaire vers chaque secteur",

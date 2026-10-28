@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { type SimulationInput, type StrategyId } from '@mitsinjo/engine';
-import { type LlmProvider, type ChatMessage } from './provider';
+import { type LlmProvider, type ChatMessage, type LlmImageResult } from './provider';
 import { MockLlmProvider } from './providers/mock';
 import { TOOL_DEFINITIONS, executeTool, type ToolContext } from './tools';
 import { getSystemPrompt } from './prompt';
@@ -108,8 +108,20 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
             : `Generating visual with ${route.targetModel}...`,
       });
 
+      let imgResult: LlmImageResult | null = null;
       if (typeof activeProvider.generateImage === 'function') {
-        const imgResult = await activeProvider.generateImage(userQuery, timeoutController.signal);
+        try {
+          imgResult = await activeProvider.generateImage(userQuery, timeoutController.signal);
+        } catch (err) {
+          // Image model down → answer with the text copilot instead of failing the turn.
+          console.warn('[copilot:loop] Image generation failed, falling back to chat:', err);
+          emit('error', {
+            code: 'PROVIDER_FALLBACK',
+            message: 'AI provider unavailable — showing deterministic explanation.',
+          });
+        }
+      }
+      if (imgResult) {
         emit('image', {
           imageUrl: imgResult.imageUrl,
           caption: imgResult.caption || userQuery,
@@ -130,8 +142,13 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
     emit('activity', { tool: 'start', label: 'Reading microgrid simulation state...' });
 
     // Update active model on provider if supported
+    // An image route that reached this point has no image result: chat with the default model.
+    const chatModel =
+      route.modality === 'image'
+        ? detectAdaptiveRoute('', 'auto', availableModels).targetModel
+        : route.targetModel;
     if ('setModel' in activeProvider && typeof activeProvider.setModel === 'function') {
-      activeProvider.setModel(route.targetModel);
+      activeProvider.setModel(chatModel);
     }
 
     // Build context

@@ -15,6 +15,7 @@ import {
   Legend,
 } from 'recharts';
 import { BarChart3, TrendingUp, Layers } from 'lucide-react';
+import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import type { ChatChartData } from '../types';
 
@@ -23,9 +24,33 @@ export interface ChatChartProps {
   className?: string;
 }
 
-const DEFAULT_COLORS = ['#38bdf8', '#f59e0b', '#a855f7', '#ef4444', '#10b981', '#6366f1'];
+const DEFAULT_COLORS = [
+  'var(--color-energy-cyan)',
+  'var(--color-solar-amber)',
+  'var(--color-ai-violet)',
+  'var(--color-critical-red)',
+  'var(--color-battery-green)',
+  'var(--color-network-blue)',
+];
+
+const AXIS_PROPS = {
+  tickLine: false,
+  axisLine: { stroke: 'var(--color-border)' },
+  tick: { fill: 'var(--color-text-muted)', fontSize: 10 },
+  className: 'font-mono',
+} as const;
+
+const TOOLTIP_STYLE = {
+  backgroundColor: 'var(--color-surface-elevated)',
+  borderColor: 'var(--color-border)',
+  borderRadius: '0.5rem',
+  fontSize: '11px',
+  fontFamily: 'monospace',
+  color: 'var(--color-text-primary)',
+};
 
 export function ChatChart({ data, className }: ChatChartProps) {
+  const t = useTranslations('features.copilot');
   if (!data || !Array.isArray(data.data) || data.data.length === 0) {
     return null;
   }
@@ -52,31 +77,10 @@ export function ChatChart({ data, className }: ChatChartProps) {
       case 'bar':
         return (
           <BarChart data={data.data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-            <XAxis
-              dataKey={xAxisKey}
-              tickLine={false}
-              axisLine={{ stroke: 'rgba(255,255,255,0.15)' }}
-              tick={{ fill: 'currentColor', fontSize: 10 }}
-              className="text-text-muted font-mono"
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={{ stroke: 'rgba(255,255,255,0.15)' }}
-              tick={{ fill: 'currentColor', fontSize: 10 }}
-              className="text-text-muted font-mono"
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                borderColor: 'rgba(255, 255, 255, 0.15)',
-                borderRadius: '0.5rem',
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                color: '#fff',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-              }}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+            <XAxis dataKey={xAxisKey} {...AXIS_PROPS} />
+            <YAxis {...AXIS_PROPS} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} />
             {series.length > 1 && <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />}
             {series.map((s, idx) => (
               <Bar
@@ -111,31 +115,10 @@ export function ChatChart({ data, className }: ChatChartProps) {
                 );
               })}
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-            <XAxis
-              dataKey={xAxisKey}
-              tickLine={false}
-              axisLine={{ stroke: 'rgba(255,255,255,0.15)' }}
-              tick={{ fill: 'currentColor', fontSize: 10 }}
-              className="text-text-muted font-mono"
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={{ stroke: 'rgba(255,255,255,0.15)' }}
-              tick={{ fill: 'currentColor', fontSize: 10 }}
-              className="text-text-muted font-mono"
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                borderColor: 'rgba(255, 255, 255, 0.15)',
-                borderRadius: '0.5rem',
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                color: '#fff',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-              }}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+            <XAxis dataKey={xAxisKey} {...AXIS_PROPS} />
+            <YAxis {...AXIS_PROPS} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} />
             {series.length > 1 && <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />}
             {series.map((s, idx) => {
               const color = s.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
@@ -159,31 +142,10 @@ export function ChatChart({ data, className }: ChatChartProps) {
       default:
         return (
           <LineChart data={data.data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-            <XAxis
-              dataKey={xAxisKey}
-              tickLine={false}
-              axisLine={{ stroke: 'rgba(255,255,255,0.15)' }}
-              tick={{ fill: 'currentColor', fontSize: 10 }}
-              className="text-text-muted font-mono"
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={{ stroke: 'rgba(255,255,255,0.15)' }}
-              tick={{ fill: 'currentColor', fontSize: 10 }}
-              className="text-text-muted font-mono"
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                borderColor: 'rgba(255, 255, 255, 0.15)',
-                borderRadius: '0.5rem',
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                color: '#fff',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-              }}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+            <XAxis dataKey={xAxisKey} {...AXIS_PROPS} />
+            <YAxis {...AXIS_PROPS} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} />
             {series.length > 1 && <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />}
             {series.map((s, idx) => {
               const color = s.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
@@ -230,7 +192,7 @@ export function ChatChart({ data, className }: ChatChartProps) {
             </div>
           </div>
           <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-surface-elevated text-text-muted border border-border/50 uppercase">
-            {data.type} chart
+            {t('chartType', { type: data.type })}
           </span>
         </div>
       )}

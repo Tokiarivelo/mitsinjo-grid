@@ -428,7 +428,8 @@
         "propose_change": "Fanomanana tolo-kevitra ho hamarinina",
         "default": "Fandinihana ny valiny voakajy"
       },
-      "unknownValue": "Tsy fantatra"
+      "unknownValue": "Tsy fantatra",
+      "chartType": "sary {type}"
     },
     "gridDiagram": {
       "topologyLabel": "Drafitry ny tanàna: fikorianan'ny herinaratra avy amin'ny ivon-masoandro mankany amin'ny sehatra tsirairay",

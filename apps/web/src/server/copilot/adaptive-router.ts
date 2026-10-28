@@ -9,7 +9,8 @@ export interface RouteDecision {
 }
 
 const IMAGE_REGEX =
-  /\b(image|picture|photo|illustration|dessin|dessine|dessiner|schéma|schema|visualise|visualiser|visualize|generate an? image|crée une image|génère une image|générer une image|sary|mamorona sary)\b/i;
+  // "visualize" / "schema" are left out: they usually mean a chart or the grid diagram.
+  /\b(image|picture|photo|illustration|dessin|dessine|dessiner|generate an? image|crée une image|génère une image|générer une image|sary|mamorona sary)\b/i;
 
 const DEEP_REASONING_REGEX =
   /\b(wonder|deep analysis|analyse approfondie|en profondeur|audit complet|planifi|long-term|long terme|famakafakana lalina|compromis complexe)\b/i;

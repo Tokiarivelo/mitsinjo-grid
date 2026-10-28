@@ -9,18 +9,36 @@ import {
   isR2Configured,
 } from '@/server/storage/r2';
 
+/** Chat media only: raster images and videos. SVG is excluded (it can carry scripts). */
+const MEDIA_CONTENT_TYPE = /^(image\/(png|jpe?g|webp|gif|avif)|video\/(mp4|webm|quicktime))$/i;
+
+/** Base64 data URLs above ~9 MB of binary are rejected. */
+const MAX_DATA_URL_CHARS = 12_000_000;
+
+/** Object keys this route generates: `<folder>/<timestamp>-<safe filename>`. */
+const UPLOAD_KEY = /^[a-z0-9-]{1,50}\/\d+-[A-Za-z0-9._-]{1,255}$/;
+
 const PresignRequestSchema = z.object({
   action: z.literal('presign').default('presign'),
   filename: z.string().min(1).max(255),
-  contentType: z.string().min(1).max(100),
-  folder: z.string().max(50).optional(),
+  contentType: z.string().regex(MEDIA_CONTENT_TYPE),
+  folder: z
+    .string()
+    .regex(/^[a-z0-9-]{1,50}$/)
+    .optional(),
 });
 
 const UploadDataUrlSchema = z.object({
   action: z.literal('upload_data_url'),
-  dataUrl: z.string().min(1),
+  dataUrl: z.string().min(1).max(MAX_DATA_URL_CHARS),
   filename: z.string().max(255).optional(),
 });
+
+const jsonError = (error: string, status: number) =>
+  new Response(JSON.stringify({ error }), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
 
 const RequestBodySchema = z.union([PresignRequestSchema, UploadDataUrlSchema]);
 
@@ -89,6 +107,9 @@ export async function POST(req: NextRequest) {
       }
 
       const contentType = match[1];
+      if (!MEDIA_CONTENT_TYPE.test(contentType)) {
+        return jsonError('Unsupported media type', 415);
+      }
       const base64Data = match[2];
       const buffer = Buffer.from(base64Data, 'base64');
       const filename = data.filename || `sketch-${Date.now()}.png`;
@@ -130,16 +151,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('[api:storage:upload] Error processing upload request:', err);
-    return new Response(
-      JSON.stringify({
-        error: 'Failed to process storage request',
-        message: err instanceof Error ? err.message : String(err),
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return jsonError('Failed to process storage request', 500);
   }
 }
 
@@ -148,10 +160,10 @@ export async function GET(req: NextRequest) {
   const key = url.searchParams.get('key');
 
   if (!key) {
-    return new Response(JSON.stringify({ error: 'Missing object key parameter' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonError('Missing object key parameter', 400);
+  }
+  if (!UPLOAD_KEY.test(key)) {
+    return jsonError('Invalid object key', 400);
   }
 
   try {
@@ -161,15 +173,7 @@ export async function GET(req: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    return new Response(
-      JSON.stringify({
-        error: 'Failed to generate download URL',
-        message: err instanceof Error ? err.message : String(err),
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    console.error('[api:storage:upload] Error generating download URL:', err);
+    return jsonError('Failed to generate download URL', 500);
   }
 }

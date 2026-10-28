@@ -81,4 +81,12 @@ describe('Adaptive Router for Meta Models', () => {
     expect(r2.targetModel).toBe('muse-spark-1.3');
     expect(r2.modality).toBe('chat');
   });
+
+  it('keeps chart and diagram wording on the tool-calling chat model', () => {
+    for (const q of ['Visualize the battery SoC over 24h', 'Montre le schéma du réseau']) {
+      const r = detectAdaptiveRoute(q, 'auto', metaModels);
+      expect(r.modality).toBe('chat');
+      expect(r.targetModel).toBe('muse-spark-1.3');
+    }
+  });
 });

@@ -179,8 +179,11 @@ export async function getSession(id: string): Promise<ChatSessionDetail | null> 
   };
 }
 
-export async function createSession(title?: string, locale = 'fr'): Promise<ChatSessionSummary> {
-  const id = `session-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+export async function createSession(
+  title?: string,
+  locale = 'fr',
+  id = `session-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+): Promise<ChatSessionSummary> {
   const now = new Date().toISOString();
   const sessionTitle = title || (locale === 'fr' ? 'Session de simulation' : 'Simulation session');
 
@@ -215,7 +218,7 @@ export async function saveMessage(sessionId: string, message: ChatMessageData): 
 
   if (!isNeonConfigured()) {
     if (!inMemorySessions.has(sessionId)) {
-      await createSession(undefined, 'fr');
+      await createSession(message.content.slice(0, 50) || undefined, 'fr', sessionId);
     }
     const msgs = inMemoryMessages.get(sessionId) || [];
     msgs.push(message);

@@ -20,6 +20,7 @@
 
 - All linters, TypeScript strict types, and React 19 hook guidelines strictly satisfied.
 - Transparent fallbacks for both R2 and Neon DB ensure zero breakages in offline / test environments.
+- PR #21 review: upload route accepts raster images/videos only, signs only its own keys; image-gen failure falls back to chat; chat charts use theme tokens.
 
 ## Files touched this session
 

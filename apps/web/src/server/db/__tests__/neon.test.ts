@@ -53,4 +53,14 @@ describe('Neon DB Chat Session Storage', () => {
     const afterDelete = await getSession(session.id);
     expect(afterDelete).toBeNull();
   });
+
+  it('saving to an unknown session id creates that session (client-generated ids)', async () => {
+    const id = 'session-client-123';
+    await saveMessage(id, { id: 'msg-a', role: 'user', content: 'Hello grid' });
+    const detail = await getSession(id);
+    expect(detail?.id).toBe(id);
+    expect(detail?.messages).toHaveLength(1);
+    expect((await listSessions()).some((s) => s.id === id)).toBe(true);
+    await deleteSession(id);
+  });
 });

@@ -428,7 +428,8 @@
         "propose_change": "Preparing a proposal for your review",
         "default": "Reviewing computed results"
       },
-      "unknownValue": "Unknown"
+      "unknownValue": "Unknown",
+      "chartType": "{type} chart"
     },
     "gridDiagram": {
       "topologyLabel": "Village plan: power flow from the solar hub to each sector",
