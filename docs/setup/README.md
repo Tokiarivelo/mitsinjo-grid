@@ -13,6 +13,8 @@ mkdir -p .claude/hooks && cp docs/setup/format.sh .claude/hooks/format.sh && chm
 | `permissions.deny` Read | Blocks reading lockfile, `.next`, `node_modules`, reports and secrets, which are big files that waste context |
 | `format.sh` hook        | Prettier runs after every edit with no output, so agents never spend turns on formatting                      |
 
+All agents (any tool): `pnpm install` / `make git-hooks` installs a git pre-commit hook that runs Prettier on staged files.
+
 Already active without install: `.claude/rules/*` (load only for matching paths) and `.claude/skills/*`.
 
 ## Stitch MCP (Google Stitch → mockups for agents)

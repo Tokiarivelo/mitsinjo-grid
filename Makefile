@@ -28,14 +28,14 @@ install: ## Install all workspace dependencies
 env: ## Create apps/web/.env.local from .env.example (if missing)
 	@test -f apps/web/.env.local && echo "apps/web/.env.local exists" || { cp .env.example apps/web/.env.local && echo "Created apps/web/.env.local"; }
 
+browsers: ## Install Playwright browsers (for e2e + screenshots)
+	$(need_ws)
+	$(PNPM) --filter $(WEB) exec playwright install chromium
+
 setup-claude: ## Install Claude Code settings + format hook (human, once)
 	cp docs/setup/claude-settings.json .claude/settings.json
 	mkdir -p .claude/hooks && cp docs/setup/format.sh .claude/hooks/format.sh && chmod +x .claude/hooks/format.sh
 	@echo "Restart claude to apply."
-
-browsers: ## Install Playwright browsers (for e2e + screenshots)
-	$(need_ws)
-	$(PNPM) --filter $(WEB) exec playwright install chromium
 
 ##@ Develop
 dev: ## Run the web app in dev mode (port from PORT in .env, default 3000)
@@ -89,9 +89,22 @@ lint: ## Lint all packages
 	$(need_ws)
 	$(PNPM) lint
 
-format: ## Format with Prettier
+format: ## Format the whole repo with Prettier (only formatter, .claude/rules/format.md)
 	$(need_ws)
-	$(PNPM) exec prettier --write .
+	$(PNPM) format
+
+format-check: ## Fail if any file is not Prettier-formatted (same as CI)
+	$(need_ws)
+	$(PNPM) format:check
+
+format-changed: ## Format only files changed vs HEAD + untracked (what /format runs)
+	$(need_ws)
+	@{ git diff --name-only --diff-filter=d HEAD; git ls-files --others --exclude-standard; } | sort -u | \
+	  xargs -r $(PNPM) exec prettier --write --ignore-unknown --log-level warn
+
+git-hooks: ## Install the git pre-commit hook (Prettier on staged files; also runs on pnpm install)
+	$(need_ws)
+	$(PNPM) exec simple-git-hooks
 
 check-i18n: ## Verify i18n key parity and completeness across locales
 	$(need_ws)
@@ -166,4 +179,4 @@ clean-all: clean ## Also remove node_modules
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
 
 .PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-watch coverage e2e \
-        typecheck lint format check ci shots mockups analyze scene-audit scene-audit-gpu lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all
+        typecheck lint format format-check format-changed git-hooks check ci shots mockups analyze scene-audit scene-audit-gpu lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all
