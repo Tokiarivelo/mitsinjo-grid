@@ -65,7 +65,8 @@ export function VillageCanvas({
   // A modified scenario shows the last result frozen: no flow animation.
   // Moving electrons need a continuous frame loop: off without a GPU (each software
   // frame costs ~0.5 s and would freeze the page); dots stay visible, frozen.
-  const animate = !reducedMotion && !model.isModified && !isSoftwareRenderer();
+  const softwareGl = isSoftwareRenderer();
+  const animate = !reducedMotion && !model.isModified && !softwareGl;
   const high = quality === 'high';
 
   const sectorNames: Record<SectorId, string> = {
@@ -246,6 +247,8 @@ export function VillageCanvas({
         <CameraController
           preset={cameraPreset}
           resetKey={cameraResetKey}
+          focusSector={selectedSector}
+          autoRotate={!softwareGl}
           reducedMotion={reducedMotion}
           damping={high && !reducedMotion}
         />
