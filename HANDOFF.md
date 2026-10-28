@@ -30,8 +30,7 @@
 
 ## Open questions / blockers
 
-- Overview copy `sheddingProtocolDesc` ("below 20%") and the two different site coordinates are static claims,
-  not engine output; confirm or remove.
+- Overview `sheddingProtocolDesc` ("below 20%") + two different site coordinates: static claims, confirm or remove.
 
 ## Files touched this session
 
