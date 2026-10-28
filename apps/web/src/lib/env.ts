@@ -5,6 +5,14 @@ const envSchema = z.object({
   META_API_KEY: z.string().optional(),
   META_MODEL: z.string().optional(),
   META_BASE_URL: z.string().optional(),
+  // Cloudflare R2 Storage
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET_NAME: z.string().default('mitsinjo-grid-media'),
+  R2_PUBLIC_URL: z.string().optional(),
+  // Vercel / Neon Database
+  DATABASE_URL: z.string().optional(),
 });
 
 export const env = envSchema.parse({
@@ -12,4 +20,10 @@ export const env = envSchema.parse({
   META_API_KEY: process.env.META_API_KEY,
   META_MODEL: process.env.META_MODEL,
   META_BASE_URL: process.env.META_BASE_URL,
+  R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
+  R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+  R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+  R2_BUCKET_NAME: process.env.R2_BUCKET_NAME || 'mitsinjo-grid-media',
+  R2_PUBLIC_URL: process.env.R2_PUBLIC_URL,
+  DATABASE_URL: process.env.DATABASE_URL || process.env.NEON_DATABASE_URL,
 });

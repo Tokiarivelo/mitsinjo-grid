@@ -10,3 +10,4 @@ export * from './warnings';
 export * from './simulate';
 export * from './compare';
 export * from './patch';
+export * from './workflow';

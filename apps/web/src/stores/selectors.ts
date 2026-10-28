@@ -9,6 +9,9 @@ import type {
   SimWarning,
   StepResult,
   StrategyId,
+  Workflow,
+  WorkflowComparison,
+  WorkflowResult,
 } from '@mitsinjo/engine';
 import type { SimStatus, PlaybackStatus, SimulationState } from './simulation.store';
 
@@ -60,3 +63,9 @@ export const selectSectorMetrics =
   (sectorId: SectorId) =>
   (s: SimulationState): SectorMetrics | null =>
     s.results[s.activeStrategy]?.metrics.perSector[sectorId] ?? null;
+
+export const selectWorkflow = (s: SimulationState): Workflow => s.workflow;
+export const selectDayIndex = (s: SimulationState): number => s.dayIndex;
+export const selectWorkflowResults = (s: SimulationState): WorkflowComparison => s.workflowResults;
+export const selectActiveWorkflowResult = (s: SimulationState): WorkflowResult | undefined =>
+  s.workflowResults[s.activeStrategy];

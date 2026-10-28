@@ -28,6 +28,43 @@ export interface MessageSections {
   exploreNext?: string;
 }
 
+export interface ChatMediaItem {
+  id: string;
+  url: string;
+  type: 'image' | 'video';
+  name?: string;
+  caption?: string;
+  size?: number;
+}
+
+export interface ChatChartSeries {
+  key: string;
+  label: string;
+  color?: string;
+}
+
+export interface ChatChartData {
+  type: 'line' | 'bar' | 'area';
+  title?: string;
+  subtitle?: string;
+  xAxisKey?: string;
+  series: ChatChartSeries[];
+  data: Array<Record<string, string | number>>;
+}
+
+export interface ChatSessionSummary {
+  id: string;
+  title: string;
+  locale?: string;
+  createdAt: string;
+  updatedAt: string;
+  messageCount?: number;
+}
+
+export interface ChatSessionDetail extends ChatSessionSummary {
+  messages: ChatMessageData[];
+}
+
 export interface ChatMessageData {
   id: string;
   role: 'user' | 'assistant' | 'error';
@@ -35,6 +72,13 @@ export interface ChatMessageData {
   sections?: MessageSections;
   evidence?: CopilotEvidence[]; // one entry per tool result, in call order
   proposal?: CopilotProposal;
+  imageUrl?: string;
+  imageCaption?: string;
+  videoUrl?: string;
+  videoCaption?: string;
+  media?: ChatMediaItem[];
+  chart?: ChatChartData;
+  detectedModel?: string;
   errorKey?: CopilotErrorKey;
   timestamp?: string;
 }

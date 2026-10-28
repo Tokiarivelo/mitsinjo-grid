@@ -78,7 +78,7 @@ describe('MetaLlmProvider & Model Discovery (P6-T5)', () => {
     expect(provider.getModel()).toBe('muse-spark-1.3');
   });
 
-  it('keeps only standard-mode Muse Spark models for the copilot', async () => {
+  it('keeps supported copilot models (spark, wonder, image) and filters incompatible ones', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -93,14 +93,17 @@ describe('MetaLlmProvider & Model Discovery (P6-T5)', () => {
     } as Response);
 
     const models = await MetaLlmProvider.listModels('k', 'https://api.meta.ai/v1');
-    expect(models).toEqual(['muse-spark-1.3']);
+    expect(models).toEqual(['muse-spark-1.3', 'muse-image-1.0', 'muse-wonder-1.0']);
   });
 
-  it('isCopilotModel rejects non-chat and contributor ids', () => {
+  it('isCopilotModel allows supported models and rejects incompatible or contributor ids', () => {
     expect(isCopilotModel('mock-deterministic-v1')).toBe(false);
     expect(isCopilotModel('muse-spark-1.2')).toBe(true);
+    expect(isCopilotModel('muse-wonder-1.0')).toBe(true);
+    expect(isCopilotModel('muse-image-1.0')).toBe(true);
     expect(isCopilotModel('muse-spark-1.2-contributor')).toBe(false);
     expect(isCopilotModel('muse-voice-transcribe-1.0')).toBe(false);
+    expect(isCopilotModel('sam-3.1')).toBe(false);
     expect(isCopilotModel('anything')).toBe(false);
   });
 });

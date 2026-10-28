@@ -14,12 +14,19 @@ server/copilot/
 ├── loop.ts            # max 4 tool rounds, 20 s budget, emits SSE events
 └── __tests__/         # loop with fake provider, tool arg validation, evidence integrity
 app/api/copilot/route.ts   # parse body (Zod) → loop → stream
-features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmProposalDialog, useCopilot
+app/api/copilot/upload/    # presigned URLs for Cloudflare R2 media upload
+app/api/copilot/sessions/  # Neon DB session and message persistence
+features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmProposalDialog, useCopilot, Canvas, Lightbox
 ```
+
+### Media Storage (Cloudflare R2) & Chat Sessions (Neon DB)
+
+- **Media Storage (R2)**: S3-compatible presigned upload/download URLs for images, sketches and videos. Accepts raster images (png/jpeg/webp/gif/avif) and mp4/webm/mov only (no SVG/HTML), data URLs ≤ 12 M chars; downloads are signed only for keys the route generated (`<folder>/<ts>-<name>`). Setup guide (in French): [`docs/setup/cloudflare-r2.md`](setup/cloudflare-r2.md). Automatic local data-URL fallback when unset.
+- **Chat Persistence (Neon DB)**: Serverless PostgreSQL storing `copilot_sessions` and `copilot_messages` with automatic schema creation. In-memory map fallback when `DATABASE_URL` is unset.
 
 `LLM_PROVIDER=mock` is the default in dev/tests and the automatic fallback when the Meta call fails or when `META_API_KEY` is unset
 (UI shows "AI unavailable — showing deterministic explanation").
-Models: only standard-mode `muse-spark-*` ids are listed or accepted (`isCopilotModel`); `-contributor`, image, voice and SAM ids are rejected. In mock mode `/api/copilot` also accepts `MOCK_MODEL_ID` (`mock-deterministic-v1`, from `providers/mock.ts`). In P0-T1, `META_API_KEY` is not present in `.env`, so dev/test runs default to `LLM_PROVIDER=mock`. If a key is configured later, `providers/meta.ts` uses OpenAI-compatible tool calling format (`chat/completions` with `tools` array).
+Models: `muse-spark-*` (standard), `muse-wonder-1.0` (deep reasoning) and `muse-image-1.0` (image) are listed or accepted (`isCopilotModel`); `-contributor`, voice and SAM ids are rejected. With `model: 'auto'`, `server/copilot/adaptive-router.ts` picks the model from the prompt's wording (image / deep-reasoning keywords, else Spark). If image generation fails, the loop emits `PROVIDER_FALLBACK` and answers with the Spark chat model instead. In mock mode `/api/copilot` also accepts `MOCK_MODEL_ID` (`mock-deterministic-v1`, from `providers/mock.ts`). In P0-T1, `META_API_KEY` is not present in `.env`, so dev/test runs default to `LLM_PROVIDER=mock`. If a key is configured later, `providers/meta.ts` uses OpenAI-compatible tool calling format (`chat/completions` with `tools` array).
 
 ## 2. System prompt (outline)
 

@@ -41,18 +41,19 @@ Reference visuals: `design/reference/Mitsinjo Grid_ Village at Sunset.png` (mast
 
 ## Energy visual mapping (render only; never compute flows here)
 
-| Visual                                                                                                                                      | Driven by                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Solar array glow intensity                                                                                                                  | result.steps[t].solarKw / peak solarKw                                                       |
-| Battery fill + color                                                                                                                        | result.steps[t].socPct (green healthy; warning-amber low; critical-red depleted, with label) |
-| Battery link line active                                                                                                                    | result.steps[t].batteryKw != 0 (direction from sign; > 0 charging, < 0 discharging)          |
-| Solar-to-network line lit                                                                                                                   | result.steps[t].solarKw > 0                                                                  |
-| Network-to-building line lit                                                                                                                | metrics.perSector[id].servedKwh > 0 (per step if available)                                  |
-| Building status indicator                                                                                                                   | metrics.perSector[id].coveragePct (full / partial / critical)                                |
-| Window / string-light glow                                                                                                                  | building status (full 1 · partial 0.45 · unserved 0 = lights out), scaled by time of day     |
-| Unmet demand warning (restrained)                                                                                                           | metrics.perSector[id].unservedKwh > 0                                                        |
-| Critical sector marker                                                                                                                      | health/water with unservedKwh > 0 or metrics.criticalUnservedKwh > 0                         |
-| Time shown                                                                                                                                  | selected step t (0-23), 1 h per step; per-step kW avg == kWh                                 |
+| Visual                                                                                                                                      | Driven by                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Solar array glow intensity                                                                                                                  | result.steps[t].solarKw / peak solarKw                                                                                                      |
+| Battery fill + color                                                                                                                        | result.steps[t].socPct (green healthy; warning-amber low; critical-red depleted, with label)                                                |
+| Battery link line active                                                                                                                    | result.steps[t].batteryKw != 0 (direction from sign; > 0 charging, < 0 discharging)                                                         |
+| Solar-to-network line lit                                                                                                                   | result.steps[t].solarKw > 0                                                                                                                 |
+| Network-to-building line lit                                                                                                                | metrics.perSector[id].servedKwh > 0 (per step if available)                                                                                 |
+| Building status indicator                                                                                                                   | metrics.perSector[id].coveragePct (full / partial / critical)                                                                               |
+| Window / string-light glow                                                                                                                  | building status (full 1 · partial 0.45 · unserved 0 = lights out), scaled by time of day                                                    |
+| Unmet demand warning (restrained)                                                                                                           | metrics.perSector[id].unservedKwh > 0                                                                                                       |
+| Critical sector marker                                                                                                                      | health/water with unservedKwh > 0 or metrics.criticalUnservedKwh > 0                                                                        |
+| Time shown                                                                                                                                  | selected step t (0-23), 1 h per step; per-step kW avg == kWh                                                                                |
+| Sky, fog, clouds, rain, lightning                                                                                                           | `model.weather` = weather of the day shown (`utils/weather-atmosphere`, `applyOvercast`); visual only, solar glow still from engine solarKw |
 | Scene reads the current result only; if status is modified, show last result dimmed with `Scenario modified` and do not animate new values. |
 
 ## Interaction
@@ -79,3 +80,11 @@ Reference visuals: `design/reference/Mitsinjo Grid_ Village at Sunset.png` (mast
 
 - Detect WebGL on mount (and context loss). Show message `3D visualization is unavailable on this device.` plus functional 2D infrastructure diagram/list: solar, battery SoC, per-sector EnergyBar with coverage, selectable for BuildingPanel.
 - Fallback uses the same result; nothing is lost functionally.
+
+## Weather (visual only)
+
+- `WEATHER_ATMOSPHERE[weather]` → cloud cover, overcast, rain, lightning. `applyOvercast` greys the sky palette,
+  dims the key light, hides the sun disc, thickens the fog and turns lamps on earlier.
+- `ui/weather-effects`: instanced low-poly cloud banks (1 draw call, slow drift), GPU rain streaks (1 draw call,
+  time uniform only; 4000 high · 1500 low), storm lightning light (fixed pseudo-random schedule).
+- Reduced motion or no GPU: clouds and rain stay still, no lightning flashes.

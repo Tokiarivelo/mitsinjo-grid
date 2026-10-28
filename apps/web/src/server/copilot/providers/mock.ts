@@ -45,6 +45,9 @@ export class MockLlmProvider implements LlmProvider {
     // Check if the last message is a tool response
     const lastMsg = messages[messages.length - 1];
     if (lastMsg && lastMsg.role === 'tool') {
+      console.info(
+        `[copilot:mock] Handling tool result for toolCallId: "${lastMsg.toolCallId || 'unknown'}"`
+      );
       return this.handleToolResult(lastMsg, messages);
     }
 
@@ -52,6 +55,85 @@ export class MockLlmProvider implements LlmProvider {
     const userMsg = [...messages].reverse().find((m) => m.role === 'user');
     const query = (userMsg?.content || '').toLowerCase();
     const fr = isFrenchQuery(query);
+    console.info(
+      `[copilot:mock] Generating synthetic response for user query: "${userMsg?.content?.slice(0, 50).replace(/\n/g, ' ') || ''}..." (french: ${fr})`
+    );
+
+    // Multimodal simulated response if user attached media
+    if (userMsg?.media && userMsg.media.length > 0) {
+      const hasVideo = userMsg.media.some((m) => m.type === 'video');
+      const mediaType = hasVideo ? 'vidéo' : 'image';
+      return {
+        content: fr
+          ? `### Analyse visuelle du micro-réseau\nJ'ai bien analysé votre ${mediaType} jointe relative à la configuration du micro-réseau.\n\n` +
+            `**Constatations clés :**\n` +
+            `- **Composants détectés :** Panneaux photovoltaïques, onduleur central et liaison batterie.\n` +
+            `- **Alignement simulation :** Les spécifications correspondent au modèle nominal de 45 kWc avec stockage 120 kWh.\n` +
+            `- **Recommandation :** Vous pouvez lancer une simulation avec une chute d'ensoleillement de 40% pour tester la résilience.`
+          : `### Microgrid Visual Analysis\nI have inspected the attached ${hasVideo ? 'video' : 'image'} regarding your microgrid layout.\n\n` +
+            `**Key Observations:**\n` +
+            `- **Detected Components:** Solar PV array, centralized inverter, and battery storage link.\n` +
+            `- **Simulation Alignment:** Layout matches nominal 45 kWp PV and 120 kWh battery capacity.\n` +
+            `- **Recommendation:** Run a stress simulation with a 40% solar drop to evaluate resilience.`,
+      };
+    }
+
+    // Chart / Graph request handler
+    if (
+      query.includes('chart') ||
+      query.includes('graphe') ||
+      query.includes('graphique') ||
+      query.includes('courbe') ||
+      query.includes('diagramme')
+    ) {
+      const chartJson = JSON.stringify(
+        {
+          type: 'line',
+          title: fr
+            ? 'Évolution de la production solaire et de la charge (24h)'
+            : '24h Solar Production vs Demand Profile',
+          xAxisKey: 'hour',
+          series: [
+            { key: 'solar', label: fr ? 'Solaire PV (kW)' : 'Solar PV (kW)', color: '#f59e0b' },
+            {
+              key: 'demand',
+              label: fr ? 'Charge totale (kW)' : 'Total Load (kW)',
+              color: '#38bdf8',
+            },
+            {
+              key: 'battery',
+              label: fr ? 'SoC Batterie (%)' : 'Battery SoC (%)',
+              color: '#10b981',
+            },
+          ],
+          data: [
+            { hour: '00h', solar: 0, demand: 8, battery: 60 },
+            { hour: '04h', solar: 0, demand: 7, battery: 52 },
+            { hour: '08h', solar: 18, demand: 14, battery: 58 },
+            { hour: '12h', solar: 42, demand: 26, battery: 85 },
+            { hour: '16h', solar: 22, demand: 28, battery: 92 },
+            { hour: '20h', solar: 0, demand: 24, battery: 74 },
+            { hour: '23h', solar: 0, demand: 12, battery: 64 },
+          ],
+        },
+        null,
+        2
+      );
+
+      return {
+        content: fr
+          ? `### Que s'est-il passé\nVoici le profil de génération solaire simulé sur 24 heures en comparaison avec la charge du village et l'état de charge de la batterie.\n\n` +
+            `\`\`\`chart\n${chartJson}\n\`\`\`\n\n` +
+            `### Preuves calculées\n- Production solaire de pointe : 42 kW à 12h00\n- Charge de pointe en soirée : 28 kW à 16h00\n- SoC batterie minimal : 52 % à 04h00\n\n` +
+            `### Pourquoi c'est important\nLa batterie maintient la couverture énergétique nocturne sans coupure pour les services vitaux.\n\n` +
+            `### Explorer ensuite\nTester une baisse d'ensoleillement de 40% pour observer la sollicitation accrue de la batterie.`
+          : `### What happened\nHere is the simulated 24-hour solar generation profile plotted against total village load and battery State of Charge.\n\n` +
+            `\`\`\`chart\n${chartJson}\n\`\`\`\n\n` +
+            `### Computed evidence\n- Solar peak production: 42 kW at 12:00\n- Evening peak load: 28 kW at 16:00\n- Minimum battery SoC: 52% at 04:00\n\n` +
+            `### Why it matters\nThe battery buffer reliably supports essential services throughout nocturnal deficit hours.\n\n` +
+            `### Explore next\nSimulate a 40% afternoon solar drop to inspect battery stress under constrained generation.`,
+      };
+    }
 
     // Scope guardrail: refuse off-topic requests (P6-T12 / Eval case 9)
     if (
@@ -656,6 +738,43 @@ Sufficient solar generation and storage capacity ensure uninterrupted power deli
 
 ### Explore next
 Test a simulated cloud cover event to observe battery discharge behavior.`,
+    };
+  }
+
+  async generateImage(prompt: string): Promise<{ imageUrl: string; caption?: string }> {
+    console.info(`[copilot:mock] Generating synthetic microgrid diagram for: "${prompt}"`);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#sky)"/>
+  <circle cx="680" cy="90" r="45" fill="#f59e0b" opacity="0.9"/>
+  <path d="M0,320 Q200,310 400,320 T800,310 L800,450 L0,450 Z" fill="#78350f" opacity="0.6"/>
+  <g transform="translate(100, 240)">
+    <polygon points="0,40 120,10 160,50 40,80" fill="url(#panel)" stroke="#38bdf8" stroke-width="2"/>
+    <polygon points="170,10 290,-20 330,20 210,50" fill="url(#panel)" stroke="#38bdf8" stroke-width="2"/>
+    <polygon points="340,-20 460,-50 500,-10 380,20" fill="url(#panel)" stroke="#38bdf8" stroke-width="2"/>
+  </g>
+  <g transform="translate(560, 250)">
+    <rect width="160" height="90" rx="6" fill="#1e293b" stroke="#10b981" stroke-width="2"/>
+    <rect x="15" y="20" width="130" height="25" rx="3" fill="#065f46"/>
+    <text x="80" y="37" fill="#6ee7b7" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle">BATTERIE 200 kWh</text>
+    <circle cx="35" cy="65" r="6" fill="#10b981"/>
+    <text x="50" y="69" fill="#94a3b8" font-family="monospace" font-size="11">SOC: 60%</text>
+  </g>
+  <text x="40" y="50" fill="#38bdf8" font-family="monospace" font-size="16" font-weight="bold">MITSINJO MICROGRID — SIMULATION</text>
+  <text x="40" y="75" fill="#94a3b8" font-family="sans-serif" font-size="13">${prompt.slice(0, 60)}</text>
+</svg>`;
+    return {
+      imageUrl: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`,
+      caption: `Simulation visuelle du micro-réseau solaire (Mitsinjo, Madagascar): ${prompt}`,
     };
   }
 }

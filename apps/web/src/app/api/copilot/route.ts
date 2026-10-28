@@ -6,7 +6,13 @@ import { SimulationInputSchema } from '@mitsinjo/engine';
 import { env } from '@/lib/env';
 import { runCopilotLoop } from '@/server/copilot/loop';
 import { MockLlmProvider, MOCK_MODEL_ID } from '@/server/copilot/providers/mock';
-import { MetaLlmProvider, isCopilotModel } from '@/server/copilot/providers/meta';
+import {
+  MetaLlmProvider,
+  isCopilotModel,
+  DEFAULT_META_MODEL,
+} from '@/server/copilot/providers/meta';
+import { saveMessage } from '@/server/db/neon';
+import type { CopilotEvidence, CopilotProposal, ChatChartData } from '@/features/copilot/types';
 
 // In-memory rate limiter: max 30 requests per minute per client
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -44,7 +50,15 @@ const RequestBodySchema = z.object({
     .array(
       z.object({
         role: z.enum(['user', 'assistant']),
-        content: z.string().min(1).max(2000),
+        content: z.string().max(4000).default(''),
+        media: z
+          .array(
+            z.object({
+              type: z.enum(['image', 'video']),
+              url: z.string().min(1),
+            })
+          )
+          .optional(),
       })
     )
     .min(1),
@@ -53,8 +67,10 @@ const RequestBodySchema = z.object({
   model: z
     .string()
     .max(64)
-    .refine((id) => id === MOCK_MODEL_ID || isCopilotModel(id))
+    .refine((id) => id === 'auto' || id === MOCK_MODEL_ID || isCopilotModel(id))
     .optional(),
+  locale: z.enum(['en', 'fr', 'mg']).optional(),
+  sessionId: z.string().max(64).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -111,21 +127,53 @@ export async function POST(req: NextRequest) {
 
   // Choose provider: Meta if configured, otherwise Mock
   const chosenModel = parsed.data.model || env.META_MODEL;
-  const provider =
-    env.LLM_PROVIDER === 'meta' && env.META_API_KEY
-      ? new MetaLlmProvider({ model: chosenModel })
-      : new MockLlmProvider();
+  const isMetaConfigured = env.LLM_PROVIDER === 'meta' && Boolean(env.META_API_KEY);
+  const provider = isMetaConfigured
+    ? new MetaLlmProvider({ model: chosenModel })
+    : new MockLlmProvider();
+
+  console.info(
+    `[copilot:chat] POST /api/copilot — provider: "${provider.name}", model: "${chosenModel || 'default'}", messages: ${parsed.data.messages.length}, strategy: "${parsed.data.strategy || 'proportional'}"`
+  );
+
+  if (!isMetaConfigured && env.LLM_PROVIDER === 'meta') {
+    console.warn(
+      `[copilot:chat] LLM_PROVIDER is "meta" but META_API_KEY is missing. Using MockLlmProvider fallback.`
+    );
+  }
 
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     async start(controller) {
+      let streamedAssistantContent = '';
+      let detectedModel: string | undefined;
+      let collectedProposal: CopilotProposal | undefined = undefined;
+      const collectedEvidence: CopilotEvidence[] = [];
+      let collectedChart: ChatChartData | undefined = undefined;
+
       const emit = (event: string, data: Record<string, unknown>) => {
+        if (event === 'delta') {
+          streamedAssistantContent += (data.text as string) || '';
+        } else if (event === 'model') {
+          detectedModel = data.model as string;
+        } else if (event === 'evidence') {
+          collectedEvidence.push(data as unknown as CopilotEvidence);
+        } else if (event === 'proposal') {
+          collectedProposal = data as unknown as CopilotProposal;
+        } else if (event === 'chart') {
+          collectedChart = data as unknown as ChatChartData;
+        }
+
         const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
         controller.enqueue(encoder.encode(payload));
       };
 
       try {
+        const availableModels = isMetaConfigured
+          ? await MetaLlmProvider.listModels().catch(() => [DEFAULT_META_MODEL])
+          : [MOCK_MODEL_ID];
+
         await runCopilotLoop({
           messages: parsed.data.messages,
           input: parsed.data.input,
@@ -133,6 +181,9 @@ export async function POST(req: NextRequest) {
           provider,
           emit,
           signal: req.signal,
+          locale: parsed.data.locale || 'fr',
+          requestedModel: parsed.data.model,
+          availableModels,
         });
       } catch (err) {
         emit('error', {
@@ -141,6 +192,32 @@ export async function POST(req: NextRequest) {
         });
         emit('done', {});
       } finally {
+        if (parsed.data.sessionId) {
+          const lastUser = parsed.data.messages[parsed.data.messages.length - 1];
+          if (lastUser && lastUser.role === 'user') {
+            await saveMessage(parsed.data.sessionId, {
+              id: `user-${Date.now()}`,
+              role: 'user',
+              content: lastUser.content,
+              media: lastUser.media?.map((m, idx) => ({
+                id: `m-${idx}`,
+                url: m.url,
+                type: m.type,
+              })),
+            }).catch(() => {});
+          }
+          if (streamedAssistantContent.trim()) {
+            await saveMessage(parsed.data.sessionId, {
+              id: `assistant-${Date.now()}`,
+              role: 'assistant',
+              content: streamedAssistantContent,
+              detectedModel,
+              evidence: collectedEvidence.length > 0 ? collectedEvidence : undefined,
+              proposal: collectedProposal,
+              chart: collectedChart,
+            }).catch(() => {});
+          }
+        }
         controller.close();
       }
     },

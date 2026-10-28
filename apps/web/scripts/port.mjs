@@ -20,6 +20,24 @@ const ENV_FILES = [
 ];
 export const DEFAULT_PORT = 3000;
 
+/** Loads env vars from ENV_FILES into process.env so Next.js inherits them under Turborepo. */
+export function loadEnvFiles() {
+  for (const file of [...ENV_FILES].reverse()) {
+    if (existsSync(file)) {
+      try {
+        const parsed = parseEnv(readFileSync(file, 'utf8'));
+        for (const [k, v] of Object.entries(parsed)) {
+          if (process.env[k] === undefined && v !== undefined) {
+            process.env[k] = v;
+          }
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+  }
+}
+
 /** @returns {number} */
 export function resolvePort() {
   const candidates = [process.env.PORT];
@@ -40,9 +58,11 @@ if (isMain) {
   if (!command) {
     process.stdout.write(`${port}\n`); // plain text: console.log colors numbers under FORCE_COLOR
   } else {
+    loadEnvFiles();
     const child = spawn('next', [command, '-p', String(port), ...rest], {
       stdio: 'inherit',
       shell: process.platform === 'win32',
+      env: process.env,
     });
     child.on('exit', (code, signal) =>
       signal ? process.kill(process.pid, signal) : process.exit(code ?? 0)

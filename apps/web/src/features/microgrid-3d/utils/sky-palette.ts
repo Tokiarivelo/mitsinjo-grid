@@ -26,6 +26,10 @@ export interface SkyPalette {
   ridges: [string, string, string];
   /** How bright lit windows and street lamps glow (dusk/night → high). */
   lampGlow: number;
+  /** Visibility of the sun disc and halo (0 hidden behind clouds – 1 clear). */
+  sunDisc: number;
+  /** Fog distance multiplier (< 1 = thicker haze under overcast or rain). */
+  fogScale: number;
 }
 
 interface Key {
@@ -106,7 +110,7 @@ function blend(a: Key, b: Key, t: number): Key {
 }
 
 /** Aerial perspective: near ridge dark green-blue, far ridges melt into the haze. */
-function ridgeColors(k: Key): [string, string, string] {
+function ridgeColors(k: Pick<Key, 'zenith' | 'horizon' | 'fog'>): [string, string, string] {
   const near = mix('#22302f', k.fog, 0.35);
   const mid = mix(mix('#2c3350', k.fog, 0.55), k.zenith, 0.15);
   const far = mix(k.fog, k.horizon, 0.3);
@@ -115,7 +119,14 @@ function ridgeColors(k: Key): [string, string, string] {
 
 export function skyPalette(sunElevation: number, isDaytime: boolean): SkyPalette {
   if (!isDaytime || sunElevation <= 0) {
-    return { ...NIGHT, sunAltitudeDeg: 24, sunDisplayAltitudeDeg: 24, ridges: ridgeColors(NIGHT) };
+    return {
+      ...NIGHT,
+      sunAltitudeDeg: 24,
+      sunDisplayAltitudeDeg: 24,
+      ridges: ridgeColors(NIGHT),
+      sunDisc: 1,
+      fogScale: 1,
+    };
   }
   const e = Math.min(1, Math.max(0, sunElevation));
   // Golden until ~0.35 elevation, then warm afternoon; never a flat noon look.
@@ -127,5 +138,40 @@ export function skyPalette(sunElevation: number, isDaytime: boolean): SkyPalette
     sunAltitudeDeg,
     sunDisplayAltitudeDeg: Math.max(3, sunAltitudeDeg * 0.4),
     ridges: ridgeColors(key),
+    sunDisc: 1,
+    fogScale: 1,
   };
+}
+
+/** Overcast light: flat grey-blue by day, near-black blue-grey at night. */
+const OVERCAST_DAY = { sky: '#7d8794', horizon: '#a3a9b0', fog: '#8c939b', sun: '#d7dce2' };
+const OVERCAST_NIGHT = { sky: '#0b0f17', horizon: '#1a1f29', fog: '#151a22', sun: '#7d8aa3' };
+
+/**
+ * Greys out a clear-sky palette by an overcast amount (0 clear – 1 full overcast):
+ * desaturated sky, dimmer key light, softer shadows, thicker haze, sun hidden behind clouds.
+ * Pure and visual only.
+ */
+export function applyOvercast(p: SkyPalette, overcast: number, isDaytime: boolean): SkyPalette {
+  const o = Math.min(1, Math.max(0, overcast));
+  if (o === 0) return p;
+  const g = isDaytime ? OVERCAST_DAY : OVERCAST_NIGHT;
+  const out: Omit<SkyPalette, 'ridges'> = {
+    ...p,
+    zenith: mix(p.zenith, g.sky, o * 0.9),
+    horizon: mix(p.horizon, g.horizon, o * 0.85),
+    sunGlow: mix(p.sunGlow, g.horizon, o),
+    sun: mix(p.sun, g.sun, o),
+    fog: mix(p.fog, g.fog, o * 0.9),
+    hemiSky: mix(p.hemiSky, g.sky, o * 0.6),
+    // Overcast: the direct sun fades, diffuse sky light takes over (soft shadows).
+    keyIntensity: p.keyIntensity * (1 - 0.8 * o),
+    hemiIntensity: p.hemiIntensity * (1 + 0.4 * o),
+    envIntensity: p.envIntensity * (1 - 0.5 * o),
+    // Dark rainy day: lamps and windows come on earlier.
+    lampGlow: Math.max(p.lampGlow, isDaytime ? 0.6 * o : p.lampGlow),
+    sunDisc: Math.max(0, 1 - o * 1.6),
+    fogScale: 1 - 0.45 * o,
+  };
+  return { ...out, ridges: ridgeColors(out) };
 }

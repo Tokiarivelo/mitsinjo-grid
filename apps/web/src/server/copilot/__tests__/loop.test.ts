@@ -104,4 +104,33 @@ describe('Copilot Loop (P6-T3)', () => {
     expect(callCount).toBeLessThanOrEqual(4);
     expect(events.map((e) => e.name)).toContain('done');
   });
+
+  it('falls back to a text answer when image generation fails', async () => {
+    const events: { name: SseEventName; data: Record<string, unknown> }[] = [];
+    const chatModels: string[] = [];
+    const provider: LlmProvider & { setModel: (m: string) => void } = {
+      name: 'fake',
+      setModel: (m) => chatModels.push(m),
+      chat: async () => ({ content: 'Text answer instead of an image.' }),
+      generateImage: async () => {
+        throw new Error('image model down');
+      },
+    };
+
+    await runCopilotLoop({
+      messages: [{ role: 'user', content: 'Generate an image of the solar array' }],
+      input: baseInput,
+      provider,
+      emit: (name, data) => events.push({ name, data }),
+      availableModels: ['muse-spark-1.3', 'muse-image-1.0'],
+    });
+
+    const names = events.map((e) => e.name);
+    expect(names).not.toContain('image');
+    expect(events.find((e) => e.name === 'error')?.data.code).toBe('PROVIDER_FALLBACK');
+    expect(names).toContain('delta');
+    expect(names[names.length - 1]).toBe('done');
+    // The chat fallback must not keep the image model selected.
+    expect(chatModels).toEqual(['muse-spark-1.3']);
+  });
 });

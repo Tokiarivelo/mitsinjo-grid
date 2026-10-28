@@ -63,12 +63,45 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Computed evidence')).toBeInTheDocument();
     expect(screen.getByText('SIM-123456')).toBeInTheDocument();
+    expect(screen.getByText('Solar Peak Capacity (kW)')).toBeInTheDocument();
     // Every tool result keeps its own evidence table (not just the last one).
     expect(screen.getByText('SIM-abcdef')).toBeInTheDocument();
     expect(screen.getByText('12.5')).toBeInTheDocument();
     expect(screen.getByText('Why it matters')).toBeInTheDocument();
     expect(screen.getByText('Explore next')).toBeInTheDocument();
     expect(screen.getByText('MITSINJO REASONING CORE')).toBeInTheDocument();
+  });
+
+  it('renders telemetry channel names as human-readable labeled text instead of raw identifiers', () => {
+    const assistantMsg: ChatMessageData = {
+      id: 'assistant-telemetry',
+      role: 'assistant',
+      content: '',
+      sections: {
+        whatHappened: 'Telemetry review completed.',
+      },
+      evidence: [
+        {
+          resultId: 'SIM-SEC-HEALTH',
+          fields: {
+            health_demandKwh: 20.4,
+            health_servedKwh: 20.4,
+            health_coveragePct: 100,
+            health_unservedKwh: 0,
+          },
+        },
+      ],
+    };
+
+    render(<ChatMessageItem message={assistantMsg} />);
+
+    expect(screen.getByText('Health Clinic — Demand (kWh)')).toBeInTheDocument();
+    expect(screen.getByText('Health Clinic — Energy Served (kWh)')).toBeInTheDocument();
+    expect(screen.getByText('Health Clinic — Coverage Rate (%)')).toBeInTheDocument();
+    expect(screen.getByText('Health Clinic — Unserved Energy (kWh)')).toBeInTheDocument();
+    expect(screen.getAllByText('20.4').length).toBe(2);
+    expect(screen.getByText('100')).toBeInTheDocument();
+    expect(screen.getByText('0')).toBeInTheDocument();
   });
 
   it('renders ConfirmProposalDialog with diff and approves proposal', () => {
