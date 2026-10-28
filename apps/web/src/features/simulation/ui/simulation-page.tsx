@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Activity,
   BatteryCharging,
@@ -12,8 +12,11 @@ import {
   Factory,
   PanelRightClose,
   PanelRightOpen,
+  Pause,
   Play,
+  RotateCcw,
   Sliders,
+  Square,
   Sun,
 } from 'lucide-react';
 import {
@@ -24,6 +27,7 @@ import {
   selectActiveStrategy,
   selectComparison,
   selectInput,
+  selectIsPlaying,
   selectIsRunning,
   selectSelectedSector,
   selectStatus,
@@ -80,19 +84,44 @@ export function SimulationPage() {
   const steps = useSimulationStore(selectActiveSteps);
   const comparison = useSimulationStore(selectComparison);
   const isRunning = useSimulationStore(selectIsRunning);
+  const isPlaying = useSimulationStore(selectIsPlaying);
 
   const patchInput = useSimulationStore((s) => s.patchInput);
-  const runSimulation = useSimulationStore((s) => s.run);
   const resetScenario = useSimulationStore((s) => s.reset);
   const selectStrategy = useSimulationStore((s) => s.selectStrategy);
   const selectSector = useSimulationStore((s) => s.selectSector);
   const setTimeIndex = useSimulationStore((s) => s.setTimeIndex);
+  const playSimulation = useSimulationStore((s) => s.play);
+  const pauseSimulation = useSimulationStore((s) => s.pause);
+  const stopSimulation = useSimulationStore((s) => s.stop);
+  const restartSimulation = useSimulationStore((s) => s.restart);
+  const togglePlaySimulation = useSimulationStore((s) => s.togglePlay);
 
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<SimulationTab>('metrics');
   const [isPanelOpen, setIsPanelOpen] = useState(true);
 
+  // Auto-advance 24h timeline playback when isPlaying is true
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const interval = setInterval(() => {
+      const current = useSimulationStore.getState().timeIndex;
+      setTimeIndex((current + 1) % 24);
+    }, 750);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, setTimeIndex]);
+
   const hasResults = status === 'complete' && Boolean(result);
+
+  const handleRunOrPlay = () => {
+    if (status === 'modified' || !hasResults) {
+      playSimulation();
+    } else {
+      togglePlaySimulation();
+    }
+  };
   const stepAtTime = steps[timeIndex] ?? null;
 
   // Peak solar computed from input
@@ -136,11 +165,13 @@ export function SimulationPage() {
               variant={
                 status === 'modified'
                   ? 'warning'
-                  : status === 'complete'
-                    ? 'complete'
-                    : status === 'running'
-                      ? 'running'
-                      : 'ready'
+                  : isPlaying
+                    ? 'running'
+                    : status === 'complete'
+                      ? 'complete'
+                      : status === 'running'
+                        ? 'running'
+                        : 'ready'
               }
               size="sm"
             />
@@ -151,20 +182,68 @@ export function SimulationPage() {
           <p className="text-text-secondary text-xs sm:text-sm mt-0.5">{tSim('description')}</p>
         </div>
 
-        {/* Header Action Buttons: Run, Toggle Deck, Copy Summary & Download JSON */}
+        {/* Header Action Buttons: Run/Play/Pause/Stop/Restart, Toggle Deck, Copy Summary & Download JSON */}
         <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
-          {/* Primary demo action stays one click away; hidden while the Controls tab
-              (which has its own Run button and inline validation) is on screen. */}
+          {/* Primary simulation transport controls outside Controls tab */}
           {!(isPanelOpen && activeTab === 'controls') && (
-            <Button
-              variant="primary"
-              size="sm"
-              loading={isRunning}
-              onClick={() => runSimulation()}
-              icon={<Play className="h-3.5 w-3.5" aria-hidden="true" />}
-            >
-              {tSim('runSimulation')}
-            </Button>
+            <>
+              {hasResults && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={stopSimulation}
+                  icon={<Square className="h-3 w-3 fill-current" aria-hidden="true" />}
+                  aria-label={tSim('stopPlayback')}
+                  title={tSim('stopPlayback')}
+                >
+                  {tSim('stop')}
+                </Button>
+              )}
+
+              {hasResults && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={restartSimulation}
+                  icon={<RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />}
+                  aria-label={tSim('restartPlayback')}
+                  title={tSim('restartPlayback')}
+                >
+                  {tSim('restart')}
+                </Button>
+              )}
+
+              <Button
+                variant="primary"
+                size="sm"
+                loading={isRunning}
+                onClick={isPlaying ? pauseSimulation : handleRunOrPlay}
+                icon={
+                  isPlaying ? (
+                    <Pause className="h-3.5 w-3.5" aria-hidden="true" />
+                  ) : (
+                    <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                  )
+                }
+                aria-label={
+                  isRunning
+                    ? tCommon('loading')
+                    : isPlaying
+                      ? tSim('pausePlayback')
+                      : status === 'modified' || !hasResults
+                        ? tSim('runSimulation')
+                        : tSim('startPlayback')
+                }
+              >
+                {isRunning
+                  ? tCommon('loading')
+                  : isPlaying
+                    ? tSim('pause')
+                    : status === 'modified' || !hasResults
+                      ? tSim('runSimulation')
+                      : tSim('play')}
+              </Button>
+            </>
           )}
 
           <Button
@@ -253,6 +332,10 @@ export function SimulationPage() {
             onTimeChange={setTimeIndex}
             stepResult={stepAtTime}
             hasResults={hasResults}
+            isPlaying={isPlaying}
+            onTogglePlay={togglePlaySimulation}
+            onStop={stopSimulation}
+            onRestart={restartSimulation}
           />
         </div>
 
@@ -479,10 +562,16 @@ export function SimulationPage() {
                   input={input}
                   activeStrategy={activeStrategy}
                   status={status}
+                  isPlaying={isPlaying}
+                  hasResults={hasResults}
                   onPatch={patchInput}
                   onStrategyChange={selectStrategy}
-                  onRun={() => runSimulation()}
+                  onRun={handleRunOrPlay}
                   onReset={resetScenario}
+                  onTogglePlay={togglePlaySimulation}
+                  onPause={pauseSimulation}
+                  onStop={stopSimulation}
+                  onRestart={restartSimulation}
                 />
               </div>
 

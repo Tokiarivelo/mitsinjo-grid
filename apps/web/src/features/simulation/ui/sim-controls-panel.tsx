@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, Play, RotateCcw, Sliders } from 'lucide-react';
+import { AlertTriangle, Pause, Play, RotateCcw, Sliders, Square } from 'lucide-react';
 import {
   getSolarDrop,
   type InputPatch,
@@ -31,10 +31,16 @@ export interface SimControlsPanelProps {
   input: SimulationInput;
   activeStrategy: StrategyId;
   status: 'ready' | 'running' | 'complete' | 'modified' | 'error';
+  isPlaying?: boolean;
+  hasResults?: boolean;
   onPatch: (patch: InputPatch) => void;
   onStrategyChange: (strategy: StrategyId) => void;
   onRun: () => void;
   onReset: () => void;
+  onTogglePlay?: () => void;
+  onPause?: () => void;
+  onStop?: () => void;
+  onRestart?: () => void;
   className?: string;
 }
 
@@ -42,10 +48,16 @@ export function SimControlsPanel({
   input,
   activeStrategy,
   status,
+  isPlaying = false,
+  hasResults = false,
   onPatch,
   onStrategyChange,
   onRun,
   onReset,
+  onTogglePlay,
+  onPause,
+  onStop,
+  onRestart,
   className,
 }: SimControlsPanelProps) {
   const tSim = useTranslations('features.simulation');
@@ -166,18 +178,20 @@ export function SimControlsPanel({
             variant={
               status === 'modified'
                 ? 'warning'
-                : status === 'complete'
-                  ? 'complete'
-                  : status === 'running'
-                    ? 'running'
-                    : 'ready'
+                : isPlaying
+                  ? 'running'
+                  : status === 'complete'
+                    ? 'complete'
+                    : status === 'running'
+                      ? 'running'
+                      : 'ready'
             }
             size="sm"
           />
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="secondary"
             size="sm"
@@ -195,15 +209,62 @@ export function SimControlsPanel({
             {tSim('resetScenario')}
           </Button>
 
+          {hasResults && onStop && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onStop}
+              icon={<Square className="h-3 w-3 fill-current" aria-hidden="true" />}
+              aria-label={tSim('stopPlayback')}
+              title={tSim('stopPlayback')}
+            >
+              {tSim('stop')}
+            </Button>
+          )}
+
+          {hasResults && onRestart && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onRestart}
+              disabled={hasErrors}
+              icon={<RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />}
+              aria-label={tSim('restartPlayback')}
+              title={tSim('restartPlayback')}
+            >
+              {tSim('restart')}
+            </Button>
+          )}
+
           <Button
             variant="primary"
             size="sm"
-            onClick={onRun}
+            onClick={isPlaying ? (onPause ?? onTogglePlay ?? onRun) : (onTogglePlay ?? onRun)}
             disabled={hasErrors || isRunning}
-            icon={<Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />}
-            aria-label={tSim('runSimulation')}
+            icon={
+              isPlaying ? (
+                <Pause className="h-3.5 w-3.5" aria-hidden="true" />
+              ) : (
+                <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+              )
+            }
+            aria-label={
+              isRunning
+                ? tCommon('loading')
+                : isPlaying
+                  ? tSim('pausePlayback')
+                  : isModified || !hasResults
+                    ? tSim('runSimulation')
+                    : tSim('startPlayback')
+            }
           >
-            {isRunning ? tCommon('loading') : tSim('runSimulation')}
+            {isRunning
+              ? tCommon('loading')
+              : isPlaying
+                ? tSim('pause')
+                : isModified || !hasResults
+                  ? tSim('runSimulation')
+                  : tSim('play')}
           </Button>
         </div>
       </div>

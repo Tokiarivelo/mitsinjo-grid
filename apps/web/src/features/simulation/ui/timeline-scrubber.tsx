@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Clock, Pause, Play, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Pause, Play, RotateCcw, Square } from 'lucide-react';
 import type { StepResult } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtHour, fmtKw, fmtPct } from '@/lib/format';
@@ -12,6 +12,10 @@ export interface TimelineScrubberProps {
   onTimeChange: (timeIndex: number) => void;
   stepResult?: StepResult | null;
   hasResults?: boolean;
+  isPlaying?: boolean;
+  onTogglePlay?: () => void;
+  onStop?: () => void;
+  onRestart?: () => void;
   className?: string;
 }
 
@@ -20,43 +24,78 @@ export function TimelineScrubber({
   onTimeChange,
   stepResult,
   hasResults = false,
+  isPlaying: externalIsPlaying,
+  onTogglePlay,
+  onStop,
+  onRestart,
   className,
 }: TimelineScrubberProps) {
   const tSim = useTranslations('features.simulation');
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [internalPlaying, setInternalPlaying] = useState(false);
+  const isPlaying = externalIsPlaying !== undefined ? externalIsPlaying : internalPlaying;
 
-  // Auto-advance loop when isPlaying is true
+  // Auto-advance loop when isPlaying is true (only if not managed externally)
   useEffect(() => {
-    if (!isPlaying) return;
+    if (externalIsPlaying !== undefined) return;
+    if (!internalPlaying) return;
 
     const interval = setInterval(() => {
       onTimeChange((timeIndex + 1) % 24);
     }, 750);
 
     return () => clearInterval(interval);
-  }, [isPlaying, timeIndex, onTimeChange]);
+  }, [externalIsPlaying, internalPlaying, timeIndex, onTimeChange]);
 
   const togglePlay = () => {
-    setIsPlaying((prev) => !prev);
+    if (onTogglePlay) {
+      onTogglePlay();
+    } else {
+      setInternalPlaying((prev) => !prev);
+    }
   };
 
   const handlePrev = () => {
-    setIsPlaying(false);
+    if (externalIsPlaying !== undefined && isPlaying && onTogglePlay) {
+      onTogglePlay();
+    } else {
+      setInternalPlaying(false);
+    }
     onTimeChange((timeIndex - 1 + 24) % 24);
   };
 
   const handleNext = () => {
-    setIsPlaying(false);
+    if (externalIsPlaying !== undefined && isPlaying && onTogglePlay) {
+      onTogglePlay();
+    } else {
+      setInternalPlaying(false);
+    }
     onTimeChange((timeIndex + 1) % 24);
   };
 
-  const handleResetToNoon = () => {
-    setIsPlaying(false);
-    onTimeChange(12);
+  const handleStop = () => {
+    if (onStop) {
+      onStop();
+    } else {
+      setInternalPlaying(false);
+      onTimeChange(0);
+    }
+  };
+
+  const handleRestart = () => {
+    if (onRestart) {
+      onRestart();
+    } else {
+      setInternalPlaying(true);
+      onTimeChange(0);
+    }
   };
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setIsPlaying(false);
+    if (externalIsPlaying !== undefined && isPlaying && onTogglePlay) {
+      onTogglePlay();
+    } else {
+      setInternalPlaying(false);
+    }
     const nextVal = parseInt(e.target.value, 10);
     if (!isNaN(nextVal)) {
       onTimeChange(nextVal);
@@ -123,6 +162,7 @@ export function TimelineScrubber({
             type="button"
             onClick={handleNext}
             aria-label={tSim('stepForward')}
+            title={tSim('stepForward')}
             className="p-1.5 rounded-control text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
           >
             <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -130,9 +170,19 @@ export function TimelineScrubber({
 
           <button
             type="button"
-            onClick={handleResetToNoon}
-            aria-label={tSim('resetToNoon')}
-            title={tSim('resetToNoon')}
+            onClick={handleStop}
+            aria-label={tSim('stopPlayback')}
+            title={tSim('stopPlayback')}
+            className="p-1.5 rounded-control text-text-muted hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
+          >
+            <Square className="h-3 w-3 fill-current" aria-hidden="true" />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleRestart}
+            aria-label={tSim('restartPlayback')}
+            title={tSim('restartPlayback')}
             className="p-1.5 rounded-control text-text-muted hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
           >
             <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
