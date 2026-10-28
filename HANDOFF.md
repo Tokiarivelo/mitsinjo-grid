@@ -19,7 +19,7 @@
 
 - Drop errors are one group (`solarDropPct`, `dropStartHour`, `dropDurationH`): validated together, cleared together.
 - Claude edit hook stays human-installed (`make setup-claude`); auto mode blocks agents committing `.claude/settings.json`.
-- Non-Claude agents: `AGENTS.md` / `GEMINI.md` → run `make format-changed`; pre-commit hook covers everyone.
+- `AGENTS.md` / `GEMINI.md` only point to `CLAUDE.md` (single source); pre-commit hook formats for every agent.
 
 ## Open questions / blockers
 
@@ -31,6 +31,6 @@
 
 - Simulation: `features/simulation/ui/sim-controls-panel.tsx`, `utils/validate-patch.ts`, `__tests__/simulation.test.tsx`
 - Engine: `constants.ts`, `patch.ts`, `__tests__/patch.test.ts`; web `features/scenarios/ui/assumptions-inspector.tsx`
-- Port: `apps/web/scripts/port.{mjs,d.mts}`, `package.json`, `playwright.config.ts`, `scene-audit.mjs`, `turbo.json`
+- Port: `apps/web/scripts/port.mjs`, `package.json`, `playwright.config.ts`, `scene-audit.mjs`, `turbo.json`
 - Format: `package.json`, `.claude/rules/format.md`, `.claude/skills/format/`, `docs/setup/*`, `AGENTS.md`, `GEMINI.md`, CI
 - Docs: `CLAUDE.md`, `README.md`, `docs/contracts.md`, `.env.example`, `Makefile`

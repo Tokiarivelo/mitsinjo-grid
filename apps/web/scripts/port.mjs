@@ -3,7 +3,7 @@
 // Usage:
 //   node scripts/port.mjs            # prints the port (used by the Makefile)
 //   node scripts/port.mjs dev|start  # runs `next dev|start -p <port>` (used by package.json)
-//   import { resolvePort } from './scripts/port.mjs'  # playwright.config.ts
+//   import { resolvePort } from './port.mjs'  # other ESM scripts (scene-audit.mjs)
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -38,7 +38,7 @@ if (isMain) {
   const [command, ...rest] = process.argv.slice(2);
   const port = resolvePort();
   if (!command) {
-    console.log(port);
+    process.stdout.write(`${port}\n`); // plain text: console.log colors numbers under FORCE_COLOR
   } else {
     const child = spawn('next', [command, '-p', String(port), ...rest], {
       stdio: 'inherit',

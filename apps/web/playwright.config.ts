@@ -1,7 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
-import { resolvePort } from './scripts/port.mjs';
+import { execFileSync } from 'node:child_process';
+import { join } from 'node:path';
 
-const LOCAL_URL = `http://localhost:${resolvePort()}`;
+// Same port as `pnpm dev` (scripts/port.mjs). Run as a process: Playwright loads this config as CJS.
+const PORT = execFileSync(process.execPath, [join(__dirname, 'scripts/port.mjs')], {
+  encoding: 'utf8',
+}).trim();
+const LOCAL_URL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: './e2e',
