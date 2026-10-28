@@ -4,6 +4,8 @@ import {
   MIN_PROBE_SAMPLES,
   SCENE_QUALITY_STORAGE_KEY,
   resetSceneQualityForTests,
+  MAX_PROBE_MS,
+  probeVerdict,
   shouldAutoDowngrade,
   useSceneQuality,
 } from '../use-scene-quality';
@@ -18,6 +20,22 @@ describe('shouldAutoDowngrade', () => {
     const fast = Array.from({ length: MIN_PROBE_SAMPLES }, (_, i) => (i < 3 ? 5 : 60));
     expect(shouldAutoDowngrade(slow)).toBe(true);
     expect(shouldAutoDowngrade(fast)).toBe(false);
+  });
+});
+
+describe('probeVerdict', () => {
+  const fast = Array.from({ length: MIN_PROBE_SAMPLES }, () => 60);
+  const slow = Array.from({ length: MIN_PROBE_SAMPLES }, () => 10);
+  it('keeps measuring inside the window', () => {
+    expect(probeVerdict(fast, 1000, 3500)).toBe('measuring');
+    expect(probeVerdict([60], 4000, 3500)).toBe('measuring');
+  });
+  it('decides from the median once the window and samples are enough', () => {
+    expect(probeVerdict(fast, 3600, 3500)).toBe('keep');
+    expect(probeVerdict(slow, 3600, 3500)).toBe('downgrade');
+  });
+  it('gives up and downgrades when frames are too slow to collect samples', () => {
+    expect(probeVerdict([1, 1], MAX_PROBE_MS, 3500)).toBe('downgrade');
   });
 });
 

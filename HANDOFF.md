@@ -24,6 +24,8 @@
 - 2D labels are an HTML overlay sized in container units (`cqw`), not `foreignObject` (Chrome repaint bug on scroll).
 - Shared UI extracted: `SectorIcon` (was copied in 5 files), `ViewModeToggle`; `EnergyBar empty` before a run
   (overview used to show "Essential service shortfall" before any simulation).
+- E2E fix: header Run button on /simulation (hidden while Controls tab shows its own); no-GPU devices start
+  on `low` with frozen electrons; camera snaps on mount; fps probe capped at 8 s (`docs/performance.md`).
 - CSS custom properties in `:root`/`html.light` power Tailwind `@theme` so opacity utilities work in both themes.
 
 ## Open questions / blockers

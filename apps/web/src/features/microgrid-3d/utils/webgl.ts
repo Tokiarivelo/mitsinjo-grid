@@ -19,3 +19,36 @@ export function isWebGLAvailable(): boolean {
     return false;
   }
 }
+
+/** Pure: does a WebGL renderer string name a CPU (software) rasterizer? */
+export function isSoftwareRendererName(renderer: string): boolean {
+  return /swiftshader|llvmpipe|softpipe|software|basic render driver|mesa offscreen/i.test(
+    renderer
+  );
+}
+
+/**
+ * True when WebGL runs on the CPU (no GPU, headless CI, blocked drivers). The
+ * high tier is unusable there: one frame can take seconds and freeze the page.
+ */
+let softwareRendererCache: boolean | null = null;
+
+export function isSoftwareRenderer(): boolean {
+  if (typeof document === 'undefined') return false;
+  if (softwareRendererCache !== null) return softwareRendererCache;
+  softwareRendererCache = detectSoftwareRenderer();
+  return softwareRendererCache;
+}
+
+function detectSoftwareRenderer(): boolean {
+  try {
+    const gl = document.createElement('canvas').getContext('webgl');
+    if (!gl) return false;
+    const info = gl.getExtension('WEBGL_debug_renderer_info');
+    const name = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? '');
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return isSoftwareRendererName(name);
+  } catch {
+    return false;
+  }
+}

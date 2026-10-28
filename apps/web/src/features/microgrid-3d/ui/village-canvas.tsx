@@ -10,6 +10,7 @@ import type { BatteryStatusColor, CameraPreset, SceneModel } from '../types';
 import { useReducedMotion } from '../hooks/use-reduced-motion';
 import { usePerfFlag } from '../hooks/use-perf-flag';
 import { useSceneQuality, type SceneQuality } from '../hooks/use-scene-quality';
+import { isSoftwareRenderer } from '../utils/webgl';
 import { createSceneStats, sampleSceneStats, type SceneStatsSample } from '../utils/scene-stats';
 import { skyPalette } from '../utils/sky-palette';
 import { SUN_AZIMUTH_RAD } from '../utils/landscape';
@@ -62,7 +63,9 @@ export function VillageCanvas({
 
   const reducedMotion = useReducedMotion();
   // A modified scenario shows the last result frozen: no flow animation.
-  const animate = !reducedMotion && !model.isModified;
+  // Moving electrons need a continuous frame loop: off without a GPU (each software
+  // frame costs ~0.5 s and would freeze the page); dots stay visible, frozen.
+  const animate = !reducedMotion && !model.isModified && !isSoftwareRenderer();
   const high = quality === 'high';
 
   const sectorNames: Record<SectorId, string> = {
@@ -244,6 +247,7 @@ export function VillageCanvas({
           preset={cameraPreset}
           resetKey={cameraResetKey}
           reducedMotion={reducedMotion}
+          damping={high && !reducedMotion}
         />
       </Canvas>
     </div>

@@ -49,7 +49,12 @@ Rules in `.claude/rules/three.md`. Two quality tiers (`useSceneQuality`, toggle 
 - `low`: no post-processing, one baked `ContactShadows`, 700 low-detail trees, `dpr={[1, 1.25]}`.
 - Auto-downgrade: a 3.5 s fps probe after the high tier mounts switches to `low` when the median
   is < 28 fps, unless the user picked a tier (saved in `localStorage`). `?quality=high|low`
-  forces a tier (audits, screenshots).
+  forces a tier (audits, screenshots). The probe gives up after 8 s (`MAX_PROBE_MS`) and downgrades
+  if it could not collect enough frames.
+- No GPU (software GL: SwiftShader, llvmpipe — headless CI, blocked drivers): start on `low` and
+  keep electrons frozen (a software frame costs ~0.5 s; a continuous loop freezes the page).
+- Camera: first placement is instant; preset tweens snap to target after 2 s of wall time, so the
+  demand loop always stops, even at 1 fps.
 
 Key wins: `frameloop="demand"`, instancing (vegetation: one `InstancedMesh` per model part and
 band), merged static parts (`utils/merge-parts`: windows, fences, lattice, market woodwork,

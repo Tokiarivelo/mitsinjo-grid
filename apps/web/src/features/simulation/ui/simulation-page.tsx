@@ -12,6 +12,7 @@ import {
   Factory,
   PanelRightClose,
   PanelRightOpen,
+  Play,
   Sliders,
   Sun,
 } from 'lucide-react';
@@ -150,8 +151,22 @@ export function SimulationPage() {
           <p className="text-text-secondary text-xs sm:text-sm mt-0.5">{tSim('description')}</p>
         </div>
 
-        {/* Header Action Buttons: Toggle Deck, Copy Summary & Download JSON */}
+        {/* Header Action Buttons: Run, Toggle Deck, Copy Summary & Download JSON */}
         <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
+          {/* Primary demo action stays one click away; hidden while the Controls tab
+              (which has its own Run button and inline validation) is on screen. */}
+          {!(isPanelOpen && activeTab === 'controls') && (
+            <Button
+              variant="primary"
+              size="sm"
+              loading={isRunning}
+              onClick={() => runSimulation()}
+              icon={<Play className="h-3.5 w-3.5" aria-hidden="true" />}
+            >
+              {tSim('runSimulation')}
+            </Button>
+          )}
+
           <Button
             variant="secondary"
             size="sm"

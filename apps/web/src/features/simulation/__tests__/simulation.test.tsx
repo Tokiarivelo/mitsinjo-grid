@@ -8,46 +8,42 @@ describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
     resetSimulationStore();
   });
 
-  it(
-    'renders initial simulation page with controls, viewport, and empty analytical state',
-    () => {
-      render(<SimulationPage />);
+  it('renders initial simulation page with controls, viewport, and empty analytical state', () => {
+    render(<SimulationPage />);
 
-      // SIMULATED DATA badge & title
-      expect(screen.getAllByText('SIMULATED DATA').length).toBeGreaterThanOrEqual(1);
-      expect(screen.getByText('Live Simulation')).toBeInTheDocument();
+    // SIMULATED DATA badge & title
+    expect(screen.getAllByText('SIMULATED DATA').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Live Simulation')).toBeInTheDocument();
 
-      // Export buttons & Deck toggle
-      expect(screen.getByRole('button', { name: /copy summary/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /download json/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /hide deck/i })).toBeInTheDocument();
+    // Export buttons & Deck toggle
+    expect(screen.getByRole('button', { name: /copy summary/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /download json/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /hide deck/i })).toBeInTheDocument();
 
-      // Tab buttons in right deck
-      expect(screen.getByRole('tab', { name: /metrics/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /controls/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /buildings/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /copilot/i })).toBeInTheDocument();
+    // Tab buttons in right deck
+    expect(screen.getByRole('tab', { name: /metrics/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /controls/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /buildings/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /copilot/i })).toBeInTheDocument();
 
-      // 4 Metric cards in active Metrics tab
-      expect(screen.getByText('Peak Solar PV')).toBeInTheDocument();
-      expect(screen.getByText('Battery End SoC')).toBeInTheDocument();
-      expect(screen.getByText('Total 24h Demand')).toBeInTheDocument();
-      expect(screen.getByText('Essential Services')).toBeInTheDocument();
+    // 4 Metric cards in active Metrics tab
+    expect(screen.getByText('Peak Solar PV')).toBeInTheDocument();
+    expect(screen.getByText('Battery End SoC')).toBeInTheDocument();
+    expect(screen.getByText('Total 24h Demand')).toBeInTheDocument();
+    expect(screen.getByText('Essential Services')).toBeInTheDocument();
 
-      // Persistent Viewport & Timeline scrubber (docked outside tabs)
-      expect(screen.getByText('24h Timeline Scrubber')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /start timeline playback/i })).toBeInTheDocument();
+    // Persistent Viewport & Timeline scrubber (docked outside tabs)
+    expect(screen.getByText('24h Timeline Scrubber')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /start timeline playback/i })).toBeInTheDocument();
 
-      // Switch to Controls tab to inspect controls
-      fireEvent.click(screen.getByRole('tab', { name: /controls/i }));
-      expect(screen.getByText('Simulation Controls')).toBeInTheDocument();
-      expect(screen.getByLabelText(/solar drop/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/demand multiplier/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/battery capacity/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/initial charge/i)).toBeInTheDocument();
-    },
-    10000
-  );
+    // Switch to Controls tab to inspect controls
+    fireEvent.click(screen.getByRole('tab', { name: /controls/i }));
+    expect(screen.getByText('Simulation Controls')).toBeInTheDocument();
+    expect(screen.getByLabelText(/solar drop/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/demand multiplier/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/battery capacity/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/initial charge/i)).toBeInTheDocument();
+  }, 10000);
 
   it('shows active sector caps with translated format (PY-T4)', () => {
     const input = structuredClone(useSimulationStore.getState().input);
@@ -88,6 +84,17 @@ describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
     // Run button is disabled while validation errors exist
     const runBtn = screen.getByRole('button', { name: /run simulation/i });
     expect(runBtn).toBeDisabled();
+  });
+
+  it('keeps a header Run button outside the Controls tab (demo path stays one click)', () => {
+    render(<SimulationPage />);
+    const headerRun = screen.getByRole('button', { name: /run simulation/i });
+    fireEvent.click(headerRun);
+    expect(useSimulationStore.getState().status).toBe('complete');
+
+    // Controls tab has its own Run button (with validation): no duplicate.
+    fireEvent.click(screen.getByRole('tab', { name: /controls/i }));
+    expect(screen.getAllByRole('button', { name: /run simulation/i })).toHaveLength(1);
   });
 
   it('runs simulation, transitions to complete, and populates metrics and step telemetry', () => {
@@ -168,7 +175,9 @@ describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
     fireEvent.click(hideBtn);
 
     // Deck tablist is hidden from accessible tree
-    expect(screen.queryByRole('tablist', { name: /telemetry & controls/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('tablist', { name: /telemetry & controls/i })
+    ).not.toBeInTheDocument();
 
     // 24h Timeline Scrubber is still present and interactive
     expect(screen.getByText('24h Timeline Scrubber')).toBeInTheDocument();

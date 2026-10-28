@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react';
+import { isSoftwareRenderer } from '../utils/webgl';
 
 /**
  * 3D render quality tier.
@@ -44,7 +45,10 @@ function readUrlOverride(): SceneQuality | null {
 function getState(): QualityState {
   if (!state) {
     const chosen = typeof window === 'undefined' ? null : (readUrlOverride() ?? readStored());
-    state = { quality: chosen ?? 'high', userChosen: chosen !== null };
+    // No GPU (software GL): start on `low` instead of freezing the page on `high`.
+    const fallback: SceneQuality =
+      typeof window !== 'undefined' && isSoftwareRenderer() ? 'low' : 'high';
+    state = { quality: chosen ?? fallback, userChosen: chosen !== null };
   }
   return state;
 }
@@ -67,6 +71,27 @@ export function shouldAutoDowngrade(fpsSamples: number[], threshold = AUTO_DOWNG
   const sorted = [...fpsSamples].sort((a, b) => a - b);
   const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
   return median < threshold;
+}
+
+/** Probe gives up after this long; not enough frames by then = too slow for `high`. */
+export const MAX_PROBE_MS = 8000;
+
+export type ProbeVerdict = 'measuring' | 'keep' | 'downgrade';
+
+/**
+ * Pure: what the fps probe should do now. It keeps forcing frames only while it
+ * measures, and never longer than MAX_PROBE_MS, so a very slow device (or software
+ * GL) can't keep the main thread busy rendering for minutes.
+ */
+export function probeVerdict(
+  fpsSamples: number[],
+  elapsedMs: number,
+  minWindowMs: number
+): ProbeVerdict {
+  const enough = fpsSamples.length >= MIN_PROBE_SAMPLES;
+  if (elapsedMs >= MAX_PROBE_MS && !enough) return 'downgrade';
+  if (elapsedMs < minWindowMs || !enough) return 'measuring';
+  return shouldAutoDowngrade(fpsSamples) ? 'downgrade' : 'keep';
 }
 
 /** Test helper: forget the in-memory tier (storage is read again on next access). */
