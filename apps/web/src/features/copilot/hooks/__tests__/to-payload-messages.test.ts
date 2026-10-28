@@ -14,4 +14,33 @@ describe('toPayloadMessages', () => {
       { role: 'user', content: 'Try again' },
     ]);
   });
+
+  it('preserves attached media items and includes messages with media even if content is empty', () => {
+    const payload = toPayloadMessages([
+      {
+        id: '1',
+        role: 'user',
+        content: '',
+        media: [{ id: 'm1', url: 'data:image/png;base64,abc', type: 'image' }],
+      },
+      {
+        id: '2',
+        role: 'user',
+        content: 'Check this diagram',
+        media: [{ id: 'm2', url: 'https://example.com/video.mp4', type: 'video' }],
+      },
+    ]);
+    expect(payload).toEqual([
+      {
+        role: 'user',
+        content: '',
+        media: [{ type: 'image', url: 'data:image/png;base64,abc' }],
+      },
+      {
+        role: 'user',
+        content: 'Check this diagram',
+        media: [{ type: 'video', url: 'https://example.com/video.mp4' }],
+      },
+    ]);
+  });
 });

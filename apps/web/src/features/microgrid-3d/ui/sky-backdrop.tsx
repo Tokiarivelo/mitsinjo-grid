@@ -138,18 +138,24 @@ export function SkyBackdrop({ palette, sunDirection, detail = 'high' }: SkyBackd
       </mesh>
 
       {/* Sun disc + halo (bright → caught by bloom on the high tier). */}
-      {sunDirection[1] > -0.02 && (
+      {sunDirection[1] > -0.02 && palette.sunDisc > 0.02 && (
         <group position={sunPos}>
           <mesh>
             <sphereGeometry args={[9, 24, 12]} />
-            <meshBasicMaterial color={sunCore} toneMapped={false} fog={false} />
+            <meshBasicMaterial
+              color={sunCore}
+              transparent={palette.sunDisc < 1}
+              opacity={palette.sunDisc}
+              toneMapped={false}
+              fog={false}
+            />
           </mesh>
           <mesh>
             <sphereGeometry args={[22, 24, 12]} />
             <meshBasicMaterial
               color={sunHalo}
               transparent
-              opacity={0.3}
+              opacity={0.3 * palette.sunDisc}
               toneMapped={false}
               fog={false}
               depthWrite={false}

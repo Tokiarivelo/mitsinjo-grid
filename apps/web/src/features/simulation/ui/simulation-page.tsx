@@ -21,6 +21,8 @@ import {
   selectActiveResult,
   selectActiveSteps,
   selectActiveStrategy,
+  selectActiveWorkflowResult,
+  selectDayIndex,
   selectComparison,
   selectInput,
   selectIsPlaying,
@@ -28,6 +30,7 @@ import {
   selectSelectedSector,
   selectStatus,
   selectTimeIndex,
+  selectWorkflow,
 } from '@/stores';
 import { fmtKwh, fmtNum, fmtPct } from '@/lib/format';
 import {
@@ -52,6 +55,8 @@ import { TimelineScrubber } from './timeline-scrubber';
 import { BuildingInspectorPanel } from './building-inspector-panel';
 import { VillageViewport } from './village-viewport';
 import { PlaybackActions } from './playback-actions';
+import { WeatherWorkflowPanel } from './weather-workflow-panel';
+import { DayStrip } from './day-strip';
 import { usePlaybackTicker } from '../hooks/use-playback-ticker';
 import { simStatusBadgeVariant } from '../utils/playback';
 
@@ -84,6 +89,9 @@ export function SimulationPage() {
   const comparison = useSimulationStore(selectComparison);
   const isRunning = useSimulationStore(selectIsRunning);
   const isPlaying = useSimulationStore(selectIsPlaying);
+  const workflow = useSimulationStore(selectWorkflow);
+  const dayIndex = useSimulationStore(selectDayIndex);
+  const workflowResult = useSimulationStore(selectActiveWorkflowResult);
 
   const patchInput = useSimulationStore((s) => s.patchInput);
   const resetScenario = useSimulationStore((s) => s.reset);
@@ -94,6 +102,10 @@ export function SimulationPage() {
   const stopSimulation = useSimulationStore((s) => s.stop);
   const restartSimulation = useSimulationStore((s) => s.restart);
   const togglePlaySimulation = useSimulationStore((s) => s.togglePlay);
+  const addWorkflowDay = useSimulationStore((s) => s.addWorkflowDay);
+  const removeWorkflowDay = useSimulationStore((s) => s.removeWorkflowDay);
+  const setDayWeather = useSimulationStore((s) => s.setDayWeather);
+  const setDayIndex = useSimulationStore((s) => s.setDayIndex);
 
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<SimulationTab>('metrics');
@@ -104,6 +116,12 @@ export function SimulationPage() {
   const hasResults = status === 'complete' && Boolean(result);
 
   const stepAtTime = steps[timeIndex] ?? null;
+
+  // Jumping to a day takes over from playback, like scrubbing the timeline.
+  const handleSelectDay = (day: number) => {
+    if (isPlaying) pauseSimulation();
+    setDayIndex(day);
+  };
 
   // Peak solar computed from input
   const peakSolarKw = input.solar.peakKw;
@@ -227,6 +245,7 @@ export function SimulationPage() {
               onSelectSector={handleSelectSector}
               timeIndex={timeIndex}
               isModified={status === 'modified'}
+              weather={workflow[dayIndex]?.weather ?? workflow[0]?.weather}
               className="min-h-[380px] sm:min-h-[480px] lg:min-h-[640px] h-[400px] sm:h-[520px] lg:h-[640px]"
             />
 
@@ -243,6 +262,16 @@ export function SimulationPage() {
               </button>
             )}
           </div>
+
+          {/* Weather workflow day selector (multi-day runs only) */}
+          {workflow.length > 1 && (
+            <DayStrip
+              workflow={workflow}
+              dayIndex={dayIndex}
+              workflowResult={hasResults ? workflowResult : undefined}
+              onSelectDay={handleSelectDay}
+            />
+          )}
 
           {/* Dedicated 24h Timeline Scrubber ('Curseur Temporel 24h') — Permanently visible outside tabs */}
           <TimelineScrubber
@@ -429,11 +458,14 @@ export function SimulationPage() {
                     </span>
                   }
                 >
-                  <EnergyOverTimeChart
-                    steps={steps}
-                    cursorHour={hasResults ? timeIndex : undefined}
-                    height={220}
-                  />
+                  {/* Recharts can't measure a hidden tab (0×0): mount only when shown. */}
+                  {activeTab === 'metrics' && (
+                    <EnergyOverTimeChart
+                      steps={steps}
+                      cursorHour={hasResults ? timeIndex : undefined}
+                      height={220}
+                    />
+                  )}
                 </ChartCard>
 
                 {/* Service Allocation Breakdown */}
@@ -489,6 +521,15 @@ export function SimulationPage() {
                   onReset={resetScenario}
                   onStop={stopSimulation}
                   onRestart={restartSimulation}
+                />
+                <WeatherWorkflowPanel
+                  workflow={workflow}
+                  dayIndex={dayIndex}
+                  workflowResult={hasResults ? workflowResult : undefined}
+                  onAddDay={() => addWorkflowDay()}
+                  onRemoveDay={removeWorkflowDay}
+                  onSetWeather={setDayWeather}
+                  onSelectDay={handleSelectDay}
                 />
               </div>
 

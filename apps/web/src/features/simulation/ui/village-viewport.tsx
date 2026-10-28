@@ -14,7 +14,8 @@ import {
   RotateCcw,
   Sun,
 } from 'lucide-react';
-import type { SectorId, SimulationInput, SimulationResult } from '@mitsinjo/engine';
+import type { SectorId, SimulationInput, SimulationResult, WeatherId } from '@mitsinjo/engine';
+import { WEATHER_VISUALS } from '../utils/weather';
 import { cn } from '@/lib/utils';
 import { fmtHour, fmtKw, fmtPct } from '@/lib/format';
 import { SectorIcon } from '@/components/ui/sector-icon';
@@ -39,6 +40,8 @@ export interface VillageViewportProps {
   timeIndex: number;
   /** Store status is `modified`: show the last result dimmed and frozen. */
   isModified?: boolean;
+  /** Weather of the day shown: drives the 3D sky, clouds and rain. Default sunny. */
+  weather?: WeatherId;
   className?: string;
 }
 
@@ -61,9 +64,12 @@ export function VillageViewport({
   onSelectSector,
   timeIndex,
   isModified = false,
+  weather = 'sunny',
   className,
 }: VillageViewportProps) {
   const tSim = useTranslations('features.simulation');
+  const tWeather = useTranslations('features.simulation.workflow.weather');
+  const { icon: WeatherIcon, tone: weatherTone } = WEATHER_VISUALS[weather];
   const tSectors = useTranslations('sectors');
   const tCommon = useTranslations('common');
 
@@ -99,8 +105,9 @@ export function VillageViewport({
         timeIndex,
         isModified,
         strategy: result?.strategy ?? 'proportional',
+        weather,
       }),
-    [input, result, timeIndex, isModified]
+    [input, result, timeIndex, isModified, weather]
   );
 
   const sectorIds = input.sectors.map((sec) => sec.id);
@@ -128,6 +135,11 @@ export function VillageViewport({
                   : tSim('circuitBus')}
             </span>
             <span className="text-text-muted">· {fmtHour(timeIndex)}</span>
+          </div>
+
+          <div className="flex items-center gap-1 px-2 py-1 rounded-control bg-surface/80 backdrop-blur border border-border text-[11px] font-sans text-text-secondary">
+            <WeatherIcon className={cn('h-3.5 w-3.5', weatherTone)} aria-hidden="true" />
+            <span>{tWeather(weather)}</span>
           </div>
 
           <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-control bg-surface/80 backdrop-blur border border-border text-[11px] font-sans text-text-muted">

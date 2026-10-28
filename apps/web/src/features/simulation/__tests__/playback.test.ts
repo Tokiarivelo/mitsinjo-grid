@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextPlaybackHour, primaryPlaybackAction, simStatusBadgeVariant } from '../utils/playback';
+import { primaryPlaybackAction, simStatusBadgeVariant } from '../utils/playback';
 
 describe('playback utils', () => {
   it.each([
@@ -21,10 +21,5 @@ describe('playback utils', () => {
     ['ready', false, 'ready'],
   ] as const)('badge for %s / playing=%s → %s', (s, p, want) => {
     expect(simStatusBadgeVariant(s, p)).toBe(want);
-  });
-
-  it('loops the 24h playback', () => {
-    expect(nextPlaybackHour(5)).toBe(6);
-    expect(nextPlaybackHour(23)).toBe(0);
   });
 });

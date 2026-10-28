@@ -35,3 +35,8 @@ and reads the key from `STITCH_API_KEY`.
 If Claude Code tries OAuth and fails ("does not support dynamic client registration"), it is a known
 client issue with header-auth servers: update Claude Code, or use the community wrapper instead:
 `claude mcp add -s project -e GOOGLE_CLOUD_PROJECT=<id> stitch -- npx -y stitch-mcp-auto`.
+
+## Cloudflare R2 & Neon DB
+
+- **Cloudflare R2 (Media, Images, Canvas sketches, Videos)** : guide complet de configuration pas-à-pas en français disponible dans [`docs/setup/cloudflare-r2.md`](cloudflare-r2.md).
+- **Neon DB (PostgreSQL Serverless)** : persistance des sessions et messages du Copilot (`DATABASE_URL`). Tables `copilot_sessions` et `copilot_messages` auto-initialisées au premier appel.

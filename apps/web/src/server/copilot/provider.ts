@@ -18,6 +18,7 @@ export interface ChatMessage {
   toolCalls?: ToolCall[];
   toolCallId?: string;
   name?: string;
+  media?: Array<{ type: 'image' | 'video'; url: string }>;
 }
 
 export interface LlmTurn {
@@ -25,7 +26,13 @@ export interface LlmTurn {
   toolCalls?: ToolCall[];
 }
 
+export interface LlmImageResult {
+  imageUrl: string;
+  caption?: string;
+}
+
 export interface LlmProvider {
   readonly name: string;
   chat(messages: ChatMessage[], tools: ToolDefinition[], signal?: AbortSignal): Promise<LlmTurn>;
+  generateImage?(prompt: string, signal?: AbortSignal): Promise<LlmImageResult>;
 }

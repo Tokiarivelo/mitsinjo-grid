@@ -78,6 +78,14 @@ The collapsible side deck contains four structured tabs:
   - Demand adjustment (% load factor, 50–200%).
   - Solar-drop start hour & duration (h; fixed 24h horizon).
 - **Sector Priorities & Caps**: Collapsible toggle for sector power limits.
+- **Weather Workflow** (below the controls card): ordered list of days (`Day 1`, `Day 2`… max 7), each with a
+  radiogroup of 5 weather pills (Sunny, Partly cloudy, Cloudy, Rainy, Storm; icon + label, ≥ 44 px), a remove button
+  (hidden when one day) and, after a run, `SoC end · unserved` per day. `Add day` copies the last day's weather.
+  Multi-day totals (solar, unserved, battery min → end) under the list. Changing a day's weather after a run
+  re-runs the engine at once (solar output, metrics and 3D update); before a run it only marks the scenario modified.
+- **3D weather**: the viewport HUD shows the current day's weather (icon + name) and the scene renders it (see `3d-scene.md`).
+- **Day strip** (multi-day only, above the 24h Time Cursor): one pill per day, current day pressed, red dot when that
+  day has a critical deficit. Clicking a day pauses playback and shows that day's results; playback rolls over days.
 - **Action Buttons**:
   - Primary button: "Run simulation" when there is no up-to-date result (runs the engine, then plays), else "Play" / "Pause". Stop and Restart appear once results exist. Same buttons in the page header and the Controls tab (`PlaybackActions`).
   - Secondary button: "Reset to baseline".

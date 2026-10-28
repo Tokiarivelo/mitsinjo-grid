@@ -12,7 +12,8 @@ import { usePerfFlag } from '../hooks/use-perf-flag';
 import { useSceneQuality, type SceneQuality } from '../hooks/use-scene-quality';
 import { isSoftwareRenderer } from '../utils/webgl';
 import { createSceneStats, sampleSceneStats, type SceneStatsSample } from '../utils/scene-stats';
-import { skyPalette } from '../utils/sky-palette';
+import { applyOvercast, skyPalette } from '../utils/sky-palette';
+import { WEATHER_ATMOSPHERE } from '../utils/weather-atmosphere';
 import { SUN_AZIMUTH_RAD } from '../utils/landscape';
 import { SceneStatsProbe } from './scene-stats-probe';
 import { VillageTerrain } from './terrain';
@@ -26,6 +27,7 @@ import { Vegetation } from './vegetation';
 import { Vehicles } from './vehicles';
 import { PostEffects } from './post-effects';
 import { QualityProbe } from './quality-probe';
+import { WeatherEffects } from './weather-effects';
 
 export const SUNSET_HDRI_URL = '/3d/sunset_1k.hdr';
 
@@ -111,11 +113,19 @@ export function VillageCanvas({
     return () => window.clearInterval(id);
   }, [perfEnabled, stats]);
 
-  // Art-directed light for the selected hour (golden hour by day, moonlit night).
+  // Art-directed light for the selected hour (golden hour by day, moonlit night),
+  // greyed by the day's weather (overcast sky, dim sun, thicker haze).
   const palette = useMemo(
-    () => skyPalette(model.sunElevation, model.isDaytime),
-    [model.sunElevation, model.isDaytime]
+    () =>
+      applyOvercast(
+        skyPalette(model.sunElevation, model.isDaytime),
+        WEATHER_ATMOSPHERE[model.weather].overcast,
+        model.isDaytime
+      ),
+    [model.sunElevation, model.isDaytime, model.weather]
   );
+  // Clouds drift and rain falls whenever motion is allowed (even on a modified run).
+  const weatherMotion = !reducedMotion && !softwareGl;
   const sunDirection = useMemo<[number, number, number]>(() => {
     const alt = (palette.sunAltitudeDeg * Math.PI) / 180;
     return [
@@ -159,7 +169,10 @@ export function VillageCanvas({
         gl={{ antialias: !high, powerPreference: 'high-performance' }}
         style={{ background: palette.horizon }}
       >
-        <fog attach="fog" args={[palette.fog, 48, high ? 210 : 170]} />
+        <fog
+          attach="fog"
+          args={[palette.fog, 48 * palette.fogScale, (high ? 210 : 170) * palette.fogScale]}
+        />
 
         <hemisphereLight args={[palette.hemiSky, palette.hemiGround, palette.hemiIntensity]} />
         <directionalLight
@@ -185,6 +198,12 @@ export function VillageCanvas({
         />
 
         <SkyBackdrop palette={palette} sunDirection={skySunDirection} detail={quality} />
+        <WeatherEffects
+          weather={model.weather}
+          isDaytime={model.isDaytime}
+          quality={quality}
+          animate={weatherMotion}
+        />
 
         <Suspense fallback={null}>
           <Environment files={SUNSET_HDRI_URL} environmentIntensity={palette.envIntensity} />

@@ -151,11 +151,45 @@ interface SimulationResult {
 type Comparison = Record<StrategyId, SimulationResult>; // only strategies requested
 ```
 
+### Weather workflow (multi-day)
+
+```ts
+type WeatherId = 'sunny' | 'partly_cloudy' | 'cloudy' | 'rainy' | 'storm';
+type Workflow = { weather: WeatherId }[]; // 1..MAX_WORKFLOW_DAYS (7)
+type WorkflowTotals = {
+  demandKwh;
+  servedKwh;
+  unservedKwh;
+  criticalUnservedKwh;
+  criticalUnmetHours;
+  solarKwh;
+  socStartPct;
+  socEndPct;
+  socMinPct;
+  violations;
+}; // sums; SoC start=day 1, end=last day, min=over all days
+type WorkflowResult = {
+  strategy: StrategyId;
+  days: { day: number; weather: WeatherId; result: SimulationResult }[];
+  totals: WorkflowTotals;
+};
+type WorkflowComparison = Record<StrategyId, WorkflowResult>; // only strategies requested
+```
+
+Store (`useSimulationStore`): `workflow` (default `[{ weather: 'sunny' }]` = plain 24 h run), `workflowResults`,
+`dayIndex`; `results` is always the comparison of day `dayIndex`. Actions `addWorkflowDay`, `removeWorkflowDay`,
+`setDayWeather` (re-run at once when the run was `complete`, else → `modified`; same for add/remove), `setDayIndex`, `advancePlayback` (hour +1, rolls over to next day, loops to day 1).
+
+3D `SceneModel.weather: WeatherId` (from `toSceneModel({ weather })`, default `sunny`): drives sky, clouds and rain only.
+
 ## Engine public API (`@mitsinjo/engine`)
 
 ```ts
 simulate(input: SimulationInput, strategy: StrategyId): SimulationResult
 compare(input: SimulationInput, strategies?: StrategyId[]): Comparison
+applyWeather(input: SimulationInput, weather: WeatherId): SimulationInput // solar profile × WEATHER_SOLAR_FACTOR
+simulateWorkflow(input: SimulationInput, workflow: Workflow, strategy: StrategyId): WorkflowResult // throws ZodError
+compareWorkflow(input: SimulationInput, workflow: Workflow, strategies?: StrategyId[]): WorkflowComparison
 parseInput(raw: unknown): SimulationInput             // throws ZodError
 applyPatch(input: SimulationInput, patch: InputPatch): SimulationInput
 getSolarDrop(input: SimulationInput): { pct; startHour; durationH } // defaults 12 h / 3 h (DEFAULT_DROP_*) when no drop

@@ -1,4 +1,4 @@
-import type { StrategyId } from './schemas';
+import type { StrategyId, WeatherId } from './schemas';
 
 export const ENGINE_VERSION = '0.1.0';
 
@@ -24,4 +24,13 @@ export const STRATEGIES: Record<StrategyId, { label: string; rule: string }> = {
     label: 'Balanced',
     rule: 'Serve critical shares for all first, then water-fill remaining demand by priority weights',
   },
+};
+
+/** Share of the clear-sky solar profile produced under each daily weather preset. */
+export const WEATHER_SOLAR_FACTOR: Record<WeatherId, number> = {
+  sunny: 1,
+  partly_cloudy: 0.75,
+  cloudy: 0.5,
+  rainy: 0.3,
+  storm: 0.15,
 };

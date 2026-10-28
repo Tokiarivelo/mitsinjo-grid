@@ -1,4 +1,10 @@
-import type { SectorId, SimulationInput, SimulationResult, StrategyId } from '@mitsinjo/engine';
+import type {
+  SectorId,
+  SimulationInput,
+  SimulationResult,
+  StrategyId,
+  WeatherId,
+} from '@mitsinjo/engine';
 import type {
   BuildingSceneModel,
   BuildingStatus,
@@ -30,6 +36,8 @@ export interface ToSceneModelOptions {
   timeIndex?: number;
   isModified?: boolean;
   strategy?: StrategyId;
+  /** Weather of the day shown. Default sunny (plain 24 h run). */
+  weather?: WeatherId;
 }
 
 /**
@@ -37,7 +45,14 @@ export interface ToSceneModelOptions {
  * Adheres strictly to P7-T1: zero energy math inside components.
  */
 export function toSceneModel(options: ToSceneModelOptions): SceneModel {
-  const { input, result, timeIndex = 12, isModified = false, strategy = 'proportional' } = options;
+  const {
+    input,
+    result,
+    timeIndex = 12,
+    isModified = false,
+    strategy = 'proportional',
+    weather = 'sunny',
+  } = options;
 
   const validTime = Math.max(0, Math.min(23, Math.floor(timeIndex)));
   const step = result?.steps[validTime];
@@ -186,6 +201,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     isModified,
     hasResult: Boolean(result && step),
     strategy,
+    weather,
     solar,
     battery,
     buildings,

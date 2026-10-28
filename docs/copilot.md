@@ -14,8 +14,15 @@ server/copilot/
 ├── loop.ts            # max 4 tool rounds, 20 s budget, emits SSE events
 └── __tests__/         # loop with fake provider, tool arg validation, evidence integrity
 app/api/copilot/route.ts   # parse body (Zod) → loop → stream
-features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmProposalDialog, useCopilot
+app/api/copilot/upload/    # presigned URLs for Cloudflare R2 media upload
+app/api/copilot/sessions/  # Neon DB session and message persistence
+features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmProposalDialog, useCopilot, Canvas, Lightbox
 ```
+
+### Media Storage (Cloudflare R2) & Chat Sessions (Neon DB)
+
+- **Media Storage (R2)**: S3-compatible presigned upload/download URLs for images, sketches and videos. Setup guide (in French): [`docs/setup/cloudflare-r2.md`](setup/cloudflare-r2.md). Automatic local data-URL fallback when unset.
+- **Chat Persistence (Neon DB)**: Serverless PostgreSQL storing `copilot_sessions` and `copilot_messages` with automatic schema creation. In-memory map fallback when `DATABASE_URL` is unset.
 
 `LLM_PROVIDER=mock` is the default in dev/tests and the automatic fallback when the Meta call fails or when `META_API_KEY` is unset
 (UI shows "AI unavailable — showing deterministic explanation").

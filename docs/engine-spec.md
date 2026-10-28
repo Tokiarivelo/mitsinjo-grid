@@ -89,6 +89,13 @@ Total ≈ 128 kWh/day. Tune so that: `baseline` → 0 unserved; `cloudy_afternoo
 | essential_stress   | solar ×0.4 for 4 h at 11 h + initialSoc 25 %                  |
 | meter_anomaly      | market meter readings 3.2 kW at 11–15 h (expected 2.0 kW)     |
 
+### Weather workflow (multi-day)
+
+A workflow is 1–7 days, each a full 24 h `simulate()` of the same input under a weather preset that multiplies the
+whole solar profile (`WEATHER_SOLAR_FACTOR`): sunny 1 · partly_cloudy 0.75 · cloudy 0.5 · rainy 0.3 · storm 0.15.
+Scenario events still apply every day on top. Battery carries over: day N+1 `initialSocPct` = day N `socEndPct`.
+One sunny day is identical to `simulate(input)`.
+
 ## 7. Tests (Vitest, `packages/engine/src/__tests__`)
 
 nominal no-deficit · solar drop changes results · never below reserve · never above capacity ·
@@ -97,4 +104,5 @@ essential_first ≥ proportional on critical-tier (health) coverage (property te
 `criticalCoveragePct` can be slightly lower for essential_first, e.g. `essential_stress`, because it serves health's
 non-critical load before other sectors' critical shares) ·
 energy balance per step: `servedKw = solarKw − batteryKw − curtailedKw` and
-`ΔstoredKwh = max(batteryKw,0)·chargeEff − max(−batteryKw,0)/dischargeEff` (both within ε).
+`ΔstoredKwh = max(batteryKw,0)·chargeEff − max(−batteryKw,0)/dischargeEff` (both within ε) ·
+workflow: SoC chains day to day, darker weather → less solar, totals = sum of days, 7 storm days → 0 violations.

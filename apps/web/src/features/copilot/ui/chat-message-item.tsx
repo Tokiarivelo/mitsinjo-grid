@@ -1,15 +1,21 @@
 'use client';
 
-import { Sparkles, User, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Sparkles, User, AlertCircle, Volume2, VolumeX, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations } from '@/lib/i18n';
 import type { ChatMessageData } from '../types';
 import { ConfirmProposalDialog } from './confirm-proposal-dialog';
+import { MarkdownRenderer } from './markdown-renderer';
+import { ChatChart } from './chat-chart';
+import type { ActiveMedia } from './media-lightbox-modal';
+import { formatTelemetryChannel } from '../utils/format-telemetry-channel';
 
 export interface ChatMessageItemProps {
   message: ChatMessageData;
   onApproveProposal?: () => void;
   onRejectProposal?: () => void;
+  onMediaClick?: (media: ActiveMedia) => void;
   className?: string;
 }
 
@@ -17,9 +23,39 @@ export function ChatMessageItem({
   message,
   onApproveProposal,
   onRejectProposal,
+  onMediaClick,
   className,
 }: ChatMessageItemProps) {
   const tCopilot = useTranslations('features.copilot');
+  const tChannels = useTranslations('features.copilot.telemetryChannels');
+  const tSectors = useTranslations('sectors');
+  const tStrategies = useTranslations('strategies');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const handleToggleSpeech = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    const textToRead = [
+      message.sections?.whatHappened,
+      message.sections?.whyItMatters,
+      message.sections?.exploreNext,
+    ]
+      .filter(Boolean)
+      .join('. ');
+
+    if (!textToRead) return;
+
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+  };
 
   if (message.role === 'user') {
     return (
@@ -33,9 +69,54 @@ export function ChatMessageItem({
               <span className="text-[10px] font-mono text-text-muted/60">{message.timestamp}</span>
             )}
           </div>
-          <div className="bg-surface-elevated border border-border text-text-primary rounded-2xl rounded-tr-xs px-4 py-3 text-sm leading-relaxed shadow-xs">
-            {message.content}
-          </div>
+
+          {/* User Attached Media Previews */}
+          {message.media && message.media.length > 0 && (
+            <div className="flex flex-wrap gap-2 justify-end mb-2">
+              {message.media.map((med) => (
+                <button
+                  key={med.id}
+                  type="button"
+                  onClick={() =>
+                    onMediaClick?.({
+                      url: med.url,
+                      type: med.type,
+                      title: med.name || (med.type === 'video' ? 'Video' : 'Image'),
+                      caption: med.caption,
+                    })
+                  }
+                  className="relative group rounded-xl overflow-hidden border border-border bg-surface-elevated hover:border-energy-cyan/80 transition-all cursor-pointer shadow-xs max-w-[200px]"
+                >
+                  {med.type === 'video' ? (
+                    <div className="w-36 h-24 bg-black/80 flex flex-col items-center justify-center relative">
+                      <Play className="h-6 w-6 text-white fill-white/80" />
+                      <span className="absolute bottom-1 right-1 px-1 rounded text-[9px] font-mono bg-black/80 text-white">
+                        VID
+                      </span>
+                    </div>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={med.url}
+                      alt={med.name || 'User attachment'}
+                      className="w-36 h-24 object-cover group-hover:scale-105 transition-transform duration-200"
+                    />
+                  )}
+                  {med.name && (
+                    <div className="p-1 px-2 text-[10px] text-text-muted truncate max-w-36 bg-surface/80">
+                      {med.name}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {message.content && (
+            <div className="bg-surface-elevated border border-border text-text-primary rounded-2xl rounded-tr-xs px-4 py-3 text-sm leading-relaxed shadow-xs">
+              <MarkdownRenderer content={message.content} onMediaClick={onMediaClick} />
+            </div>
+          )}
         </div>
         <div className="w-8 h-8 rounded-full bg-surface-elevated border border-border flex items-center justify-center text-xs font-mono text-energy-cyan shrink-0 mt-3">
           <User className="h-4 w-4" aria-hidden="true" />
@@ -76,29 +157,189 @@ export function ChatMessageItem({
 
       <div className="flex-1 flex flex-col gap-3 min-w-0">
         {/* Header row */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] font-mono text-ai-violet font-semibold tracking-wider">
-            {tCopilot('aiCoreTitle')}
-          </span>
-          {message.timestamp && (
-            <span className="text-[10px] font-mono text-text-muted/60">{message.timestamp}</span>
-          )}
-          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-surface border border-border text-text-secondary">
-            {tCopilot('simulatedProvenance')}
-          </span>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-mono text-ai-violet font-semibold tracking-wider">
+              {tCopilot('aiCoreTitle')}
+            </span>
+            {message.detectedModel && (
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-ai-violet/10 border border-ai-violet/30 text-ai-violet font-medium">
+                {message.detectedModel}
+              </span>
+            )}
+            {message.timestamp && (
+              <span className="text-[10px] font-mono text-text-muted/60">{message.timestamp}</span>
+            )}
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-surface border border-border text-text-secondary">
+              {tCopilot('simulatedProvenance')}
+            </span>
+          </div>
+
+          {/* Voice readout button */}
+          <button
+            type="button"
+            onClick={handleToggleSpeech}
+            aria-label={isSpeaking ? tCopilot('stopAudio') : tCopilot('readAloud')}
+            title={isSpeaking ? tCopilot('stopAudio') : tCopilot('readAloud')}
+            className={cn(
+              'p-1 rounded-md border text-[11px] transition-colors cursor-pointer',
+              isSpeaking
+                ? 'bg-solar-amber/20 border-solar-amber text-solar-amber animate-pulse'
+                : 'bg-surface border-border/60 text-text-muted hover:text-text-primary hover:border-border'
+            )}
+          >
+            {isSpeaking ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+          </button>
         </div>
 
         {/* Structured diagnostic card */}
         <div className="bg-surface-elevated/70 border border-border/70 rounded-xl p-5 flex flex-col gap-4 shadow-sm text-xs leading-relaxed">
+          {/* Generated Image Card */}
+          {message.imageUrl && (
+            <div
+              onClick={() =>
+                onMediaClick?.({
+                  url: message.imageUrl!,
+                  type: 'image',
+                  title: message.imageCaption || 'Generated microgrid visualization',
+                  caption: message.imageCaption,
+                })
+              }
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  onMediaClick?.({
+                    url: message.imageUrl!,
+                    type: 'image',
+                    title: message.imageCaption || 'Generated microgrid visualization',
+                    caption: message.imageCaption,
+                  });
+                }
+              }}
+              className="rounded-xl overflow-hidden border border-border/80 bg-surface shadow-sm cursor-pointer hover:border-energy-cyan/80 transition-all group"
+            >
+              <div className="relative aspect-video w-full bg-surface-elevated/40">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={message.imageUrl}
+                  alt={message.imageCaption || 'Generated microgrid visualization'}
+                  className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-200"
+                  loading="lazy"
+                />
+                <div className="absolute top-2 right-2 flex gap-1">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-surface/90 text-text-primary backdrop-blur-sm border border-border/60 shadow-xs">
+                    {message.detectedModel || 'muse-image-1.0'}
+                  </span>
+                </div>
+              </div>
+              {message.imageCaption && (
+                <p className="p-3 text-xs text-text-secondary border-t border-border/60 font-sans">
+                  {message.imageCaption}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Generated Video Card */}
+          {message.videoUrl && (
+            <div
+              onClick={() =>
+                onMediaClick?.({
+                  url: message.videoUrl!,
+                  type: 'video',
+                  title: message.videoCaption || 'Simulation Video',
+                  caption: message.videoCaption,
+                })
+              }
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  onMediaClick?.({
+                    url: message.videoUrl!,
+                    type: 'video',
+                    title: message.videoCaption || 'Simulation Video',
+                    caption: message.videoCaption,
+                  });
+                }
+              }}
+              className="rounded-xl overflow-hidden border border-border/80 bg-surface shadow-sm cursor-pointer hover:border-energy-cyan/80 transition-all group"
+            >
+              <div className="relative aspect-video w-full bg-black flex items-center justify-center">
+                <video
+                  src={message.videoUrl}
+                  className="w-full h-full object-contain pointer-events-none"
+                  preload="metadata"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors">
+                  <div className="w-12 h-12 rounded-full bg-energy-cyan/90 text-surface flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                    <Play className="h-6 w-6 ml-0.5 fill-current" />
+                  </div>
+                </div>
+              </div>
+              {message.videoCaption && (
+                <p className="p-3 text-xs text-text-secondary border-t border-border/60 font-sans">
+                  {message.videoCaption}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Assistant Media List */}
+          {message.media && message.media.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {message.media.map((med) => (
+                <button
+                  key={med.id}
+                  type="button"
+                  onClick={() =>
+                    onMediaClick?.({
+                      url: med.url,
+                      type: med.type,
+                      title: med.name || (med.type === 'video' ? 'Video' : 'Image'),
+                      caption: med.caption,
+                    })
+                  }
+                  className="relative group rounded-xl overflow-hidden border border-border bg-surface hover:border-energy-cyan/80 transition-all cursor-pointer shadow-xs max-w-[220px]"
+                >
+                  {med.type === 'video' ? (
+                    <div className="w-40 h-28 bg-black/80 flex items-center justify-center relative">
+                      <Play className="h-6 w-6 text-white fill-white/80" />
+                      <span className="absolute bottom-1 right-1 px-1 rounded text-[9px] font-mono bg-black/80 text-white">
+                        VID
+                      </span>
+                    </div>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={med.url}
+                      alt={med.name || 'Assistant media'}
+                      className="w-40 h-28 object-cover group-hover:scale-105 transition-transform duration-200"
+                    />
+                  )}
+                  {med.name && (
+                    <div className="p-1 px-2 text-[10px] text-text-muted truncate max-w-40 bg-surface/80">
+                      {med.name}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Assistant Interactive Chart */}
+          {message.chart && <ChatChart data={message.chart} />}
+
           {sections?.whatHappened && (
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 text-xs font-mono text-solar-amber uppercase font-semibold tracking-wider">
                 <span className="w-1.5 h-1.5 rounded-full bg-solar-amber" />
                 <span>{tCopilot('sectionWhatHappened')}</span>
               </div>
-              <p className="text-text-primary text-sm leading-relaxed pl-3 border-l-2 border-solar-amber/40">
-                {sections.whatHappened}
-              </p>
+              <div className="text-text-primary text-sm leading-relaxed pl-3 border-l-2 border-solar-amber/40">
+                <MarkdownRenderer content={sections.whatHappened} onMediaClick={onMediaClick} />
+              </div>
             </div>
           )}
 
@@ -135,9 +376,19 @@ export function ChatMessageItem({
                     </thead>
                     <tbody className="divide-y divide-border/30 text-text-primary">
                       {Object.entries(evidence.fields).map(([k, v]) => (
-                        <tr key={k} className="hover:bg-surface-elevated/40">
-                          <td className="py-2 px-3 text-text-secondary">{k}</td>
-                          <td className="py-2 px-3 font-semibold text-energy-cyan">{String(v)}</td>
+                        <tr key={k} className="hover:bg-surface-elevated/40 transition-colors">
+                          <td className="py-2.5 px-3 text-text-secondary" title={k}>
+                            <span className="font-sans font-medium text-text-primary text-xs">
+                              {formatTelemetryChannel(k, {
+                                tChannels,
+                                tSectors,
+                                tStrategies,
+                              })}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-semibold text-energy-cyan whitespace-nowrap">
+                            {String(v)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -154,9 +405,9 @@ export function ChatMessageItem({
                 <span className="w-1.5 h-1.5 rounded-full bg-critical-red" />
                 <span>{tCopilot('sectionWhyItMatters')}</span>
               </div>
-              <p className="text-text-primary text-sm leading-relaxed pl-3 border-l-2 border-critical-red/40">
-                {sections.whyItMatters}
-              </p>
+              <div className="text-text-primary text-sm leading-relaxed pl-3 border-l-2 border-critical-red/40">
+                <MarkdownRenderer content={sections.whyItMatters} onMediaClick={onMediaClick} />
+              </div>
             </div>
           )}
 
@@ -167,15 +418,17 @@ export function ChatMessageItem({
                 <span className="w-1.5 h-1.5 rounded-full bg-ai-violet" />
                 <span>{tCopilot('sectionExploreNext')}</span>
               </div>
-              <p className="text-text-primary text-sm leading-relaxed pl-3 border-l-2 border-ai-violet/40">
-                {sections.exploreNext}
-              </p>
+              <div className="text-text-primary text-sm leading-relaxed pl-3 border-l-2 border-ai-violet/40">
+                <MarkdownRenderer content={sections.exploreNext} onMediaClick={onMediaClick} />
+              </div>
             </div>
           )}
 
           {/* Fallback for raw text before streaming finishes */}
           {!sections && message.content && (
-            <p className="text-text-primary whitespace-pre-wrap">{message.content}</p>
+            <div className="text-text-primary">
+              <MarkdownRenderer content={message.content} onMediaClick={onMediaClick} />
+            </div>
           )}
         </div>
 

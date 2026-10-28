@@ -21,8 +21,3 @@ export function simStatusBadgeVariant(status: SimStatus, isPlaying: boolean): St
   if (isPlaying || status === 'running') return 'running';
   return status === 'complete' ? 'complete' : 'ready';
 }
-
-/** Next hour of the looping 24h playback. */
-export function nextPlaybackHour(timeIndex: number, hours = 24): number {
-  return (timeIndex + 1) % hours;
-}

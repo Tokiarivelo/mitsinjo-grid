@@ -71,6 +71,10 @@ audit on the real GPU (meaningful fps).
 In-scene `<Html>` labels take `portal` = a stable container ref so drei never re-targets
 them after mount (re-targeting races React root unmounts and can leave a label empty).
 
+- Weather effects add ≤ 2 draw calls (instanced clouds + one rain `LineSegments`) and animate on the GPU (one
+  uniform per frame); they keep the frame loop running only while motion is allowed.
+- Charts in a hidden tab are not mounted (Recharts can't measure a `display:none` parent).
+
 ## 6. Loading & navigation
 
 - Fonts via `next/font` (self-hosted, `display: swap`, subsets latin) — no layout shift.

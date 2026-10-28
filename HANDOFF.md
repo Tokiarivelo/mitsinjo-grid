@@ -1,32 +1,30 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-28 · **By:** Antigravity (simulation playback play/pause/stop/restart) · **Branch:** `feat/simulation-playback-controls`
+**Updated:** 2026-10-28 · **By:** Antigravity (Neon DB Live Verified, Cloudflare R2 Guide) · **Branch:** `feat/simulation-weather-workflow`
 
 ## State
 
-- Simulation playback controls unified in `useSimulationStore`: `isPlaying`, `playbackStatus`, `play`, `pause`, `stop`, `restart`, `togglePlay`.
-- Clicking "Lancer la simulation" runs calculation and transitions button status dynamically into active playback (Pause).
-- Stop (rewinds to 00:00) and Restart (rewinds to 00:00 and plays) controls added across top header, `SimControlsPanel`, and `TimelineScrubber`.
-- StatusBadge dynamically displays `SIMULATING` during active playback, `SIMULATION COMPLETE` when paused/stopped, and `SCENARIO MODIFIED` on changes.
-- 100% key parity across `en.json`, `fr.json`, and `mg.json` for all new playback labels and action titles.
-- Checks green: typecheck, lint, format-check, 102 engine tests, 246 web tests (all passing).
+- Neon PostgreSQL live connection **fully tested and verified** (`ep-hidden-king-b8d7t7ix-pooler.c-14.us-east-1.aws.neon.tech`).
+- Serverless driver adapter configured in `apps/web/src/server/db/neon.ts` with IPv4 HTTPS fetch fallback (eliminates IPv6 ENETUNREACH in dual-stack environments).
+- Neon DB tables `copilot_sessions` and `copilot_messages` automatically created and operational on user's live Neon DB; sessions CRUD API verified (`/api/copilot/sessions`).
+- Detailed French guide created for Cloudflare R2: `docs/setup/cloudflare-r2.md` explaining step-by-step account setup, bucket creation, public access URL, and S3 API credentials.
+- `.env.example`, `docs/setup/README.md`, and `docs/copilot.md` updated with R2 variables and guide references.
+- Full test suite: **50/50 test files passed (321/321 tests passing)**.
+- Formatting: `make format-changed` cleanly passed.
 
 ## Next task
 
-- Run `make e2e` and `make shots` for visual and full regression validation, then merge.
+- Review and PR merge for `feat/simulation-weather-workflow`.
+- Configure `R2_*` credentials from Cloudflare dashboard into `.env.local` to enable direct S3 presigned URL storage.
 
 ## Decisions taken
 
-- Playback state is held centrally in `useSimulationStore` with narrow selectors so header, controls panel, and 24h scrubber remain in sync.
-- Auto-advance interval is driven centrally via React effect on `/simulation` and disengaged on unmount/manual scrubbing.
-
-## Open questions / blockers
-
-- None.
+- `neonConfig.fetchFunction` configured to prioritize IPv4 family on Node server, avoiding node-fetch undici timeout on unreachable IPv6 gateways.
+- Neon DB operations verified end-to-end with live SELECT, CREATE TABLE, session creation, and deletion.
+- Comprehensive French guide covers exact Cloudflare UI screens, S3 credentials, and public r2.dev subdomain setup.
 
 ## Files touched this session
 
-- Store: `apps/web/src/stores/simulation.store.ts`, `selectors.ts`, `__tests__/simulation-store.test.ts`
-- UI: `apps/web/src/features/simulation/ui/{simulation-page.tsx, sim-controls-panel.tsx, timeline-scrubber.tsx}`, `__tests__/simulation.test.tsx`
-- i18n: `apps/web/src/messages/{en.json, fr.json, mg.json}`
-- Docs: `HANDOFF.md`
+- DB: `apps/web/src/server/db/neon.ts`
+- Guides & Docs: `docs/setup/cloudflare-r2.md`, `docs/setup/README.md`, `docs/copilot.md`, `.env.example`
+- Tests: `apps/web/src/server/db/__tests__/neon.test.ts`

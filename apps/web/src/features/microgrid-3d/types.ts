@@ -1,4 +1,4 @@
-import type { SectorId, Priority, StrategyId } from '@mitsinjo/engine';
+import type { SectorId, Priority, StrategyId, WeatherId } from '@mitsinjo/engine';
 
 /** `unknown` = no simulation result for this step yet. */
 export type BuildingStatus = 'full' | 'partial' | 'unserved' | 'unknown';
@@ -58,6 +58,8 @@ export interface SceneModel {
   isModified: boolean;
   hasResult: boolean;
   strategy: StrategyId;
+  /** Weather of the simulated day shown (sky, clouds, rain). Solar kW already reflects it. */
+  weather: WeatherId;
   solar: SolarSceneModel;
   battery: BatterySceneModel;
   buildings: Record<SectorId, BuildingSceneModel>;

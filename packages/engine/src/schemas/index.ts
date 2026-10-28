@@ -1,6 +1,7 @@
 export * from './common';
 export * from './input';
 export * from './result';
+export * from './workflow';
 
 import { SimulationInput, SimulationInputSchema } from './input';
 

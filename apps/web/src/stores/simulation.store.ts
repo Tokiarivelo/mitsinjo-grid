@@ -6,9 +6,13 @@ import {
   type SectorId,
   type SimulationInput,
   type StrategyId,
+  type WeatherId,
+  type Workflow,
+  type WorkflowComparison,
   scenarios,
-  compare,
+  compareWorkflow,
   applyPatch,
+  MAX_WORKFLOW_DAYS,
 } from '@mitsinjo/engine';
 
 export type SimStatus = 'ready' | 'running' | 'complete' | 'modified' | 'error';
@@ -20,7 +24,12 @@ export interface SimulationState {
   status: SimStatus;
   isPlaying: boolean;
   playbackStatus: PlaybackStatus;
+  /** Comparison of the day under the cursor (`dayIndex`) of the weather workflow. */
   results: Partial<Comparison>;
+  /** Weather of each simulated day, in order. One sunny day = the plain 24 h simulation. */
+  workflow: Workflow;
+  workflowResults: WorkflowComparison;
+  dayIndex: number;
   activeStrategy: StrategyId;
   selectedSector: SectorId | null;
   timeIndex: number;
@@ -36,6 +45,14 @@ export interface SimulationState {
   setTimeIndex: (timeIndex: number) => void;
   applyProposal: (patch?: InputPatch, strategy?: StrategyId) => void;
 
+  // Weather workflow actions
+  addWorkflowDay: (weather?: WeatherId) => void;
+  removeWorkflowDay: (day: number) => void;
+  setDayWeather: (day: number, weather: WeatherId) => void;
+  setDayIndex: (day: number) => void;
+  /** Next playback hour; rolls over to the next workflow day, then loops to day 1. */
+  advancePlayback: () => void;
+
   // Playback Actions
   play: () => void;
   pause: () => void;
@@ -50,6 +67,30 @@ export function cloneInput(input: SimulationInput): SimulationInput {
 
 export const INITIAL_SCENARIO_ID: ScenarioId = 'baseline';
 
+export const DEFAULT_WORKFLOW: Workflow = [{ weather: 'sunny' }];
+
+const ALL_STRATEGIES: readonly StrategyId[] = ['proportional', 'essential_first', 'balanced'];
+
+/** Per-strategy results of one workflow day (empty when that day was not simulated). */
+export function dayComparison(
+  workflowResults: WorkflowComparison,
+  dayIndex: number
+): Partial<Comparison> {
+  const out: Partial<Comparison> = {};
+  for (const [strategy, wf] of Object.entries(workflowResults) as [
+    StrategyId,
+    WorkflowComparison[StrategyId],
+  ][]) {
+    const day = wf?.days[dayIndex];
+    if (day) out[strategy] = day.result;
+  }
+  return out;
+}
+
+function clampDay(day: number, days: number): number {
+  return Math.max(0, Math.min(days - 1, Math.floor(day)));
+}
+
 export const initialSimulationData = {
   scenarioId: INITIAL_SCENARIO_ID,
   input: cloneInput(scenarios[INITIAL_SCENARIO_ID].input),
@@ -57,6 +98,9 @@ export const initialSimulationData = {
   isPlaying: false,
   playbackStatus: 'idle' as PlaybackStatus,
   results: {} as Partial<Comparison>,
+  workflow: DEFAULT_WORKFLOW,
+  workflowResults: {} as WorkflowComparison,
+  dayIndex: 0,
   activeStrategy: 'proportional' as StrategyId,
   selectedSector: null as SectorId | null,
   timeIndex: 12,
@@ -67,6 +111,7 @@ export function resetSimulationStore() {
   useSimulationStore.setState({
     ...initialSimulationData,
     input: cloneInput(scenarios[INITIAL_SCENARIO_ID].input),
+    workflow: DEFAULT_WORKFLOW,
   });
 }
 
@@ -78,6 +123,33 @@ function ensureResults(get: () => SimulationState): boolean {
   const { status, results, run } = get();
   if (status !== 'complete' || Object.keys(results).length === 0) run();
   return get().status === 'complete';
+}
+
+/** An input edit invalidates the run. */
+function modifiedState() {
+  return {
+    status: 'modified' as SimStatus,
+    isPlaying: false,
+    playbackStatus: 'idle' as PlaybackStatus,
+    error: null,
+  };
+}
+
+/**
+ * Applies a workflow edit. When the run was up to date, the engine re-runs at once so the
+ * new weather shows in the solar output and the 3D scene; otherwise the run stays modified.
+ */
+function commitWorkflow(
+  set: (partial: Partial<SimulationState>) => void,
+  get: () => SimulationState,
+  patch: Pick<SimulationState, 'workflow'> & Partial<Pick<SimulationState, 'dayIndex'>>
+) {
+  if (get().status === 'complete') {
+    set(patch);
+    get().run();
+    return;
+  }
+  set({ ...modifiedState(), ...patch });
 }
 
 export const useSimulationStore = create<SimulationState>((set, get) => ({
@@ -101,6 +173,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       isPlaying: false,
       playbackStatus: 'idle',
       results: {},
+      workflowResults: {},
+      dayIndex: 0,
       error: null,
     });
   },
@@ -108,13 +182,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   patchInput: (patch: InputPatch) => {
     try {
       const patched = applyPatch(get().input, patch);
-      set({
-        input: patched,
-        status: 'modified',
-        isPlaying: false,
-        playbackStatus: 'idle',
-        error: null,
-      });
+      set({ ...modifiedState(), input: patched });
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : 'Invalid patch',
@@ -127,15 +195,17 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   run: (strategies?: readonly StrategyId[]) => {
     const activeStrategies: readonly StrategyId[] =
-      strategies && strategies.length > 0
-        ? strategies
-        : ['proportional', 'essential_first', 'balanced'];
+      strategies && strategies.length > 0 ? strategies : ALL_STRATEGIES;
 
     set({ status: 'running', error: null });
     try {
-      const comparison = compare(get().input, activeStrategies);
+      const { input, workflow } = get();
+      const workflowResults = compareWorkflow(input, workflow, activeStrategies);
+      const dayIndex = clampDay(get().dayIndex, workflow.length);
       set({
-        results: comparison,
+        workflowResults,
+        results: dayComparison(workflowResults, dayIndex),
+        dayIndex,
         status: 'complete',
         error: null,
       });
@@ -158,6 +228,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       isPlaying: false,
       playbackStatus: 'idle',
       results: {},
+      workflowResults: {},
+      dayIndex: 0,
       error: null,
     });
   },
@@ -187,9 +259,10 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         status: 'running',
         error: null,
       });
-      const comparison = compare(patched, ['proportional', 'essential_first', 'balanced']);
+      const workflowResults = compareWorkflow(patched, get().workflow, ALL_STRATEGIES);
       set({
-        results: comparison,
+        workflowResults,
+        results: dayComparison(workflowResults, get().dayIndex),
         status: 'complete',
         error: null,
       });
@@ -205,7 +278,9 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   play: () => {
     if (!ensureResults(get)) return;
-    const { timeIndex } = get();
+    const { timeIndex, dayIndex, workflow } = get();
+    const atEnd = timeIndex >= 23 && dayIndex >= workflow.length - 1;
+    if (atEnd) get().setDayIndex(0);
     set({
       isPlaying: true,
       playbackStatus: 'playing',
@@ -221,6 +296,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   stop: () => {
+    get().setDayIndex(0);
     set({
       isPlaying: false,
       playbackStatus: 'stopped',
@@ -230,7 +306,49 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   restart: () => {
     if (!ensureResults(get)) return;
+    get().setDayIndex(0);
     set({ timeIndex: 0, isPlaying: true, playbackStatus: 'playing' });
+  },
+
+  addWorkflowDay: (weather?: WeatherId) => {
+    const { workflow } = get();
+    if (workflow.length >= MAX_WORKFLOW_DAYS) return;
+    const next = weather ?? workflow[workflow.length - 1]?.weather ?? 'sunny';
+    commitWorkflow(set, get, { workflow: [...workflow, { weather: next }] });
+  },
+
+  removeWorkflowDay: (day: number) => {
+    const { workflow, dayIndex } = get();
+    if (workflow.length <= 1 || day < 0 || day >= workflow.length) return;
+    const nextWorkflow = workflow.filter((_, i) => i !== day);
+    commitWorkflow(set, get, {
+      workflow: nextWorkflow,
+      dayIndex: clampDay(day < dayIndex ? dayIndex - 1 : dayIndex, nextWorkflow.length),
+    });
+  },
+
+  setDayWeather: (day: number, weather: WeatherId) => {
+    const { workflow } = get();
+    if (day < 0 || day >= workflow.length || workflow[day]?.weather === weather) return;
+    commitWorkflow(set, get, {
+      workflow: workflow.map((d, i) => (i === day ? { weather } : d)),
+    });
+  },
+
+  setDayIndex: (day: number) => {
+    const { workflow, workflowResults } = get();
+    const dayIndex = clampDay(day, workflow.length);
+    set({ dayIndex, results: dayComparison(workflowResults, dayIndex) });
+  },
+
+  advancePlayback: () => {
+    const { timeIndex, dayIndex, workflow, setDayIndex } = get();
+    if (timeIndex < 23) {
+      set({ timeIndex: timeIndex + 1 });
+      return;
+    }
+    setDayIndex(dayIndex + 1 < workflow.length ? dayIndex + 1 : 0);
+    set({ timeIndex: 0 });
   },
 
   togglePlay: () => {
