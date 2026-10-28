@@ -8,6 +8,8 @@
 - Check no duplication: logic, markup or copy repeated across files (or re-implementing an existing helper) → extract
   once into a tested reusable unit (`docs/conventions.md` § Reuse) and reuse it.
 - Check zero static text: no user-visible literal in JSX/TSX, keys in `en`/`fr`/`mg` (`make check-i18n`).
+- Check theming: verify both Dark and Light theme modes render properly, zero hardcoded colors or raw hex in JSX/TSX/CSS, all colors from `@theme` semantic tokens, WCAG AA contrast compliant.
+- Check responsive mobile: verify layouts reflow to 1 column on mobile (320px–768px), touch targets $\ge 44\text{px}$, no horizontal overflow, and mobile bottom nav spacing (`pb-20 md:pb-6`).
 - Fix what you find on the PR branch in a separate `fix(<scope>): address PR #n review` commit. Add a test for each bug fix.
 - Merge only when CI is green on the rebased head. Use the repo's merge style (merge commit). Never merge a branch that is behind `main`.
 - Report: fixed items first, then the issues you did not fix and why.

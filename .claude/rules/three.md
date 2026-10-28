@@ -18,5 +18,7 @@ paths:
 - Glow = color > 1 with `toneMapped={false}`, only on data-driven or light-source materials.
 - Loaded with `next/dynamic({ ssr: false })` + Suspense fallback; WebGL check → 2D fallback component.
 - `prefers-reduced-motion` → static scene, no camera tweening.
+- **Dual Theming & HTML Overlays:** HUD badges, sector tooltips, and overlay controls rendered in or over the canvas must use semantic `@theme` tokens (`bg-surface/90 text-text-primary border-border`). Never use hardcoded hex/dark background values (`#0a101d`). Must adapt cleanly to both Dark and Light theme modes.
+- **Responsive Mobile Viewport:** 3D canvas container height must be adaptive (`min-h-[360px] sm:min-h-[460px] lg:min-h-[640px]`). HUD controls, camera preset buttons, and quality pills must be compact, horizontally scrollable on mobile if needed, and have touch targets ≥ 44px. OrbitControls touch interactions (drag to orbit, pinch to zoom) must function smoothly on mobile touchscreens without hijacking page scroll.
 - Budgets: `low` ≥ 45 fps on integrated GPU, < 150 draw calls; `high` < 400 calls, ≤ 800 k
   triangles (`?perf=1` overlay, `make scene-audit` / `make scene-audit-gpu`).
