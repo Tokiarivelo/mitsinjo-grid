@@ -66,7 +66,7 @@ shadcn/ui (restyled) · Zustand · Zod · R3F + Drei · Recharts · next-intl ·
 Use the Makefile (`make help` lists everything). Most used:
 
 ```bash
-make install && make dev    # web on :3000 (make dev-mock = offline LLM)
+make install && make dev    # web on :$PORT from .env (default 3000; make port) (make dev-mock = offline LLM)
 make check                  # typecheck + lint + test — before handoff
 make test-engine            # engine only (cheapest)
 make e2e                    # playwright demo path

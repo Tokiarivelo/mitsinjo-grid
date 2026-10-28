@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/port.mjs dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node scripts/port.mjs start",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",

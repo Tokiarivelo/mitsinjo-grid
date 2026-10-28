@@ -178,7 +178,7 @@ make env
 ### Development & Testing
 
 ```bash
-# Start development server on http://localhost:3000
+# Start development server on http://localhost:$PORT (PORT in .env, default 3000)
 make dev
 
 # Run development server with deterministic offline mock LLM

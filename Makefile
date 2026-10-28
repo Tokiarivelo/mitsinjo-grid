@@ -6,7 +6,8 @@ SHELL := /bin/bash
 PNPM   ?= pnpm
 WEB    := web
 ENGINE := @mitsinjo/engine
-URL    ?= http://localhost:3000
+PORT   ?= $(shell node apps/web/scripts/port.mjs)
+URL    ?= http://localhost:$(PORT)
 ROUTES := overview simulation strategies scenarios copilot
 SHOTS  := design/shots
 
@@ -37,9 +38,12 @@ browsers: ## Install Playwright browsers (for e2e + screenshots)
 	$(PNPM) --filter $(WEB) exec playwright install chromium
 
 ##@ Develop
-dev: ## Run the web app in dev mode (port 3000)
+dev: ## Run the web app in dev mode (port from PORT in .env, default 3000)
 	$(need_ws)
 	$(PNPM) dev
+
+port: ## Print the web app port (PORT from shell or .env, default 3000)
+	@echo $(PORT)
 
 dev-mock: ## Run dev with the offline mock LLM provider
 	$(need_ws)
@@ -161,5 +165,5 @@ clean: ## Remove build/test output (keeps node_modules)
 clean-all: clean ## Also remove node_modules
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
 
-.PHONY: help install env setup-claude browsers dev dev-mock build start test test-engine test-web test-watch coverage e2e \
+.PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-watch coverage e2e \
         typecheck lint format check ci shots mockups analyze scene-audit scene-audit-gpu lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all

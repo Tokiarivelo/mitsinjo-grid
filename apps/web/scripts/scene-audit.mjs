@@ -7,8 +7,10 @@
 import { chromium } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { resolvePort } from './port.mjs';
 
-const [baseUrl = 'http://localhost:3000', outDir = 'design/shots'] = process.argv.slice(2);
+const [baseUrl = `http://localhost:${resolvePort()}`, outDir = 'design/shots'] =
+  process.argv.slice(2);
 
 /** Per-frame totals, including the shadow-map pass and post-processing on `high`. */
 const BUDGETS = {
