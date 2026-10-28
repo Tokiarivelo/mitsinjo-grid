@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { IBM_Plex_Mono, Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { I18nProvider } from '@/lib/i18n';
+import { ThemeProvider } from '@/lib/theme';
 import enMessages from '@/messages/en.json';
 
 const spaceGrotesk = Space_Grotesk({
@@ -42,14 +43,24 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${spaceGrotesk.variable} ${inter.variable} ${plexMono.variable} h-full overflow-hidden dark`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('mitsinjo_theme');if(t==='light'){document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');document.documentElement.setAttribute('data-theme','light');document.documentElement.style.colorScheme='light';}}catch(e){}})();`,
+          }}
+        />
+      </head>
       {/* Browser extensions inject attributes on <body> before hydration. */}
       <body
         suppressHydrationWarning
         className="h-full overflow-hidden bg-canvas text-text-primary antialiased font-sans"
       >
-        <I18nProvider>{children}</I18nProvider>
+        <ThemeProvider>
+          <I18nProvider>{children}</I18nProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

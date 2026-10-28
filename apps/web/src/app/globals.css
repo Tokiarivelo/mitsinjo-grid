@@ -1,23 +1,68 @@
 @import 'tailwindcss';
 
+:root {
+  --theme-canvas: #080d1a;
+  --theme-canvas-raised: #0d1526;
+  --theme-canvas-sunken: #050811;
+  --theme-surface: #111d30;
+  --theme-surface-elevated: #17253a;
+  --theme-surface-hover: #1c2d45;
+  --theme-border: #26364d;
+  --theme-border-strong: #3b506b;
+  --theme-text-primary: #f4f7fb;
+  --theme-text-secondary: #a8b6c9;
+  --theme-text-muted: #72839a;
+  --theme-solar-amber: #ffb547;
+  --theme-energy-cyan: #50d8e8;
+  --theme-network-blue: #729cff;
+  --theme-battery-green: #53d6a0;
+  --theme-ai-violet: #b6a0ff;
+  --theme-warning-amber: #ffcb70;
+  --theme-critical-red: #ff7185;
+}
+
+html.light,
+:root.light,
+[data-theme='light'] {
+  --theme-canvas: #f8fafc;
+  --theme-canvas-raised: #ffffff;
+  --theme-canvas-sunken: #f1f5f9;
+  --theme-surface: #ffffff;
+  --theme-surface-elevated: #f8fafc;
+  --theme-surface-hover: #f1f5f9;
+  --theme-border: #e2e8f0;
+  --theme-border-strong: #cbd5e1;
+  --theme-text-primary: #0f172a;
+  --theme-text-secondary: #475569;
+  --theme-text-muted: #64748b;
+  --theme-solar-amber: #d97706;
+  --theme-energy-cyan: #0891b2;
+  --theme-network-blue: #2563eb;
+  --theme-battery-green: #059669;
+  --theme-ai-violet: #7c3aed;
+  --theme-warning-amber: #d97706;
+  --theme-critical-red: #dc2626;
+}
+
 @theme {
-  --color-canvas: #080d1a;
-  --color-canvas-raised: #0d1526;
-  --color-surface: #111d30;
-  --color-surface-elevated: #17253a;
-  --color-surface-hover: #1c2d45;
-  --color-border: #26364d;
-  --color-border-strong: #3b506b;
-  --color-text-primary: #f4f7fb;
-  --color-text-secondary: #a8b6c9;
-  --color-text-muted: #72839a;
-  --color-solar-amber: #ffb547;
-  --color-energy-cyan: #50d8e8;
-  --color-network-blue: #729cff;
-  --color-battery-green: #53d6a0;
-  --color-ai-violet: #b6a0ff;
-  --color-warning-amber: #ffcb70;
-  --color-critical-red: #ff7185;
+  --color-canvas: var(--theme-canvas);
+  --color-canvas-raised: var(--theme-canvas-raised);
+  --color-canvas-sunken: var(--theme-canvas-sunken);
+  --color-surface: var(--theme-surface);
+  --color-surface-elevated: var(--theme-surface-elevated);
+  --color-surface-hover: var(--theme-surface-hover);
+  --color-border: var(--theme-border);
+  --color-border-strong: var(--theme-border-strong);
+  --color-text-primary: var(--theme-text-primary);
+  --color-text-secondary: var(--theme-text-secondary);
+  --color-text-muted: var(--theme-text-muted);
+  --color-solar-amber: var(--theme-solar-amber);
+  --color-energy-cyan: var(--theme-energy-cyan);
+  --color-network-blue: var(--theme-network-blue);
+  --color-battery-green: var(--theme-battery-green);
+  --color-ai-violet: var(--theme-ai-violet);
+  --color-warning-amber: var(--theme-warning-amber);
+  --color-critical-red: var(--theme-critical-red);
 
   --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -40,6 +85,7 @@ html,
 body {
   height: 100%;
   overflow: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
@@ -48,7 +94,7 @@ body {
   font-family: var(--font-sans);
 }
 
-/* MacBook / macOS-style floating translucent rounded scrollbar */
+/* Floating translucent rounded scrollbar */
 * {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--color-text-secondary) 30%, transparent) transparent;

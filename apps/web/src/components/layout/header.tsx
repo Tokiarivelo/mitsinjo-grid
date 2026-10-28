@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge, type StatusBadgeVariant } from '@/components/ui/status-badge';
 import { ScenarioSelector, type ScenarioOption } from '@/components/ui/scenario-selector';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
+import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { useTranslations } from '@/lib/i18n';
 
 export interface HeaderProps {
@@ -108,8 +109,11 @@ export function Header({
         </div>
       </div>
 
-      {/* Right zone: Language Switcher, Scenario selector, Status badge, Reset, Copilot Toggle */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+      {/* Right zone: Theme Switcher, Language Switcher, Scenario selector, Status badge, Reset, Copilot Toggle */}
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        {/* Theme switcher */}
+        <ThemeSwitcher variant="icon" size="sm" />
+
         {/* Language switcher */}
         <div className="hidden lg:block">
           <LanguageSwitcher variant="compact" size="sm" />

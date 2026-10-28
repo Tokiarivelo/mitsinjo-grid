@@ -24,7 +24,7 @@ const sizeStyles = {
 
 const variantStyles = {
   primary:
-    'bg-solar-amber text-canvas hover:bg-warning-amber active:brightness-95 shadow-sm font-semibold',
+    'bg-solar-amber text-slate-950 hover:bg-warning-amber active:brightness-95 shadow-sm font-semibold',
   secondary:
     'bg-surface text-text-primary border border-border hover:bg-surface-hover hover:border-border-strong active:bg-surface-elevated',
   ghost:

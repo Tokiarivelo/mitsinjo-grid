@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { CopilotPanel } from './copilot-panel';
+import { MobileNav } from './mobile-nav';
 import type { StatusBadgeVariant } from '@/components/ui/status-badge';
 import type { ScenarioOption } from '@/components/ui/scenario-selector';
 import { useTranslations } from '@/lib/i18n';
@@ -105,11 +106,11 @@ export function AppShell({
         />
 
         {/* Content Area + Optional Copilot Panel */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Main workspace (scrolls independently, padding 24: p-6) */}
+        <div className="flex flex-1 min-h-0 overflow-hidden relative">
+          {/* Main workspace (scrolls independently, responsive padding) */}
           <main
             className={cn(
-              'relative flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 bg-canvas',
+              'relative flex-1 min-w-0 overflow-y-auto p-3 sm:p-6 pb-20 md:pb-6 bg-canvas',
               className
             )}
           >
@@ -121,6 +122,9 @@ export function AppShell({
             <CopilotPanel open={copilotOpen} onClose={() => setCopilotOpen(false)} />
           )}
         </div>
+
+        {/* Mobile Bottom Navigation Bar (hidden on md+ screens) */}
+        <MobileNav />
       </div>
     </div>
   );
