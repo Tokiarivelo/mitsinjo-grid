@@ -1,10 +1,28 @@
-import type { SectorId, Priority, StrategyId, WeatherId } from '@mitsinjo/engine';
+import type { SectorId, Priority, StrategyId, WeatherId, SectorMode } from '@mitsinjo/engine';
 
 /** `unknown` = no simulation result for this step yet. */
 /** `disconnected`: sector load set to 0 (e.g. the factory before it is connected). */
 export type BuildingStatus = 'full' | 'partial' | 'unserved' | 'unknown' | 'disconnected';
 export type StatusColor = 'battery-green' | 'warning-amber' | 'critical-red' | 'idle';
 export type BatteryStatusColor = 'healthy' | 'warning' | 'critical';
+
+export type ControllerMode = 'normal' | 'rationing' | 'lifeline_only';
+export type BreakerState = 'closed' | 'limited' | 'open';
+
+export interface FeederSceneModel {
+  mode: SectorMode;
+  servedKw: number;
+  /** Intensity 0..1 relative to the sector's daily peak served kW from the engine result. */
+  intensity: number;
+  /** 0..1 share of what the controller dispatches this hour (0 when nothing is served). */
+  share: number;
+  breaker: BreakerState;
+}
+
+export interface ControllerSceneModel {
+  mode: ControllerMode;
+  feeders: Record<SectorId, FeederSceneModel>;
+}
 
 export interface BuildingSceneModel {
   id: SectorId;
@@ -65,6 +83,7 @@ export interface SceneModel {
   strategy: StrategyId;
   /** Weather of the simulated day shown (sky, clouds, rain). Solar kW already reflects it. */
   weather: WeatherId;
+  controller: ControllerSceneModel;
   solar: SolarSceneModel;
   battery: BatterySceneModel;
   buildings: Record<SectorId, BuildingSceneModel>;
@@ -75,4 +94,4 @@ export interface SceneModel {
   };
 }
 
-export type CameraPreset = 'village' | 'solar' | 'battery' | 'essential';
+export type CameraPreset = 'village' | 'solar' | 'battery' | 'essential' | 'controller';

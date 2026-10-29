@@ -18,8 +18,10 @@ import {
 const allBoxes = (l: DiagramLayout): Box[] => [
   l.boxes.solar,
   l.boxes.hub,
+  l.boxes.controller,
   l.busLabel,
   ...DIAGRAM_SECTORS.map((id) => l.boxes.sectors[id]),
+  ...DIAGRAM_SECTORS.map((id) => l.feederTags[id]),
 ];
 
 const stress = scenarios.essential_stress.input;
@@ -62,6 +64,7 @@ describe('diagramLayout', () => {
     const wires = [
       l.wires.solarToHub,
       l.wires.hubToBus,
+      ...(l.wires.controllerToBus ? [l.wires.controllerToBus] : []),
       l.busBar,
       ...DIAGRAM_SECTORS.map((id) => l.wires.busToSector[id]),
     ];
@@ -90,6 +93,28 @@ describe('diagramLayout', () => {
     expect(diagramLayout('topology').breakers).toBeUndefined();
   });
 
+  it('topology routes the hub feed through the EMS controller before the bus', () => {
+    const l = diagramLayout('topology');
+    const c = l.boxes.controller;
+    const [hx, hy] = l.wires.hubToBus.at(-1)!;
+    const [ox, oy] = l.wires.controllerToBus![0]!;
+    expect(hy).toBe(c.y);
+    expect(oy).toBe(c.y + c.h);
+    expect(hx).toBeGreaterThan(c.x);
+    expect(ox).toBeLessThan(c.x + c.w);
+    expect(l.wires.controllerToBus!.at(-1)![1]).toBe(l.busBar[0][1]);
+  });
+
+  it('circuit keeps the bus bar and every breaker inside the EMS switchboard', () => {
+    const l = diagramLayout('circuit');
+    const e = l.enclosure!;
+    const inside = ([x, y]: [number, number]) =>
+      x > e.x && x < e.x + e.w && y > e.y && y < e.y + e.h;
+    expect(inside(l.busBar[0]) && inside(l.busBar[1])).toBe(true);
+    for (const id of DIAGRAM_SECTORS) expect(inside(l.breakers![id]), id).toBe(true);
+    expect(e.y + e.h).toBeLessThanOrEqual(DIAGRAM_H);
+  });
+
   it('detects overlaps and crossings', () => {
     const b = { x: 0, y: 0, w: 10, h: 10 };
     expect(boxesOverlap(b, { x: 5, y: 5, w: 10, h: 10 })).toBe(true);
@@ -109,8 +134,8 @@ describe('GridDiagram', () => {
     const states = Array.from(container.querySelectorAll('[data-wire-state]')).map((g) =>
       g.getAttribute('data-wire-state')
     );
-    // solar (night: idle), feeder, one line per sector
-    expect(states).toHaveLength(2 + SECTOR_IDS.length);
+    // solar (night: idle), hub → EMS, EMS → bus, one line per sector
+    expect(states).toHaveLength(3 + SECTOR_IDS.length);
     expect(states.filter((s) => s === 'cut').length).toBeGreaterThanOrEqual(1);
 
     for (const g of container.querySelectorAll('[data-wire-state]')) {
@@ -127,9 +152,32 @@ describe('GridDiagram', () => {
     expect(onSelect).toHaveBeenCalledWith('water');
   });
 
-  it('renders a legend that explains the electrons', () => {
+  it('renders a legend that explains the electrons and limiter', () => {
     renderDiagram('topology', 12);
     const legend = screen.getByRole('list', { name: 'Diagram legend' });
     expect(within(legend).getByText('Current flowing (electrons)')).toBeInTheDocument();
+    expect(within(legend).getByText('Limiter active (lifeline)')).toBeInTheDocument();
+  });
+
+  it.each(['topology', 'circuit'] as const)(
+    '%s shows the kW sent on each connected feeder',
+    (v) => {
+      const { model } = renderDiagram(v, 12);
+      const tags = screen.getAllByRole('img', { name: /kW/ });
+      const connected = SECTOR_IDS.filter((id) => model.buildings[id].connected);
+      expect(tags).toHaveLength(connected.length);
+    }
+  );
+
+  it('renders the EMS dispatch controller block with mode and rule tooltip in topology and circuit (PL-T6)', () => {
+    const topo = renderDiagram('topology', 12);
+    expect(
+      topo.container.querySelector('[aria-label*="EMS Dispatch Controller"]')
+    ).toBeInTheDocument();
+
+    const circuit = renderDiagram('circuit', 12);
+    expect(
+      circuit.container.querySelector('[aria-label*="EMS Dispatch Controller"]')
+    ).toBeInTheDocument();
   });
 });

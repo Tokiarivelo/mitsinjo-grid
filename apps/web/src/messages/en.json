@@ -175,6 +175,7 @@
       "presetVillage": "Village",
       "presetSolar": "Solar",
       "presetBattery": "Battery",
+      "presetController": "Controller",
       "presetEssential": "Essential",
       "resetCamera": "Reset camera",
       "webglUnavailable": "3D visualization is unavailable on this device. Showing 2D schematic diagram.",
@@ -464,9 +465,29 @@
       },
       "legendTitle": "Diagram legend",
       "legendFlow": "Current flowing (electrons)",
+      "legendLimiter": "Limiter active (lifeline)",
       "legendPartial": "Partial supply",
       "legendCut": "Line cut (shed)",
-      "legendIdle": "No current"
+      "legendIdle": "No current",
+      "controller": {
+        "title": "EMS Dispatch Controller",
+        "shortTitle": "EMS Dispatch",
+        "mode": {
+          "normal": "Normal",
+          "rationing": "Rationing",
+          "lifeline_only": "Lifeline only"
+        },
+        "ruleDesc": {
+          "normal": "All sectors served at full demand",
+          "rationing": "Energy shared according to strategy rules",
+          "lifeline_only": "Emergency mode: water and health prioritized, others curtailed"
+        }
+      },
+      "breakerTooltip": {
+        "closed": "{sector}: Closed ({kw})",
+        "limited": "{sector}: Current limiter active ({kw})",
+        "open": "{sector}: Open / Cut (0 kW)"
+      }
     }
   },
   "copilot": {

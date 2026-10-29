@@ -11,3 +11,4 @@ design/reference/
 *.jpg
 *.jpeg
 *.svg
+**/.tmp*

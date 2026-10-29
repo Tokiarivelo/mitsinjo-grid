@@ -177,4 +177,83 @@ describe('toSceneModel palette & modified flag (PR #10 review)', () => {
     expect(factory.demandKw).toBeCloseTo(result.steps[10]!.sectors.industry!.demandKw);
     expect(factory.status).not.toBe('disconnected');
   });
+
+  describe('controller scene model (PL-T5)', () => {
+    it('initializes controller in normal mode when result is null', () => {
+      const model = toSceneModel({ input: scenarios.baseline.input, result: null, timeIndex: 12 });
+      expect(model.controller).toBeDefined();
+      expect(model.controller.mode).toBe('normal');
+      for (const id of SECTOR_IDS) {
+        expect(model.controller.feeders[id].mode).toBe('off');
+        expect(model.controller.feeders[id].breaker).toBe('open');
+        expect(model.controller.feeders[id].intensity).toBe(0);
+      }
+    });
+
+    it('sets controller mode to normal at noon with full generation and breakers closed', () => {
+      const result = simulate(scenarios.baseline.input, 'proportional');
+      const model = toSceneModel({ input: scenarios.baseline.input, result, timeIndex: 12 });
+      expect(model.controller.mode).toBe('normal');
+      // Connected sectors with demand are closed and have intensity > 0
+      expect(model.controller.feeders.health.breaker).toBe('closed');
+      expect(model.controller.feeders.health.intensity).toBeGreaterThan(0);
+      expect(model.controller.feeders.health.intensity).toBeLessThanOrEqual(1);
+      // Disconnected sector remains open with 0 intensity
+      expect(model.controller.feeders.industry.breaker).toBe('open');
+      expect(model.controller.feeders.industry.intensity).toBe(0);
+    });
+
+    it('sets controller mode to rationing when some sectors are constrained', () => {
+      const stressInput = scenarios.essential_stress.input;
+      const result = simulate(stressInput, 'proportional');
+      // An hour outside any lifeline shortfall where the engine rations a sector.
+      const inShortfall = (t: number) =>
+        result.warnings.some(
+          (w) => w.code === 'LIFELINE_SHORTFALL' && t >= w.fromHour && t <= w.toHour
+        );
+      const deficitStepIndex = result.steps.findIndex(
+        (s) => !inShortfall(s.t) && Object.values(s.sectors).some((sec) => sec.mode === 'limited')
+      );
+      expect(deficitStepIndex).toBeGreaterThanOrEqual(0);
+      const model = toSceneModel({ input: stressInput, result, timeIndex: deficitStepIndex });
+      expect(model.controller.mode).toBe('rationing');
+    });
+
+    it('sets controller mode to lifeline_only in emergency or survie-seule step', () => {
+      // Create a scenario with severe solar drop and tiny battery to force emergency / lifeline shortfall
+      const emergencyInput = applyPatch(scenarios.essential_stress.input, {
+        solarDropPct: 90,
+        dropStartHour: 0,
+        dropDurationH: 24,
+        batteryCapacityKwh: 5,
+        minSocPct: 20,
+        initialSocPct: 21,
+      });
+      const result = simulate(emergencyInput, 'essential_first');
+      const shortfallStep = result.steps.findIndex(
+        (s) =>
+          result.warnings.some(
+            (w) => w.code === 'LIFELINE_SHORTFALL' && s.t >= w.fromHour && s.t <= w.toHour
+          ) ||
+          (s.unservedKw > 0 &&
+            Object.values(s.sectors).every(
+              (sec) => sec.demandKw === 0 || sec.mode === 'lifeline' || sec.mode === 'off'
+            ))
+      );
+      expect(shortfallStep).toBeGreaterThanOrEqual(0);
+
+      const model = toSceneModel({
+        input: emergencyInput,
+        result,
+        timeIndex: shortfallStep,
+      });
+
+      expect(model.controller.mode).toBe('lifeline_only');
+      // In emergency, health and water get lifeline power, breaker is limited
+      const healthFeeder = model.controller.feeders.health;
+      if (healthFeeder.mode === 'lifeline') {
+        expect(healthFeeder.breaker).toBe('limited');
+      }
+    });
+  });
 });

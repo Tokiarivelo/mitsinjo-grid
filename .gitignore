@@ -45,6 +45,10 @@ logs/
 .claude/settings.local.json
 CLAUDE.local.md
 .claude/worktrees/
+.agents/
+skills-lock.json
+.claude/skills/3d-web-experience
+**/.tmp*
 
 # ── Design scratch (exports in design/stitch/ ARE committed) ──
 design/scratch/

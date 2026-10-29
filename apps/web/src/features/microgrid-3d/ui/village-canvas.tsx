@@ -12,6 +12,7 @@ import { useReducedMotion } from '../hooks/use-reduced-motion';
 import { usePerfFlag } from '../hooks/use-perf-flag';
 import { useInView } from '../hooks/use-in-view';
 import { useContextLoss } from '../hooks/use-context-loss';
+import { useFeederLabels } from '../hooks/use-feeder-labels';
 import { useSceneQuality, type SceneQuality } from '../hooks/use-scene-quality';
 import { isSoftwareRenderer } from '../utils/webgl';
 import { createSceneStats, sampleSceneStats, type SceneStatsSample } from '../utils/scene-stats';
@@ -22,6 +23,8 @@ import { SceneStatsProbe } from './scene-stats-probe';
 import { VillageTerrain } from './terrain';
 import { SolarArray } from './solar-array';
 import { BatteryUnit } from './battery-unit';
+import { DispatchControllerUnit } from './dispatch-controller-unit';
+import { FeederTags } from './feeder-tags';
 import { DistributionLines } from './distribution-lines';
 import { VillageBuildings } from './buildings';
 import { CameraController } from './camera-controller';
@@ -43,6 +46,8 @@ export interface VillageCanvasProps {
   selectedSector: SectorId | null;
   onSelectSector: (sector: SectorId | null) => void;
   cameraPreset?: CameraPreset;
+  /** Select or focus on a camera preset (e.g. clicking the EMS controller). */
+  onSelectPreset?: (preset: CameraPreset) => void;
   /** Bump to re-apply the current preset (reset camera after the user orbits). */
   cameraResetKey?: number;
   /** Render tier override. Default: the shared tier from `useSceneQuality` (toggle + auto-downgrade). */
@@ -55,6 +60,7 @@ export function VillageCanvas({
   selectedSector,
   onSelectSector,
   cameraPreset = 'village',
+  onSelectPreset,
   cameraResetKey = 0,
   quality: qualityOverride,
   className,
@@ -68,6 +74,7 @@ export function VillageCanvas({
   const tPriorities = useTranslations('priorities');
   const tSim = useTranslations('features.simulation');
   const tDiagram = useTranslations('features.gridDiagram');
+  const feeders = useFeederLabels(model);
 
   const reducedMotion = useReducedMotion();
   // A modified scenario shows the last result frozen: no flow animation.
@@ -246,6 +253,26 @@ export function VillageCanvas({
           nameLabel={tSim('bessBattery')}
           htmlPortal={htmlPortal}
         />
+        <DispatchControllerUnit
+          model={model.controller}
+          tones={feeders.tones}
+          totalServedKw={model.lines.batteryToBus.flowKw}
+          modeLabel={tDiagram(`controller.mode.${model.controller.mode}`)}
+          feederTitles={feeders.titles}
+          hasResult={model.hasResult}
+          onFocus={() => onSelectPreset?.('controller')}
+          nameLabel={tDiagram('controller.shortTitle')}
+          htmlPortal={htmlPortal}
+        />
+        {model.hasResult && (
+          <FeederTags
+            lines={model.lines.busToSectors}
+            buildings={model.buildings}
+            tones={feeders.tones}
+            titles={feeders.titles}
+            htmlPortal={htmlPortal}
+          />
+        )}
         {perfEnabled && <SceneStatsProbe stats={stats} />}
         <DistributionLines
           lines={model.lines}

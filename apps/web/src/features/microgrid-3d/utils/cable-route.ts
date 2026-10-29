@@ -52,3 +52,13 @@ export function routeCable(
   }
   return { poles, points };
 }
+
+/** Polyline point at fraction `t` (0 = start, 1 = end) of a routed cable, by vertex index. */
+export function pointAlongCable(
+  points: readonly [number, number, number][],
+  t: number
+): [number, number, number] {
+  if (points.length === 0) return [0, 0, 0];
+  const i = Math.round(Math.max(0, Math.min(1, t)) * (points.length - 1));
+  return points[i]!;
+}

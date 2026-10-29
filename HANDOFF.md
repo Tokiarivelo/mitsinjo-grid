@@ -1,37 +1,39 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-29 · **By:** Claude Code · **Branch:** `perf/scene-3d-render-loop` (uncommitted: gpg signing fails)
+**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/lifeline-dispatch-controller` · **PR:** [#27](https://github.com/Tokiarivelo/mitsinjo-grid/pull/27)
 
 ## State
 
-- 3D perf: ambient animation capped at 30 fps (`useAmbientFrame`), loop paused off-screen, shadow map baked
-  (`ShadowBake`), HDRI 512 (`sunset_512.hdr`). High steady frame 294 → ~206–252 draw calls.
-- PW (WebGL context leak, white flash) ✅: one cached probe, 2 contexts after playback, context-loss recovery.
-- Low-tier budget: houses merged (`utils/house-geometry`), low vegetation 520 trees → 129 calls / 117 k tris.
-- PS (sector socle) ✅: `SECTOR_IDS`, `loadMultiplier`, `InputPatch.sectorLoads`, `industry` sector (small
-  factory, disconnected by default), `SectorLoadPanel` on `/simulation` (Buildings tab), copilot patch prop.
-- Engine 0.3.0, 173 tests; web 399 tests; i18n parity OK; `make scene-audit` low ✓, high /simulation ✓.
-  Under heavy load some timing tests and the high /overview audit time out; they pass alone.
+- Plan `docs/tasks/PL-lifeline-dispatch.md`: **Phase 2 completed** (PL-T5…T8 done).
+- PL-T5: `toSceneModel` adds `controller: { mode, feeders }` with per-sector `intensity`, `breaker: 'closed' | 'limited' | 'open'`.
+- PL-T6: Village plan & circuit diagram (`grid-diagram.tsx`, `diagram-layout.ts`): new « EMS Dispatch » block + IEC breaker/limiter symbol with tooltip. Zero overlaps and crossings.
+- PL-T7: 3D technical shelter (`DispatchControllerUnit`) at `BUS_POSITION = [0, 0, 1]` with emissive status screen, breaker LEDs, interactive focus click, and camera preset `controller`.
+- PL-T8: Docs (`contracts.md`, `3d-scene.md`, `stitch-map.md`), 100% i18n parity in EN/FR/MG (`check-i18n` green).
+- Fluid 24h timeline scrubbing: continuous phase accumulation in `ElectronFlow` & `FlowWire` (eliminating resets/jumping on speed/hour change), smooth progress fill & `tabular-nums` in `TimelineScrubber`, 500ms playback ticker.
+- Tests: `make typecheck` green, `make test-engine` green, web unit tests green.
+
+- EMS feeders (follow-up, uncommitted): 3D badge moved in front of the shelter (no longer hides the battery);
+  sector cables leave from 6 roof risers (`feederExitPosition`); kW tag per cable (`ui/feeder-tags.tsx`);
+  share bar (`ui/dispatch-share-bar.tsx`) in the 3D badge + 2D EMS cards; topology hub → EMS → bus; circuit
+  EMS switchboard frame + kW tag per feeder. Legacy hub mast removed from `terrain.tsx`. Scenarios S41–S47.
 
 ## Next task
 
-- Commit (proposed split): `perf(3d)` render loop · `fix(3d)` PW context leak · `perf(3d)` low-tier budget ·
-  `feat(engine,web)` sector socle + factory + live load. Needs gpg fixed or user OK to commit unsigned.
-- Then PL phase 2/3 (`docs/tasks/PL-lifeline-dispatch.md`).
+- Next phase of PL: Phase 3 — Éclairage selon l'intensité dans toutes les vues (PL-T9…T13).
 
 ## Decisions taken
 
-- `loadMultiplier 0` = not connected: hidden from overview, strategy cards, coverage, metrics bars; still
-  listed in the Buildings tab so it can be connected. Value 1 is stored as absent (hash unchanged).
-- Factory placed north-east behind the clinic `[11, 0, -8.5]` (visible in the default Village camera).
-- MG translations of `sectorLoad.*` and `industry` need a native-speaker check.
-- Adding a sector: checklist in `docs/engine-spec.md` § 6 (exhaustive `Record<SectorId,…>` fail typecheck).
+- Feeder colour = `feederTone()` (`utils/feeder-tone.ts`), shared by the 3D view and both 2D views; no demand → neutral grey.
+
+- `ControllerMode` derived purely from engine `SectorStep.mode` and `LIFELINE_SHORTFALL` warning (normal, rationing, lifeline_only).
+- Technical shelter geometry merged into 1 mesh via `mergeParts`, keeping draw calls well below low/high budgets.
+- Breaker state `limited` activates IEC limiter symbol (notch + circle) on feeder in single-line circuit.
 
 ## Files touched this session
 
-- Engine: `schemas/{common,input}.ts`, `model/{demand,sectors,index}.ts`, `patch.ts`, `constants.ts`,
-  `metrics/calculate.ts`, `scenarios/baseline.ts`, tests (`sector-load.test.ts` …).
-- Web: `features/microgrid-3d/**` (render loop, webgl, context loss, house geometry, factory, layouts),
-  `features/simulation/{hooks/use-sector-loads,ui/sector-load-panel,ui/simulation-page}`, overview,
-  strategy-lab, charts, copilot tools, messages en/fr/mg, `scripts/scene-audit.mjs`, `public/3d`.
-- Docs: contracts, engine-spec, copilot, performance, design/3d-scene, tasks (PW, PS, README), README, three rule.
+- EMS feeders: `microgrid-3d/{types.ts,utils/{to-scene-model,feeder-tone,cable-route,diagram-layout,scene-palette}.ts,ui/{dispatch-share-bar,feeder-tags,dispatch-controller-unit,village-canvas,grid-diagram,terrain,camera-controller}.tsx,hooks/use-feeder-labels.ts}` + tests, messages (removed `emsController`), docs
+
+- Web: `apps/web/src/features/microgrid-3d/{types.ts,index.tsx,ui/grid-diagram.tsx,ui/dispatch-controller-unit.tsx,ui/village-canvas.tsx,ui/camera-controller.tsx,utils/diagram-layout.ts,utils/to-scene-model.ts}`, tests
+- Simulation: `apps/web/src/features/simulation/ui/village-viewport.tsx`
+- Messages: `apps/web/src/messages/{en,fr,mg}.json`
+- Docs: `docs/contracts.md`, `docs/design/3d-scene.md`, `docs/design/stitch-map.md`, `docs/tasks/PL-lifeline-dispatch.md`, `docs/tasks/README.md`

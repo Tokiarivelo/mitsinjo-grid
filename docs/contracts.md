@@ -197,6 +197,29 @@ Store (`useSimulationStore`): `workflow` (default `[{ weather: 'sunny' }]` = pla
 
 3D `SceneModel.weather: WeatherId` (from `toSceneModel({ weather })`, default `sunny`): drives sky, clouds and rain only.
 
+### 3D and 2D SceneModel Controller (PL-T5)
+
+```ts
+type ControllerMode = 'normal' | 'rationing' | 'lifeline_only';
+type BreakerState = 'closed' | 'limited' | 'open';
+
+interface FeederSceneModel {
+  mode: SectorMode;
+  servedKw: number;
+  intensity: number; // 0..1 relative to peak served kW of the sector
+  share: number; // 0..1 of the kW the controller dispatches this hour (bar segment width only)
+  breaker: BreakerState;
+}
+
+interface ControllerSceneModel {
+  mode: ControllerMode;
+  feeders: Record<SectorId, FeederSceneModel>;
+}
+```
+
+`SceneModel.controller: ControllerSceneModel` (pure display mapping from `toSceneModel`, shared across 3D digital twin and 2D single-line circuit / topology diagram). Camera preset `'controller'` frames the shelter at `BUS_POSITION`.
+Every sector cable starts at `feederExitPosition(id)` (one riser per feeder on the controller roof, ordered west → east by `FEEDER_EXIT_X`); the hub cable ends at `BUS_INLET_POSITION`. Display tone of a feeder = `feederTone(feeder, building)` (`utils/feeder-tone.ts`), shared by the 3D LEDs/risers/tags and both diagrams. `DiagramLayout` adds `feederTags` (kW tag box per feeder), `wires.controllerToBus` (topology: hub → EMS → bus) and `enclosure` (circuit: EMS switchboard around bus bar + breakers).
+
 ### Sensitivity sweep
 
 ```ts

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import type { LineFlowSceneModel } from '../types';
 import type { Pt } from '../utils/diagram-layout';
@@ -40,6 +40,74 @@ export function FlowWire({ points, line, state, colorClass, animate, glow }: Flo
   const reverse = line.direction === 'backward';
 
   const mid = useMemo(() => sampleArcPath(path, 0.5, [0, 0]), [path]);
+
+  // Persistent continuous phase ref so dots don't snap back to 0 when line.speed / period changes.
+  const phaseRef = useRef(0);
+  const lastTimeRef = useRef<number | null>(null);
+  const groupRef = useRef<SVGGElement>(null);
+  const periodRef = useRef(period);
+  const reverseRef = useRef(reverse);
+  const pathRef = useRef(path);
+
+  useEffect(() => {
+    periodRef.current = period;
+    reverseRef.current = reverse;
+    pathRef.current = path;
+  }, [period, reverse, path]);
+
+  // Pre-calculate initial positions for each dot
+  const initialPositions = useMemo(() => {
+    if (count === 0) return [];
+    return Array.from({ length: count }, (_, j) => {
+      const [x, y] = sampleArcPath(path, j / count, [0, 0]);
+      return [x, y] as [number, number];
+    });
+  }, [path, count]);
+
+  useEffect(() => {
+    if (!animate || count === 0) return;
+    if (typeof window === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
+    const group = groupRef.current;
+    if (!group) return;
+    const circles = group.querySelectorAll('circle');
+    if (!circles.length) return;
+
+    let animId: number;
+    const scratch = [0, 0];
+
+    const step = (time: number) => {
+      if (lastTimeRef.current != null) {
+        const dt = Math.min((time - lastTimeRef.current) / 1000, 0.1);
+        const p = periodRef.current;
+        if (p > 0 && isFinite(p)) {
+          phaseRef.current = (phaseRef.current + dt / p) % 1;
+        }
+      }
+      lastTimeRef.current = time;
+
+      const base = phaseRef.current;
+      const rev = reverseRef.current;
+      const currentPath = pathRef.current;
+      const n = circles.length;
+
+      for (let j = 0; j < n; j++) {
+        const circle = circles[j];
+        if (!circle) continue;
+        const phase = base + j / n;
+        sampleArcPath(currentPath, rev ? -phase : phase, scratch);
+        circle.setAttribute('cx', scratch[0]!.toFixed(1));
+        circle.setAttribute('cy', scratch[1]!.toFixed(1));
+      }
+
+      animId = requestAnimationFrame(step);
+    };
+
+    animId = requestAnimationFrame(step);
+    return () => {
+      cancelAnimationFrame(animId);
+      lastTimeRef.current = null;
+    };
+  }, [animate, count]);
 
   return (
     <g
@@ -88,26 +156,10 @@ export function FlowWire({ points, line, state, colorClass, animate, glow }: Flo
       )}
 
       {count > 0 && (
-        <g fill="currentColor" filter={glow} data-electrons={count}>
-          {Array.from({ length: count }, (_, j) => {
-            if (!animate) {
-              const [x, y] = sampleArcPath(path, j / count, [0, 0]);
-              return <circle key={j} cx={x} cy={y} r={1.7} />;
-            }
-            return (
-              <circle key={j} r={1.7}>
-                <animateMotion
-                  path={d}
-                  dur={`${period.toFixed(2)}s`}
-                  begin={`${(-(period * j) / count).toFixed(2)}s`}
-                  repeatCount="indefinite"
-                  keyPoints={reverse ? '1;0' : '0;1'}
-                  keyTimes="0;1"
-                  calcMode="linear"
-                />
-              </circle>
-            );
-          })}
+        <g ref={groupRef} fill="currentColor" filter={glow} data-electrons={count}>
+          {initialPositions.map(([x, y], j) => (
+            <circle key={j} cx={x} cy={y} r={1.7} />
+          ))}
         </g>
       )}
     </g>

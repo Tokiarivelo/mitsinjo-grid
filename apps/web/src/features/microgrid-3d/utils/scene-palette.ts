@@ -26,6 +26,14 @@ export const BATTERY_STATUS_HEX: Record<BatteryStatusColor, string> = {
   critical: TOKEN_HEX.criticalRed,
 };
 
+/** Tailwind border class per status, for HTML chips inside the scene and diagrams. */
+export const STATUS_BORDER_CLASS: Record<StatusColor, string> = {
+  'battery-green': 'border-battery-green/60',
+  'warning-amber': 'border-warning-amber/70',
+  'critical-red': 'border-critical-red/70',
+  idle: 'border-border',
+};
+
 /** Tailwind background class per status, for HTML badges inside the scene. */
 export const STATUS_BG_CLASS: Record<StatusColor, string> = {
   'battery-green': 'bg-battery-green',

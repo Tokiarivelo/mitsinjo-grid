@@ -12,6 +12,10 @@ export { useFullscreen } from './hooks/use-fullscreen';
 export { useSceneQuality, type SceneQuality } from './hooks/use-scene-quality';
 export { VillageScenePlaceholder };
 export { GridDiagram, type GridDiagramProps } from './ui/grid-diagram';
+export {
+  DispatchControllerUnit,
+  type DispatchControllerUnitProps,
+} from './ui/dispatch-controller-unit';
 export type { DiagramVariant } from './utils/diagram-layout';
 
 export const LazyVillageCanvas = dynamic(

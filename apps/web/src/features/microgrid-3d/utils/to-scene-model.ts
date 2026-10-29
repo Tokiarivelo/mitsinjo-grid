@@ -10,6 +10,10 @@ import type {
   BuildingSceneModel,
   BuildingStatus,
   BatteryStatusColor,
+  BreakerState,
+  ControllerMode,
+  ControllerSceneModel,
+  FeederSceneModel,
   LineFlowSceneModel,
   SceneModel,
   StatusColor,
@@ -28,6 +32,34 @@ export const SECTOR_POSITIONS: Record<SectorId, [number, number, number]> = {
 export const SOLAR_POSITION: [number, number, number] = [-10, 0, -8];
 export const BATTERY_POSITION: [number, number, number] = [0, 0, -2];
 export const BUS_POSITION: [number, number, number] = [0, 0, 1];
+
+/**
+ * Feeder departures on the EMS controller's roof gantry (x offset from BUS_POSITION),
+ * ordered by where each sector lies (west → east) so outgoing cables never cross.
+ * The breaker LEDs on the cabinet use the same order.
+ */
+export const FEEDER_EXIT_X: Record<SectorId, number> = {
+  water: -0.6,
+  households: -0.36,
+  school: -0.12,
+  market: 0.12,
+  health: 0.36,
+  industry: 0.6,
+};
+/** Gantry depth (z offset from BUS_POSITION), above the cabinet. */
+export const FEEDER_EXIT_Z = -0.2;
+
+/** World point where a sector's cable leaves the controller. */
+export function feederExitPosition(id: SectorId): [number, number, number] {
+  return [BUS_POSITION[0] + FEEDER_EXIT_X[id], 0, BUS_POSITION[2] + FEEDER_EXIT_Z];
+}
+
+/** Incoming terminal on the controller's back wall (cable from the battery hub). */
+export const BUS_INLET_POSITION: [number, number, number] = [
+  BUS_POSITION[0],
+  0,
+  BUS_POSITION[2] - 0.8,
+];
 
 /** SoC at or below this shows the battery as amber (visual threshold only). */
 export const BATTERY_WARNING_SOC_PCT = 30;
@@ -105,9 +137,29 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     statusColor: batteryColor,
   };
 
-  // 3. Buildings model (every engine sector)
+  // 3. Buildings & controller model (every engine sector)
   const buildings = {} as Record<SectorId, BuildingSceneModel>;
   const busToSectors = {} as Record<SectorId, LineFlowSceneModel>;
+  const feeders = {} as Record<SectorId, FeederSceneModel>;
+
+  // Daily peak served kW per sector from the engine result (P7-T1 / PL-T5: pure display divisor).
+  const maxServedBySector = {} as Record<SectorId, number>;
+  for (const sId of SECTOR_IDS) {
+    let maxKw = 0;
+    if (result) {
+      for (const st of result.steps) {
+        const sec = st.sectors[sId];
+        if (sec && sec.servedKw > maxKw) {
+          maxKw = sec.servedKw;
+        }
+      }
+    }
+    maxServedBySector[sId] = maxKw;
+  }
+  // Total the controller dispatches this hour (sum of sector feeders), for each feeder's share.
+  const dispatchedKw = step
+    ? SECTOR_IDS.reduce((sum, id) => sum + (step.sectors[id]?.servedKw ?? 0), 0)
+    : 0;
 
   for (const sectorId of SECTOR_IDS) {
     const sectorConfig = input.sectors.find((s) => s.id === sectorId);
@@ -159,10 +211,25 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
       loadMultiplier,
     };
 
+    // Feeder dispatch model (PL-T5)
+    const maxKw = maxServedBySector[sectorId] ?? 0;
+    const intensity = maxKw > 0 ? Math.min(1, Math.max(0, servedKw / maxKw)) : 0;
+    const mode = !connected ? 'off' : (sectorStep?.mode ?? 'off');
+    const breaker: BreakerState =
+      mode === 'lifeline' ? 'limited' : mode === 'full' || mode === 'limited' ? 'closed' : 'open';
+
+    feeders[sectorId] = {
+      mode,
+      servedKw,
+      intensity,
+      share: dispatchedKw > 0.05 ? servedKw / dispatchedKw : 0,
+      breaker,
+    };
+
     // Bus to building transmission line
     const activeLine = servedKw > 0.05;
     busToSectors[sectorId] = {
-      from: BUS_POSITION,
+      from: feederExitPosition(sectorId),
       to: pos,
       active: activeLine,
       flowKw: servedKw,
@@ -171,6 +238,40 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
       color: STATUS_HEX[statusColor],
     };
   }
+
+  // Controller mode derived from engine SectorStep.mode & warnings (PL-T5)
+  let controllerMode: ControllerMode = 'normal';
+  if (result && step) {
+    const activeFeeders = SECTOR_IDS.map((id) => ({
+      id,
+      feeder: feeders[id]!,
+      demandKw: step.sectors[id]?.demandKw ?? 0,
+      connected: buildings[id].connected,
+    })).filter((f) => f.connected && f.demandKw > 0.05);
+
+    const hasLifelineShortfall = result.warnings.some(
+      (w) => w.code === 'LIFELINE_SHORTFALL' && validTime >= w.fromHour && validTime <= w.toHour
+    );
+
+    const allFull =
+      activeFeeders.length === 0 || activeFeeders.every((f) => f.feeder.mode === 'full');
+    const allLifelineOrOff =
+      activeFeeders.length > 0 &&
+      activeFeeders.every((f) => f.feeder.mode === 'lifeline' || f.feeder.mode === 'off');
+
+    if (allFull) {
+      controllerMode = 'normal';
+    } else if (hasLifelineShortfall || allLifelineOrOff) {
+      controllerMode = 'lifeline_only';
+    } else {
+      controllerMode = 'rationing';
+    }
+  }
+
+  const controller: ControllerSceneModel = {
+    mode: controllerMode,
+    feeders,
+  };
 
   // 4. Intersite lines
   const solarActive = currentSolarKw > 0.05;
@@ -190,7 +291,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
   const feederActive = feederKw > 0.05;
   const batteryToBus: LineFlowSceneModel = {
     from: BATTERY_POSITION,
-    to: BUS_POSITION,
+    to: BUS_INLET_POSITION,
     active: feederActive,
     flowKw: feederKw,
     direction: feederActive ? 'forward' : 'idle',
@@ -210,6 +311,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     weather,
     solar,
     battery,
+    controller,
     buildings,
     lines: {
       solarToBattery,
