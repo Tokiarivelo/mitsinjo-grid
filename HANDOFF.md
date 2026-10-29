@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/strategy-rule-params` · **PR:** [open](#)
+**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/strategy-rule-params` · **PR:** [#23](https://github.com/Tokiarivelo/mitsinjo-grid/pull/23)
 
 ## State
 
