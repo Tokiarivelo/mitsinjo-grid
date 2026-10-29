@@ -1,15 +1,19 @@
 import { z } from 'zod';
 
-export const SectorIdSchema = z.enum(['health', 'water', 'school', 'households', 'market']);
-export type SectorId = z.infer<typeof SectorIdSchema>;
-
-export const SECTOR_IDS: readonly SectorId[] = [
+/**
+ * Every consumer sector, in display order. This list is the single source: add a sector
+ * here, then follow docs/engine-spec.md § "Adding a consumer sector".
+ */
+export const SECTOR_IDS = [
   'health',
   'water',
   'school',
   'households',
   'market',
+  'industry',
 ] as const;
+export const SectorIdSchema = z.enum(SECTOR_IDS);
+export type SectorId = z.infer<typeof SectorIdSchema>;
 
 export const PrioritySchema = z.enum(['critical', 'high', 'medium', 'low']);
 export type Priority = z.infer<typeof PrioritySchema>;

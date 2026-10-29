@@ -1,5 +1,37 @@
-import { describe, it, expect } from 'vitest';
-import { isSoftwareRenderer, isSoftwareRendererName, isWebGLAvailable } from '../webgl';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import {
+  getWebGLSupport,
+  isSoftwareRenderer,
+  isSoftwareRendererName,
+  isWebGLAvailable,
+  probeWebGL,
+  resetWebGLSupportForTests,
+} from '../webgl';
+
+/** Fake canvas whose WebGL context reports `renderer` and records context loss. */
+function fakeCanvas(renderer: string | null) {
+  const loseContext = vi.fn();
+  const getContext = vi.fn(() =>
+    renderer === null
+      ? null
+      : {
+          RENDERER: 0x1f01,
+          getExtension: (name: string) =>
+            name === 'WEBGL_lose_context'
+              ? { loseContext }
+              : name === 'WEBGL_debug_renderer_info'
+                ? { UNMASKED_RENDERER_WEBGL: 0x9246 }
+                : null,
+          getParameter: () => renderer,
+        }
+  );
+  return { canvas: { getContext } as unknown as HTMLCanvasElement, getContext, loseContext };
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  resetWebGLSupportForTests();
+});
 
 describe('isWebGLAvailable (P7-T5)', () => {
   it('returns a boolean value without throwing in jsdom environment', () => {
@@ -26,5 +58,43 @@ describe('software renderer detection', () => {
 
   it('never throws without a WebGL context (jsdom)', () => {
     expect(isSoftwareRenderer()).toBe(false);
+  });
+});
+
+describe('probeWebGL', () => {
+  it('opens one context, reads the renderer and releases the context', () => {
+    vi.stubGlobal('WebGLRenderingContext', function () {});
+    const f = fakeCanvas('ANGLE (NVIDIA GeForce RTX 3060)');
+    expect(probeWebGL(() => f.canvas)).toEqual({ available: true, software: false });
+    expect(f.getContext).toHaveBeenCalledTimes(1);
+    expect(f.loseContext).toHaveBeenCalledTimes(1);
+  });
+
+  it('flags software GL', () => {
+    vi.stubGlobal('WebGLRenderingContext', function () {});
+    const f = fakeCanvas('SwiftShader Device');
+    expect(probeWebGL(() => f.canvas)).toEqual({ available: true, software: true });
+  });
+
+  it('reports no WebGL when no context can be created', () => {
+    vi.stubGlobal('WebGLRenderingContext', function () {});
+    const f = fakeCanvas(null);
+    expect(probeWebGL(() => f.canvas)).toEqual({ available: false, software: false });
+  });
+});
+
+describe('getWebGLSupport (cached)', () => {
+  it('creates at most one context however often it is read (PW regression)', () => {
+    vi.stubGlobal('WebGLRenderingContext', function () {});
+    const f = fakeCanvas('Apple M2');
+    const create = vi.spyOn(document, 'createElement').mockReturnValue(f.canvas);
+    // A re-render per timeline step used to open a new context each time.
+    for (let i = 0; i < 50; i++) {
+      isWebGLAvailable();
+      isSoftwareRenderer();
+    }
+    expect(f.getContext).toHaveBeenCalledTimes(1);
+    expect(getWebGLSupport()).toBe(getWebGLSupport());
+    create.mockRestore();
   });
 });

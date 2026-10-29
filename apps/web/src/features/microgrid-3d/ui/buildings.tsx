@@ -3,8 +3,8 @@
 import { type ReactNode, type RefObject, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
-import { HeartPulse, Droplet, GraduationCap, Home, Store } from 'lucide-react';
-import type { Priority, SectorId } from '@mitsinjo/engine';
+import { SECTOR_IDS, type Priority, type SectorId } from '@mitsinjo/engine';
+import { SectorIcon } from '@/components/ui/sector-icon';
 import { cn } from '@/lib/utils';
 import { fmtPct } from '@/lib/format';
 import type { BuildingSceneModel } from '../types';
@@ -22,6 +22,8 @@ export interface VillageBuildingsProps {
   onSelectSector: (sector: SectorId | null) => void;
   sectorNames: Record<SectorId, string>;
   priorityLabels: Record<Priority, string>;
+  /** Badge text for a sector at load 0 ("Not connected"). */
+  disconnectedLabel: string;
   /** Stable DOM parent for labels (see VillageCanvas). */
   htmlPortal?: RefObject<HTMLElement | null>;
   /** Time-of-day lamp factor from the sky palette (dusk/night → 1, afternoon → low). */
@@ -40,6 +42,8 @@ interface BuildingFrameProps extends FrameLayout {
   onSelect: () => void;
   sectorName: string;
   priorityLabel: string;
+  /** Shown instead of the coverage when the sector's load is 0. */
+  disconnectedLabel: string;
   htmlPortal?: RefObject<HTMLElement | null>;
   children: ReactNode;
 }
@@ -47,35 +51,15 @@ interface BuildingFrameProps extends FrameLayout {
 const SELECTED_RING_HEX = TOKEN_HEX.energyCyan;
 const HOVER_RING_HEX = '#94a3b8';
 
-function getSectorIcon(id: SectorId) {
-  switch (id) {
-    case 'health':
-      return <HeartPulse className="w-3.5 h-3.5 text-critical-red" aria-hidden="true" />;
-    case 'water':
-      return <Droplet className="w-3.5 h-3.5 text-energy-cyan" aria-hidden="true" />;
-    case 'school':
-      return <GraduationCap className="w-3.5 h-3.5 text-warning-amber" aria-hidden="true" />;
-    case 'households':
-      return <Home className="w-3.5 h-3.5 text-solar-amber" aria-hidden="true" />;
-    case 'market':
-      return <Store className="w-3.5 h-3.5 text-solar-amber" aria-hidden="true" />;
-  }
-}
-
-function getSectorIconBg(id: SectorId) {
-  switch (id) {
-    case 'health':
-      return 'bg-critical-red/20 border-critical-red/40';
-    case 'water':
-      return 'bg-energy-cyan/20 border-energy-cyan/40';
-    case 'school':
-      return 'bg-warning-amber/20 border-warning-amber/40';
-    case 'households':
-      return 'bg-solar-amber/20 border-solar-amber/40';
-    case 'market':
-      return 'bg-solar-amber/20 border-solar-amber/40';
-  }
-}
+/** Badge disc behind the sector glyph (same hue as `SECTOR_TEXT_CLASS`). */
+const SECTOR_ICON_BG: Record<SectorId, string> = {
+  health: 'bg-critical-red/20 border-critical-red/40',
+  water: 'bg-energy-cyan/20 border-energy-cyan/40',
+  school: 'bg-warning-amber/20 border-warning-amber/40',
+  households: 'bg-surface-hover border-border-strong',
+  market: 'bg-solar-amber/20 border-solar-amber/40',
+  industry: 'bg-network-blue/20 border-network-blue/40',
+};
 
 function BuildingFrame({
   id,
@@ -84,6 +68,7 @@ function BuildingFrame({
   onSelect,
   sectorName,
   priorityLabel,
+  disconnectedLabel,
   ringInner,
   ledY,
   htmlPortal,
@@ -151,10 +136,10 @@ function BuildingFrame({
           <div
             className={cn(
               'w-5 h-5 rounded-full flex items-center justify-center shrink-0 border',
-              getSectorIconBg(id)
+              SECTOR_ICON_BG[id]
             )}
           >
-            {getSectorIcon(id)}
+            <SectorIcon sector={id} className="w-3.5 h-3.5" />
           </div>
           <div className="flex flex-col text-left leading-tight">
             <span className="font-semibold text-text-primary text-[11px]">{sectorName}</span>
@@ -170,7 +155,9 @@ function BuildingFrame({
                   <span>{priorityLabel}</span>
                 )}
               </span>
-              <span className="text-text-secondary">· {fmtPct(coveragePct, 0)}</span>
+              <span className="text-text-secondary">
+                · {model.connected ? fmtPct(coveragePct, 0) : disconnectedLabel}
+              </span>
             </div>
           </div>
         </button>
@@ -179,20 +166,19 @@ function BuildingFrame({
   );
 }
 
-const BUILDING_ORDER: SectorId[] = ['health', 'water', 'school', 'households', 'market'];
-
 export function VillageBuildings({
   buildings,
   selectedSector,
   onSelectSector,
   sectorNames,
   priorityLabels,
+  disconnectedLabel,
   htmlPortal,
   lampGlow = 1,
 }: VillageBuildingsProps) {
   return (
     <group name="village-buildings">
-      {BUILDING_ORDER.map((id) => {
+      {SECTOR_IDS.map((id) => {
         const model = buildings[id];
         const isSelected = selectedSector === id;
         return (
@@ -204,6 +190,7 @@ export function VillageBuildings({
             onSelect={() => onSelectSector(isSelected ? null : id)}
             sectorName={sectorNames[id]}
             priorityLabel={priorityLabels[model.priority]}
+            disconnectedLabel={disconnectedLabel}
             htmlPortal={htmlPortal}
             {...BODY_LAYOUT[id]}
           >

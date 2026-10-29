@@ -245,6 +245,7 @@ make deploy        # Manual production deployment from clean origin/main
 
 - **PX Anomaly Signal**: optional per-sector `meterReadings`; a persistent gap > 25 % vs the expected profile for ≥ 2 h raises `ANOMALY_TO_VERIFY` (a signal to verify, never a fraud or fault conclusion). Synthetic `meter_anomaly` scenario.
 - **Weather Workflow**: chain up to 7 days with weather pills (sunny, partly cloudy, cloudy, rainy, storm); each day scales solar and starts from the previous day's battery charge; day strip and playback follow the days; the 3D village shows each day's sky (overcast, clouds, rain, storm lightning) and a weather change re-runs the engine at once.
+- **Live Sector Load & Small Factory**: on `/simulation` (Buildings tab) a slider per sector scales its load ×0–3 and a button connects or disconnects it; each change re-runs the engine at once (3D, metrics, charts follow, even during playback). A small factory sector ships disconnected by default; adding another consumer sector follows the checklist in `docs/engine-spec.md`.
 - **PY Sector Control Proposals**: hourly `sectorCaps` and priority overrides the copilot can only _propose_; the user confirms, the engine recomputes. No real equipment control.
 
 ### Future Roadmap

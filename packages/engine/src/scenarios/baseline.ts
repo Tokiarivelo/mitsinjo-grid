@@ -35,6 +35,11 @@ export const MARKET_PROFILE_BASELINE: readonly number[] = [
   0, 0, 0, 0, 0, 0, 0, 0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 0, 0, 0, 0, 0, 0,
 ];
 
+/** Small factory (rice mill / workshop): daytime shifts, a heavy flexible load. */
+export const INDUSTRY_PROFILE_BASELINE: readonly number[] = [
+  0, 0, 0, 0, 0, 0, 0, 4.0, 8.0, 8.0, 8.0, 8.0, 6.0, 8.0, 8.0, 8.0, 8.0, 4.0, 0, 0, 0, 0, 0, 0,
+];
+
 export function createBaselineInput(): SimulationInput {
   return {
     scenarioId: 'baseline',
@@ -93,6 +98,16 @@ export function createBaselineInput(): SimulationInput {
         criticalShare: 0.1,
         profileKw: [...MARKET_PROFILE_BASELINE],
         flexible: false,
+      },
+      {
+        id: 'industry',
+        label: 'Small Factory',
+        priority: 'low',
+        criticalShare: 0,
+        profileKw: [...INDUSTRY_PROFILE_BASELINE],
+        flexible: true,
+        // Not connected by default: baseline results stay unchanged; connect it live (load > 0).
+        loadMultiplier: 0,
       },
     ],
     events: [],

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2, GitCompare, Sparkles } from 'lucide-react';
-import type { StrategyId } from '@mitsinjo/engine';
+import { connectedSectors, type StrategyId } from '@mitsinjo/engine';
 import {
   selectActiveStrategy,
   selectComparison,
@@ -50,6 +50,7 @@ export function StrategyLabPage() {
 
   const scenarioId = useSimulationStore(selectScenarioId);
   const input = useSimulationStore(selectInput);
+  const activeSectors = useMemo(() => connectedSectors(input), [input]);
   const isRunning = useSimulationStore(selectIsRunning);
   const hasResults = useSimulationStore(selectHasResults);
   const comparison = useSimulationStore(selectComparison);
@@ -180,6 +181,7 @@ export function StrategyLabPage() {
               strategyId={id}
               name={tStrategies(id)}
               rule={tStrategies(ruleKey)}
+              sectors={activeSectors}
               result={comparison[id]}
               isActive={activeStrategy === id}
               bestMetrics={isIncluded ? bestMetricsFor(summary, id) : undefined}

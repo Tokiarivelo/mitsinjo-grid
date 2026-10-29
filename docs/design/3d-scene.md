@@ -5,7 +5,7 @@ Reference visuals: `design/reference/Mitsinjo Grid_ Village at Sunset.png` (mast
 
 ## Composition
 
-- Solar array, dual-container BESS battery unit, distribution poles + crossarms + lines, clinic pavilion with emergency vehicle, water pumping station + water reservoir pond, school with rooftop solar, clustered rural houses, communal market with striped canopies, Malagasy red-clay laterite paths, banana plants, acacia trees, rock boulders, horizon sunset ridges.
+- Solar array, dual-container BESS battery unit, distribution poles + crossarms + lines, clinic pavilion with emergency vehicle, water pumping station + water reservoir pond, school with rooftop solar, clustered rural houses, communal market with striped canopies, small factory (hall + chimney + silo, north-east behind the clinic), Malagasy red-clay laterite paths, banana plants, acacia trees, rock boulders, horizon sunset ridges.
 - Canonical layout (see `design/reference/Mitsinjo Grid_ Village at Sunset.png`):
   - Solar Array: top-left (multi-row ground-mounted PV field, galvanized steel racking + inverter cabinet + telemetry badge)
   - Central Battery BESS: center (dual ISO storage container units + lightning insignia + twin rooftop HVAC pods + SoC LED gauge + security fence + telemetry badge)
@@ -15,7 +15,7 @@ Reference visuals: `design/reference/Mitsinjo Grid_ Village at Sunset.png` (mast
   - Village Houses: bottom-left (cluster of 5 authentic rural houses with corrugated tin and thatch roofs + warm glowing windows + verandas)
   - Communal Market: bottom-center/right (open stalls with striped red/yellow/blue canvas awnings + produce crates + festive evening string lights + pickup truck)
 - Madagascar-inspired, NOT a surveyed real location (label as simulated).
-- Sector mapping: health=Clinic, water=Water pump, school=School, households=Houses, market=Market.
+- Sector mapping: health=Clinic, water=Water pump, school=School, households=Houses, market=Market, industry=Small factory. A sector with `loadMultiplier 0` renders `disconnected`: dim, windows off, badge "Not connected", no coverage.
 
 ## Style
 
@@ -31,7 +31,7 @@ Reference visuals: `design/reference/Mitsinjo Grid_ Village at Sunset.png` (mast
 - Toolbar toggle `Quality: High | Low` (`useSceneQuality`, persisted). `high` (default) adds HDRI light, real-time sun shadows, ambient occlusion, bloom and a warm ACES grade; `low` keeps the same composition with lighter forest and a baked contact shadow. A slow device is auto-lowered once (tooltip says so) unless the user chose. Budgets: `docs/performance.md`.
 - Fullscreen button (`useFullscreen`) expands the 3D card edge-to-edge; it then shows a stats strip (SIMULATED DATA, solar output, battery SoC, village demand for the selected hour, all engine values).
 - `VillageCanvas` props: `model`, `selectedSector`, `onSelectSector`, `cameraPreset`, `cameraResetKey` (`selectedSector` also drives camera focus), optional `quality` override (default = shared tier).
-- Assets (`apps/web/public/3d`, CC0, credits in `CREDITS.md`): `nature.glb` (Kenney palms, bushes, rocks), `ambulance|truck|van.glb` (Kenney), `sunset_1k.hdr` (Poly Haven). Broadleaf trees and all buildings are procedural.
+- Assets (`apps/web/public/3d`, CC0, credits in `CREDITS.md`): `nature.glb` (Kenney palms, bushes, rocks), `ambulance|truck|van.glb` (Kenney), `sunset_512.hdr` (Poly Haven, downscaled). Broadleaf trees and all buildings are procedural.
 
 ## Camera
 

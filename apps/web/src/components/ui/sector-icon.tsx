@@ -1,4 +1,12 @@
-import { HeartPulse, Home, School, ShoppingBag, Waves, type LucideIcon } from 'lucide-react';
+import {
+  Factory,
+  HeartPulse,
+  Home,
+  School,
+  ShoppingBag,
+  Waves,
+  type LucideIcon,
+} from 'lucide-react';
 import type { SectorId } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 
@@ -9,6 +17,7 @@ export const SECTOR_ICON: Record<SectorId, LucideIcon> = {
   school: School,
   households: Home,
   market: ShoppingBag,
+  industry: Factory,
 };
 
 export const SECTOR_TEXT_CLASS: Record<SectorId, string> = {
@@ -17,6 +26,7 @@ export const SECTOR_TEXT_CLASS: Record<SectorId, string> = {
   school: 'text-warning-amber',
   households: 'text-text-secondary',
   market: 'text-solar-amber',
+  industry: 'text-network-blue',
 };
 
 export interface SectorIconProps {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetSimulationStore, useSimulationStore } from '@/stores';
 import { SimulationPage } from '../index';
@@ -204,6 +204,18 @@ describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
     expect(useSimulationStore.getState().isPlaying).toBe(true);
     expect(useSimulationStore.getState().timeIndex).toBe(0);
   }, 15000);
+
+  it('lists only connected sectors in the metrics allocation bars (PS-T5)', () => {
+    render(<SimulationPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /controls/i }));
+    fireEvent.click(screen.getByRole('button', { name: /run simulation/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /metrics/i }));
+    // Small factory ships disconnected.
+    expect(screen.getAllByRole('progressbar')).toHaveLength(5);
+
+    act(() => useSimulationStore.getState().applyProposal({ sectorLoads: { industry: 1 } }));
+    expect(screen.getAllByRole('progressbar')).toHaveLength(6);
+  });
 
   it('runs simulation, transitions to complete, and populates metrics and step telemetry', () => {
     render(<SimulationPage />);

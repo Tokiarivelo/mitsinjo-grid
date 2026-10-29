@@ -37,7 +37,7 @@ unservedKw = demandKw − servedKw
 ## 2. Strategies, lifeline floors and sector capacity caps
 
 - **Lifeline survival floor (Pass 0, PL-T1/T2)** — baseline power guaranteed to connected sectors before strategy waterfall.
-  Default floors (`DEFAULT_LIFELINE_KW`): health 0.3 kW, water 0.2 kW, school 0.1 kW, households 0.4 kW, market 0.1 kW (Σ = 1.1 kW).
+  Default floors (`DEFAULT_LIFELINE_KW`): health 0.3 kW, water 0.2 kW, school 0.1 kW, households 0.4 kW, market 0.1 kW, industry 0 kW (Σ = 1.1 kW).
   Enabled by default (`strategyParams.lifeline.enabled !== false`).
   - **Normal mode** (`availableKw ≥ Σ planchers`): every sector receives `min(demand_s, lifeline_s)`. Remaining energy is passed to the selected strategy with demand reduced by the floor already served.
   - **Emergency mode** (`availableKw < Σ planchers`):
@@ -90,8 +90,9 @@ Warnings: merge consecutive hours into ranges. `CRITICAL_UNMET` (any critical sh
 | school (medium, 0.1)                 | 1.5 kW 07–16 → ~14 kWh/day; lifeline floor 0.1 kW                                                                |
 | households (medium, 0.2)             | 1 kW day, 6 kW 18–22, 1.5 kW night → ~50 kWh/day; lifeline floor 0.4 kW                                          |
 | market (low, 0.1)                    | 2 kW 08–18 → ~20 kWh/day; lifeline floor 0.1 kW                                                                  |
+| industry (low, 0, flexible)          | small factory ≈ 8 kW in working hours; **not connected by default** (`loadMultiplier: 0`), no lifeline floor     |
 
-Total ≈ 128 kWh/day. Tune so that: `baseline` → 0 unserved; `cloudy_afternoon`
+Total ≈ 128 kWh/day (factory not connected). Tune so that: `baseline` → 0 unserved; `cloudy_afternoon`
 (solar ×0.6 for 2 h at 13–15 h, plus low initial SoC 35 %) → visible evening deficit where
 `proportional` leaves `criticalUnservedKwh > 0` and `essential_first` = 0. **Write that as a test.**
 
@@ -105,6 +106,21 @@ Total ≈ 128 kWh/day. Tune so that: `baseline` → 0 unserved; `cloudy_afternoo
 | battery_constraint | capacity 60 kWh, initialSoc 30 %                              |
 | essential_stress   | solar ×0.4 for 4 h at 11 h + initialSoc 25 %                  |
 | meter_anomaly      | market meter readings 3.2 kW at 11–15 h (expected 2.0 kW)     |
+
+### Live sector load (`loadMultiplier`)
+
+Demand of a sector at hour t = `profileKw[t] × (loadMultiplier ?? 1) × demandMultiplier × active spikes`
+(meter readings replace the profile). `0` = not connected: zero demand, hidden from overview, strategy cards and
+coverage lists (`connectedSectors`). Set via `InputPatch.sectorLoads` (UI slider on `/simulation`, copilot patch).
+
+### Adding a consumer sector (checklist)
+
+1. `schemas/common.ts` → append the id to `SECTOR_IDS` (Zod enum and lengths follow).
+2. `constants.ts` → `DEFAULT_LIFELINE_KW[id]`; `scenarios/baseline.ts` → profile + `SectorConfig`
+   (`loadMultiplier: 0` keeps existing scenario numbers unchanged). Bump `ENGINE_VERSION`.
+3. `pnpm typecheck`: every exhaustive `Record<SectorId, …>` in web (3D position, keep-out radius, icon, diagram
+   box/wire, body layout) fails until filled. Add the 3D body in `ui/building-bodies.tsx`.
+4. i18n `sectors.<id>` in en/fr/mg (`make check-i18n`).
 
 ### Weather workflow (multi-day)
 

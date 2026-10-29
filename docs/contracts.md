@@ -12,7 +12,7 @@ Changing a field = update this file + schema + tests in the same commit.
 ## Ids
 
 ```ts
-type SectorId = 'health' | 'water' | 'school' | 'households' | 'market';
+type SectorId = 'health' | 'water' | 'school' | 'households' | 'market' | 'industry'; // SECTOR_IDS
 type Priority = 'critical' | 'high' | 'medium' | 'low';
 type StrategyId = 'proportional' | 'essential_first' | 'balanced'; // balanced = stretch
 type SimStatus = 'ready' | 'modified' | 'running' | 'complete' | 'error';
@@ -37,6 +37,7 @@ interface SectorConfig {
   flexible: boolean; // shiftable load (water pump) — used only by stretch features
   meterReadings?: number[]; // length 24, optional measured demand override
   lifelineKw?: number; // ≥ 0, survival power floor (kW; defaults in DEFAULT_LIFELINE_KW)
+  loadMultiplier?: number; // 0–3, live load factor on profileKw (absent = 1, 0 = not connected)
 }
 interface BatteryConfig {
   capacityKwh: number;
@@ -85,8 +86,8 @@ interface SimulationInput {
 
 Validation bounds (Zod, reject — never silently clamp): `peakKw 0–500`, `capacityKwh 1–2000`,
 `initialSocPct/minSocPct 0–100` with `min < initial`, effs `0.5–1`, `factor 0–3`,
-`startHour 0–23`, `startHour + durationH ≤ 24`, `durationH 1–24`, exactly 5 sectors with unique ids,
-`sector.lifelineKw ≥ 0` (defaults: health 0.3, water 0.2, school 0.1, households 0.4, market 0.1),
+`startHour 0–23`, `startHour + durationH ≤ 24`, `durationH 1–24`, exactly `SECTOR_IDS.length` (6) sectors with unique ids, `sector.loadMultiplier 0–3`,
+`sector.lifelineKw ≥ 0` (defaults: health 0.3, water 0.2, school 0.1, households 0.4, market 0.1, industry 0),
 `sectorCaps` `maxKw 0–500`, `fromHour 0–23`, `toHour 1–24`, `fromHour < toHour`,
 `strategyParams.balancedWeights` weights 0–10, at least one > 0 (defaults 4/3/2/1),
 `strategyParams.lifeline.enabled` boolean (default true).
@@ -227,6 +228,8 @@ simulateWorkflow(input: SimulationInput, workflow: Workflow, strategy: StrategyI
 compareWorkflow(input: SimulationInput, workflow: Workflow, strategies?: StrategyId[]): WorkflowComparison
 parseInput(raw: unknown): SimulationInput             // throws ZodError
 applyPatch(input: SimulationInput, patch: InputPatch): SimulationInput
+isSectorConnected(sector: SectorConfig): boolean     // loadMultiplier !== 0
+connectedSectors(input): SectorConfig[] · connectedSectorIds(input): SectorId[]
 getSolarDrop(input: SimulationInput): { pct; startHour; durationH } // defaults 12 h / 3 h (DEFAULT_DROP_*) when no drop
 scenarios: Record<ScenarioId, { title: string; description: string; input: SimulationInput }>
 STRATEGIES: Record<StrategyId, { label: string; rule: string }>
@@ -258,6 +261,7 @@ interface InputPatch {
   criticalShares?: Partial<Record<SectorId, number>>; // 0–1
   balancedWeights?: Partial<Record<Priority, number>>; // 0–10, at least one > 0
   lifeline?: { enabled?: boolean; kw?: Partial<Record<SectorId, number>> }; // 0–2 kW
+  sectorLoads?: Partial<Record<SectorId, number>>; // 0–3 → loadMultiplier (1 removes it, 0 disconnects)
 }
 ```
 

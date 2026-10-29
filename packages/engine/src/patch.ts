@@ -78,6 +78,17 @@ export function patchInputUnchecked(input: SimulationInput, patch: InputPatch): 
     }
   }
 
+  if (patch.sectorLoads !== undefined) {
+    for (const [secId, load] of Object.entries(patch.sectorLoads)) {
+      const s = cloned.sectors.find((sec) => sec.id === secId);
+      if (s && load !== undefined) {
+        // Default load stays implicit so the input hash of an untouched sector is stable.
+        if (load === 1) delete s.loadMultiplier;
+        else s.loadMultiplier = load;
+      }
+    }
+  }
+
   if (patch.criticalShares !== undefined) {
     for (const [secId, share] of Object.entries(patch.criticalShares)) {
       const s = cloned.sectors.find((sec) => sec.id === secId);

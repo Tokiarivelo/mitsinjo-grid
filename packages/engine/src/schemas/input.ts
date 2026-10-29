@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PrioritySchema, ScenarioIdSchema, SectorIdSchema } from './common';
+import { PrioritySchema, ScenarioIdSchema, SECTOR_IDS, SectorIdSchema } from './common';
 
 export const SectorConfigSchema = z.object({
   id: SectorIdSchema,
@@ -10,6 +10,11 @@ export const SectorConfigSchema = z.object({
   flexible: z.boolean(),
   meterReadings: z.array(z.number().min(0)).length(24).optional(),
   lifelineKw: z.number().min(0).optional(),
+  /**
+   * Load scaling of this sector's profile (× 0–3, default 1). 0 = not connected: no demand.
+   * Live "sector load" control; applied on top of the global `demandMultiplier`.
+   */
+  loadMultiplier: z.number().min(0).max(3).optional(),
 });
 export type SectorConfig = z.infer<typeof SectorConfigSchema>;
 
@@ -115,8 +120,6 @@ export const StrategyParamsSchema = z.object({
 });
 export type StrategyParams = z.infer<typeof StrategyParamsSchema>;
 
-const REQUIRED_SECTORS = ['health', 'water', 'school', 'households', 'market'] as const;
-
 export const SimulationInputSchema = z.object({
   scenarioId: z.union([ScenarioIdSchema, z.literal('custom')]),
   horizonH: z.literal(24),
@@ -125,15 +128,14 @@ export const SimulationInputSchema = z.object({
   battery: BatteryConfigSchema,
   sectors: z
     .array(SectorConfigSchema)
-    .length(5)
+    .length(SECTOR_IDS.length)
     .refine(
       (sectors) => {
         const ids = new Set(sectors.map((s) => s.id));
-        return ids.size === 5 && REQUIRED_SECTORS.every((id) => ids.has(id));
+        return ids.size === SECTOR_IDS.length && SECTOR_IDS.every((id) => ids.has(id));
       },
       {
-        message:
-          'Must contain exactly 5 sectors with unique ids (health, water, school, households, market)',
+        message: `Must contain exactly ${SECTOR_IDS.length} sectors with unique ids (${SECTOR_IDS.join(', ')})`,
         path: ['sectors'],
       }
     ),
@@ -156,6 +158,8 @@ export const InputPatchSchema = z.object({
   sectorCaps: z.array(SectorCapSchema).optional(),
   meterReadings: z.record(SectorIdSchema, z.array(z.number().min(0)).length(24)).optional(),
   criticalShares: z.record(SectorIdSchema, z.number().min(0).max(1)).optional(),
+  /** Per-sector load multiplier (× 0–3); 0 disconnects the sector (e.g. connect the factory live). */
+  sectorLoads: z.record(SectorIdSchema, z.number().min(0).max(3)).optional(),
   balancedWeights: BalancedWeightsShape.partial().optional(),
   lifeline: z
     .object({

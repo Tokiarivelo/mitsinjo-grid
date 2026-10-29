@@ -44,10 +44,10 @@ React re-renders, chart redraws, 3D, or bundle size. Fix those before optimising
 
 Rules in `.claude/rules/three.md`. Two quality tiers (`useSceneQuality`, toggle in the 3D card):
 
-- `high` (default): HDRI env light, real-time sun shadow map (2048, near trees only), N8AO +
+- `high` (default): HDRI env light, sun shadow map (2048, near trees only, baked: see below), N8AO +
   bloom + ACES grade (`@react-three/postprocessing`, 2× MSAA), dense forest (2 000 trees),
   `dpr={[1, 1.5]}`.
-- `low`: no post-processing, one baked `ContactShadows`, 700 low-detail trees, `dpr={[1, 1.25]}`.
+- `low`: no post-processing, one baked `ContactShadows`, 520 low-detail trees (high 2000), `dpr={[1, 1.25]}`.
 - Auto-downgrade: a 3.5 s fps probe after the high tier mounts switches to `low` when the median
   is < 28 fps, unless the user picked a tier (saved in `localStorage`). `?quality=high|low`
   forces a tier (audits, screenshots). The probe gives up after 8 s (`MAX_PROBE_MS`) and downgrades
@@ -58,10 +58,21 @@ Rules in `.claude/rules/three.md`. Two quality tiers (`useSceneQuality`, toggle 
   demand loop always stops, even at 1 fps. The focus orbit around a selected building keeps
   the demand loop running until the user drags or deselects; it is off on software GL.
 
+- Render loop: the frame loop pauses (`frameloop="never"`) while the canvas is off-screen
+  (`useInView`, IntersectionObserver) and resumes with one frame (`ResumeOnVisible`); the fps
+  probe only runs on screen. Ambient motion (electrons, clouds, rain, lightning) asks for its next
+  frame via `useAmbientFrame`, capped at 30 fps (`AMBIENT_FPS`) and merged into one frame per
+  interval; camera tweens, orbit and drags keep the display rate.
+- WebGL contexts: one cached capability probe per page (`getWebGLSupport`, context released);
+  browsers keep ~16 contexts and drop the oldest, the scene. `make scene-audit` fails above 3.
+  A real context loss shows the 3D placeholder and remounts the canvas (`useContextLoss`).
+- Shadows: every caster is static, so `ShadowBake` sets `shadowMap.autoUpdate = false` and
+  re-renders the map only when the sun or the scene model changes (not on every animated frame).
+
 Key wins: `frameloop="demand"`, instancing (vegetation: one `InstancedMesh` per model part and
 band), merged static parts (`utils/merge-parts`: windows, fences, lattice, market woodwork,
-each vehicle), shared materials, near/far vegetation bands (far trees: no shadow pass, low
-detail), lazy chunk via `next/dynamic({ ssr:false })`, assets ≈ 1.7 MB (`public/3d`, meshopt).
+each vehicle), house clusters (`utils/house-geometry`: all homes in ≤ 5 meshes, per-house colors as vertex colors), shared materials, near/far vegetation bands (far trees: no shadow pass, low
+detail), lazy chunk via `next/dynamic({ ssr:false })`, assets ≈ 0.5 MB (`public/3d`, meshopt; HDRI 512 × 256, 390 KB).
 
 Measure: add `?perf=1` to `/simulation` or `/overview` for a live draw-call / fps readout
 (sampled at 2 Hz from `gl.info`, whole frame incl. shadow and post passes). `make scene-audit`

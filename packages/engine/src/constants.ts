@@ -1,6 +1,6 @@
 import type { Priority, SectorId, StrategyId, WeatherId } from './schemas';
 
-export const ENGINE_VERSION = '0.2.0';
+export const ENGINE_VERSION = '0.3.0';
 
 export const EPS = 1e-9;
 
@@ -28,6 +28,7 @@ export const DEFAULT_LIFELINE_KW: Record<SectorId, number> = {
   school: 0.1,
   households: 0.4,
   market: 0.1,
+  industry: 0,
 };
 
 export const STRATEGIES: Record<StrategyId, { label: string; rule: string }> = {

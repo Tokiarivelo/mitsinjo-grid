@@ -9,6 +9,9 @@ paths:
 - Scene renders a `SceneModel` from `utils/toSceneModel(result, timeIndex)`. No energy math in components.
 - `<Canvas frameloop="demand">`, `dpr` [1, 1.5] high · [1, 1.25] low; call `invalidate()` on data change; animate flows only when flow > 0 and motion allowed.
 - In `useFrame`: mutate refs/materials, never `setState`. No object/vector allocation per frame.
+- Continuous ambient motion asks for its next frame with `useAmbientFrame()` (30 fps cap), never
+  `state.invalidate()` per frame. The loop pauses off-screen (`frameloop="never"`); shadow casters
+  stay static so `ShadowBake` re-renders the shadow map only on sun/data change.
 - Repeated meshes (panels, houses, poles) → `<Instances>`/`InstancedMesh`. Share geometries and materials.
 - Two quality tiers (`useSceneQuality`): `high` (default) may use one real-time sun shadow map,
   the HDRI env and `ui/post-effects.tsx` (N8AO, bloom, ACES, grade **after** tone mapping);

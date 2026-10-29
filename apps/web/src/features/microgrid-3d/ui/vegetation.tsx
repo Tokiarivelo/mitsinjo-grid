@@ -14,6 +14,15 @@ import { CANOPY_VARIANTS, createCanopyTree, type CanopyVariant } from '../utils/
 import { toFloatGeometry } from '../utils/float-geometry';
 
 export const NATURE_URL = '/3d/nature.glb';
+/**
+ * Trees per tier. Low keeps the village ring dense and thins the far forest (in the fog)
+ * so the tier stays under its triangle budget with room for new buildings.
+ */
+export const VEGETATION_DENSITY = {
+  high: { forestCount: 2000, villageCount: 170 },
+  low: { forestCount: 520, villageCount: 90 },
+} as const satisfies Record<SceneQuality, { forestCount: number; villageCount: number }>;
+
 /** Trees closer than this to the village centre get full detail and cast shadows. */
 const NEAR_BAND_RADIUS = 42;
 
@@ -168,11 +177,7 @@ export function Vegetation({ quality = 'high' }: VegetationProps) {
   const { scene } = useGLTF(NATURE_URL);
 
   const groups = useMemo(() => {
-    const items = scatterVegetation(
-      quality === 'high'
-        ? { forestCount: 2000, villageCount: 170 }
-        : { forestCount: 700, villageCount: 90 }
-    );
+    const items = scatterVegetation(VEGETATION_DENSITY[quality]);
     // Near band: full detail + shadow casting (high tier). Far band: light blobs, no shadow pass.
     const byKey = new Map<string, { model: NatureModel; near: boolean; items: ScatterItem[] }>();
     for (const it of items) {

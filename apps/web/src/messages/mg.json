@@ -237,6 +237,18 @@
           "rainy": "Orana",
           "storm": "Tafio-drivotra"
         }
+      },
+      "sectorLoad": {
+        "title": "Enta-jiro isaky ny sehatra (mivantana)",
+        "description": "Isaky ny fanovana dia averina avy hatrany ny simulation: manaraka ny 3D, ny isa ary ny sary, na dia mandeha aza ny famakiana.",
+        "unit": "×",
+        "connected": "Mifandray",
+        "disconnected": "Tsy mifandray",
+        "notConnected": "Tsy mifandray: tsy misy fangatahana amin'ny tamba-jotra. Ampitomboy ny enta-jiro na tsindrio Ampifandraiso.",
+        "connect": "Ampifandraiso",
+        "disconnect": "Esory",
+        "connectAria": "Ampifandraiso amin'ny tamba-jotra {sector}",
+        "disconnectAria": "Esory amin'ny tamba-jotra {sector}"
       }
     },
     "strategyLab": {
@@ -447,7 +459,8 @@
         "partial": "Ampahany",
         "unserved": "Tapaka",
         "unknown": "Tsy misy angona",
-        "noLoad": "Tsy misy enta"
+        "noLoad": "Tsy misy enta",
+        "disconnected": "Tsy mifandray"
       },
       "legendTitle": "Fanazavana ny kisary",
       "legendFlow": "Misy herinaratra mandeha (elektrôna)",
@@ -580,7 +593,8 @@
     "water": "Tobim-paompy rano",
     "school": "Sekoly ambaratonga voalohany",
     "households": "Tokantrano ao an-tanàna",
-    "market": "Tsena sy mpanao asa tanana"
+    "market": "Tsena sy mpanao asa tanana",
+    "industry": "Orinasa kely"
   },
   "warnings": {
     "title": "Fampitandremana momba ny tambajotra",

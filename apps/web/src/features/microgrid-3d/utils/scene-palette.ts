@@ -49,6 +49,7 @@ export const WINDOW_GLOW_BY_STATUS: Record<BuildingStatus, number> = {
   partial: 0.45,
   unserved: 0,
   unknown: 0.35,
+  disconnected: 0,
 };
 
 /** Tailwind text class per status, for 2D diagram wires (SVG uses `currentColor`). */

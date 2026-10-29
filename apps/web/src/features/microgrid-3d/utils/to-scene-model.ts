@@ -1,9 +1,10 @@
-import type {
-  SectorId,
-  SimulationInput,
-  SimulationResult,
-  StrategyId,
-  WeatherId,
+import {
+  SECTOR_IDS,
+  type SectorId,
+  type SimulationInput,
+  type SimulationResult,
+  type StrategyId,
+  type WeatherId,
 } from '@mitsinjo/engine';
 import type {
   BuildingSceneModel,
@@ -21,6 +22,7 @@ export const SECTOR_POSITIONS: Record<SectorId, [number, number, number]> = {
   school: [2, 0, -9],
   households: [-6, 0, 8],
   market: [4, 0, 7],
+  industry: [11, 0, -8.5],
 };
 
 export const SOLAR_POSITION: [number, number, number] = [-10, 0, -8];
@@ -103,33 +105,35 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     statusColor: batteryColor,
   };
 
-  // 3. Buildings model (5 sectors)
-  const sectorIds: SectorId[] = ['health', 'water', 'school', 'households', 'market'];
+  // 3. Buildings model (every engine sector)
   const buildings = {} as Record<SectorId, BuildingSceneModel>;
   const busToSectors = {} as Record<SectorId, LineFlowSceneModel>;
 
-  for (const sectorId of sectorIds) {
+  for (const sectorId of SECTOR_IDS) {
     const sectorConfig = input.sectors.find((s) => s.id === sectorId);
     const priority = sectorConfig?.priority ?? 'medium';
     const sectorStep = step?.sectors[sectorId];
+    const loadMultiplier = sectorConfig?.loadMultiplier ?? 1;
+    const connected = loadMultiplier > 0;
 
     const demandKw = sectorStep ? sectorStep.demandKw : 0;
     const servedKw = sectorStep ? sectorStep.servedKw : 0;
     const unservedKw = Math.max(0, demandKw - servedKw);
     // No result yet → no coverage to show (never default to "100%").
-    const coveragePct = !sectorStep
-      ? null
-      : demandKw > 0
-        ? Math.round((servedKw / demandKw) * 100)
-        : 100;
+    const coveragePct =
+      !sectorStep || !connected
+        ? null
+        : demandKw > 0
+          ? Math.round((servedKw / demandKw) * 100)
+          : 100;
 
-    let status: BuildingStatus = sectorStep ? 'full' : 'unknown';
-    if (sectorStep && demandKw > 0 && servedKw < demandKw - 0.05) {
+    let status: BuildingStatus = !connected ? 'disconnected' : sectorStep ? 'full' : 'unknown';
+    if (connected && sectorStep && demandKw > 0 && servedKw < demandKw - 0.05) {
       status = servedKw > 0.05 ? 'partial' : 'unserved';
     }
 
     let statusColor: StatusColor = 'battery-green';
-    if (status === 'unknown') {
+    if (status === 'unknown' || status === 'disconnected') {
       statusColor = 'idle';
     } else if (status === 'partial') {
       statusColor = 'warning-amber';
@@ -151,6 +155,8 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
       status,
       statusColor,
       isCritical: priority === 'critical',
+      connected,
+      loadMultiplier,
     };
 
     // Bus to building transmission line
