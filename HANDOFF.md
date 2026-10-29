@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-28 · **By:** Claude Code · **Branch:** `feat/strategy-lab-params` (not committed yet) · **PR:** —
+**Updated:** 2026-10-28 · **By:** Claude Code · **Branch:** `feat/strategy-lab-params` · **PR:** [#22](https://github.com/Tokiarivelo/mitsinjo-grid/pull/22)
 
 ## State
 
@@ -14,7 +14,7 @@
 
 ## Next task
 
-- Commit + PR for phase 1 (`feat(web): parametrable strategy lab (PZ phase 1)`), run `make e2e`.
+- Review and merge PR #22 once CI (incl. e2e) is green.
 - Phase 2 (`/engine-change`): PZ-T7…T10 — balanced weights, critical shares, strategy subset.
 
 ## Decisions taken
