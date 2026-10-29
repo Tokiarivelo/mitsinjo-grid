@@ -9,7 +9,8 @@ export interface InvariantCheckParams {
   availableKw: number;
   battery: BatteryConfig;
   sectorCaps?: readonly SectorCap[];
-  lifelines?: Partial<Record<SectorId, number>>;
+  /** Effective (cap-aware) lifeline floor per sector at this step: `lifelineFloorsAt`. */
+  lifelineFloors?: Partial<Record<SectorId, number>>;
   lifelineEnabled?: boolean;
 }
 
@@ -103,53 +104,26 @@ export function checkStepInvariants(params: InvariantCheckParams): number {
     }
   }
 
-  // 9. Invariant LIFELINE_MET (PL-T3):
-  // When availableKw >= sum(targets), every sector must receive at least its target floor min(demand_s, effFloor_s)
-  if (params.lifelineEnabled !== false && params.lifelines) {
-    const capsMap = new Map<SectorId, number>();
-    if (sectorCaps && sectorCaps.length > 0) {
-      for (const cap of sectorCaps) {
-        if (t >= cap.fromHour && t < cap.toHour) {
-          const existing = capsMap.get(cap.sector);
-          capsMap.set(
-            cap.sector,
-            existing !== undefined ? Math.min(existing, cap.maxKw) : cap.maxKw
-          );
-        }
-      }
-    }
-
-    let totalPlanchers = 0;
-    const targetFloors = {} as Record<SectorId, number>;
-    for (const [secId, rawFloor] of Object.entries(params.lifelines) as [SectorId, number][]) {
-      const cap = capsMap.get(secId);
-      const effFloor = cap !== undefined ? Math.min(rawFloor, cap) : rawFloor;
-      const secStep = step.sectors[secId];
-      const demand = secStep ? secStep.demandKw : 0;
-      const target = Math.min(demand, effFloor);
-      targetFloors[secId] = target;
-      totalPlanchers += target;
-    }
-
-    if (availableKw >= totalPlanchers - EPS) {
-      for (const [secId, target] of Object.entries(targetFloors) as [SectorId, number][]) {
-        const sec = step.sectors[secId];
-        if (sec && sec.servedKw < target - EPS) {
-          violations++;
-        }
-      }
-    }
-
-    // Also verify lifelineServedKw bounds
-    for (const [secId, target] of Object.entries(targetFloors) as [SectorId, number][]) {
+  // 9. LIFELINE_MET (PL-T3): when availableKw ≥ Σ min(demand_s, floor_s), each sector gets at least
+  // min(demand_s, floor_s); lifelineServedKw stays within [0, min(served_s, target_s)].
+  if (params.lifelineEnabled !== false && params.lifelineFloors) {
+    const targets: [SectorStep, number][] = [];
+    let totalTargets = 0;
+    for (const [secId, floor] of Object.entries(params.lifelineFloors) as [SectorId, number][]) {
       const sec = step.sectors[secId];
-      if (sec) {
-        if (sec.lifelineServedKw < -EPS || sec.lifelineServedKw > sec.servedKw + EPS) {
-          violations++;
-        }
-        if (sec.lifelineServedKw > target + EPS) {
-          violations++;
-        }
+      if (!sec) continue;
+      const target = Math.min(sec.demandKw, floor);
+      targets.push([sec, target]);
+      totalTargets += target;
+    }
+    const floorsAffordable = availableKw >= totalTargets - EPS;
+    for (const [sec, target] of targets) {
+      if (floorsAffordable && sec.servedKw < target - EPS) violations++;
+      if (
+        sec.lifelineServedKw < -EPS ||
+        sec.lifelineServedKw > Math.min(sec.servedKw, target) + EPS
+      ) {
+        violations++;
       }
     }
   }

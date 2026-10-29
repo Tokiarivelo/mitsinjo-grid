@@ -1,19 +1,19 @@
-import { DEFAULT_LIFELINE_KW, EPS } from '../constants';
-import type {
-  BatteryConfig,
-  Metrics,
-  SectorConfig,
-  SectorId,
-  SectorMetrics,
-  StepResult,
-} from '../schemas';
+import { EPS } from '../constants';
+import type { BatteryConfig, Metrics, SectorId, SectorMetrics, StepResult } from '../schemas';
 import { SECTOR_IDS } from '../schemas';
+import { type LifelineFloorsByHour, lifelineFloorsByHour } from '../strategies/lifeline';
+
+const DEFAULT_FLOORS_BY_HOUR = lifelineFloorsByHour(
+  SECTOR_IDS.map((id) => ({ id })),
+  undefined
+);
 
 export function calculateMetrics(
   steps: readonly StepResult[],
   battery: BatteryConfig,
   violations: number,
-  sectors?: readonly SectorConfig[]
+  /** Cap-aware floors by hour (`lifelineFloorsByHour`); default floors when omitted. */
+  floorsByHour: LifelineFloorsByHour = DEFAULT_FLOORS_BY_HOUR
 ): Metrics {
   let demandKwh = 0;
   let servedKwh = 0;
@@ -24,11 +24,6 @@ export function calculateMetrics(
   let solarKwh = 0;
   let curtailedKwh = 0;
   let heldSectorHours = 0;
-
-  const floors: Record<SectorId, number> = {} as Record<SectorId, number>;
-  for (const secId of SECTOR_IDS) {
-    floors[secId] = sectors?.find((s) => s.id === secId)?.lifelineKw ?? DEFAULT_LIFELINE_KW[secId];
-  }
 
   const perSectorAccum: Record<
     SectorId,
@@ -55,6 +50,7 @@ export function calculateMetrics(
     }
 
     let stepHasCriticalUnmet = false;
+    const floors = floorsByHour[step.t] ?? {};
 
     for (const secId of SECTOR_IDS) {
       const secStep = step.sectors[secId];
@@ -72,8 +68,7 @@ export function calculateMetrics(
           stepHasCriticalUnmet = true;
         }
 
-        const floor = floors[secId] ?? DEFAULT_LIFELINE_KW[secId];
-        const targetFloor = Math.min(secStep.demandKw, floor);
+        const targetFloor = Math.min(secStep.demandKw, floors[secId] ?? 0);
         if (secStep.servedKw >= targetFloor - EPS) {
           heldSectorHours++;
         }

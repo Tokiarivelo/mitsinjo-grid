@@ -8,7 +8,15 @@ import { applyPatch } from '../patch';
 import { InputPatchSchema, SectorConfigSchema, StepResult, StrategyParamsSchema } from '../schemas';
 import { createBaselineInput, scenarios } from '../scenarios';
 import { simulate } from '../simulate';
-import { computeLifelinePass, computeSectorMode, executeStrategy } from '../strategies';
+import { calculateMetrics } from '../metrics';
+import {
+  buildCapMap,
+  computeLifelinePass,
+  computeSectorMode,
+  executeStrategy,
+  lifelineFloorsAt,
+  lifelineFloorsByHour,
+} from '../strategies';
 
 describe('Lifeline Survival Dispatch (PL-T1...PL-T4)', () => {
   describe('PL-T1: Contracts, Schemas & Hash Stability', () => {
@@ -317,7 +325,7 @@ describe('Lifeline Survival Dispatch (PL-T1...PL-T4)', () => {
           chargeEff: 0.95,
           dischargeEff: 0.95,
         },
-        lifelines: DEFAULT_LIFELINE_KW,
+        lifelineFloors: DEFAULT_LIFELINE_KW,
         lifelineEnabled: true,
       });
 
@@ -384,6 +392,74 @@ describe('Lifeline Survival Dispatch (PL-T1...PL-T4)', () => {
       expect(summary.coveragePct.balanced).toBeDefined();
       expect(summary.maxCoveragePct).toBeGreaterThanOrEqual(summary.minCoveragePct);
       expect(summary.gainPct).toBeCloseTo(summary.maxCoveragePct - summary.minCoveragePct, 6);
+    });
+  });
+
+  describe('PR #25 review regressions', () => {
+    it('marks a small load that is fully served as full, not off', () => {
+      expect(computeSectorMode(0.04, 0.04, 0.3)).toBe('full');
+      expect(computeSectorMode(0, 0, 0.3)).toBe('off');
+    });
+
+    it('never reports lifeline mode when lifeline is disabled', () => {
+      const sectors: SectorDemandStep[] = [
+        {
+          sectorId: 'health',
+          demandKw: 1,
+          criticalDemandKw: 0.8,
+          priority: 'critical',
+          criticalShare: 0.8,
+        },
+        {
+          sectorId: 'market',
+          demandKw: 2,
+          criticalDemandKw: 0.2,
+          priority: 'low',
+          criticalShare: 0.1,
+        },
+      ];
+      const res = executeStrategy('proportional', 0.3, sectors, undefined, false);
+      expect(res.health.mode).toBe('limited');
+      expect(res.market.mode).toBe('limited');
+      expect(res.health.lifelineServedKw).toBe(0);
+    });
+
+    it('buildCapMap keeps the lowest cap and filters by hour when given', () => {
+      const caps = [
+        { sector: 'market' as const, maxKw: 1, fromHour: 18, toHour: 22 },
+        { sector: 'market' as const, maxKw: 0.5, fromHour: 20, toHour: 22 },
+      ];
+      expect(buildCapMap(caps).get('market')).toBe(0.5);
+      expect(buildCapMap(caps, 19).get('market')).toBe(1);
+      expect(buildCapMap(caps, 12).has('market')).toBe(false);
+    });
+
+    it('lifelineFloorsAt lowers a floor to an active cap only', () => {
+      const sectors = [{ id: 'market' as const }, { id: 'health' as const, lifelineKw: 0.5 }];
+      const caps = [{ sector: 'market' as const, maxKw: 0.04, fromHour: 18, toHour: 22 }];
+      expect(lifelineFloorsAt(sectors, caps, 19)).toEqual({ market: 0.04, health: 0.5 });
+      expect(lifelineFloorsAt(sectors, caps, 12)).toEqual({ market: 0.1, health: 0.5 });
+    });
+
+    it('lifelineFloorsByHour shares one object for uncapped hours and caps only active hours', () => {
+      const sectors = [{ id: 'market' as const }];
+      const caps = [{ sector: 'market' as const, maxKw: 0.04, fromHour: 18, toHour: 22 }];
+      const byHour = lifelineFloorsByHour(sectors, caps);
+      expect(byHour).toHaveLength(24);
+      expect(byHour[0]).toBe(byHour[12]);
+      expect(byHour[19]).toEqual({ market: 0.04 });
+      expect(byHour[22]).toEqual({ market: 0.1 });
+    });
+
+    it('counts a capped sector held at its cap as covered in lifelineCoveragePct', () => {
+      const input = createBaselineInput();
+      input.sectorCaps = [{ sector: 'market', maxKw: 0.04, fromHour: 0, toHour: 24 }];
+      const sim = simulate(input, 'proportional');
+      expect(sim.metrics.lifelineCoveragePct).toBe(100);
+      expect(sim.warnings.some((w) => w.code === 'LIFELINE_SHORTFALL')).toBe(false);
+      // Same steps without the cap context: market below its 0.1 kW floor while it has demand
+      const uncapped = calculateMetrics(sim.steps, input.battery, 0);
+      expect(uncapped.lifelineCoveragePct).toBeLessThan(100);
     });
   });
 });

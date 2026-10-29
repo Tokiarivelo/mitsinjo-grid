@@ -1,5 +1,6 @@
-import { DEFAULT_LIFELINE_KW, EPS } from './constants';
+import { EPS } from './constants';
 import { computeProfileDemandKw } from './model/demand';
+import { type LifelineFloorsByHour, lifelineFloorsByHour } from './strategies/lifeline';
 import type { BatteryConfig, SectorId, SimulationInput, SimWarning, StepResult } from './schemas';
 
 interface RawWarning {
@@ -11,9 +12,14 @@ interface RawWarning {
 export function generateWarnings(
   steps: readonly StepResult[],
   battery: BatteryConfig,
-  input?: SimulationInput
+  input?: SimulationInput,
+  floorsByHour?: LifelineFloorsByHour
 ): SimWarning[] {
   const raw: RawWarning[] = [];
+  const lifelineFloors =
+    input && input.strategyParams?.lifeline?.enabled !== false
+      ? (floorsByHour ?? lifelineFloorsByHour(input.sectors, input.sectorCaps, steps.length))
+      : null;
 
   for (let t = 0; t < steps.length; t++) {
     const step = steps[t];
@@ -72,25 +78,12 @@ export function generateWarnings(
       }
     }
 
-    // 5b. LIFELINE_SHORTFALL (PL-T3): energy < sum(planchers), sectors whose lifeline floor is not held
-    const lifelineEnabled = input?.strategyParams?.lifeline?.enabled !== false;
-    if (lifelineEnabled) {
-      for (let i = 0; i < sectorEntries.length; i++) {
-        const entry = sectorEntries[i];
-        if (!entry) continue;
-        const [secId, s] = entry;
+    // 5b. LIFELINE_SHORTFALL (PL-T3): a sector below its (cap-aware) lifeline floor this hour
+    if (lifelineFloors) {
+      const floors = lifelineFloors[t] ?? {};
+      for (const [secId, s] of sectorEntries) {
         if (!s) continue;
-        const sectorConfig = input?.sectors?.find((sec) => sec.id === secId);
-        const rawFloor = sectorConfig?.lifelineKw ?? DEFAULT_LIFELINE_KW[secId];
-        let effFloor = rawFloor;
-        if (input?.sectorCaps && input.sectorCaps.length > 0) {
-          for (const cap of input.sectorCaps) {
-            if (t >= cap.fromHour && t < cap.toHour && cap.sector === secId) {
-              effFloor = Math.min(effFloor, cap.maxKw);
-            }
-          }
-        }
-        const targetFloor = Math.min(s.demandKw, effFloor);
+        const targetFloor = Math.min(s.demandKw, floors[secId] ?? 0);
         if (targetFloor > EPS && s.servedKw < targetFloor - EPS) {
           raw.push({ code: 'LIFELINE_SHORTFALL', sector: secId, hour: t });
         }

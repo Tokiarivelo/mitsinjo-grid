@@ -1,9 +1,14 @@
-import { DEFAULT_LIFELINE_KW } from '../constants';
 import type { SectorDemandStep } from '../model/demand';
 import type { Priority, SectorCap, SectorId, SectorStep, StrategyId } from '../schemas';
 import { runBalancedStrategy } from './balanced';
 import { runEssentialFirstStrategy } from './essential-first';
-import { computeLifelinePass, computeSectorMode } from './lifeline';
+import {
+  type BaseSectorStep,
+  computeLifelinePass,
+  computeSectorMode,
+  effectiveFloorKw,
+  resolveLifelineKw,
+} from './lifeline';
 import { runProportionalStrategy } from './proportional';
 
 export * from './balanced';
@@ -16,7 +21,7 @@ function runBaseStrategy(
   availableKw: number,
   sectors: readonly SectorDemandStep[],
   weights?: Record<Priority, number>
-): Record<SectorId, SectorStep> {
+): Record<SectorId, BaseSectorStep> {
   switch (strategy) {
     case 'proportional':
       return runProportionalStrategy(availableKw, sectors);
@@ -31,6 +36,11 @@ function runBaseStrategy(
   }
 }
 
+/**
+ * Runs Pass 0 (lifeline floors, PL-T2) then the selected strategy on what is left, and returns the
+ * full sector steps (`lifelineServedKw`, `mode`). With `lifelineEnabled = false`, the strategy runs
+ * alone and the result matches the pre-lifeline engine (floor 0 for `mode`).
+ */
 export function executeStrategy(
   strategy: StrategyId,
   availableKw: number,
@@ -39,82 +49,84 @@ export function executeStrategy(
   lifelineEnabled: boolean = true,
   activeCaps?: readonly SectorCap[]
 ): Record<SectorId, SectorStep> {
+  const result = {} as Record<SectorId, SectorStep>;
+
   if (!lifelineEnabled) {
     const raw = runBaseStrategy(strategy, availableKw, sectors, weights);
     for (const s of sectors) {
-      const step = raw[s.sectorId];
-      if (step) {
-        step.lifelineServedKw = 0;
-        step.mode = computeSectorMode(
-          step.servedKw,
-          step.demandKw,
-          s.lifelineKw ?? DEFAULT_LIFELINE_KW[s.sectorId]
-        );
-      }
-    }
-    return raw;
-  }
-
-  // Pass 0: Lifeline allocation (PL-T2)
-  const pass0 = computeLifelinePass(availableKw, sectors, activeCaps);
-
-  // If in emergency mode (dispo < Σ planchers), all available power was consumed by Pass 0
-  if (pass0.isEmergency) {
-    const result = {} as Record<SectorId, SectorStep>;
-    for (const s of sectors) {
-      const servedKw = pass0.allocations[s.sectorId] ?? 0;
-      const effFloor =
-        pass0.effectiveFloors[s.sectorId] ?? s.lifelineKw ?? DEFAULT_LIFELINE_KW[s.sectorId];
+      const step = raw[s.sectorId]!;
       result[s.sectorId] = {
-        demandKw: s.demandKw,
-        servedKw,
-        criticalDemandKw: s.criticalDemandKw,
-        criticalServedKw: Math.min(servedKw, s.criticalDemandKw),
-        lifelineServedKw: servedKw,
-        mode: computeSectorMode(servedKw, s.demandKw, effFloor),
+        ...step,
+        lifelineServedKw: 0,
+        mode: computeSectorMode(step.servedKw, step.demandKw, 0),
       };
     }
     return result;
   }
 
-  // Normal mode: Pass 0 allocated floor power; remaining energy distributed via selected strategy
-  const reducedSectors: SectorDemandStep[] = sectors.map((s) => {
-    const floorAlloc = pass0.allocations[s.sectorId] ?? 0;
-    const remainingDemand = Math.max(0, s.demandKw - floorAlloc);
-    const critFromFloor = Math.min(floorAlloc, s.criticalDemandKw);
-    const remainingCrit = Math.max(0, s.criticalDemandKw - critFromFloor);
-    return {
-      ...s,
-      demandKw: remainingDemand,
-      criticalDemandKw: remainingCrit,
-      criticalShare: remainingDemand > 0 ? remainingCrit / remainingDemand : 0,
-    };
-  });
+  const pass0 = computeLifelinePass(availableKw, sectors, activeCaps);
 
-  const subAllocation = runBaseStrategy(strategy, pass0.remainingKw, reducedSectors, weights);
-  const result = {} as Record<SectorId, SectorStep>;
+  // Emergency mode: Pass 0 used all available power.
+  // Normal mode: the strategy shares what is left, on demand reduced by the floor already served.
+  const sub = pass0.isEmergency
+    ? null
+    : runBaseStrategy(
+        strategy,
+        pass0.remainingKw,
+        sectors.map((s) => {
+          const floorAlloc = pass0.allocations[s.sectorId] ?? 0;
+          const demandKw = Math.max(0, s.demandKw - floorAlloc);
+          const criticalDemandKw = Math.max(
+            0,
+            s.criticalDemandKw - Math.min(floorAlloc, s.criticalDemandKw)
+          );
+          return {
+            ...s,
+            demandKw,
+            criticalDemandKw,
+            criticalShare: demandKw > 0 ? criticalDemandKw / demandKw : 0,
+          };
+        }),
+        weights
+      );
 
   for (const s of sectors) {
     const floorAlloc = pass0.allocations[s.sectorId] ?? 0;
-    const sub = subAllocation[s.sectorId];
-    const additionalServed = sub ? sub.servedKw : 0;
-    const additionalCrit = sub ? sub.criticalServedKw : 0;
-    const critFromFloor = Math.min(floorAlloc, s.criticalDemandKw);
-
-    const totalServed = Math.min(s.demandKw, floorAlloc + additionalServed);
-    const totalCrit = Math.min(s.criticalDemandKw, critFromFloor + additionalCrit);
-    const effFloor =
-      pass0.effectiveFloors[s.sectorId] ?? s.lifelineKw ?? DEFAULT_LIFELINE_KW[s.sectorId];
-
+    const extra = sub?.[s.sectorId];
+    const servedKw = Math.min(s.demandKw, floorAlloc + (extra?.servedKw ?? 0));
+    const criticalServedKw = Math.min(
+      s.criticalDemandKw,
+      Math.min(floorAlloc, s.criticalDemandKw) + (extra?.criticalServedKw ?? 0)
+    );
     result[s.sectorId] = {
       demandKw: s.demandKw,
-      servedKw: totalServed,
+      servedKw,
       criticalDemandKw: s.criticalDemandKw,
-      criticalServedKw: totalCrit,
+      criticalServedKw,
       lifelineServedKw: floorAlloc,
-      mode: computeSectorMode(totalServed, s.demandKw, effFloor),
+      mode: computeSectorMode(servedKw, s.demandKw, pass0.effectiveFloors[s.sectorId] ?? 0),
     };
   }
 
   return result;
+}
+
+/** Sector step for a sector held at its cap (`served = min(demand, cap)`), lifeline fields included. */
+export function cappedSectorStep(
+  s: SectorDemandStep,
+  capKw: number,
+  lifelineEnabled: boolean
+): SectorStep {
+  const servedKw = Math.min(s.demandKw, capKw);
+  const floorKw = lifelineEnabled
+    ? effectiveFloorKw(resolveLifelineKw(s.sectorId, s.lifelineKw), capKw)
+    : 0;
+  return {
+    demandKw: s.demandKw,
+    servedKw,
+    criticalDemandKw: s.criticalDemandKw,
+    criticalServedKw: Math.min(servedKw, s.criticalDemandKw),
+    lifelineServedKw: Math.min(servedKw, floorKw),
+    mode: computeSectorMode(servedKw, s.demandKw, floorKw),
+  };
 }

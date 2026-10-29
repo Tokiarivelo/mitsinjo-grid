@@ -129,7 +129,7 @@ interface Metrics {
   criticalUnservedKwh: number;
   criticalUnmetHours: number;
   criticalCoveragePct: number; // essential-services coverage shown in UI (from criticalShare, all sectors)
-  lifelineCoveragePct: number; // percentage of sector-hours where lifeline floor is held
+  lifelineCoveragePct: number; // % of sector-hours where the cap-aware lifeline floor is held
   affectedSectors: SectorId[]; // sectors with unservedKwh > ε
   solarKwh: number;
   curtailedKwh: number;

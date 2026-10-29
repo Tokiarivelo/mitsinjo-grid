@@ -22,6 +22,11 @@
 - Lifeline enabled by default: hash is stable when default is used; `lifeline.enabled = false` reverts to base allocations.
 - Emergency mode (`dispo < Σ planchers`): water & health split available power equally; remaining surplus (if any) shared among others proportional to planchers; otherwise others are 0 kW (`mode = 'off'`).
 - Sector caps priority: `cap < plancher` -> cap wins.
+- PR #25 review: base strategies return `BaseSectorStep`; `executeStrategy` alone adds `lifelineServedKw`/`mode`.
+  Shared helpers in `strategies/lifeline.ts` (`resolveLifelineKw`, `buildCapMap`, `effectiveFloorKw`,
+  `lifelineFloorsAt`, `lifelineFloorsByHour` computed once per run for invariants, metrics, warnings).
+- `mode`: `full` checked first (small fully served load ≠ `off`); lifeline disabled → floor 0 (no `lifeline` mode).
+- `LIFELINE_SHORTFALL` rendered in `ImpactBanner` (EN/FR/MG). Perf budget tests (`sweep` < 50 ms) flake on a loaded laptop; CI is the reference.
 
 ## Files touched this session
 

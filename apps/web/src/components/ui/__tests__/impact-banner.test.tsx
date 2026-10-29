@@ -51,4 +51,12 @@ describe('ImpactBanner titles (states-copy)', () => {
     ]);
     expect(screen.getByText('Sector Capacity Cap Active')).toBeInTheDocument();
   });
+
+  it('renders LIFELINE_SHORTFALL with its own title and sector copy (PR #25 review)', () => {
+    renderBanner([
+      { code: 'LIFELINE_SHORTFALL', sector: 'market', fromHour: 19, toHour: 22 } as SimWarning,
+    ]);
+    expect(screen.getByText('Survival power not held')).toBeInTheDocument();
+    expect(screen.getByText(/less than its survival minimum/i)).toBeInTheDocument();
+  });
 });

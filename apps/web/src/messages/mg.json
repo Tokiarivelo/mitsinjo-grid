@@ -602,6 +602,8 @@
     "anomalyToVerifyDesc": "Fahasamihafana mihoatra ny 25% voamarika amin'ny {sector} teo anelanelan'ny {from} sy {to}. Ilaina ny manamarina (aza tsoahina avy hatrany ho halatra na fahasimbana).",
     "sectorCappedTitle": "Famerana herinaratra mavitrika",
     "sectorCappedDesc": "Ny herinaratra ho an'ny {sector} dia noferana tamin'ny fetran'ny mpitantana teo anelanelan'ny {from} sy {to}.",
+    "lifelineShortfallTitle": "Tsy voatazona ny herinaratra fototra",
+    "lifelineShortfallDesc": "Nahazo latsaky ny fetra farany ilaina ny {sector} teo anelanelan'ny {from} sy {to}. Ny rano sy ny fahasalamana no tazonina voalohany.",
     "hoursRange": "{from} - {to}"
   },
   "overview": {

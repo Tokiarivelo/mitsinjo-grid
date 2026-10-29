@@ -70,9 +70,9 @@ Round **only** at display time (UI `lib/format.ts`), never in the engine.
 
 Sums over steps (kW × 1 h = kWh). `coveragePct = servedKwh / demandKwh × 100` (100 if demand 0).
 `criticalCoveragePct = (criticalDemandKwh − criticalUnservedKwh) / criticalDemandKwh × 100`;
-`lifelineCoveragePct = (heldSectorHours / totalSectorHours) × 100` (share of sector-hours where floor is held);
+`lifelineCoveragePct = (heldSectorHours / totalSectorHours) × 100` (share of sector-hours where `served_s ≥ min(demand_s, floor_s)`, with `floor_s` lowered to an active cap — same rule as `LIFELINE_MET` and `LIFELINE_SHORTFALL`);
 `affectedSectors` = sectors with `unservedKwh > ε`. `criticalUnmetHours` = steps where any `criticalServed_s < critical_s − ε`.
-Sector `mode`: `'off'` (< 0.05 kW), `'lifeline'` (≤ floor + ε), `'limited'` (< demand), `'full'` (≥ demand − ε).
+Sector `mode`, checked in this order: `'full'` (demand > ε and served ≥ demand − ε), `'off'` (served < 0.05 kW: no power or no load), `'lifeline'` (≤ floor + ε), `'limited'` (otherwise). With `lifeline.enabled = false` the floor is 0, so `'lifeline'` never appears.
 Warnings: merge consecutive hours into ranges. `CRITICAL_UNMET` (any critical shortfall),
 `SECTOR_PARTIAL` (sector coverage < 100 % in a step), `RESERVE_REACHED` (soc ≤ min + 0.5),
 `CURTAILMENT` (curtailedKw > 0), `SECTOR_CAPPED` (sector allocation constrained by a capacity cap),
