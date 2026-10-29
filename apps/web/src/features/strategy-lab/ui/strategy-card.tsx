@@ -7,6 +7,7 @@ import { fmtKwh, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { EnergyBar } from '@/components/ui/energy-bar';
+import type { BestMetricFlags } from '../utils/summarize';
 
 export interface StrategyCardProps {
   strategyId: StrategyId;
@@ -14,12 +15,7 @@ export interface StrategyCardProps {
   rule: string;
   result?: SimulationResult;
   isActive: boolean;
-  bestMetrics?: {
-    delivered?: boolean;
-    essential?: boolean;
-    unmet?: boolean;
-    soc?: boolean;
-  };
+  bestMetrics?: Partial<BestMetricFlags>;
   onSelectStrategy: () => void;
   className?: string;
 }

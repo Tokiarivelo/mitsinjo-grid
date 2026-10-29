@@ -13,18 +13,27 @@ Route: /strategies. Goal: compare allocation strategies under identical demand, 
 ```
 +--------------------------------------------------------------+
 | Strategy Lab   [scenario shown, fixed inputs]  [Compare]      |
++--------------------------------------------------------------+
+| Comparison parameters (collapsible)      [Reset to scenario]  |
+|  6 condition sliders | 5 sector rows: priority + power cap    |
++--------------------------------------------------------------+
+| Decision summary (computed)                                   |
 +----------------+----------------+----------------------------+
 | Proportional   | Essential-First| Balanced (if available)    |
 | metrics + rows | metrics + rows | metrics + rows [Use this]  |
 +----------------+----------------+----------------------------+
 | Grouped bars: delivered | essential coverage | unmet | SoC end |
 +--------------------------------------------------------------+
-| Decision summary (computed)                                   |
+| Warnings (active strategy)        | Explain in Copilot        |
 +--------------------------------------------------------------+
 ```
 
 ## Sections -> components
 
+- Comparison parameters: `StrategyParamsPanel` = `ConditionControlsGrid` (solar drop %, start, duration, demand ×,
+  battery kWh, initial SoC) + one `SectorRuleRow` per sector (priority select, "Limit power" toggle → max kW, from–to h).
+  Every edit patches the store input (`InputPatch`) and re-runs all strategies after 300 ms (`useAutoCompare`).
+  Invalid values stay visible with an inline error and are never dispatched. Sector rows: 1 col, 2 cols ≥ lg, 3 cols ≥ 2xl.
 - Strategy columns: card with name, rule text, StatusBadge, MetricCards (compact), 5 EnergyBar rows, Button "Use this strategy".
 - Comparison: ChartCard with grouped or aligned horizontal bars.
 - Decision summary: InsightCard origin=computed.
@@ -51,7 +60,7 @@ Route: /strategies. Goal: compare allocation strategies under identical demand, 
 - [ ] All columns share identical inputs, shown at top.
 - [ ] Every number has unit; axes labeled; consistent scales.
 - [ ] Decision summary appears only when supported by results.
-- [ ] Best value per metric marked by label/icon, not only color.
+- [ ] Best value per metric marked by label/icon, not only color; tied strategies all get it, no badge when all tie.
 - [ ] "Use this strategy" requires click and confirms change.
 - [ ] balanced hidden/disabled with reason if not implemented.
 - [ ] Chart has text summary and empty state.

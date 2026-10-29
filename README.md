@@ -28,7 +28,7 @@ Under proportional shedding, a severe deficit reduces power to the **Health Clin
 **Mitsinjo Grid** addresses this challenge with:
 
 1. **Deterministic Microgrid Simulation**: Pure TypeScript simulation engine running identical, mathematically proven energy balance logic in under 3 ms on both client and server.
-2. **Strategy Comparison Lab**: Direct quantitative comparison between proportional allocation, lexicographic essential-first priority, and balanced distribution.
+2. **Strategy Comparison Lab**: Direct quantitative comparison between proportional allocation, lexicographic essential-first priority, and balanced distribution. A parameters panel edits solar drop, demand, battery, per-sector priorities and power caps; all strategies re-run automatically.
 3. **Meta AI Copilot**: Grounded AI assistant utilizing Meta Muse Spark with tool calling to inspect grid state, run counterfactual simulations, and provide evidence-backed dispatch recommendations.
 4. **3D Village Digital Twin**: Interactive spatial visualization of power flows, battery states, and infrastructure health. Golden-hour stylized village (forested hills, mountains, sunset sky, glowing lines and windows that go dark when a sector is unserved), `High`/`Low` quality toggle with auto-downgrade on slow GPUs, and a fullscreen view.
 5. **Complete Localization**: Zero static text, featuring full English, French, and native Malagasy (`MG`) translations with 100% key parity.

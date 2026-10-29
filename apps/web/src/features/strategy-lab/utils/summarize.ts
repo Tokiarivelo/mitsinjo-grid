@@ -7,10 +7,57 @@ export interface DecisionSummary {
   descriptionKey: 'summaryHeroDesc' | 'summaryNominalDesc' | 'summaryStressDesc';
   descriptionParams?: Record<string, string | number>;
   evidenceRef: string;
-  bestDelivered: StrategyId;
-  bestEssentialCoverage: StrategyId;
-  lowestUnmet: StrategyId;
-  highestEndSoc: StrategyId;
+  /** Strategies tied for the best value of each metric; empty when every strategy ties. */
+  bestDelivered: StrategyId[];
+  bestEssentialCoverage: StrategyId[];
+  lowestUnmet: StrategyId[];
+  highestEndSoc: StrategyId[];
+}
+
+export interface BestMetricFlags {
+  delivered: boolean;
+  essential: boolean;
+  unmet: boolean;
+  soc: boolean;
+}
+
+/** Values closer than this (kWh or %) count as a tie. */
+const TIE_EPS = 0.001;
+
+interface Ranked {
+  id: StrategyId;
+  res: SimulationResult;
+}
+
+/**
+ * Ids holding the best value of one metric. Returns [] when all strategies tie,
+ * so a badge never marks a "best" that is not distinguishable.
+ */
+export function bestStrategies(
+  results: readonly Ranked[],
+  score: (m: SimulationResult['metrics']) => number,
+  direction: 'min' | 'max'
+): StrategyId[] {
+  if (results.length < 2) return [];
+  const values = results.map((r) => score(r.res.metrics));
+  const target = direction === 'max' ? Math.max(...values) : Math.min(...values);
+  const winners = results
+    .filter((_, i) => Math.abs(values[i]! - target) <= TIE_EPS)
+    .map((r) => r.id);
+  return winners.length === results.length ? [] : winners;
+}
+
+/** Badge flags for one strategy card; all false before a comparison exists. */
+export function bestMetricsFor(
+  summary: DecisionSummary | null,
+  strategy: StrategyId
+): BestMetricFlags {
+  return {
+    delivered: Boolean(summary?.bestDelivered.includes(strategy)),
+    essential: Boolean(summary?.bestEssentialCoverage.includes(strategy)),
+    unmet: Boolean(summary?.lowestUnmet.includes(strategy)),
+    soc: Boolean(summary?.highestEndSoc.includes(strategy)),
+  };
 }
 
 /**
@@ -28,31 +75,26 @@ export function summarizeComparison(
   }
 
   const bal = comparison.balanced;
-  const allResults: { id: StrategyId; res: SimulationResult }[] = [
+  const allResults: Ranked[] = [
     { id: 'proportional', res: prop },
     { id: 'essential_first', res: ess },
     ...(bal ? [{ id: 'balanced' as StrategyId, res: bal }] : []),
   ];
 
-  // Best delivered energy (max servedKwh)
-  let bestDelivered = prop.strategy;
-  let maxServed = prop.metrics.servedKwh;
-  for (const { id, res } of allResults) {
-    if (res.metrics.servedKwh > maxServed + 0.001) {
-      maxServed = res.metrics.servedKwh;
-      bestDelivered = id;
-    }
-  }
+  const bestDelivered = bestStrategies(allResults, (m) => m.servedKwh, 'max');
+  const lowestUnmet = bestStrategies(allResults, (m) => m.unservedKwh, 'min');
+  const highestEndSoc = bestStrategies(allResults, (m) => m.socEndPct, 'max');
+  const bestEssentialCoverage = bestStrategies(allResults, (m) => m.criticalUnservedKwh, 'min');
 
-  // Best essential coverage (min criticalUnservedKwh, then max criticalCoveragePct)
+  // Recommendation tie-break: min criticalUnservedKwh, then max criticalCoveragePct (essential_first first)
   let bestEssential = ess.strategy;
   let minCriticalUnserved = ess.metrics.criticalUnservedKwh;
   let maxCriticalPct = ess.metrics.criticalCoveragePct;
   for (const { id, res } of allResults) {
     if (
-      res.metrics.criticalUnservedKwh < minCriticalUnserved - 0.001 ||
-      (Math.abs(res.metrics.criticalUnservedKwh - minCriticalUnserved) <= 0.001 &&
-        res.metrics.criticalCoveragePct > maxCriticalPct + 0.001)
+      res.metrics.criticalUnservedKwh < minCriticalUnserved - TIE_EPS ||
+      (Math.abs(res.metrics.criticalUnservedKwh - minCriticalUnserved) <= TIE_EPS &&
+        res.metrics.criticalCoveragePct > maxCriticalPct + TIE_EPS)
     ) {
       minCriticalUnserved = res.metrics.criticalUnservedKwh;
       maxCriticalPct = res.metrics.criticalCoveragePct;
@@ -60,25 +102,7 @@ export function summarizeComparison(
     }
   }
 
-  // Lowest unmet demand (min unservedKwh)
-  let lowestUnmet = prop.strategy;
-  let minUnserved = prop.metrics.unservedKwh;
-  for (const { id, res } of allResults) {
-    if (res.metrics.unservedKwh < minUnserved - 0.001) {
-      minUnserved = res.metrics.unservedKwh;
-      lowestUnmet = id;
-    }
-  }
-
-  // Highest ending SoC (max socEndPct)
-  let highestEndSoc = prop.strategy;
-  let maxSoc = prop.metrics.socEndPct;
-  for (const { id, res } of allResults) {
-    if (res.metrics.socEndPct > maxSoc + 0.001) {
-      maxSoc = res.metrics.socEndPct;
-      highestEndSoc = id;
-    }
-  }
+  const best = { bestDelivered, bestEssentialCoverage, lowestUnmet, highestEndSoc };
 
   // Rule 1: Nominal condition — 0 unserved energy across both strategies
   if (prop.metrics.unservedKwh < 0.01 && ess.metrics.unservedKwh < 0.01) {
@@ -87,10 +111,7 @@ export function summarizeComparison(
       titleKey: 'summaryNominalTitle',
       descriptionKey: 'summaryNominalDesc',
       evidenceRef: `metrics.unservedKwh=0.0`,
-      bestDelivered,
-      bestEssentialCoverage: bestEssential,
-      lowestUnmet,
-      highestEndSoc,
+      ...best,
     };
   }
 
@@ -105,10 +126,7 @@ export function summarizeComparison(
         propUnserved: fmtKwh(prop.metrics.criticalUnservedKwh),
       },
       evidenceRef: `criticalUnservedKwh: ess=${ess.metrics.criticalUnservedKwh.toFixed(1)} vs prop=${prop.metrics.criticalUnservedKwh.toFixed(1)}`,
-      bestDelivered,
-      bestEssentialCoverage: 'essential_first',
-      lowestUnmet,
-      highestEndSoc,
+      ...best,
     };
   }
 
@@ -118,9 +136,6 @@ export function summarizeComparison(
     titleKey: 'summaryStressTitle',
     descriptionKey: 'summaryStressDesc',
     evidenceRef: `criticalCoveragePct: ess=${ess.metrics.criticalCoveragePct.toFixed(1)}% vs prop=${prop.metrics.criticalCoveragePct.toFixed(1)}%`,
-    bestDelivered,
-    bestEssentialCoverage: bestEssential,
-    lowestUnmet,
-    highestEndSoc,
+    ...best,
   };
 }

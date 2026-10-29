@@ -93,3 +93,13 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 
 - Props: title; subtitle?; unit; legend?; summary: string (text alt); empty?: boolean; loading?; children (Recharts).
 - Transparent chart bg, minimal grid, muted axes, units on axes, tooltips with exact value + definition. Empty state required. Colors per tokens.md; kW and kWh never on one unshared axis.
+
+## ConditionControlsGrid
+
+- Props: controls (from `useConditionControls(input, status, onPatch)`); fields? (subset, in order); showDescriptions?.
+- Used by SimControlsPanel, AssumptionsInspector and StrategyParamsPanel; validation via `usePatchValidation`.
+
+## StrategyParamsPanel / SectorRuleRow
+
+- Panel props: input; status; isModified; onPatch; onReset; defaultOpen?. Collapsible header button (aria-expanded) with StatusBadge.
+- Row props: sector; cap?; onPriorityChange; onCapChange(cap | null). Native select + number inputs, ≥ 44 px; invalid cap → `role="alert"` message.
