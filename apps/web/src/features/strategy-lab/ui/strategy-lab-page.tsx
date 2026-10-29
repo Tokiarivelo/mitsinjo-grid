@@ -23,6 +23,11 @@ import { ImpactBanner } from '@/components/ui/impact-banner';
 import { StrategyComparisonChart } from '@/components/charts';
 import { StrategyCard } from './strategy-card';
 import { bestMetricsFor, summarizeComparison } from '../utils/summarize';
+import {
+  MIN_COMPARED_STRATEGIES,
+  activeWithinSubset,
+  toggleStrategySubset,
+} from '../utils/strategy-subset';
 import { useAutoCompare } from '../hooks/use-auto-compare';
 import { StrategyParamsPanel } from './strategy-params-panel';
 
@@ -53,24 +58,22 @@ export function StrategyLabPage() {
   const patchInput = useSimulationStore((s) => s.patchInput);
   const resetInput = useSimulationStore((s) => s.reset);
 
-  const [selectedStrategies, setSelectedStrategies] = useState<StrategyId[]>([
-    'proportional',
-    'essential_first',
-    'balanced',
-  ]);
+  const [selectedStrategies, setSelectedStrategies] = useState<readonly StrategyId[]>(
+    STRATEGY_CARDS.map((c) => c.id)
+  );
 
   useAutoCompare(true, undefined, selectedStrategies);
 
-  const toggleStrategy = (id: StrategyId) => {
-    let next: StrategyId[];
-    if (selectedStrategies.includes(id)) {
-      if (selectedStrategies.length <= 2) return; // Enforce minimum 2
-      next = selectedStrategies.filter((s) => s !== id);
-    } else {
-      next = [...selectedStrategies, id];
-    }
+  const compareSubset = (next: readonly StrategyId[]) => {
     setSelectedStrategies(next);
+    const active = activeWithinSubset(activeStrategy, next);
+    if (active !== activeStrategy) selectStrategy(active);
     runComparison(next);
+  };
+
+  const toggleStrategy = (id: StrategyId) => {
+    const next = toggleStrategySubset(selectedStrategies, id);
+    if (next !== selectedStrategies) compareSubset(next);
   };
 
   const handleReset = () => {
@@ -86,6 +89,10 @@ export function StrategyLabPage() {
   const scenarioName = tScenarios(`${scenarioId}.name` as const);
 
   const handleUseStrategy = (strategy: StrategyId) => {
+    // Using an excluded strategy brings it back into the comparison so its results exist.
+    if (!selectedStrategies.includes(strategy)) {
+      compareSubset(toggleStrategySubset(selectedStrategies, strategy));
+    }
     selectStrategy(strategy);
   };
 
@@ -172,7 +179,7 @@ export function StrategyLabPage() {
               onSelectStrategy={() => handleUseStrategy(id)}
               included={isIncluded}
               onToggleInclude={() => toggleStrategy(id)}
-              canExclude={selectedStrategies.length > 2}
+              canExclude={selectedStrategies.length > MIN_COMPARED_STRATEGIES}
             />
           );
         })}

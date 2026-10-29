@@ -185,5 +185,19 @@ describe('Strategies (P3-T3, P3-T4, P3-T9)', () => {
       // Market (low) should get more when low is weighted 10 than when low is weighted 0
       expect(resFavorsLow.market.servedKw).toBeGreaterThan(resFavorsHigh.market.servedKw);
     });
+
+    it('never leaves power unused when the only sectors still in need have weight 0 (PR #23 review)', () => {
+      const total = mockSectors.reduce((sum, s) => sum + s.demandKw, 0);
+      const available = total - 5;
+      const res = runBalancedStrategy(available, mockSectors, {
+        critical: 10,
+        high: 10,
+        medium: 10,
+        low: 0,
+      });
+      const served = Object.values(res).reduce((sum, s) => sum + s.servedKw, 0);
+      expect(served).toBeCloseTo(available, 6);
+      expect(res.market.servedKw).toBeGreaterThan(0);
+    });
   });
 });

@@ -1,8 +1,11 @@
-import type { SimulationInput, StrategyId } from './schemas';
+import { DEFAULT_BALANCED_WEIGHTS } from './constants';
+import type { Priority, SimulationInput, StrategyId } from './schemas';
 
 function isDefaultBalancedWeights(w?: Record<string, number>): boolean {
   if (!w) return true;
-  return w.critical === 4 && w.high === 3 && w.medium === 2 && w.low === 1;
+  return (Object.keys(DEFAULT_BALANCED_WEIGHTS) as Priority[]).every(
+    (p) => w[p] === DEFAULT_BALANCED_WEIGHTS[p]
+  );
 }
 
 /**

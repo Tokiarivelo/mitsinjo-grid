@@ -163,6 +163,21 @@ describe('StrategyLabPage (P4-T5, P4-T7)', () => {
       expect(essCheckbox).not.toBeDisabled();
     });
 
+    it('moves the active strategy when it is excluded so its results never go empty (PR #23 review)', () => {
+      useSimulationStore.getState().loadScenario('cloudy_afternoon');
+      useSimulationStore.getState().run();
+      useSimulationStore.getState().selectStrategy('proportional');
+      render(<StrategyLabPage />);
+
+      fireEvent.click(
+        screen.getByRole('checkbox', { name: /include proportional allocation in comparison/i })
+      );
+
+      const state = useSimulationStore.getState();
+      expect(state.activeStrategy).not.toBe('proportional');
+      expect(state.results[state.activeStrategy]).toBeDefined();
+    });
+
     it('tunes balanced weights and critical shares in the Strategy Rules section (PZ-T10)', () => {
       render(<StrategyLabPage />);
 

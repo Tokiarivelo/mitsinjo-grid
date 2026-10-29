@@ -35,7 +35,7 @@ Route: /strategies. Goal: compare allocation strategies under identical demand, 
   `StrategyRulesSection` (priority weights 0–10 for Balanced allocation + critical lifeline share 0–100% per sector).
   Every edit patches the store input (`InputPatch`) and re-runs all strategies after 300 ms (`useAutoCompare`).
   Invalid values stay visible with an inline error and are never dispatched. Sector rows: 1 col, 2 cols ≥ lg, 3 cols ≥ 2xl.
-- Strategy columns: card with name, rule text, StatusBadge, comparison inclusion checkbox (min 2), MetricCards (compact), 5 EnergyBar rows, Button "Use this strategy".
+- Strategy columns: card with name, rule text, StatusBadge, comparison inclusion checkbox (min 2; excluding the active strategy moves the selection to the first included one; "Use this strategy" on an excluded card re-includes it), MetricCards (compact), 5 EnergyBar rows, Button "Use this strategy".
 - Comparison: ChartCard with grouped or aligned horizontal bars (renders only included strategies).
 - Decision summary: InsightCard origin=computed (evaluates any subset of at least 2 strategies).
 - Optional AI explain: Button ghost "Explain this result" -> /copilot (violet-labeled).

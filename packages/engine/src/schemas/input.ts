@@ -88,16 +88,19 @@ export const SectorCapSchema = z
   });
 export type SectorCap = z.infer<typeof SectorCapSchema>;
 
-export const BalancedWeightsSchema = z
-  .object({
-    critical: z.number().min(0).max(10),
-    high: z.number().min(0).max(10),
-    medium: z.number().min(0).max(10),
-    low: z.number().min(0).max(10),
-  })
-  .refine((w) => w.critical > 0 || w.high > 0 || w.medium > 0 || w.low > 0, {
+const BalancedWeightsShape = z.object({
+  critical: z.number().min(0).max(10),
+  high: z.number().min(0).max(10),
+  medium: z.number().min(0).max(10),
+  low: z.number().min(0).max(10),
+});
+
+export const BalancedWeightsSchema = BalancedWeightsShape.refine(
+  (w) => w.critical > 0 || w.high > 0 || w.medium > 0 || w.low > 0,
+  {
     message: 'At least one balanced weight must be strictly positive',
-  });
+  }
+);
 export type BalancedWeights = z.infer<typeof BalancedWeightsSchema>;
 
 export const StrategyParamsSchema = z.object({
@@ -146,13 +149,6 @@ export const InputPatchSchema = z.object({
   sectorCaps: z.array(SectorCapSchema).optional(),
   meterReadings: z.record(SectorIdSchema, z.array(z.number().min(0)).length(24)).optional(),
   criticalShares: z.record(SectorIdSchema, z.number().min(0).max(1)).optional(),
-  balancedWeights: z
-    .object({
-      critical: z.number().min(0).max(10).optional(),
-      high: z.number().min(0).max(10).optional(),
-      medium: z.number().min(0).max(10).optional(),
-      low: z.number().min(0).max(10).optional(),
-    })
-    .optional(),
+  balancedWeights: BalancedWeightsShape.partial().optional(),
 });
 export type InputPatch = z.infer<typeof InputPatchSchema>;

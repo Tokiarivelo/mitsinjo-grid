@@ -42,6 +42,7 @@ unservedKw = demandKw − servedKw
   pass 2: share the rest by `demand_s_remaining × weight` with weights (default: `critical 4, high 3, medium 2, low 1`,
   configurable via `strategyParams.balancedWeights` in range 0–10, at least one > 0),
   capped at each sector's remaining demand (iterate water-filling until no remainder or all capped).
+  If every sector still in need has weight 0, the leftover is shared by remaining demand (weights ration, never waste).
 - **Critical shares (`criticalShare`)** — fraction 0–1 of each sector's demand considered essential (default health 0.8,
   water 0.3, households 0.2, school 0.1, market 0.1; patchable via `InputPatch.criticalShares`).
 - **Sector capacity caps (`sectorCaps`)** — optional `sectorCaps?: { sector, maxKw, fromHour, toHour }[]`.
