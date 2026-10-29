@@ -215,14 +215,8 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     const maxKw = maxServedBySector[sectorId] ?? 0;
     const intensity = maxKw > 0 ? Math.min(1, Math.max(0, servedKw / maxKw)) : 0;
     const mode = !connected ? 'off' : (sectorStep?.mode ?? 'off');
-    let breaker: BreakerState = 'open';
-    if (connected && mode === 'lifeline') {
-      breaker = 'limited';
-    } else if (connected && (mode === 'full' || mode === 'limited')) {
-      breaker = 'closed';
-    } else {
-      breaker = 'open';
-    }
+    const breaker: BreakerState =
+      mode === 'lifeline' ? 'limited' : mode === 'full' || mode === 'limited' ? 'closed' : 'open';
 
     feeders[sectorId] = {
       mode,
@@ -252,7 +246,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
       id,
       feeder: feeders[id]!,
       demandKw: step.sectors[id]?.demandKw ?? 0,
-      connected: (input.sectors.find((s) => s.id === id)?.loadMultiplier ?? 1) > 0,
+      connected: buildings[id].connected,
     })).filter((f) => f.connected && f.demandKw > 0.05);
 
     const hasLifelineShortfall = result.warnings.some(

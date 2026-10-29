@@ -24,12 +24,13 @@ export interface DispatchControllerUnitProps {
   tones?: Record<SectorId, StatusColor>;
   totalServedKw: number;
   /** Translated controller mode, e.g. "Rationing". */
-  modeLabel?: string;
+  modeLabel: string;
   /** Tooltip per sector segment of the dispatch bar. */
   feederTitles?: Record<SectorId, string>;
   hasResult?: boolean;
   onFocus?: () => void;
-  nameLabel?: string;
+  /** Translated name, e.g. "EMS Dispatch". */
+  nameLabel: string;
   htmlPortal?: RefObject<HTMLElement | null>;
 }
 
@@ -132,21 +133,20 @@ export function DispatchControllerUnit({
   model,
   tones = DEFAULT_TONES,
   totalServedKw,
-  modeLabel = model.mode,
+  modeLabel,
   feederTitles = {} as Record<SectorId, string>,
   hasResult = true,
   onFocus,
-  nameLabel = 'EMS Dispatch',
+  nameLabel,
   htmlPortal,
 }: DispatchControllerUnitProps) {
   const [hovered, setHovered] = useState(false);
   const shelterGeom = useMemo(() => buildShelter(), []);
   const riserGeom = useMemo(() => buildRiser(), []);
-  const resolvedTones = tones ?? DEFAULT_TONES;
   const segments: DispatchSegment[] = SECTOR_IDS.map((id) => ({
     id,
     share: model.feeders[id]?.share ?? 0,
-    tone: resolvedTones[id] ?? 'idle',
+    tone: tones[id] ?? 'idle',
     title: feederTitles?.[id] ?? '',
   }));
 
@@ -155,11 +155,7 @@ export function DispatchControllerUnit({
   const isEmergency = mode === 'lifeline_only';
 
   // Screen glow color based on dispatch mode
-  const screenColorHex = isNormal
-    ? TOKEN_HEX.energyCyan
-    : isEmergency
-      ? TOKEN_HEX.solarAmber
-      : TOKEN_HEX.solarAmber;
+  const screenColorHex = isNormal ? TOKEN_HEX.energyCyan : TOKEN_HEX.solarAmber;
 
   const screenGlow = useMemo(
     () => new THREE.Color(screenColorHex).multiplyScalar(isEmergency ? 2.5 : 1.8),

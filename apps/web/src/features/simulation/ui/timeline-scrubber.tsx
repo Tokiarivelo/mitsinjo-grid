@@ -155,7 +155,7 @@ export function TimelineScrubber({
           aria-valuetext={fmtHour(timeIndex)}
           aria-label={tSim('timelineScrubberLabel')}
           style={{
-            background: `linear-gradient(to right, var(--color-energy-cyan, #50d8e8) 0%, var(--color-energy-cyan, #50d8e8) ${(timeIndex / 23) * 100}%, var(--color-surface-elevated, #2a2f36) ${(timeIndex / 23) * 100}%, var(--color-surface-elevated, #2a2f36) 100%)`,
+            background: `linear-gradient(to right, var(--color-energy-cyan) ${(timeIndex / 23) * 100}%, var(--color-surface-elevated) ${(timeIndex / 23) * 100}%)`,
           }}
           className="w-full h-2 bg-surface-elevated rounded-lg appearance-none cursor-pointer accent-energy-cyan
             transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"

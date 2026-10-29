@@ -206,17 +206,17 @@ describe('toSceneModel palette & modified flag (PR #10 review)', () => {
     it('sets controller mode to rationing when some sectors are constrained', () => {
       const stressInput = scenarios.essential_stress.input;
       const result = simulate(stressInput, 'proportional');
+      // An hour outside any lifeline shortfall where the engine rations a sector.
+      const inShortfall = (t: number) =>
+        result.warnings.some(
+          (w) => w.code === 'LIFELINE_SHORTFALL' && t >= w.fromHour && t <= w.toHour
+        );
       const deficitStepIndex = result.steps.findIndex(
-        (s) => s.unservedKw > 0 && Object.values(s.sectors).some((sec) => sec.mode === 'full')
+        (s) => !inShortfall(s.t) && Object.values(s.sectors).some((sec) => sec.mode === 'limited')
       );
-      if (deficitStepIndex >= 0) {
-        const model = toSceneModel({
-          input: stressInput,
-          result,
-          timeIndex: deficitStepIndex,
-        });
-        expect(model.controller.mode).toBe('rationing');
-      }
+      expect(deficitStepIndex).toBeGreaterThanOrEqual(0);
+      const model = toSceneModel({ input: stressInput, result, timeIndex: deficitStepIndex });
+      expect(model.controller.mode).toBe('rationing');
     });
 
     it('sets controller mode to lifeline_only in emergency or survie-seule step', () => {
