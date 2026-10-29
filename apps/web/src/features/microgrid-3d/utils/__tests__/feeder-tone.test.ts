@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { scenarios, simulate } from '@mitsinjo/engine';
-import { feederTone } from '../feeder-tone';
+import { feederTone, hasFeederTag } from '../feeder-tone';
 import { toSceneModel } from '../to-scene-model';
 import type { BuildingSceneModel, FeederSceneModel } from '../../types';
 
@@ -55,6 +55,13 @@ describe('feederTone', () => {
     expect(feederTone(feeder({ servedKw: 0 }), building({ demandKw: 0, servedKw: 0 }))).toBe(
       'idle'
     );
+  });
+
+  it('tags only feeders with demand or flow (a shed sector keeps its tag)', () => {
+    expect(hasFeederTag(building())).toBe(true);
+    expect(hasFeederTag(building({ servedKw: 0, status: 'unserved' }))).toBe(true);
+    expect(hasFeederTag(building({ demandKw: 0, servedKw: 0 }))).toBe(false);
+    expect(hasFeederTag(building({ connected: false }))).toBe(false);
   });
 
   it('gives every sector of a real run a tone, and shares sum to 1 when power flows', () => {

@@ -24,8 +24,9 @@ export const CAMERA_PRESETS: Record<CameraPreset, { position: Vec3; target: Vec3
     position: [6, 7, 5],
     target: [0, 1, -2],
   },
+  // From the gap between households and market: shelter, roof feeders and their kW tags.
   controller: {
-    position: [3.5, 4.2, 6.5],
+    position: [-2, 8.5, 11.5],
     target: [0, 1.1, 1],
   },
   essential: {

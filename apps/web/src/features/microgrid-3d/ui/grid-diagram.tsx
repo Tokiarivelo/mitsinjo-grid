@@ -409,7 +409,7 @@ function ControllerNodeCard({
 }: {
   controller: ControllerSceneModel;
   strategy: StrategyId;
-  /** Circuit header tab: no strategy line. */
+  /** Circuit header tab: no strategy text. */
   compact: boolean;
   segments: DispatchSegment[];
 }) {
@@ -441,28 +441,24 @@ function ControllerNodeCard({
           : 'border-warning-amber/60 hover:border-warning-amber ring-1 ring-warning-amber/20'
       )}
     >
-      <div className="flex min-w-0 items-center justify-between gap-[0.5cqw]">
-        <span className="flex min-w-0 items-center gap-[0.4cqw]">
-          <Cpu className="h-[1.7cqw] w-[1.7cqw] shrink-0 text-energy-cyan" aria-hidden="true" />
-          <span className="truncate font-semibold text-text-primary">
-            {t('controller.shortTitle')}
-          </span>
+      <span className="flex min-w-0 items-center gap-[0.4cqw]">
+        <Cpu className="h-[1.7cqw] w-[1.7cqw] shrink-0 text-energy-cyan" aria-hidden="true" />
+        <span className="truncate font-semibold text-text-primary">
+          {t('controller.shortTitle')}
         </span>
+      </span>
+      <span className="flex min-w-0 items-center gap-[0.5cqw] font-mono text-[1.15cqw]">
         <span
           className={cn(
-            'flex shrink-0 items-center gap-[0.3cqw] rounded-full border px-[0.5cqw] py-[0.1cqw] font-mono text-[1.1cqw]',
+            'flex shrink-0 items-center gap-[0.3cqw] rounded-full border px-[0.5cqw] py-[0.1cqw]',
             modeBadgeClass
           )}
         >
           <span className={cn('h-[0.6cqw] w-[0.6cqw] rounded-full', dotClass)} aria-hidden="true" />
-          <span className="truncate">{t(`controller.mode.${mode}`)}</span>
+          <span className="whitespace-nowrap">{t(`controller.mode.${mode}`)}</span>
         </span>
-      </div>
-      {!compact && (
-        <span className="block truncate font-mono text-[1.2cqw] text-text-muted">
-          {tStrategies(strategy)}
-        </span>
-      )}
+        {!compact && <span className="truncate text-text-muted">{tStrategies(strategy)}</span>}
+      </span>
       {segments.length > 0 && <DispatchShareBar segments={segments} className="h-[0.7cqw]" />}
     </div>
   );

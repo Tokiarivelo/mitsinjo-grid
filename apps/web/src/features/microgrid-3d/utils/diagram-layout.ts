@@ -64,7 +64,7 @@ function topologyLayout(): DiagramLayout {
   const solar = box(46, 27, 68, 28);
   const hub = box(150, 74, 76, 32);
   // On the hub → bus path: every feeder leaves through the EMS controller.
-  const controller = box(150, 110, 56, 24);
+  const controller = box(150, 110, 62, 24);
   const sectors: Record<SectorId, Box> = {
     school: box(196, 26, SW, SH),
     industry: box(284, 26, SW, SH),
@@ -147,7 +147,7 @@ function circuitLayout(): DiagramLayout {
   const solar = box(52, 40, 76, 30);
   const hub = box(52, 120, 76, 40);
   // Header tab of the EMS switchboard that holds the bus bar and every breaker.
-  const controller = box(152, 11, 58, 16);
+  const controller = box(152, 11, 58, 20);
   const sectors = {} as Record<SectorId, Box>;
   const busToSector = {} as Record<SectorId, Pt[]>;
   const breakers = {} as Record<SectorId, Pt>;
@@ -184,7 +184,7 @@ function circuitLayout(): DiagramLayout {
       h: lastY + 14 - (controller.y + controller.h / 2),
     },
     busBar: [
-      [busX, firstY - 8],
+      [busX, firstY - 6],
       [busX, lastY + 8],
     ],
     busLabel: { x: 66, y: 6, w: 52, h: 14 },

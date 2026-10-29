@@ -6,7 +6,7 @@ import { SECTOR_IDS, type SectorId } from '@mitsinjo/engine';
 import { fmtKw } from '@/lib/format';
 import type { BuildingSceneModel, LineFlowSceneModel, StatusColor } from '../types';
 import { pointAlongCable, routeCable } from '../utils/cable-route';
-import { NO_LOAD_KW } from '../utils/feeder-tone';
+import { hasFeederTag, NO_LOAD_KW } from '../utils/feeder-tone';
 import { FeederChip } from './dispatch-share-bar';
 
 /**
@@ -47,7 +47,7 @@ export function FeederTags({ lines, buildings, tones, titles, htmlPortal }: Feed
 
   return (
     <group name="feeder-tags">
-      {SECTOR_IDS.filter((id) => buildings[id].connected).map((id) => (
+      {SECTOR_IDS.filter((id) => hasFeederTag(buildings[id])).map((id) => (
         <Html
           key={id}
           position={anchors[id]}

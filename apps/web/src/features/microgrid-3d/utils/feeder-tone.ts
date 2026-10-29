@@ -24,3 +24,8 @@ export function feederTones(model: SceneModel): Record<SectorId, StatusColor> {
     SECTOR_IDS.map((id) => [id, feederTone(model.controller.feeders[id], model.buildings[id])])
   ) as Record<SectorId, StatusColor>;
 }
+
+/** A 3D cable tag only where the feeder carries power or should (shed); idle ones stay quiet. */
+export function hasFeederTag(b: BuildingSceneModel): boolean {
+  return b.connected && (b.demandKw > NO_LOAD_KW || b.servedKw > NO_LOAD_KW);
+}
