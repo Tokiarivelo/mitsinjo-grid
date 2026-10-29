@@ -1,16 +1,11 @@
+import { DEFAULT_BALANCED_WEIGHTS } from '../constants';
 import type { SectorDemandStep } from '../model/demand';
 import type { Priority, SectorId, SectorStep } from '../schemas';
 
-const PRIORITY_WEIGHTS: Record<Priority, number> = {
-  critical: 4,
-  high: 3,
-  medium: 2,
-  low: 1,
-};
-
 export function runBalancedStrategy(
   availableKw: number,
-  sectors: readonly SectorDemandStep[]
+  sectors: readonly SectorDemandStep[],
+  weights: Record<Priority, number> = DEFAULT_BALANCED_WEIGHTS
 ): Record<SectorId, SectorStep> {
   const result = {} as Record<SectorId, SectorStep>;
   let totalCriticalKw = 0;
@@ -63,7 +58,7 @@ export function runBalancedStrategy(
     for (const s of active) {
       const remainingDemand =
         s.demandKw - (pass1Served[s.sectorId] ?? 0) - (pass2Served[s.sectorId] ?? 0);
-      sumWeightRem += remainingDemand * PRIORITY_WEIGHTS[s.priority];
+      sumWeightRem += remainingDemand * weights[s.priority];
     }
 
     if (sumWeightRem <= EPS) break;
@@ -73,8 +68,7 @@ export function runBalancedStrategy(
     for (const s of active) {
       const remainingDemand =
         s.demandKw - (pass1Served[s.sectorId] ?? 0) - (pass2Served[s.sectorId] ?? 0);
-      const trialShare =
-        (remainingKw * (remainingDemand * PRIORITY_WEIGHTS[s.priority])) / sumWeightRem;
+      const trialShare = (remainingKw * (remainingDemand * weights[s.priority])) / sumWeightRem;
       if (trialShare >= remainingDemand - EPS) {
         hasCap = true;
         break;
@@ -85,8 +79,7 @@ export function runBalancedStrategy(
       for (const s of active) {
         const remainingDemand =
           s.demandKw - (pass1Served[s.sectorId] ?? 0) - (pass2Served[s.sectorId] ?? 0);
-        const trialShare =
-          (remainingKw * (remainingDemand * PRIORITY_WEIGHTS[s.priority])) / sumWeightRem;
+        const trialShare = (remainingKw * (remainingDemand * weights[s.priority])) / sumWeightRem;
         if (trialShare >= remainingDemand - EPS) {
           pass2Served[s.sectorId] = (pass2Served[s.sectorId] ?? 0) + remainingDemand;
           remainingKw = Math.max(0, remainingKw - remainingDemand);
@@ -96,8 +89,7 @@ export function runBalancedStrategy(
       for (const s of active) {
         const remainingDemand =
           s.demandKw - (pass1Served[s.sectorId] ?? 0) - (pass2Served[s.sectorId] ?? 0);
-        const trialShare =
-          (remainingKw * (remainingDemand * PRIORITY_WEIGHTS[s.priority])) / sumWeightRem;
+        const trialShare = (remainingKw * (remainingDemand * weights[s.priority])) / sumWeightRem;
         pass2Served[s.sectorId] = (pass2Served[s.sectorId] ?? 0) + trialShare;
       }
       remainingKw = 0;

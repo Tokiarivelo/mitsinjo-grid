@@ -67,30 +67,31 @@ export function bestMetricsFor(
 export function summarizeComparison(
   comparison: Partial<Record<StrategyId, SimulationResult>>
 ): DecisionSummary | null {
-  const prop = comparison.proportional;
-  const ess = comparison.essential_first;
-
-  if (!prop || !ess) {
-    return null;
+  const allResults: Ranked[] = [];
+  if (comparison.proportional) {
+    allResults.push({ id: 'proportional', res: comparison.proportional });
+  }
+  if (comparison.essential_first) {
+    allResults.push({ id: 'essential_first', res: comparison.essential_first });
+  }
+  if (comparison.balanced) {
+    allResults.push({ id: 'balanced', res: comparison.balanced });
   }
 
-  const bal = comparison.balanced;
-  const allResults: Ranked[] = [
-    { id: 'proportional', res: prop },
-    { id: 'essential_first', res: ess },
-    ...(bal ? [{ id: 'balanced' as StrategyId, res: bal }] : []),
-  ];
+  if (allResults.length < 2) {
+    return null;
+  }
 
   const bestDelivered = bestStrategies(allResults, (m) => m.servedKwh, 'max');
   const lowestUnmet = bestStrategies(allResults, (m) => m.unservedKwh, 'min');
   const highestEndSoc = bestStrategies(allResults, (m) => m.socEndPct, 'max');
   const bestEssentialCoverage = bestStrategies(allResults, (m) => m.criticalUnservedKwh, 'min');
 
-  // Recommendation tie-break: min criticalUnservedKwh, then max criticalCoveragePct (essential_first first)
-  let bestEssential = ess.strategy;
-  let minCriticalUnserved = ess.metrics.criticalUnservedKwh;
-  let maxCriticalPct = ess.metrics.criticalCoveragePct;
-  for (const { id, res } of allResults) {
+  // Recommendation tie-break: min criticalUnservedKwh, then max criticalCoveragePct
+  let bestEssential = allResults[0]!.id;
+  let minCriticalUnserved = allResults[0]!.res.metrics.criticalUnservedKwh;
+  let maxCriticalPct = allResults[0]!.res.metrics.criticalCoveragePct;
+  for (const { id, res } of allResults.slice(1)) {
     if (
       res.metrics.criticalUnservedKwh < minCriticalUnserved - TIE_EPS ||
       (Math.abs(res.metrics.criticalUnservedKwh - minCriticalUnserved) <= TIE_EPS &&
@@ -104,10 +105,11 @@ export function summarizeComparison(
 
   const best = { bestDelivered, bestEssentialCoverage, lowestUnmet, highestEndSoc };
 
-  // Rule 1: Nominal condition — 0 unserved energy across both strategies
-  if (prop.metrics.unservedKwh < 0.01 && ess.metrics.unservedKwh < 0.01) {
+  // Rule 1: Nominal condition — 0 unserved energy across all evaluated strategies
+  const allZeroUnserved = allResults.every((r) => r.res.metrics.unservedKwh < 0.01);
+  if (allZeroUnserved) {
     return {
-      recommendedStrategy: 'proportional',
+      recommendedStrategy: comparison.proportional ? 'proportional' : allResults[0]!.id,
       titleKey: 'summaryNominalTitle',
       descriptionKey: 'summaryNominalDesc',
       evidenceRef: `metrics.unservedKwh=0.0`,
@@ -115,8 +117,15 @@ export function summarizeComparison(
     };
   }
 
-  // Rule 2: Essential First protects clinic/water while Proportional drops critical power
-  if (ess.metrics.criticalUnservedKwh < 0.01 && prop.metrics.criticalUnservedKwh > 0.01) {
+  // Rule 2: Essential First protects clinic/water while Proportional drops critical power (when both present)
+  const prop = comparison.proportional;
+  const ess = comparison.essential_first;
+  if (
+    prop &&
+    ess &&
+    ess.metrics.criticalUnservedKwh < 0.01 &&
+    prop.metrics.criticalUnservedKwh > 0.01
+  ) {
     return {
       recommendedStrategy: 'essential_first',
       titleKey: 'summaryHeroTitle',
@@ -131,11 +140,14 @@ export function summarizeComparison(
   }
 
   // Rule 3: Severe deficit — recommend whichever strategy best protects the essential tier
+  const evidenceParts = allResults.map(
+    (r) => `${r.id}=${r.res.metrics.criticalCoveragePct.toFixed(1)}%`
+  );
   return {
     recommendedStrategy: bestEssential,
     titleKey: 'summaryStressTitle',
     descriptionKey: 'summaryStressDesc',
-    evidenceRef: `criticalCoveragePct: ess=${ess.metrics.criticalCoveragePct.toFixed(1)}% vs prop=${prop.metrics.criticalCoveragePct.toFixed(1)}%`,
+    evidenceRef: `criticalCoveragePct: ${evidenceParts.join(' vs ')}`,
     ...best,
   };
 }

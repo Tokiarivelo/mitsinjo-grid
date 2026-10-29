@@ -39,8 +39,11 @@ unservedKw = demandKw − servedKw
 - **essential_first** — serve sectors in priority order `critical > high > medium > low`;
   within a tier, share proportionally to demand. A tier is fully served before the next gets anything.
 - **balanced** (stretch) — pass 1: serve `critical_s` of all sectors (proportional if short);
-  pass 2: share the rest by `demand_s_remaining × weight` with weights `critical 4, high 3, medium 2, low 1`,
+  pass 2: share the rest by `demand_s_remaining × weight` with weights (default: `critical 4, high 3, medium 2, low 1`,
+  configurable via `strategyParams.balancedWeights` in range 0–10, at least one > 0),
   capped at each sector's remaining demand (iterate water-filling until no remainder or all capped).
+- **Critical shares (`criticalShare`)** — fraction 0–1 of each sector's demand considered essential (default health 0.8,
+  water 0.3, households 0.2, school 0.1, market 0.1; patchable via `InputPatch.criticalShares`).
 - **Sector capacity caps (`sectorCaps`)** — optional `sectorCaps?: { sector, maxKw, fromHour, toHour }[]`.
   When caps apply at step $t$, capped sectors receive at most `min(allocation, maxKw)`. Any freed power
   is iteratively reallocated via water-filling to uncapped sectors up to their demand.

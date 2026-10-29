@@ -127,5 +127,63 @@ describe('StrategyLabPage (P4-T5, P4-T7)', () => {
       expect(toggle).toHaveAttribute('aria-expanded', 'false');
       expect(screen.queryByLabelText('Solar Drop')).not.toBeInTheDocument();
     });
+
+    it('allows toggling strategy subset in comparison and enforces min 2 (PZ-T9)', () => {
+      useSimulationStore.getState().loadScenario('cloudy_afternoon');
+      useSimulationStore.getState().run();
+      render(<StrategyLabPage />);
+
+      const balCheckbox = screen.getByRole('checkbox', {
+        name: /include balanced distribution in comparison/i,
+      });
+      expect(balCheckbox).toBeChecked();
+      expect(balCheckbox).not.toBeDisabled();
+
+      // Uncheck Balanced
+      fireEvent.click(balCheckbox);
+      expect(balCheckbox).not.toBeChecked();
+
+      // Only 2 strategies remain checked: proportional and essential_first
+      const propCheckbox = screen.getByRole('checkbox', {
+        name: /include proportional allocation in comparison/i,
+      });
+      const essCheckbox = screen.getByRole('checkbox', {
+        name: /include essential-first priority in comparison/i,
+      });
+      expect(propCheckbox).toBeChecked();
+      expect(essCheckbox).toBeChecked();
+      // Minimum 2 enforced: cannot uncheck further
+      expect(propCheckbox).toBeDisabled();
+      expect(essCheckbox).toBeDisabled();
+
+      // Re-check Balanced
+      fireEvent.click(balCheckbox);
+      expect(balCheckbox).toBeChecked();
+      expect(propCheckbox).not.toBeDisabled();
+      expect(essCheckbox).not.toBeDisabled();
+    });
+
+    it('tunes balanced weights and critical shares in the Strategy Rules section (PZ-T10)', () => {
+      render(<StrategyLabPage />);
+
+      // Find Critical priority weight slider in Strategy Rules
+      const criticalWeightSlider = screen.getByLabelText(/critical/i, {
+        selector: 'input[type="range"]',
+      });
+      fireEvent.change(criticalWeightSlider, { target: { value: '8' } });
+
+      expect(useSimulationStore.getState().status).toBe('modified');
+      expect(useSimulationStore.getState().input.strategyParams?.balancedWeights?.critical).toBe(8);
+
+      // Find Health Clinic critical share slider
+      const healthShareSlider = screen.getByLabelText(/health clinic/i, {
+        selector: 'input[type="range"]',
+      });
+      fireEvent.change(healthShareSlider, { target: { value: '95' } });
+
+      expect(
+        useSimulationStore.getState().input.sectors.find((s) => s.id === 'health')?.criticalShare
+      ).toBeCloseTo(0.95);
+    });
   });
 });

@@ -1,4 +1,4 @@
-import type { StrategyId, WeatherId } from './schemas';
+import type { Priority, StrategyId, WeatherId } from './schemas';
 
 export const ENGINE_VERSION = '0.1.0';
 
@@ -10,6 +10,13 @@ export const STEP_H = 1 as const;
 /** Solar drop window used when a patch adds a drop without start/duration. */
 export const DEFAULT_DROP_START_HOUR = 12;
 export const DEFAULT_DROP_DURATION_H = 3;
+
+export const DEFAULT_BALANCED_WEIGHTS: Record<Priority, number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+};
 
 export const STRATEGIES: Record<StrategyId, { label: string; rule: string }> = {
   proportional: {

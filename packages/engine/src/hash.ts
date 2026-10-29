@@ -1,5 +1,10 @@
 import type { SimulationInput, StrategyId } from './schemas';
 
+function isDefaultBalancedWeights(w?: Record<string, number>): boolean {
+  if (!w) return true;
+  return w.critical === 4 && w.high === 3 && w.medium === 2 && w.low === 1;
+}
+
 /**
  * Deterministically serialize a JavaScript value to canonical JSON.
  * Object keys are sorted alphabetically at every nesting level.
@@ -20,6 +25,12 @@ export function canonicalJson(obj: unknown): string {
     if (val !== undefined) {
       if ((k === 'sectorCaps' || k === 'meterReadings') && Array.isArray(val) && val.length === 0) {
         continue;
+      }
+      if (k === 'strategyParams' && val && typeof val === 'object') {
+        const sp = val as { balancedWeights?: Record<string, number> };
+        if (!sp.balancedWeights || isDefaultBalancedWeights(sp.balancedWeights)) {
+          continue;
+        }
       }
       entries.push(JSON.stringify(k) + ':' + canonicalJson(val));
     }

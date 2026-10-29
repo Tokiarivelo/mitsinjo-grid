@@ -1,5 +1,9 @@
-import { DEFAULT_DROP_DURATION_H, DEFAULT_DROP_START_HOUR } from './constants';
-import { InputPatchSchema, parseInput } from './schemas';
+import {
+  DEFAULT_BALANCED_WEIGHTS,
+  DEFAULT_DROP_DURATION_H,
+  DEFAULT_DROP_START_HOUR,
+} from './constants';
+import { BalancedWeightsSchema, InputPatchSchema, parseInput } from './schemas';
 import type { InputPatch, SimulationInput, SolarDropEvent } from './schemas';
 
 export interface SolarDropSettings {
@@ -65,6 +69,35 @@ export function applyPatch(input: SimulationInput, rawPatch: InputPatch): Simula
         s.meterReadings = readings;
       }
     }
+  }
+
+  if (patch.criticalShares !== undefined) {
+    for (const [secId, share] of Object.entries(patch.criticalShares)) {
+      const s = cloned.sectors.find((sec) => sec.id === secId);
+      if (s && share !== undefined) {
+        s.criticalShare = share;
+      }
+    }
+  }
+
+  if (patch.balancedWeights !== undefined) {
+    const currentWeights = cloned.strategyParams?.balancedWeights ?? {
+      ...DEFAULT_BALANCED_WEIGHTS,
+    };
+    const mergedWeights = {
+      ...currentWeights,
+      ...patch.balancedWeights,
+    };
+    const finalWeights = {
+      critical: mergedWeights.critical ?? DEFAULT_BALANCED_WEIGHTS.critical,
+      high: mergedWeights.high ?? DEFAULT_BALANCED_WEIGHTS.high,
+      medium: mergedWeights.medium ?? DEFAULT_BALANCED_WEIGHTS.medium,
+      low: mergedWeights.low ?? DEFAULT_BALANCED_WEIGHTS.low,
+    };
+    cloned.strategyParams = {
+      ...cloned.strategyParams,
+      balancedWeights: BalancedWeightsSchema.parse(finalWeights),
+    };
   }
 
   const existingDrop = cloned.events.find((e) => e.type === 'solar_drop') as

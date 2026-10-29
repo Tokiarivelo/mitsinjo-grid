@@ -149,6 +149,26 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
     expect(fullText).toContain('Proposal ID');
   });
 
+  it('Eval: propose_change with strategy rule tuning (criticalShares & balancedWeights) (PZ-T10)', async () => {
+    const { events, fullText } = await runEvalPrompt(
+      'Can you propose tuning the balanced weights and critical share for health?'
+    );
+
+    const proposalEvent = events.find((e) => e.name === 'proposal');
+    expect(proposalEvent).toBeDefined();
+    const propData = proposalEvent?.data as {
+      proposalId: string;
+      patch?: {
+        criticalShares?: Record<string, number>;
+        balancedWeights?: Record<string, number>;
+      };
+      reason: string;
+    };
+    expect(propData.patch?.criticalShares?.health).toBe(0.9);
+    expect(propData.patch?.balancedWeights?.critical).toBe(5);
+    expect(fullText).toContain('Proposal ID');
+  });
+
   // Case 9 (P6-T12)
   it('Eval 9: "Write me a poem about Paris." → polite off-topic refusal + related question, no tool call', async () => {
     const { events, fullText, evidenceList } = await runEvalPrompt('Write me a poem about Paris.');

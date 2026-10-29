@@ -170,6 +170,74 @@ describe('applyPatch (P3-T7)', () => {
       })
     ).toThrow(ZodError);
   });
+
+  it('updates criticalShares per sector via patch (PZ-T8)', () => {
+    const input = createBaselineInput();
+    const healthBefore = input.sectors.find((s) => s.id === 'health')?.criticalShare;
+    expect(healthBefore).toBe(0.8);
+
+    const patched = applyPatch(input, {
+      criticalShares: {
+        health: 0.9,
+        market: 0.25,
+      },
+    });
+
+    expect(patched.sectors.find((s) => s.id === 'health')?.criticalShare).toBe(0.9);
+    expect(patched.sectors.find((s) => s.id === 'market')?.criticalShare).toBe(0.25);
+    // Households unchanged
+    expect(patched.sectors.find((s) => s.id === 'households')?.criticalShare).toBe(0.2);
+  });
+
+  it('rejects out-of-bounds criticalShares (< 0 or > 1) (PZ-T8)', () => {
+    const input = createBaselineInput();
+    expect(() => applyPatch(input, { criticalShares: { health: -0.1 } })).toThrow(ZodError);
+    expect(() => applyPatch(input, { criticalShares: { health: 1.5 } })).toThrow(ZodError);
+  });
+
+  it('updates balancedWeights via patch, merging with defaults (PZ-T8)', () => {
+    const input = createBaselineInput();
+    expect(input.strategyParams).toBeUndefined();
+
+    const patched = applyPatch(input, {
+      balancedWeights: {
+        critical: 6,
+        low: 0,
+      },
+    });
+
+    expect(patched.strategyParams?.balancedWeights).toEqual({
+      critical: 6,
+      high: 3,
+      medium: 2,
+      low: 0,
+    });
+  });
+
+  it('rejects balancedWeights when all weights are 0 or out of bounds (PZ-T8)', () => {
+    const input = createBaselineInput();
+
+    // All zero
+    expect(() =>
+      applyPatch(input, {
+        balancedWeights: { critical: 0, high: 0, medium: 0, low: 0 },
+      })
+    ).toThrow(ZodError);
+
+    // Negative
+    expect(() =>
+      applyPatch(input, {
+        balancedWeights: { critical: -1 },
+      })
+    ).toThrow(ZodError);
+
+    // Greater than 10
+    expect(() =>
+      applyPatch(input, {
+        balancedWeights: { critical: 11 },
+      })
+    ).toThrow(ZodError);
+  });
 });
 
 describe('getSolarDrop', () => {

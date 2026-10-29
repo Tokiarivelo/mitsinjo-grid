@@ -37,4 +37,28 @@ describe('Deterministic Hash & IDs (P3-T6)', () => {
     expect(id1).toBe(id2);
     expect(id1).not.toBe(idEss);
   });
+
+  it('produces identical inputHash when strategyParams is absent vs default balanced weights (PZ-T7)', () => {
+    const inputAbsent = createBaselineInput();
+    const inputDefault = {
+      ...createBaselineInput(),
+      strategyParams: {
+        balancedWeights: { critical: 4, high: 3, medium: 2, low: 1 },
+      },
+    };
+
+    expect(computeInputHash(inputAbsent)).toBe(computeInputHash(inputDefault));
+  });
+
+  it('produces different inputHash when non-default balancedWeights are set (PZ-T7)', () => {
+    const inputDefault = createBaselineInput();
+    const inputCustom = {
+      ...createBaselineInput(),
+      strategyParams: {
+        balancedWeights: { critical: 8, high: 3, medium: 2, low: 1 },
+      },
+    };
+
+    expect(computeInputHash(inputCustom)).not.toBe(computeInputHash(inputDefault));
+  });
 });

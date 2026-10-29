@@ -146,6 +146,16 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
               type: 'number',
               description: 'Minimum reserve battery state of charge (0 to 100%).',
             },
+            criticalShares: {
+              type: 'object',
+              description:
+                'Critical lifeline share per sector (0 to 1) for health, water, school, households, market.',
+            },
+            balancedWeights: {
+              type: 'object',
+              description:
+                'Priority weights (0 to 10) for balanced strategy (critical, high, medium, low).',
+            },
           },
         },
         strategy: {
@@ -236,6 +246,16 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
                 },
                 required: ['sector', 'maxKw', 'fromHour', 'toHour'],
               },
+            },
+            criticalShares: {
+              type: 'object',
+              description:
+                'Critical lifeline share per sector (0 to 1) for health, water, school, households, market.',
+            },
+            balancedWeights: {
+              type: 'object',
+              description:
+                'Priority weights (0 to 10) for balanced strategy (critical, high, medium, low).',
             },
           },
         },

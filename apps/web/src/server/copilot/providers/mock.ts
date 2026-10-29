@@ -328,6 +328,25 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
         },
       };
     } else if (
+      query.includes('balanced weights') ||
+      query.includes('critical share') ||
+      query.includes('poids équilibré') ||
+      query.includes('part critique')
+    ) {
+      toolCall = {
+        id: 'call_propose_rules',
+        name: 'propose_change',
+        args: {
+          patch: {
+            criticalShares: { health: 0.9 },
+            balancedWeights: { critical: 5, high: 3, medium: 2, low: 1 },
+          },
+          reason: fr
+            ? 'Ajustement proposé des règles de stratégie: part critique de santé à 90% et pondération équilibrée.'
+            : 'Proposed strategy rule tuning: health critical share to 90% and balanced weight adjustments.',
+        },
+      };
+    } else if (
       query.includes('switch to essential') ||
       query.includes('switch strategy') ||
       query.includes('change strategy') ||

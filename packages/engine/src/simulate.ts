@@ -10,6 +10,7 @@ import {
 } from './model';
 import type { SectorDemandStep } from './model/demand';
 import type {
+  Priority,
   SectorCap,
   SectorId,
   SectorStep,
@@ -25,10 +26,11 @@ function allocateWithCaps(
   strategy: StrategyId,
   availableKw: number,
   sectors: readonly SectorDemandStep[],
-  activeCaps: readonly SectorCap[]
+  activeCaps: readonly SectorCap[],
+  weights?: Record<Priority, number>
 ): Record<SectorId, SectorStep> {
   if (activeCaps.length === 0) {
-    return executeStrategy(strategy, availableKw, sectors);
+    return executeStrategy(strategy, availableKw, sectors, weights);
   }
 
   // Build sector -> cap map (minimum cap if multiple active for the same sector)
@@ -43,7 +45,7 @@ function allocateWithCaps(
   let uncappedSectors = [...sectors];
 
   while (uncappedSectors.length > 0) {
-    const trialAllocation = executeStrategy(strategy, currentAvailable, uncappedSectors);
+    const trialAllocation = executeStrategy(strategy, currentAvailable, uncappedSectors, weights);
     const newlyConstrained: SectorDemandStep[] = [];
 
     for (const s of uncappedSectors) {
@@ -113,7 +115,8 @@ export function simulate(input: SimulationInput, strategy: StrategyId): Simulati
       strategy,
       availableKw,
       demandResult.sectorList,
-      activeCaps
+      activeCaps,
+      input.strategyParams?.balancedWeights
     );
 
     let servedKw = 0;

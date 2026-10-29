@@ -157,6 +157,29 @@ describe('Copilot Tools (P6-T2)', () => {
       expect(ctx.input.solar.peakKw).toBe(baseInput.solar.peakKw);
     });
 
+    it('executes propose_change with strategy rules (criticalShares & balancedWeights) (PZ-T10)', () => {
+      const res = executeTool(
+        'propose_change',
+        {
+          patch: {
+            criticalShares: { health: 0.9, water: 0.4 },
+            balancedWeights: { critical: 5, high: 3, medium: 2, low: 1 },
+          },
+          reason: 'Increase health lifeline and tune balanced weights',
+        },
+        ctx
+      );
+      expect(res.error).toBeUndefined();
+      expect(res.proposal).toBeDefined();
+      expect(res.proposal?.patch?.criticalShares).toEqual({ health: 0.9, water: 0.4 });
+      expect(res.proposal?.patch?.balancedWeights).toEqual({
+        critical: 5,
+        high: 3,
+        medium: 2,
+        low: 1,
+      });
+    });
+
     it('returns structured error for invalid args without throwing', () => {
       const res = executeTool('run_scenario', { patch: { solarDropPct: 150 } }, ctx);
       expect(res.error).toBeDefined();

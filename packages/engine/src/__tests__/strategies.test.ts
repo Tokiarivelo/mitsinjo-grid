@@ -162,5 +162,28 @@ describe('Strategies (P3-T3, P3-T4, P3-T9)', () => {
         expect(res[s.sectorId].servedKw).toBeCloseTo(s.demandKw, 6);
       }
     });
+
+    it('honors custom priority weights in Pass 2 (PZ-T7)', () => {
+      // 50 kW available (25 kW pass 1, 25 kW pass 2).
+      // Giving high priority 10 vs low 0:
+      const resFavorsHigh = runBalancedStrategy(50, mockSectors, {
+        critical: 1,
+        high: 10,
+        medium: 1,
+        low: 0,
+      });
+
+      const resFavorsLow = runBalancedStrategy(50, mockSectors, {
+        critical: 1,
+        high: 0,
+        medium: 1,
+        low: 10,
+      });
+
+      // Water (high) should get more when high is weighted 10 than when high is weighted 0
+      expect(resFavorsHigh.water.servedKw).toBeGreaterThan(resFavorsLow.water.servedKw);
+      // Market (low) should get more when low is weighted 10 than when low is weighted 0
+      expect(resFavorsLow.market.servedKw).toBeGreaterThan(resFavorsHigh.market.servedKw);
+    });
   });
 });

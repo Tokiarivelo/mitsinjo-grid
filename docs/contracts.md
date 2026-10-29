@@ -75,13 +75,15 @@ interface SimulationInput {
   events: ScenarioEvent[];
   demandMultiplier: number; // global, 0.5–2
   sectorCaps?: SectorCap[];
+  strategyParams?: { balancedWeights?: Record<Priority, number> };
 }
 ```
 
 Validation bounds (Zod, reject — never silently clamp): `peakKw 0–500`, `capacityKwh 1–2000`,
 `initialSocPct/minSocPct 0–100` with `min < initial`, effs `0.5–1`, `factor 0–3`,
 `startHour 0–23`, `startHour + durationH ≤ 24`, `durationH 1–24`, exactly 5 sectors with unique ids,
-`sectorCaps` `maxKw 0–500`, `fromHour 0–23`, `toHour 1–24`, `fromHour < toHour`.
+`sectorCaps` `maxKw 0–500`, `fromHour 0–23`, `toHour 1–24`, `fromHour < toHour`,
+`strategyParams.balancedWeights` weights 0–10, at least one > 0 (defaults 4/3/2/1).
 
 ## Result
 
@@ -220,6 +222,8 @@ interface InputPatch {
   priorities?: Partial<Record<SectorId, Priority>>;
   sectorCaps?: SectorCap[];
   meterReadings?: Partial<Record<SectorId, number[]>>;
+  criticalShares?: Partial<Record<SectorId, number>>; // 0–1
+  balancedWeights?: Partial<Record<Priority, number>>; // 0–10, at least one > 0
 }
 ```
 

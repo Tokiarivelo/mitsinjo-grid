@@ -15,6 +15,7 @@ import {
 } from '@/features/simulation';
 import { withSectorCap } from '../utils/sector-caps';
 import { SectorRuleRow } from './sector-rule-row';
+import { StrategyRulesSection } from './strategy-rules-section';
 
 export interface StrategyParamsPanelProps {
   input: SimulationInput;
@@ -131,6 +132,8 @@ export function StrategyParamsPanel({
               ))}
             </div>
           </div>
+
+          <StrategyRulesSection input={input} onPatch={onPatch} />
         </div>
       )}
     </section>

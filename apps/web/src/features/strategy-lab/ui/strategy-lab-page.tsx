@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2, GitCompare, Sparkles } from 'lucide-react';
 import type { StrategyId } from '@mitsinjo/engine';
@@ -53,11 +53,29 @@ export function StrategyLabPage() {
   const patchInput = useSimulationStore((s) => s.patchInput);
   const resetInput = useSimulationStore((s) => s.reset);
 
-  useAutoCompare();
+  const [selectedStrategies, setSelectedStrategies] = useState<StrategyId[]>([
+    'proportional',
+    'essential_first',
+    'balanced',
+  ]);
+
+  useAutoCompare(true, undefined, selectedStrategies);
+
+  const toggleStrategy = (id: StrategyId) => {
+    let next: StrategyId[];
+    if (selectedStrategies.includes(id)) {
+      if (selectedStrategies.length <= 2) return; // Enforce minimum 2
+      next = selectedStrategies.filter((s) => s !== id);
+    } else {
+      next = [...selectedStrategies, id];
+    }
+    setSelectedStrategies(next);
+    runComparison(next);
+  };
 
   const handleReset = () => {
     resetInput();
-    runComparison();
+    runComparison(selectedStrategies);
   };
 
   // Derive decision summary strictly by rule from engine comparison
@@ -99,7 +117,7 @@ export function StrategyLabPage() {
             size="md"
             loading={isRunning}
             icon={<GitCompare className="h-4 w-4" />}
-            onClick={() => runComparison()}
+            onClick={() => runComparison(selectedStrategies)}
           >
             {isRunning ? tStrategies('comparing') : tStrategies('compareBtn')}
           </Button>
@@ -140,18 +158,24 @@ export function StrategyLabPage() {
 
       {/* 1. Side-by-side Strategy Columns (Proportional vs Essential-First vs Balanced) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {STRATEGY_CARDS.map(({ id, ruleKey }) => (
-          <StrategyCard
-            key={id}
-            strategyId={id}
-            name={tStrategies(id)}
-            rule={tStrategies(ruleKey)}
-            result={comparison[id]}
-            isActive={activeStrategy === id}
-            bestMetrics={bestMetricsFor(summary, id)}
-            onSelectStrategy={() => handleUseStrategy(id)}
-          />
-        ))}
+        {STRATEGY_CARDS.map(({ id, ruleKey }) => {
+          const isIncluded = selectedStrategies.includes(id);
+          return (
+            <StrategyCard
+              key={id}
+              strategyId={id}
+              name={tStrategies(id)}
+              rule={tStrategies(ruleKey)}
+              result={comparison[id]}
+              isActive={activeStrategy === id}
+              bestMetrics={isIncluded ? bestMetricsFor(summary, id) : undefined}
+              onSelectStrategy={() => handleUseStrategy(id)}
+              included={isIncluded}
+              onToggleInclude={() => toggleStrategy(id)}
+              canExclude={selectedStrategies.length > 2}
+            />
+          );
+        })}
       </div>
 
       {/* 2. Comparison Chart Matrix */}
