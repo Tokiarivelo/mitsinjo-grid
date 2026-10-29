@@ -1,32 +1,32 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-28 · **By:** Claude Code · **Branch:** `feat/strategy-lab-params` · **PR:** [#22](https://github.com/Tokiarivelo/mitsinjo-grid/pull/22)
+**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/strategy-rule-params` · **PR:** [#23](https://github.com/Tokiarivelo/mitsinjo-grid/pull/23)
 
 ## State
 
-- New plan `docs/tasks/PZ-strategy-params.md` (3 phases). **Phase 1 done** (PZ-T1…T6), phases 2–3 open.
-- `/strategies` now has a collapsible **Comparison parameters** panel: 6 condition sliders + per-sector
-  priority select and power cap (max kW, from–to h). Each edit patches the input and re-runs all strategies after 300 ms.
-- Best-value badges: every tied winner gets it, none when all strategies tie (baseline shows no badge).
-- Condition sliders extracted once (`useConditionControls` + `ConditionControlsGrid` + `usePatchValidation`) and reused by
-  SimControlsPanel, AssumptionsInspector and StrategyParamsPanel (old copies deleted).
-- `make check` green (engine 116, web 348 tests). i18n parity OK. Visual check 1440/390/320 px, dark + light, 0 overflow.
+- Plan `docs/tasks/PZ-strategy-params.md`: **Phase 1 & Phase 2 completed** (PZ-T1…T10 done, Phase 3 open).
+- PZ-T7: `SimulationInput.strategyParams?: { balancedWeights?: Record<Priority, number> }` with default 4/3/2/1.
+  Hash is identical when absent or default; custom weights serialize canonically.
+- PZ-T8: `InputPatch.criticalShares` and `balancedWeights` implemented in `applyPatch` and tested.
+- PZ-T9: Strategy subset `run(strategies)` with checkbox per card (min 2); chart and summary support missing strategies.
+- PZ-T10: "Strategy rules" section in panel (balanced weights sliders 0–10, critical share 0–100%); copilot
+  `propose_change` tool updated with eval case.
+- `make check` green (engine 123 tests, web 353 tests). 100% i18n key parity across EN/FR/MG.
 
 ## Next task
 
-- Review and merge PR #22 once CI (incl. e2e) is green.
-- Phase 2 (`/engine-change`): PZ-T7…T10 — balanced weights, critical shares, strategy subset.
+- Phase 3: PZ-T11…T14 — Sensitivity sweep (`sweep()` in engine, `SensitivityChart`, divergence callout, deferred perf).
 
 ## Decisions taken
 
-- Owner: no Stitch mockup for PZ, design system only (noted in `docs/design/stitch-map.md`).
-- No engine change in phase 1: everything goes through existing `InputPatch` (`priorities`, `sectorCaps`).
-- One cap per sector in the editor (`withSectorCap` replaces it); default cap 1 kW 18–22 h.
-- `summarizeComparison` best\* fields are now `StrategyId[]`; recommendation logic unchanged.
+- `canonicalJson`: skips `strategyParams` when undefined or matching default weights (4/3/2/1), preserving hash stability.
+- Strategy subset checkbox is placed in each `StrategyCard` header with min-2 disable enforcement.
+- `summarizeComparison`: handles missing `proportional`, `essential_first`, or `balanced` and evaluates any subset of ≥ 2 strategies.
 
 ## Files touched this session
 
-- Strategy lab: `features/strategy-lab/{ui/strategy-params-panel,ui/sector-rule-row,hooks/use-auto-compare,utils/sector-caps,utils/summarize}.ts(x)`, page, card, tests
-- Shared: `features/simulation/{hooks/use-condition-controls,hooks/use-patch-validation,ui/condition-controls-grid}`, `sim-controls-panel.tsx`, `features/scenarios/ui/assumptions-inspector.tsx`
-- i18n: `messages/{en,fr,mg}.json` (`strategies.params.*`)
-- Docs: `docs/tasks/PZ-strategy-params.md`, `docs/tasks/README.md`, `docs/design/screens/strategy-lab.md`, `docs/design/components.md`, `docs/design/stitch-map.md`, `README.md`
+- Engine: `packages/engine/src/{constants,schemas/input,hash,strategies/balanced,strategies/index,simulate,patch}.ts` + tests
+- Web: `apps/web/src/features/strategy-lab/{ui/strategy-rules-section,ui/strategy-params-panel,ui/strategy-card,ui/strategy-lab-page,hooks/use-auto-compare,utils/summarize}.tsx?` + tests
+- Chart: `apps/web/src/components/charts/strategy-comparison.tsx`
+- Copilot: `apps/web/src/server/copilot/{tools,providers/mock}.ts` + eval tests
+- i18n & docs: `messages/{en,fr,mg}.json`, `docs/contracts.md`, `docs/engine-spec.md`, `docs/tasks/PZ-strategy-params.md`, `docs/design/screens/strategy-lab.md`

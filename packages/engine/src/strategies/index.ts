@@ -1,5 +1,5 @@
 import type { SectorDemandStep } from '../model/demand';
-import type { SectorId, SectorStep, StrategyId } from '../schemas';
+import type { Priority, SectorId, SectorStep, StrategyId } from '../schemas';
 import { runBalancedStrategy } from './balanced';
 import { runEssentialFirstStrategy } from './essential-first';
 import { runProportionalStrategy } from './proportional';
@@ -11,7 +11,8 @@ export * from './proportional';
 export function executeStrategy(
   strategy: StrategyId,
   availableKw: number,
-  sectors: readonly SectorDemandStep[]
+  sectors: readonly SectorDemandStep[],
+  weights?: Record<Priority, number>
 ): Record<SectorId, SectorStep> {
   switch (strategy) {
     case 'proportional':
@@ -19,7 +20,7 @@ export function executeStrategy(
     case 'essential_first':
       return runEssentialFirstStrategy(availableKw, sectors);
     case 'balanced':
-      return runBalancedStrategy(availableKw, sectors);
+      return runBalancedStrategy(availableKw, sectors, weights);
     default: {
       const _exhaustive: never = strategy;
       throw new Error(`Unsupported strategy: ${_exhaustive}`);

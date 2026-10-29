@@ -18,6 +18,9 @@ export interface StrategyCardProps {
   bestMetrics?: Partial<BestMetricFlags>;
   onSelectStrategy: () => void;
   className?: string;
+  included?: boolean;
+  onToggleInclude?: () => void;
+  canExclude?: boolean;
 }
 
 export function StrategyCard({
@@ -29,6 +32,9 @@ export function StrategyCard({
   bestMetrics,
   onSelectStrategy,
   className,
+  included = true,
+  onToggleInclude,
+  canExclude = true,
 }: StrategyCardProps) {
   const tStrategies = useTranslations('strategies');
   const tSectors = useTranslations('sectors');
@@ -44,14 +50,15 @@ export function StrategyCard({
         isActive
           ? 'border-energy-cyan/60 ring-1 ring-energy-cyan/30 shadow-md shadow-energy-cyan/10'
           : 'border-border/80 hover:border-border',
+        !included && 'opacity-65',
         className
       )}
     >
       <div>
-        {/* Top bar: Name + Active Badge */}
+        {/* Top bar: Name + Active Badge + Comparison Checkbox */}
         <div className="flex items-start justify-between gap-2 pb-3 border-b border-border/60">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-display text-base font-semibold text-text-primary tracking-tight">
                 {name}
               </h3>
@@ -64,6 +71,22 @@ export function StrategyCard({
             </div>
             <p className="text-xs text-text-secondary mt-1 leading-relaxed">{rule}</p>
           </div>
+
+          {onToggleInclude && (
+            <label className="flex items-center gap-1.5 cursor-pointer text-xs font-sans text-text-secondary shrink-0 pt-0.5 min-h-11 sm:min-h-0">
+              <input
+                type="checkbox"
+                checked={included}
+                disabled={included && !canExclude}
+                onChange={onToggleInclude}
+                className="h-4 w-4 rounded border-border text-energy-cyan focus:ring-energy-cyan cursor-pointer disabled:cursor-not-allowed"
+                aria-label={tStrategies('compareCheckbox', { strategy: name })}
+              />
+              <span className="text-[11px] font-medium hidden sm:inline">
+                {included ? tStrategies('inComparison') : tStrategies('notInComparison')}
+              </span>
+            </label>
+          )}
         </div>
 
         {/* 4 Compact Metric Tiles */}

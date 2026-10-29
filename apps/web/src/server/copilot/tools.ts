@@ -84,6 +84,19 @@ export const ProposeChangeSchema = z
     message: 'At least one of patch or strategy must be specified.',
   });
 
+/** Patch fields that tune strategy rules; shared by run_scenario and propose_change. */
+const STRATEGY_RULE_PATCH_PROPS = {
+  criticalShares: {
+    type: 'object',
+    description:
+      'Critical lifeline share per sector (0 to 1) for health, water, school, households, market.',
+  },
+  balancedWeights: {
+    type: 'object',
+    description: 'Priority weights (0 to 10) for balanced strategy (critical, high, medium, low).',
+  },
+} as const;
+
 export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'get_grid_state',
@@ -146,6 +159,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
               type: 'number',
               description: 'Minimum reserve battery state of charge (0 to 100%).',
             },
+            ...STRATEGY_RULE_PATCH_PROPS,
           },
         },
         strategy: {
@@ -237,6 +251,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
                 required: ['sector', 'maxKw', 'fromHour', 'toHour'],
               },
             },
+            ...STRATEGY_RULE_PATCH_PROPS,
           },
         },
         strategy: {

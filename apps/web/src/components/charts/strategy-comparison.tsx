@@ -76,29 +76,29 @@ export function StrategyComparisonChart({
     {
       metric: tCharts('deliveredEnergy'),
       unit: 'kWh',
-      proportional: prop ? Math.round(prop.metrics.servedKwh * 10) / 10 : 0,
-      essential_first: ess ? Math.round(ess.metrics.servedKwh * 10) / 10 : 0,
+      ...(prop ? { proportional: Math.round(prop.metrics.servedKwh * 10) / 10 } : {}),
+      ...(ess ? { essential_first: Math.round(ess.metrics.servedKwh * 10) / 10 } : {}),
       ...(bal ? { balanced: Math.round(bal.metrics.servedKwh * 10) / 10 } : {}),
     },
     {
       metric: tCharts('criticalCoverage'),
       unit: '%',
-      proportional: prop ? Math.round(prop.metrics.criticalCoveragePct * 10) / 10 : 0,
-      essential_first: ess ? Math.round(ess.metrics.criticalCoveragePct * 10) / 10 : 0,
+      ...(prop ? { proportional: Math.round(prop.metrics.criticalCoveragePct * 10) / 10 } : {}),
+      ...(ess ? { essential_first: Math.round(ess.metrics.criticalCoveragePct * 10) / 10 } : {}),
       ...(bal ? { balanced: Math.round(bal.metrics.criticalCoveragePct * 10) / 10 } : {}),
     },
     {
       metric: tCharts('unservedEnergy'),
       unit: 'kWh',
-      proportional: prop ? Math.round(prop.metrics.unservedKwh * 10) / 10 : 0,
-      essential_first: ess ? Math.round(ess.metrics.unservedKwh * 10) / 10 : 0,
+      ...(prop ? { proportional: Math.round(prop.metrics.unservedKwh * 10) / 10 } : {}),
+      ...(ess ? { essential_first: Math.round(ess.metrics.unservedKwh * 10) / 10 } : {}),
       ...(bal ? { balanced: Math.round(bal.metrics.unservedKwh * 10) / 10 } : {}),
     },
     {
       metric: tCharts('endSoc'),
       unit: '%',
-      proportional: prop ? Math.round(prop.metrics.socEndPct * 10) / 10 : 0,
-      essential_first: ess ? Math.round(ess.metrics.socEndPct * 10) / 10 : 0,
+      ...(prop ? { proportional: Math.round(prop.metrics.socEndPct * 10) / 10 } : {}),
+      ...(ess ? { essential_first: Math.round(ess.metrics.socEndPct * 10) / 10 } : {}),
       ...(bal ? { balanced: Math.round(bal.metrics.socEndPct * 10) / 10 } : {}),
     },
   ];
@@ -133,18 +133,22 @@ export function StrategyComparisonChart({
               <span className="text-text-secondary font-sans text-xs">{value}</span>
             )}
           />
-          <Bar
-            dataKey="proportional"
-            name={tStrategies('proportional')}
-            fill="var(--color-energy-cyan)"
-            radius={[4, 4, 0, 0]}
-          />
-          <Bar
-            dataKey="essential_first"
-            name={tStrategies('essential_first')}
-            fill="var(--color-solar-amber)"
-            radius={[4, 4, 0, 0]}
-          />
+          {prop && (
+            <Bar
+              dataKey="proportional"
+              name={tStrategies('proportional')}
+              fill="var(--color-energy-cyan)"
+              radius={[4, 4, 0, 0]}
+            />
+          )}
+          {ess && (
+            <Bar
+              dataKey="essential_first"
+              name={tStrategies('essential_first')}
+              fill="var(--color-solar-amber)"
+              radius={[4, 4, 0, 0]}
+            />
+          )}
           {bal && (
             <Bar
               dataKey="balanced"

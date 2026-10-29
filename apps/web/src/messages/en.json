@@ -702,6 +702,11 @@
     "badgeBest": "BEST",
     "badgeMin": "MIN",
     "badgeMax": "MAX",
+    "includedStrategies": "Compared strategies (min 2)",
+    "includeInComparison": "Include {strategy} in comparison",
+    "inComparison": "In comparison",
+    "notInComparison": "Excluded from comparison",
+    "compareCheckbox": "Include {strategy} in comparison",
     "params": {
       "title": "Comparison parameters",
       "subtitle": "Same inputs for all three strategies. Results update automatically.",
@@ -711,6 +716,13 @@
       "conditions": "Solar, demand & battery",
       "sectorRules": "Sector priorities & power caps",
       "sectorRulesDesc": "Priorities change Essential-First and Balanced; Proportional ignores them. Caps apply to every strategy.",
+      "strategyRules": "Strategy rules",
+      "strategyRulesDesc": "Adjust priority weights for Balanced allocation and critical demand share guaranteed to each sector.",
+      "balancedWeights": "Balanced allocation priority weights (0–10)",
+      "balancedWeightsDesc": "Weights used during pass 2 to share energy beyond the critical baseline.",
+      "criticalShares": "Essential demand shares (0–100%)",
+      "criticalSharesDesc": "Guaranteed lifeline fraction per sector during deficit conditions.",
+      "weightUnit": "wt",
       "priorityFor": "Priority for {sector}",
       "limitPower": "Limit power",
       "removeLimit": "Remove limit",
@@ -721,7 +733,8 @@
       "toHour": "To",
       "errors": {
         "outOfRange": "Value is outside the allowed range (0–500 kW, hours 0–24).",
-        "capHoursOrder": "End hour must be after start hour."
+        "capHoursOrder": "End hour must be after start hour.",
+        "allWeightsZero": "At least one priority weight must be greater than 0."
       }
     }
   },

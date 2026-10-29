@@ -22,13 +22,13 @@ where the three strategies diverge. Design: design system only (tokens + compone
 
 ## Phase 2 — Strategy rule parameters (engine change, `/engine-change`)
 
-- [ ] **PZ-T7** Contract: `SimulationInput.strategyParams?: { balancedWeights?: Record<Priority, number> }`
+- [x] **PZ-T7** Contract: `SimulationInput.strategyParams?: { balancedWeights?: Record<Priority, number> }`
       (weights 0–10, at least one > 0); default = 4/3/2/1 → identical result and input hash when absent.
-- [ ] **PZ-T8** `InputPatch.criticalShares?: Partial<Record<SectorId, number>>` (0–1) and `balancedWeights?`;
+- [x] **PZ-T8** `InputPatch.criticalShares?: Partial<Record<SectorId, number>>` (0–1) and `balancedWeights?`;
       `applyPatch` + tests. Update `docs/contracts.md`, `docs/engine-spec.md` §2.
-- [ ] **PZ-T9** Strategy subset: `run(strategies)` from the UI (checkbox per strategy, min 2); chart and summary
+- [x] **PZ-T9** Strategy subset: `run(strategies)` from the UI (checkbox per strategy, min 2); chart and summary
       handle a missing strategy.
-- [ ] **PZ-T10** UI: "Strategy rules" section in the panel (weights sliders, critical share per sector);
+- [x] **PZ-T10** UI: "Strategy rules" section in the panel (weights sliders, critical share per sector);
       copilot `propose_change` accepts the new fields (`/copilot-tool`), eval case added.
 
 ## Phase 3 — Sensitivity sweep (engine + chart)

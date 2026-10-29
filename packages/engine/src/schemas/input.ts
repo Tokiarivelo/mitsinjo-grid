@@ -88,6 +88,26 @@ export const SectorCapSchema = z
   });
 export type SectorCap = z.infer<typeof SectorCapSchema>;
 
+const BalancedWeightsShape = z.object({
+  critical: z.number().min(0).max(10),
+  high: z.number().min(0).max(10),
+  medium: z.number().min(0).max(10),
+  low: z.number().min(0).max(10),
+});
+
+export const BalancedWeightsSchema = BalancedWeightsShape.refine(
+  (w) => w.critical > 0 || w.high > 0 || w.medium > 0 || w.low > 0,
+  {
+    message: 'At least one balanced weight must be strictly positive',
+  }
+);
+export type BalancedWeights = z.infer<typeof BalancedWeightsSchema>;
+
+export const StrategyParamsSchema = z.object({
+  balancedWeights: BalancedWeightsSchema.optional(),
+});
+export type StrategyParams = z.infer<typeof StrategyParamsSchema>;
+
 const REQUIRED_SECTORS = ['health', 'water', 'school', 'households', 'market'] as const;
 
 export const SimulationInputSchema = z.object({
@@ -113,6 +133,7 @@ export const SimulationInputSchema = z.object({
   events: z.array(ScenarioEventSchema),
   demandMultiplier: z.number().min(0.5).max(2),
   sectorCaps: z.array(SectorCapSchema).optional(),
+  strategyParams: StrategyParamsSchema.optional(),
 });
 export type SimulationInput = z.infer<typeof SimulationInputSchema>;
 
@@ -127,5 +148,7 @@ export const InputPatchSchema = z.object({
   priorities: z.record(SectorIdSchema, PrioritySchema).optional(),
   sectorCaps: z.array(SectorCapSchema).optional(),
   meterReadings: z.record(SectorIdSchema, z.array(z.number().min(0)).length(24)).optional(),
+  criticalShares: z.record(SectorIdSchema, z.number().min(0).max(1)).optional(),
+  balancedWeights: BalancedWeightsShape.partial().optional(),
 });
 export type InputPatch = z.infer<typeof InputPatchSchema>;

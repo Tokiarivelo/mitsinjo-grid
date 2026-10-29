@@ -126,4 +126,19 @@ describe('summarizeComparison rule engine (P4-T5, P4-T7)', () => {
       soc: false,
     });
   });
+
+  it('handles strategy subset comparisons gracefully (PZ-T9)', () => {
+    // Proportional + Balanced (missing essential_first)
+    const compPropBal = compare(scenarios.cloudy_afternoon.input, ['proportional', 'balanced']);
+    const summaryPropBal = summarizeComparison(compPropBal);
+    expect(summaryPropBal).not.toBeNull();
+    expect(summaryPropBal?.recommendedStrategy).toBe('balanced');
+    expect(summaryPropBal?.bestEssentialCoverage).toEqual(['balanced']);
+
+    // Essential-First + Balanced (missing proportional)
+    const compEssBal = compare(scenarios.cloudy_afternoon.input, ['essential_first', 'balanced']);
+    const summaryEssBal = summarizeComparison(compEssBal);
+    expect(summaryEssBal).not.toBeNull();
+    expect(['essential_first', 'balanced']).toContain(summaryEssBal?.recommendedStrategy);
+  });
 });

@@ -702,6 +702,11 @@
     "badgeBest": "MEILLEUR",
     "badgeMin": "MIN",
     "badgeMax": "MAX",
+    "includedStrategies": "Stratégies comparées (min. 2)",
+    "includeInComparison": "Inclure {strategy} dans la comparaison",
+    "inComparison": "Dans la comparaison",
+    "notInComparison": "Exclue de la comparaison",
+    "compareCheckbox": "Inclure {strategy} dans la comparaison",
     "params": {
       "title": "Paramètres de comparaison",
       "subtitle": "Mêmes entrées pour les trois stratégies. Les résultats se mettent à jour automatiquement.",
@@ -711,6 +716,13 @@
       "conditions": "Solaire, demande et batterie",
       "sectorRules": "Priorités et plafonds par secteur",
       "sectorRulesDesc": "Les priorités changent Essential-First et Balanced ; Proportional les ignore. Les plafonds s'appliquent à toutes les stratégies.",
+      "strategyRules": "Règles des stratégies",
+      "strategyRulesDesc": "Ajustez les poids de priorité pour l'allocation Équilibrée et la part critique garantie par secteur.",
+      "balancedWeights": "Poids de priorité pour l'allocation Équilibrée (0–10)",
+      "balancedWeightsDesc": "Poids utilisés lors de la 2e passe pour répartir l'énergie au-delà du socle critique.",
+      "criticalShares": "Parts de demande essentielle (0–100 %)",
+      "criticalSharesDesc": "Fraction vitale garantie par secteur en situation de déficit.",
+      "weightUnit": "poids",
       "priorityFor": "Priorité pour {sector}",
       "limitPower": "Limiter la puissance",
       "removeLimit": "Retirer la limite",
@@ -721,7 +733,8 @@
       "toHour": "À",
       "errors": {
         "outOfRange": "Valeur hors limites (0–500 kW, heures 0–24).",
-        "capHoursOrder": "L'heure de fin doit être après l'heure de début."
+        "capHoursOrder": "L'heure de fin doit être après l'heure de début.",
+        "allWeightsZero": "Au moins un poids de priorité doit être supérieur à 0."
       }
     }
   },

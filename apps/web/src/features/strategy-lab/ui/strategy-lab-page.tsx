@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2, GitCompare, Sparkles } from 'lucide-react';
 import type { StrategyId } from '@mitsinjo/engine';
@@ -23,6 +23,11 @@ import { ImpactBanner } from '@/components/ui/impact-banner';
 import { StrategyComparisonChart } from '@/components/charts';
 import { StrategyCard } from './strategy-card';
 import { bestMetricsFor, summarizeComparison } from '../utils/summarize';
+import {
+  MIN_COMPARED_STRATEGIES,
+  activeWithinSubset,
+  toggleStrategySubset,
+} from '../utils/strategy-subset';
 import { useAutoCompare } from '../hooks/use-auto-compare';
 import { StrategyParamsPanel } from './strategy-params-panel';
 
@@ -53,11 +58,27 @@ export function StrategyLabPage() {
   const patchInput = useSimulationStore((s) => s.patchInput);
   const resetInput = useSimulationStore((s) => s.reset);
 
-  useAutoCompare();
+  const [selectedStrategies, setSelectedStrategies] = useState<readonly StrategyId[]>(
+    STRATEGY_CARDS.map((c) => c.id)
+  );
+
+  useAutoCompare(true, undefined, selectedStrategies);
+
+  const compareSubset = (next: readonly StrategyId[]) => {
+    setSelectedStrategies(next);
+    const active = activeWithinSubset(activeStrategy, next);
+    if (active !== activeStrategy) selectStrategy(active);
+    runComparison(next);
+  };
+
+  const toggleStrategy = (id: StrategyId) => {
+    const next = toggleStrategySubset(selectedStrategies, id);
+    if (next !== selectedStrategies) compareSubset(next);
+  };
 
   const handleReset = () => {
     resetInput();
-    runComparison();
+    runComparison(selectedStrategies);
   };
 
   // Derive decision summary strictly by rule from engine comparison
@@ -68,6 +89,10 @@ export function StrategyLabPage() {
   const scenarioName = tScenarios(`${scenarioId}.name` as const);
 
   const handleUseStrategy = (strategy: StrategyId) => {
+    // Using an excluded strategy brings it back into the comparison so its results exist.
+    if (!selectedStrategies.includes(strategy)) {
+      compareSubset(toggleStrategySubset(selectedStrategies, strategy));
+    }
     selectStrategy(strategy);
   };
 
@@ -99,7 +124,7 @@ export function StrategyLabPage() {
             size="md"
             loading={isRunning}
             icon={<GitCompare className="h-4 w-4" />}
-            onClick={() => runComparison()}
+            onClick={() => runComparison(selectedStrategies)}
           >
             {isRunning ? tStrategies('comparing') : tStrategies('compareBtn')}
           </Button>
@@ -140,18 +165,24 @@ export function StrategyLabPage() {
 
       {/* 1. Side-by-side Strategy Columns (Proportional vs Essential-First vs Balanced) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {STRATEGY_CARDS.map(({ id, ruleKey }) => (
-          <StrategyCard
-            key={id}
-            strategyId={id}
-            name={tStrategies(id)}
-            rule={tStrategies(ruleKey)}
-            result={comparison[id]}
-            isActive={activeStrategy === id}
-            bestMetrics={bestMetricsFor(summary, id)}
-            onSelectStrategy={() => handleUseStrategy(id)}
-          />
-        ))}
+        {STRATEGY_CARDS.map(({ id, ruleKey }) => {
+          const isIncluded = selectedStrategies.includes(id);
+          return (
+            <StrategyCard
+              key={id}
+              strategyId={id}
+              name={tStrategies(id)}
+              rule={tStrategies(ruleKey)}
+              result={comparison[id]}
+              isActive={activeStrategy === id}
+              bestMetrics={isIncluded ? bestMetricsFor(summary, id) : undefined}
+              onSelectStrategy={() => handleUseStrategy(id)}
+              included={isIncluded}
+              onToggleInclude={() => toggleStrategy(id)}
+              canExclude={selectedStrategies.length > MIN_COMPARED_STRATEGIES}
+            />
+          );
+        })}
       </div>
 
       {/* 2. Comparison Chart Matrix */}
