@@ -1,11 +1,16 @@
-import { DEFAULT_BALANCED_WEIGHTS } from './constants';
-import type { Priority, SimulationInput, StrategyId } from './schemas';
+import { DEFAULT_BALANCED_WEIGHTS, DEFAULT_LIFELINE_KW } from './constants';
+import type { Priority, SectorId, SimulationInput, StrategyId } from './schemas';
 
 function isDefaultBalancedWeights(w?: Record<string, number>): boolean {
   if (!w) return true;
   return (Object.keys(DEFAULT_BALANCED_WEIGHTS) as Priority[]).every(
     (p) => w[p] === DEFAULT_BALANCED_WEIGHTS[p]
   );
+}
+
+function isDefaultLifeline(l?: { enabled: boolean }): boolean {
+  if (!l) return true;
+  return l.enabled === true;
 }
 
 /**
@@ -29,9 +34,30 @@ export function canonicalJson(obj: unknown): string {
       if ((k === 'sectorCaps' || k === 'meterReadings') && Array.isArray(val) && val.length === 0) {
         continue;
       }
+      if (k === 'lifelineKw') {
+        const sectorId = (obj as Record<string, unknown>).id as SectorId | undefined;
+        if (sectorId && DEFAULT_LIFELINE_KW[sectorId] === val) {
+          continue;
+        }
+      }
       if (k === 'strategyParams' && val && typeof val === 'object') {
-        const sp = val as { balancedWeights?: Record<string, number> };
-        if (!sp.balancedWeights || isDefaultBalancedWeights(sp.balancedWeights)) {
+        const sp = val as {
+          balancedWeights?: Record<string, number>;
+          lifeline?: { enabled: boolean };
+        };
+        const bwDefault = !sp.balancedWeights || isDefaultBalancedWeights(sp.balancedWeights);
+        const lifelineDefault = isDefaultLifeline(sp.lifeline);
+        if (bwDefault && lifelineDefault) {
+          continue;
+        }
+      }
+      if (k === 'balancedWeights' && val && typeof val === 'object') {
+        if (isDefaultBalancedWeights(val as Record<string, number>)) {
+          continue;
+        }
+      }
+      if (k === 'lifeline' && val && typeof val === 'object') {
+        if (isDefaultLifeline(val as { enabled: boolean })) {
           continue;
         }
       }

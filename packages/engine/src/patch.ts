@@ -107,6 +107,25 @@ export function patchInputUnchecked(input: SimulationInput, patch: InputPatch): 
     };
   }
 
+  if (patch.lifeline !== undefined) {
+    if (patch.lifeline.enabled !== undefined) {
+      cloned.strategyParams = {
+        ...cloned.strategyParams,
+        lifeline: {
+          enabled: patch.lifeline.enabled,
+        },
+      };
+    }
+    if (patch.lifeline.kw !== undefined) {
+      for (const [secId, kw] of Object.entries(patch.lifeline.kw)) {
+        const s = cloned.sectors.find((sec) => sec.id === secId);
+        if (s && kw !== undefined) {
+          s.lifelineKw = kw;
+        }
+      }
+    }
+  }
+
   const existingDrop = cloned.events.find((e) => e.type === 'solar_drop') as
     SolarDropEvent | undefined;
 

@@ -1,6 +1,7 @@
-import { DEFAULT_BALANCED_WEIGHTS } from '../constants';
+import { DEFAULT_BALANCED_WEIGHTS, DEFAULT_LIFELINE_KW } from '../constants';
 import type { SectorDemandStep } from '../model/demand';
 import type { Priority, SectorId, SectorStep } from '../schemas';
+import { computeSectorMode } from './lifeline';
 
 export function runBalancedStrategy(
   availableKw: number,
@@ -21,11 +22,14 @@ export function runBalancedStrategy(
     const ratio = totalCriticalKw > 0 ? clampedAvailable / totalCriticalKw : 0;
     for (const s of sectors) {
       const servedKw = Math.min(s.demandKw, s.criticalDemandKw * ratio);
+      const floor = s.lifelineKw ?? DEFAULT_LIFELINE_KW[s.sectorId];
       result[s.sectorId] = {
         demandKw: s.demandKw,
         servedKw,
         criticalDemandKw: s.criticalDemandKw,
         criticalServedKw: Math.min(servedKw, s.criticalDemandKw),
+        lifelineServedKw: 0,
+        mode: computeSectorMode(servedKw, s.demandKw, floor),
       };
     }
     return result;
@@ -114,11 +118,14 @@ export function runBalancedStrategy(
       s.demandKw,
       (pass1Served[s.sectorId] ?? 0) + (pass2Served[s.sectorId] ?? 0)
     );
+    const floor = s.lifelineKw ?? DEFAULT_LIFELINE_KW[s.sectorId];
     result[s.sectorId] = {
       demandKw: s.demandKw,
       servedKw: totalServed,
       criticalDemandKw: s.criticalDemandKw,
       criticalServedKw: Math.min(totalServed, s.criticalDemandKw),
+      lifelineServedKw: 0,
+      mode: computeSectorMode(totalServed, s.demandKw, floor),
     };
   }
 

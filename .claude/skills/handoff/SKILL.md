@@ -6,6 +6,7 @@ description: End a work session — verify, tick task boxes, and overwrite HANDO
 1. Run `/verify` (affected packages). Note failures; don't hide them.
 2. Tick finished boxes in the current `docs/tasks/Pn-*.md`.
    Apply `.claude/rules/maintenance.md`: new commands are in the Makefile, changed features have their doc updated.
+   Apply `.claude/rules/test-scenarios.md`: every visible change has its scenario in `test-scenarios/`.
    Keep every still-valid line of the previous HANDOFF "Decisions" and "Gotchas" — never drop them.
 3. Overwrite `HANDOFF.md` with this exact skeleton, ≤ 40 lines, facts only:
 

@@ -11,6 +11,7 @@ function mockMetrics(criticalUnservedKwh: number): Metrics {
     criticalUnservedKwh,
     criticalUnmetHours: criticalUnservedKwh > 0 ? 1 : 0,
     criticalCoveragePct: ((20 - criticalUnservedKwh) / 20) * 100,
+    lifelineCoveragePct: 100,
     affectedSectors: criticalUnservedKwh > 0 ? ['health'] : [],
     solarKwh: 120,
     curtailedKwh: 0,

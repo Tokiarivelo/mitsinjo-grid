@@ -1,5 +1,7 @@
+import { DEFAULT_LIFELINE_KW } from '../constants';
 import type { SectorDemandStep } from '../model/demand';
 import type { SectorId, SectorStep } from '../schemas';
+import { computeSectorMode } from './lifeline';
 
 export function runProportionalStrategy(
   availableKw: number,
@@ -17,12 +19,15 @@ export function runProportionalStrategy(
   for (const s of sectors) {
     const servedKw = Math.min(s.demandKw, s.demandKw * ratio);
     const criticalServedKw = Math.min(servedKw, s.criticalDemandKw);
+    const floor = s.lifelineKw ?? DEFAULT_LIFELINE_KW[s.sectorId];
 
     result[s.sectorId] = {
       demandKw: s.demandKw,
       servedKw,
       criticalDemandKw: s.criticalDemandKw,
       criticalServedKw,
+      lifelineServedKw: 0,
+      mode: computeSectorMode(servedKw, s.demandKw, floor),
     };
   }
 

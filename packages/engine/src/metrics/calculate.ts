@@ -1,11 +1,19 @@
-import { EPS } from '../constants';
-import type { BatteryConfig, Metrics, SectorId, SectorMetrics, StepResult } from '../schemas';
+import { DEFAULT_LIFELINE_KW, EPS } from '../constants';
+import type {
+  BatteryConfig,
+  Metrics,
+  SectorConfig,
+  SectorId,
+  SectorMetrics,
+  StepResult,
+} from '../schemas';
 import { SECTOR_IDS } from '../schemas';
 
 export function calculateMetrics(
   steps: readonly StepResult[],
   battery: BatteryConfig,
-  violations: number
+  violations: number,
+  sectors?: readonly SectorConfig[]
 ): Metrics {
   let demandKwh = 0;
   let servedKwh = 0;
@@ -15,6 +23,12 @@ export function calculateMetrics(
   let criticalUnmetHours = 0;
   let solarKwh = 0;
   let curtailedKwh = 0;
+  let heldSectorHours = 0;
+
+  const floors: Record<SectorId, number> = {} as Record<SectorId, number>;
+  for (const secId of SECTOR_IDS) {
+    floors[secId] = sectors?.find((s) => s.id === secId)?.lifelineKw ?? DEFAULT_LIFELINE_KW[secId];
+  }
 
   const perSectorAccum: Record<
     SectorId,
@@ -57,6 +71,12 @@ export function calculateMetrics(
         if (critUnserved > EPS) {
           stepHasCriticalUnmet = true;
         }
+
+        const floor = floors[secId] ?? DEFAULT_LIFELINE_KW[secId];
+        const targetFloor = Math.min(secStep.demandKw, floor);
+        if (secStep.servedKw >= targetFloor - EPS) {
+          heldSectorHours++;
+        }
       }
     }
 
@@ -64,6 +84,12 @@ export function calculateMetrics(
       criticalUnmetHours++;
     }
   }
+
+  const totalSectorHours = steps.length * SECTOR_IDS.length;
+  const lifelineCoveragePct =
+    totalSectorHours > 0
+      ? Math.max(0, Math.min(100, (heldSectorHours / totalSectorHours) * 100))
+      : 100;
 
   const criticalCoveragePct =
     criticalDemandKwh > EPS
@@ -105,6 +131,7 @@ export function calculateMetrics(
     criticalUnservedKwh,
     criticalUnmetHours,
     criticalCoveragePct,
+    lifelineCoveragePct,
     affectedSectors,
     solarKwh,
     curtailedKwh,

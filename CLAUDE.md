@@ -21,6 +21,7 @@ Demo path that must always work: **solar drop → strategy comparison → AI exp
   `maintenance` is always on: new useful command → Makefile target; feature change → update its doc (same commit).
   `format` is always on: Prettier is the only formatter, auto-run by hooks (Claude edit hook, git pre-commit, CI).
   `review` is always on: rebase onto latest `main` (`make rebase-main`) before any review, fix or merge.
+  `test-scenarios` is always on: every visible change adds/updates its manual scenario in `test-scenarios/` (gitignored).
   Don't restate them here; this file stays global-only.
 - Other agents (Codex, opencode, Gemini, Cursor… via `AGENTS.md` / `GEMINI.md`): rules and skills are plain Markdown.
   Read the always-on rules yourself; "run `/x`" = follow `.claude/skills/x/SKILL.md`. Run `make format-changed` before committing.

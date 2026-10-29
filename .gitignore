@@ -51,6 +51,9 @@ design/scratch/
 design/shots/
 /tmp/
 
+# ── Manual test scenarios (local only) ───────
+test-scenarios/
+
 # ── Editors / OS ──────────────────────────────
 .vscode/*
 !.vscode/extensions.json

@@ -1,3 +1,4 @@
+import { DEFAULT_LIFELINE_KW } from '../constants';
 import type { Priority, ScenarioEvent, SectorConfig, SectorId } from '../schemas';
 
 export interface SectorDemandStep {
@@ -6,6 +7,7 @@ export interface SectorDemandStep {
   criticalDemandKw: number;
   priority: Priority;
   criticalShare: number;
+  lifelineKw?: number;
   profileDemandKw?: number;
   hasMeterOverride?: boolean;
 }
@@ -64,6 +66,7 @@ export function computeDemandStep(
       criticalDemandKw,
       priority: s.priority,
       criticalShare: s.criticalShare,
+      lifelineKw: s.lifelineKw ?? DEFAULT_LIFELINE_KW[s.id],
       profileDemandKw,
       hasMeterOverride,
     };

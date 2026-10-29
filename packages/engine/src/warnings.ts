@@ -1,4 +1,4 @@
-import { EPS } from './constants';
+import { DEFAULT_LIFELINE_KW, EPS } from './constants';
 import { computeProfileDemandKw } from './model/demand';
 import type { BatteryConfig, SectorId, SimulationInput, SimWarning, StepResult } from './schemas';
 
@@ -68,6 +68,31 @@ export function generateWarnings(
           if (s && s.demandKw > cap.maxKw + EPS && s.servedKw <= cap.maxKw + EPS) {
             raw.push({ code: 'SECTOR_CAPPED', sector: cap.sector, hour: t });
           }
+        }
+      }
+    }
+
+    // 5b. LIFELINE_SHORTFALL (PL-T3): energy < sum(planchers), sectors whose lifeline floor is not held
+    const lifelineEnabled = input?.strategyParams?.lifeline?.enabled !== false;
+    if (lifelineEnabled) {
+      for (let i = 0; i < sectorEntries.length; i++) {
+        const entry = sectorEntries[i];
+        if (!entry) continue;
+        const [secId, s] = entry;
+        if (!s) continue;
+        const sectorConfig = input?.sectors?.find((sec) => sec.id === secId);
+        const rawFloor = sectorConfig?.lifelineKw ?? DEFAULT_LIFELINE_KW[secId];
+        let effFloor = rawFloor;
+        if (input?.sectorCaps && input.sectorCaps.length > 0) {
+          for (const cap of input.sectorCaps) {
+            if (t >= cap.fromHour && t < cap.toHour && cap.sector === secId) {
+              effFloor = Math.min(effFloor, cap.maxKw);
+            }
+          }
+        }
+        const targetFloor = Math.min(s.demandKw, effFloor);
+        if (targetFloor > EPS && s.servedKw < targetFloor - EPS) {
+          raw.push({ code: 'LIFELINE_SHORTFALL', sector: secId, hour: t });
         }
       }
     }
