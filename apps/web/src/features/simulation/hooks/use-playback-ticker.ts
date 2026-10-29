@@ -3,8 +3,8 @@
 import { useEffect } from 'react';
 import { useSimulationStore } from '@/stores/simulation.store';
 
-/** One simulated hour per tick while playing. */
-export const PLAYBACK_TICK_MS = 750;
+/** One simulated hour per tick while playing (smooth & responsive). */
+export const PLAYBACK_TICK_MS = 500;
 
 /** Advances the store's time cursor (hour, then workflow day) while playback is on. */
 export function usePlaybackTicker(isPlaying: boolean) {

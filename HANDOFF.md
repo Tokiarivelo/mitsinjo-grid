@@ -9,6 +9,7 @@
 - PL-T6: Village plan & circuit diagram (`grid-diagram.tsx`, `diagram-layout.ts`): new « EMS Dispatch » block + IEC breaker/limiter symbol with tooltip. Zero overlaps and crossings.
 - PL-T7: 3D technical shelter (`DispatchControllerUnit`) at `BUS_POSITION = [0, 0, 1]` with emissive status screen, breaker LEDs, interactive focus click, and camera preset `controller`.
 - PL-T8: Docs (`contracts.md`, `3d-scene.md`, `stitch-map.md`), 100% i18n parity in EN/FR/MG (`check-i18n` green).
+- Fluid 24h timeline scrubbing: continuous phase accumulation in `ElectronFlow` & `FlowWire` (eliminating resets/jumping on speed/hour change), smooth progress fill & `tabular-nums` in `TimelineScrubber`, 500ms playback ticker.
 - Tests: `make typecheck` green, `make test-engine` green, web unit tests green.
 
 ## Next task

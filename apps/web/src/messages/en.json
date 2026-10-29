@@ -183,7 +183,6 @@
       "solarArray": "Solar PV Array",
       "liveOutput": "Live Output",
       "bessBattery": "Central BESS Storage",
-      "emsController": "EMS Dispatch Controller",
       "clickNodeToInspect": "Click any village sector node to inspect load allocation & resilience.",
       "cursorAt": "Timeline cursor: {hour}:00",
       "socValue": "{pct} SoC",

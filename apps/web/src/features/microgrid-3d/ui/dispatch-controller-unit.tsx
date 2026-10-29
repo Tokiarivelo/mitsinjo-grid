@@ -7,14 +7,27 @@ import { Cpu } from 'lucide-react';
 import { SECTOR_IDS, type SectorId } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtKw } from '@/lib/format';
-import { BUS_POSITION } from '../utils/to-scene-model';
+import {
+  BUS_INLET_POSITION,
+  BUS_POSITION,
+  FEEDER_EXIT_X,
+  FEEDER_EXIT_Z,
+} from '../utils/to-scene-model';
 import { mergeParts, type Part } from '../utils/merge-parts';
-import type { ControllerSceneModel } from '../types';
-import { TOKEN_HEX } from '../utils/scene-palette';
+import type { ControllerSceneModel, StatusColor } from '../types';
+import { STATUS_HEX, TOKEN_HEX } from '../utils/scene-palette';
+import { DispatchShareBar, type DispatchSegment } from './dispatch-share-bar';
 
 export interface DispatchControllerUnitProps {
   model: ControllerSceneModel;
+  /** Per-sector display tone (breaker + sector status), from `feederTone`. */
+  tones?: Record<SectorId, StatusColor>;
   totalServedKw: number;
+  /** Translated controller mode, e.g. "Rationing". */
+  modeLabel?: string;
+  /** Tooltip per sector segment of the dispatch bar. */
+  feederTitles?: Record<SectorId, string>;
+  hasResult?: boolean;
   onFocus?: () => void;
   nameLabel?: string;
   htmlPortal?: RefObject<HTMLElement | null>;
@@ -67,14 +80,20 @@ function buildShelter() {
     position: [0, 0.23, -0.2],
   });
 
-  // Top overhead conduit linking cabinet to village line gantry
+  // Roof gantry carrying the feeder departures: 2 posts + cross-arm, plus the inlet post.
+  for (const gx of [-0.8, 0.8]) {
+    parts.push({
+      shape: { kind: 'box', size: [0.06, 0.4, 0.06] },
+      position: [gx, 2.4, FEEDER_EXIT_Z],
+    });
+  }
   parts.push({
-    shape: { kind: 'cylinder', radiusTop: 0.04, radiusBottom: 0.04, height: 0.65 },
-    position: [0.5, 1.9, -0.2],
+    shape: { kind: 'box', size: [1.7, 0.05, 0.07] },
+    position: [0, 2.56, FEEDER_EXIT_Z],
   });
   parts.push({
-    shape: { kind: 'cylinder', radiusTop: 0.04, radiusBottom: 0.04, height: 0.65 },
-    position: [-0.5, 1.9, -0.2],
+    shape: { kind: 'box', size: [0.08, 0.45, 0.08] },
+    position: [0, 2.4, BUS_INLET_POSITION[2] - BUS_POSITION[2]],
   });
 
   // Breaker mounting rail on the front face
@@ -86,25 +105,50 @@ function buildShelter() {
   return mergeParts(parts);
 }
 
-/** LED indicator positions for all 6 feeder departures along the breaker mounting rail. */
-const FEEDER_SPACING_X: Record<SectorId, number> = {
-  health: -0.5,
-  water: -0.3,
-  school: -0.1,
-  households: 0.1,
-  market: 0.3,
-  industry: 0.5,
+/** Feeder riser: from the cabinet top, through the roof, to its gantry insulator. */
+function buildRiser() {
+  return mergeParts([
+    {
+      shape: { kind: 'cylinder', radiusTop: 0.025, radiusBottom: 0.025, height: 0.98 },
+      position: [0, 2.11, 0],
+    },
+    {
+      shape: { kind: 'cylinder', radiusTop: 0.035, radiusBottom: 0.05, height: 0.12 },
+      position: [0, 2.6, 0],
+    },
+  ]);
+}
+
+const DEFAULT_TONES: Record<SectorId, StatusColor> = {
+  health: 'battery-green',
+  water: 'battery-green',
+  school: 'battery-green',
+  households: 'battery-green',
+  market: 'battery-green',
+  industry: 'battery-green',
 };
 
 export function DispatchControllerUnit({
   model,
+  tones = DEFAULT_TONES,
   totalServedKw,
+  modeLabel = model.mode,
+  feederTitles = {} as Record<SectorId, string>,
+  hasResult = true,
   onFocus,
   nameLabel = 'EMS Dispatch',
   htmlPortal,
 }: DispatchControllerUnitProps) {
   const [hovered, setHovered] = useState(false);
   const shelterGeom = useMemo(() => buildShelter(), []);
+  const riserGeom = useMemo(() => buildRiser(), []);
+  const resolvedTones = tones ?? DEFAULT_TONES;
+  const segments: DispatchSegment[] = SECTOR_IDS.map((id) => ({
+    id,
+    share: model.feeders[id]?.share ?? 0,
+    tone: resolvedTones[id] ?? 'idle',
+    title: feederTitles?.[id] ?? '',
+  }));
 
   const mode = model.mode;
   const isNormal = mode === 'normal';
@@ -157,44 +201,42 @@ export function DispatchControllerUnit({
         />
       </mesh>
 
-      {/* 3. Feeder breakers & status LEDs (one per sector) */}
+      {/* 3. One breaker + LED per feeder, and its riser up to the roof gantry where the
+          sector cable leaves the controller (same west → east order as the cables). */}
       {SECTOR_IDS.map((sectorId) => {
         const feeder = model.feeders[sectorId];
-        const state = feeder?.breaker ?? 'open';
-        const posX = FEEDER_SPACING_X[sectorId];
-
-        const ledColor =
-          state === 'limited'
-            ? '#f59e0b' // Amber (survie / limiter)
-            : state === 'closed'
-              ? '#22c55e' // Green (powered)
-              : '#ef4444'; // Red (open / cut)
-
+        const posX = FEEDER_EXIT_X[sectorId];
+        const hex = STATUS_HEX[tones[sectorId]];
+        const live = (feeder?.servedKw ?? 0) > 0.05;
         return (
-          <group key={sectorId} position={[posX, 0.65, 0.11]}>
-            {/* Miniature switch box */}
-            <mesh>
-              <boxGeometry args={[0.12, 0.14, 0.02]} />
-              <meshStandardMaterial color="#1f2937" roughness={0.8} />
-            </mesh>
-            {/* Status indicator LED */}
-            <mesh position={[0, 0.03, 0.015]}>
-              <sphereGeometry args={[0.02, 8, 8]} />
+          <group key={sectorId}>
+            <group position={[posX, 0.65, 0.11]}>
+              <mesh>
+                <boxGeometry args={[0.12, 0.14, 0.02]} />
+                <meshStandardMaterial color="#1f2937" roughness={0.8} />
+              </mesh>
+              <mesh position={[0, 0.03, 0.015]}>
+                <sphereGeometry args={[0.02, 8, 8]} />
+                <meshBasicMaterial color={hex} toneMapped={false} />
+              </mesh>
+            </group>
+            <mesh geometry={riserGeom} position={[posX, 0, FEEDER_EXIT_Z]}>
               <meshStandardMaterial
-                color={ledColor}
-                emissive={ledColor}
-                emissiveIntensity={2}
-                toneMapped={false}
+                color={live ? hex : '#2a2f36'}
+                emissive={live ? hex : '#000000'}
+                emissiveIntensity={live ? 1.4 : 0}
+                roughness={0.5}
+                toneMapped={!live}
               />
             </mesh>
           </group>
         );
       })}
 
-      {/* 4. In-scene HUD Badge */}
+      {/* 4. HUD badge in front of the shelter, below roof level: it never covers the
+          battery behind. Anchored by its top edge (not centered). */}
       <Html
-        position={[0, 2.45, 0]}
-        center
+        position={[0, 0.05, 1.05]}
         distanceFactor={22}
         portal={htmlPortal as RefObject<HTMLElement>}
         zIndexRange={[10, 0]}
@@ -205,48 +247,47 @@ export function DispatchControllerUnit({
             e.stopPropagation();
             onFocus?.();
           }}
+          aria-label={`${nameLabel} · ${modeLabel} · ${fmtKw(hasResult ? totalServedKw : null)}`}
           className={cn(
-            'flex flex-col items-center gap-0.5 rounded-control-sm border bg-surface/90 px-2.5 py-1 text-center shadow-lg backdrop-blur-sm transition-transform hover:scale-105 pointer-events-auto cursor-pointer',
+            'pointer-events-auto flex w-36 -translate-x-1/2 cursor-pointer flex-col gap-1 rounded-control-sm border bg-surface/90 px-2 py-1 text-left shadow-lg backdrop-blur-sm transition-transform hover:scale-105',
             isEmergency
               ? 'border-warning-amber/70 ring-1 ring-warning-amber/40'
               : 'border-border/80 hover:border-energy-cyan/70'
           )}
         >
-          <div className="flex items-center gap-1.5 font-mono text-[10px] text-text-secondary">
+          <span className="flex items-center gap-1 whitespace-nowrap font-mono text-[10px]">
             <Cpu
               className={cn(
-                'h-3 w-3',
-                isEmergency ? 'text-warning-amber animate-pulse' : 'text-energy-cyan'
+                'h-3 w-3 shrink-0',
+                isNormal ? 'text-energy-cyan' : 'text-warning-amber',
+                isEmergency && 'animate-pulse'
               )}
               aria-hidden="true"
             />
-            <span className="font-semibold text-text-primary">{nameLabel}</span>
-          </div>
-          <div className="flex items-center gap-1.5 font-mono text-[9px]">
+            <span className="truncate font-semibold text-text-primary">{nameLabel}</span>
+          </span>
+          <span className="flex items-center justify-between gap-1 whitespace-nowrap font-mono text-[9px]">
             <span
               className={cn(
-                'h-1.5 w-1.5 rounded-full',
-                isEmergency
-                  ? 'bg-warning-amber animate-pulse'
-                  : isNormal
-                    ? 'bg-battery-green'
-                    : 'bg-warning-amber'
-              )}
-              aria-hidden="true"
-            />
-            <span
-              className={cn(
-                'font-semibold',
-                isEmergency
-                  ? 'text-warning-amber'
-                  : isNormal
-                    ? 'text-battery-green'
-                    : 'text-warning-amber'
+                'flex items-center gap-1 font-semibold',
+                isNormal ? 'text-battery-green' : 'text-warning-amber'
               )}
             >
-              {fmtKw(totalServedKw)}
+              <span
+                className={cn(
+                  'h-1.5 w-1.5 rounded-full',
+                  isNormal ? 'bg-battery-green' : 'bg-warning-amber',
+                  isEmergency && 'animate-pulse'
+                )}
+                aria-hidden="true"
+              />
+              {modeLabel}
             </span>
-          </div>
+            <span className="font-semibold text-energy-cyan">
+              {fmtKw(hasResult ? totalServedKw : null)}
+            </span>
+          </span>
+          {hasResult && <DispatchShareBar segments={segments} />}
         </button>
       </Html>
     </group>

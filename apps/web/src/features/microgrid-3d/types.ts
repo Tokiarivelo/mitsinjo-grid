@@ -14,6 +14,8 @@ export interface FeederSceneModel {
   servedKw: number;
   /** Intensity 0..1 relative to the sector's daily peak served kW from the engine result. */
   intensity: number;
+  /** 0..1 share of what the controller dispatches this hour (0 when nothing is served). */
+  share: number;
   breaker: BreakerState;
 }
 

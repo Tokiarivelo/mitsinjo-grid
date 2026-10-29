@@ -21,7 +21,9 @@ import {
 } from '../utils/diagram-layout';
 import { toSvgPath } from '../utils/flow-path';
 import { STATUS_BG_CLASS, STATUS_TEXT_CLASS } from '../utils/scene-palette';
+import { useFeederLabels } from '../hooks/use-feeder-labels';
 import { FlowWire, type WireState } from './flow-wire';
+import { DispatchShareBar, FeederChip, type DispatchSegment } from './dispatch-share-bar';
 
 export interface GridDiagramProps {
   model: SceneModel;
@@ -57,6 +59,7 @@ export function GridDiagram({
   const glow = `url(#${glowId})`;
 
   const layout = useMemo(() => diagramLayout(variant), [variant]);
+  const feeders = useFeederLabels(model);
   const { lines, solar, battery, buildings } = model;
   const feederOn = lines.batteryToBus.active;
 
@@ -98,6 +101,25 @@ export function GridDiagram({
 
             {variant === 'topology' && <TopologyGround layout={layout} />}
 
+            {/* Circuit: EMS switchboard frame, bus bar + every breaker inside it */}
+            {layout.enclosure && (
+              <rect
+                x={layout.enclosure.x}
+                y={layout.enclosure.y}
+                width={layout.enclosure.w}
+                height={layout.enclosure.h}
+                rx={3}
+                strokeWidth={0.8}
+                strokeDasharray="3 2"
+                className={cn(
+                  'fill-energy-cyan/5',
+                  model.controller.mode === 'normal'
+                    ? 'stroke-energy-cyan/60'
+                    : 'stroke-warning-amber/70'
+                )}
+              />
+            )}
+
             {/* Bus bar under the feeders */}
             <line
               x1={layout.busBar[0][0]}
@@ -127,6 +149,16 @@ export function GridDiagram({
               animate={animate}
               glow={glow}
             />
+            {layout.wires.controllerToBus && (
+              <FlowWire
+                points={layout.wires.controllerToBus}
+                line={lines.batteryToBus}
+                state={feederOn ? 'flow' : 'idle'}
+                colorClass="text-energy-cyan"
+                animate={animate}
+                glow={glow}
+              />
+            )}
             {DIAGRAM_SECTORS.map((id) => {
               const b = buildings[id];
               const line = lines.busToSectors[id];
@@ -145,32 +177,15 @@ export function GridDiagram({
             })}
 
             {layout.breakers &&
-              DIAGRAM_SECTORS.map((id) => {
-                const b = buildings[id];
-                const feeder = model.controller.feeders[id];
-                const breakerState =
-                  feeder?.breaker ?? (lines.busToSectors[id].active ? 'closed' : 'open');
-                return (
-                  <Breaker
-                    key={id}
-                    at={layout.breakers![id]}
-                    state={breakerState}
-                    colorClass={
-                      breakerState === 'limited'
-                        ? 'text-warning-amber'
-                        : breakerState === 'closed'
-                          ? STATUS_TEXT_CLASS[b.statusColor]
-                          : b.status === 'unserved'
-                            ? 'text-critical-red'
-                            : 'text-text-muted'
-                    }
-                    tooltip={t(`breakerTooltip.${breakerState}`, {
-                      sector: tSectors(id),
-                      kw: fmtKw(b.servedKw),
-                    })}
-                  />
-                );
-              })}
+              DIAGRAM_SECTORS.map((id) => (
+                <Breaker
+                  key={id}
+                  at={layout.breakers![id]}
+                  state={model.controller.feeders[id].breaker}
+                  colorClass={STATUS_TEXT_CLASS[feeders.tones[id]]}
+                  tooltip={feeders.titles[id]}
+                />
+              ))}
           </svg>
 
           {/* Labels in their reserved boxes (same geometry as the SVG) */}
@@ -188,8 +203,38 @@ export function GridDiagram({
           </Slot>
 
           <Slot box={layout.boxes.controller}>
-            <ControllerNodeCard controller={model.controller} strategy={model.strategy} />
+            <ControllerNodeCard
+              controller={model.controller}
+              strategy={model.strategy}
+              compact={variant === 'circuit'}
+              segments={
+                model.hasResult
+                  ? DIAGRAM_SECTORS.map((id) => ({
+                      id,
+                      share: model.controller.feeders[id].share,
+                      tone: feeders.tones[id],
+                      title: feeders.titles[id],
+                    }))
+                  : []
+              }
+            />
           </Slot>
+
+          {/* kW the controller sends down each feeder */}
+          {model.hasResult &&
+            DIAGRAM_SECTORS.filter((id) => buildings[id].connected).map((id) => (
+              <Slot key={`tag-${id}`} box={layout.feederTags[id]}>
+                <FeederChip
+                  id={id}
+                  size="sm"
+                  showIcon={false}
+                  kwLabel={fmtKw(buildings[id].servedKw)}
+                  tone={feeders.tones[id]}
+                  coveragePct={null}
+                  title={feeders.titles[id]}
+                />
+              </Slot>
+            ))}
 
           <Slot box={layout.boxes.solar}>
             <NodeCard
@@ -359,9 +404,14 @@ function SectorCard({
 function ControllerNodeCard({
   controller,
   strategy,
+  compact,
+  segments,
 }: {
   controller: ControllerSceneModel;
   strategy: StrategyId;
+  /** Circuit header tab: no strategy line. */
+  compact: boolean;
+  segments: DispatchSegment[];
 }) {
   const t = useTranslations('features.gridDiagram');
   const tStrategies = useTranslations('strategies');
@@ -385,32 +435,35 @@ function ControllerNodeCard({
       role="region"
       aria-label={tooltipText}
       className={cn(
-        'group relative flex h-full items-center justify-between gap-[0.5cqw] overflow-hidden rounded-[0.9cqw] border bg-surface px-[0.8cqw] text-[1.45cqw] leading-[1.2] transition-colors',
+        'group relative flex h-full flex-col justify-center gap-[0.4cqw] overflow-hidden rounded-[0.9cqw] border bg-surface px-[0.8cqw] text-[1.45cqw] leading-[1.15] transition-colors',
         mode === 'normal'
           ? 'border-energy-cyan/50 hover:border-energy-cyan'
           : 'border-warning-amber/60 hover:border-warning-amber ring-1 ring-warning-amber/20'
       )}
     >
-      <div className="flex min-w-0 items-center gap-[0.4cqw]">
-        <Cpu className="h-[1.9cqw] w-[1.9cqw] shrink-0 text-energy-cyan" aria-hidden="true" />
-        <div className="min-w-0 truncate">
-          <span className="block truncate font-semibold text-text-primary">
+      <div className="flex min-w-0 items-center justify-between gap-[0.5cqw]">
+        <span className="flex min-w-0 items-center gap-[0.4cqw]">
+          <Cpu className="h-[1.7cqw] w-[1.7cqw] shrink-0 text-energy-cyan" aria-hidden="true" />
+          <span className="truncate font-semibold text-text-primary">
             {t('controller.shortTitle')}
           </span>
-          <span className="block truncate font-mono text-[1.25cqw] text-text-muted">
-            {tStrategies(strategy)}
-          </span>
-        </div>
+        </span>
+        <span
+          className={cn(
+            'flex shrink-0 items-center gap-[0.3cqw] rounded-full border px-[0.5cqw] py-[0.1cqw] font-mono text-[1.1cqw]',
+            modeBadgeClass
+          )}
+        >
+          <span className={cn('h-[0.6cqw] w-[0.6cqw] rounded-full', dotClass)} aria-hidden="true" />
+          <span className="truncate">{t(`controller.mode.${mode}`)}</span>
+        </span>
       </div>
-      <span
-        className={cn(
-          'flex shrink-0 items-center gap-[0.3cqw] rounded-full border px-[0.5cqw] py-[0.1cqw] font-mono text-[1.15cqw]',
-          modeBadgeClass
-        )}
-      >
-        <span className={cn('h-[0.6cqw] w-[0.6cqw] rounded-full', dotClass)} aria-hidden="true" />
-        <span className="truncate">{t(`controller.mode.${mode}`)}</span>
-      </span>
+      {!compact && (
+        <span className="block truncate font-mono text-[1.2cqw] text-text-muted">
+          {tStrategies(strategy)}
+        </span>
+      )}
+      {segments.length > 0 && <DispatchShareBar segments={segments} className="h-[0.7cqw]" />}
     </div>
   );
 }

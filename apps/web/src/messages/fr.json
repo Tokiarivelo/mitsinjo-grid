@@ -183,7 +183,6 @@
       "solarArray": "Champ Solaire PV",
       "liveOutput": "Production Directe",
       "bessBattery": "Stockage BESS Central",
-      "emsController": "Contrôleur de dispatch EMS",
       "clickNodeToInspect": "Cliquez sur un secteur du village pour inspecter l allocation et la résilience.",
       "cursorAt": "Curseur temporel : {hour}h00",
       "socValue": "{pct} SoC",

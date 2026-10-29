@@ -134,7 +134,7 @@ export function TimelineScrubber({
           </button>
 
           {/* Current Hour Pill */}
-          <div className="ml-2 px-2.5 py-1 rounded-control bg-surface-elevated border border-energy-cyan/40 text-energy-cyan font-mono text-xs font-semibold">
+          <div className="ml-2 px-2.5 py-1 rounded-control bg-surface-elevated border border-energy-cyan/40 text-energy-cyan font-mono tabular-nums text-xs font-semibold">
             {fmtHour(timeIndex)}
           </div>
         </div>
@@ -154,8 +154,11 @@ export function TimelineScrubber({
           aria-valuenow={timeIndex}
           aria-valuetext={fmtHour(timeIndex)}
           aria-label={tSim('timelineScrubberLabel')}
+          style={{
+            background: `linear-gradient(to right, var(--color-energy-cyan, #50d8e8) 0%, var(--color-energy-cyan, #50d8e8) ${(timeIndex / 23) * 100}%, var(--color-surface-elevated, #2a2f36) ${(timeIndex / 23) * 100}%, var(--color-surface-elevated, #2a2f36) 100%)`,
+          }}
           className="w-full h-2 bg-surface-elevated rounded-lg appearance-none cursor-pointer accent-energy-cyan
-            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+            transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
         />
 
         {/* 24-Hour Markers */}
@@ -170,7 +173,7 @@ export function TimelineScrubber({
 
       {/* Live Step Telemetry at hour t (if simulation complete) */}
       {hasResults && stepResult && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2 border-t border-border/40 text-xs font-mono">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2 border-t border-border/40 text-xs font-mono tabular-nums">
           <div className="p-2 rounded-control bg-surface-elevated/70 border border-border/60">
             <span className="text-[10px] text-text-muted block font-sans">{tSim('stepSolar')}</span>
             <span className="font-semibold text-solar-amber">{fmtKw(stepResult.solarKw)}</span>

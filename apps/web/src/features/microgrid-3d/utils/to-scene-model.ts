@@ -33,6 +33,34 @@ export const SOLAR_POSITION: [number, number, number] = [-10, 0, -8];
 export const BATTERY_POSITION: [number, number, number] = [0, 0, -2];
 export const BUS_POSITION: [number, number, number] = [0, 0, 1];
 
+/**
+ * Feeder departures on the EMS controller's roof gantry (x offset from BUS_POSITION),
+ * ordered by where each sector lies (west → east) so outgoing cables never cross.
+ * The breaker LEDs on the cabinet use the same order.
+ */
+export const FEEDER_EXIT_X: Record<SectorId, number> = {
+  water: -0.6,
+  households: -0.36,
+  school: -0.12,
+  market: 0.12,
+  health: 0.36,
+  industry: 0.6,
+};
+/** Gantry depth (z offset from BUS_POSITION), above the cabinet. */
+export const FEEDER_EXIT_Z = -0.2;
+
+/** World point where a sector's cable leaves the controller. */
+export function feederExitPosition(id: SectorId): [number, number, number] {
+  return [BUS_POSITION[0] + FEEDER_EXIT_X[id], 0, BUS_POSITION[2] + FEEDER_EXIT_Z];
+}
+
+/** Incoming terminal on the controller's back wall (cable from the battery hub). */
+export const BUS_INLET_POSITION: [number, number, number] = [
+  BUS_POSITION[0],
+  0,
+  BUS_POSITION[2] - 0.8,
+];
+
 /** SoC at or below this shows the battery as amber (visual threshold only). */
 export const BATTERY_WARNING_SOC_PCT = 30;
 
@@ -128,6 +156,10 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     }
     maxServedBySector[sId] = maxKw;
   }
+  // Total the controller dispatches this hour (sum of sector feeders), for each feeder's share.
+  const dispatchedKw = step
+    ? SECTOR_IDS.reduce((sum, id) => sum + (step.sectors[id]?.servedKw ?? 0), 0)
+    : 0;
 
   for (const sectorId of SECTOR_IDS) {
     const sectorConfig = input.sectors.find((s) => s.id === sectorId);
@@ -196,13 +228,14 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
       mode,
       servedKw,
       intensity,
+      share: dispatchedKw > 0.05 ? servedKw / dispatchedKw : 0,
       breaker,
     };
 
     // Bus to building transmission line
     const activeLine = servedKw > 0.05;
     busToSectors[sectorId] = {
-      from: BUS_POSITION,
+      from: feederExitPosition(sectorId),
       to: pos,
       active: activeLine,
       flowKw: servedKw,
@@ -264,7 +297,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
   const feederActive = feederKw > 0.05;
   const batteryToBus: LineFlowSceneModel = {
     from: BATTERY_POSITION,
-    to: BUS_POSITION,
+    to: BUS_INLET_POSITION,
     active: feederActive,
     flowKw: feederKw,
     direction: feederActive ? 'forward' : 'idle',

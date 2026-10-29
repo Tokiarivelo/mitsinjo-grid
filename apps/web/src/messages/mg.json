@@ -183,7 +183,6 @@
       "solarArray": "Tontolon ny Masoandro PV",
       "liveOutput": "Famokarana Mivantana",
       "bessBattery": "Fitahirizana BESS Foibe",
-      "emsController": "Mpanara-maso ny fitsinjarana EMS",
       "clickNodeToInspect": "Tsindrio ny sokajin-tanàna iray hijerena ny fizarana sy ny faharetana.",
       "cursorAt": "Fotoana voatondro: {hour}:00",
       "socValue": "{pct} SoC",

@@ -24,7 +24,20 @@ export const DIAGRAM_SECTORS: readonly SectorId[] = SECTOR_IDS;
 
 export interface DiagramLayout {
   boxes: { solar: Box; hub: Box; controller: Box; sectors: Record<SectorId, Box> };
-  wires: { solarToHub: Pt[]; hubToBus: Pt[]; busToSector: Record<SectorId, Pt[]> };
+  /**
+   * `hubToBus` ends on the EMS controller when power passes through it (topology:
+   * hub → controller → bus, then `controllerToBus`).
+   */
+  wires: {
+    solarToHub: Pt[];
+    hubToBus: Pt[];
+    controllerToBus?: Pt[];
+    busToSector: Record<SectorId, Pt[]>;
+  };
+  /** kW tag beside each feeder wire (power the controller sends to that sector). */
+  feederTags: Record<SectorId, Box>;
+  /** Circuit only: EMS switchboard frame around the bus bar and breakers. */
+  enclosure?: Box;
   /** Distribution bus bar; feeders leave from points on it. */
   busBar: [Pt, Pt];
   /** Where the bus name + power label sits (top-left of a BUS_LABEL box). */
@@ -50,12 +63,13 @@ function topologyLayout(): DiagramLayout {
   const busY = 128;
   const solar = box(46, 27, 68, 28);
   const hub = box(150, 74, 76, 32);
-  const controller = box(178, 108, 48, 22);
+  // On the hub → bus path: every feeder leaves through the EMS controller.
+  const controller = box(150, 110, 56, 24);
   const sectors: Record<SectorId, Box> = {
     school: box(196, 26, SW, SH),
     industry: box(284, 26, SW, SH),
     health: box(272, 92, SW, SH),
-    water: box(46, busY, SW, SH),
+    water: box(43, busY, 66, SH),
     households: box(118, 178, SW, SH),
     market: box(222, 178, SW, SH),
   };
@@ -63,7 +77,7 @@ function topologyLayout(): DiagramLayout {
   const busToSector: Record<SectorId, Pt[]> = {
     water: [
       [100, busY],
-      [sectors.water.x + SW, busY],
+      [sectors.water.x + sectors.water.w, busY],
     ],
     households: [
       [118, busY],
@@ -97,9 +111,22 @@ function topologyLayout(): DiagramLayout {
       ],
       hubToBus: [
         [150, bottom(hub)],
+        [150, controller.y],
+      ],
+      controllerToBus: [
+        [150, bottom(controller)],
         [150, busY],
       ],
       busToSector,
+    },
+    // Beside each feeder, clear of its wire and of every card.
+    feederTags: {
+      water: { x: 76, y: busY - 12, w: 24, h: 9 },
+      households: { x: 120, y: busY + 12, w: 24, h: 9 },
+      market: { x: 224, y: busY + 12, w: 24, h: 9 },
+      school: { x: 210, y: 60, w: 24, h: 9 },
+      health: { x: 246, y: busY - 16, w: 24, h: 9 },
+      industry: { x: 288, y: 50, w: 24, h: 9 },
     },
     busBar: [
       [100, busY],
@@ -112,20 +139,25 @@ function topologyLayout(): DiagramLayout {
 /** Single-line diagram: sources left, vertical bus bar, one breaker + feeder per sector. */
 function circuitLayout(): DiagramLayout {
   const busX = 132;
-  const cardX = 200;
+  const cardX = 206;
   const firstY = 28;
   // Rows shrink to fit every sector in the viewBox (36 units for 5 sectors).
   const rowH = Math.min(36, (DIAGRAM_H - firstY - 18) / Math.max(1, DIAGRAM_SECTORS.length - 1));
+  const lastY = firstY + (DIAGRAM_SECTORS.length - 1) * rowH;
   const solar = box(52, 40, 76, 30);
   const hub = box(52, 120, 76, 40);
-  const controller = box(166, 12, 56, 18);
+  // Header tab of the EMS switchboard that holds the bus bar and every breaker.
+  const controller = box(152, 11, 58, 16);
   const sectors = {} as Record<SectorId, Box>;
   const busToSector = {} as Record<SectorId, Pt[]>;
   const breakers = {} as Record<SectorId, Pt>;
+  const feederTags = {} as Record<SectorId, Box>;
   DIAGRAM_SECTORS.forEach((id, i) => {
     const y = firstY + i * rowH;
-    sectors[id] = { x: cardX, y: y - 14, w: 112, h: 28 };
+    sectors[id] = { x: cardX, y: y - 14, w: 108, h: 28 };
     breakers[id] = [166, y];
+    // Just outside the switchboard, above the outgoing feeder.
+    feederTags[id] = { x: 182, y: y - 11, w: 22, h: 9 };
     busToSector[id] = [
       [busX, y],
       [cardX, y],
@@ -144,11 +176,18 @@ function circuitLayout(): DiagramLayout {
       ],
       busToSector,
     },
+    feederTags,
+    enclosure: {
+      x: controller.x - 1,
+      y: controller.y + controller.h / 2,
+      w: controller.w + 1,
+      h: lastY + 14 - (controller.y + controller.h / 2),
+    },
     busBar: [
       [busX, firstY - 8],
-      [busX, firstY + (DIAGRAM_SECTORS.length - 1) * rowH + 8],
+      [busX, lastY + 8],
     ],
-    busLabel: { x: 74, y: 6, w: 52, h: 14 },
+    busLabel: { x: 66, y: 6, w: 52, h: 14 },
     breakers,
   };
 }

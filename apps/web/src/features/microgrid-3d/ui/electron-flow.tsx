@@ -30,6 +30,7 @@ const RADIUS = 0.085;
 const LIFT = 0.03;
 
 interface Track {
+  key: string;
   path: ArcPath;
   count: number;
   period: number;
@@ -55,7 +56,15 @@ export function ElectronFlow({ lines, animate = true }: ElectronFlowProps) {
       const path = buildArcPath(routeCable(line.from, line.to).points);
       const count = electronCount(path.total, SPACING);
       const period = electronPeriodS(path.total, line.speed * SPEED_SCALE);
-      list.push({ path, count, period, reverse: line.direction === 'backward', firstInstance: n });
+      const key = `${line.from.join(',')}-${line.to.join(',')}`;
+      list.push({
+        key,
+        path,
+        count,
+        period,
+        reverse: line.direction === 'backward',
+        firstInstance: n,
+      });
       // Whitened status color, pushed > 1 so the bloom pass makes it glow.
       const c = new THREE.Color(line.color).lerp(new THREE.Color('#ffffff'), 0.35);
       c.multiplyScalar(3);
@@ -65,15 +74,19 @@ export function ElectronFlow({ lines, animate = true }: ElectronFlowProps) {
     return { tracks: list, total: n, colors: cols };
   }, [lines]);
 
+  // Persistent continuous phase per line so dots never jump when speed changes or scrub happens.
+  const phasesRef = useRef<Record<string, number>>({});
+
   // Scratch objects reused every frame (no per-frame allocation).
   const scratch = useMemo(() => ({ obj: new THREE.Object3D(), p: [0, 0, 0] }), []);
 
-  const place = (elapsed: number) => {
+  const place = () => {
     const mesh = meshRef.current;
     if (!mesh) return;
     for (const tr of tracks) {
+      const basePhase = phasesRef.current[tr.key] ?? 0;
       for (let j = 0; j < tr.count; j++) {
-        const phase = elapsed / tr.period + j / tr.count;
+        const phase = basePhase + j / tr.count;
         sampleArcPath(tr.path, tr.reverse ? -phase : phase, scratch.p);
         scratch.obj.position.set(scratch.p[0]!, scratch.p[1]! + LIFT, scratch.p[2]!);
         scratch.obj.updateMatrix();
@@ -88,9 +101,9 @@ export function ElectronFlow({ lines, animate = true }: ElectronFlowProps) {
     if (!mesh) return;
     colors.forEach((c, i) => mesh.setColorAt(i, c));
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    place(0);
+    place();
     invalidate();
-    // place() only reads tracks/scratch, both covered by `colors`/`tracks` identity.
+    // place() only reads tracks/scratch/phasesRef, both covered by `colors`/`tracks` identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tracks, colors, invalidate]);
 
@@ -99,9 +112,15 @@ export function ElectronFlow({ lines, animate = true }: ElectronFlowProps) {
     if (isFlowing) invalidate();
   }, [isFlowing, invalidate]);
 
-  useFrame((state) => {
+  useFrame((_, delta) => {
     if (!isFlowing) return;
-    place(state.clock.elapsedTime);
+    const dt = Math.min(delta, 0.1);
+    for (const tr of tracks) {
+      const current = phasesRef.current[tr.key] ?? 0;
+      const advance = tr.period > 0 && isFinite(tr.period) ? dt / tr.period : 0;
+      phasesRef.current[tr.key] = (current + advance) % 1;
+    }
+    place();
     requestFrame();
   });
 

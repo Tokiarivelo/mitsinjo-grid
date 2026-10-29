@@ -11,7 +11,7 @@ import {
   terrainHeight,
 } from '../landscape';
 import { scatterVegetation } from '../scatter';
-import { ANCHOR_HEIGHT, POLE_HEIGHT, routeCable } from '../cable-route';
+import { ANCHOR_HEIGHT, POLE_HEIGHT, pointAlongCable, routeCable } from '../cable-route';
 import { createHipRoofGeometry } from '../hip-roof';
 import { skyPalette } from '../sky-palette';
 import { GROUND_HEX, terrainColor } from '../terrain-colors';
@@ -99,6 +99,14 @@ describe('routeCable', () => {
 
   it('short runs have no intermediate pole', () => {
     expect(routeCable([0, 0, 0], [2, 0, 0]).poles).toHaveLength(0);
+  });
+
+  it('picks a point along the cable by fraction, clamped to its ends', () => {
+    const { points } = routeCable([0, 0, 0], [18, 0, 0]);
+    expect(pointAlongCable(points, 0)).toEqual(points[0]);
+    expect(pointAlongCable(points, 2)).toEqual(points.at(-1));
+    expect(pointAlongCable(points, 0.5)[0]).toBeCloseTo(9, 0);
+    expect(pointAlongCable([], 0.5)).toEqual([0, 0, 0]);
   });
 });
 
