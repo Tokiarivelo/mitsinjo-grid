@@ -465,10 +465,17 @@
       },
       "legendTitle": "Diagram legend",
       "legendFlow": "Current flowing (electrons)",
+      "legendLifeline": "Lifeline (survival mode)",
       "legendLimiter": "Limiter active (lifeline)",
       "legendPartial": "Partial supply",
       "legendCut": "Line cut (shed)",
       "legendIdle": "No current",
+      "feederMode": {
+        "full": "Full",
+        "limited": "Limited",
+        "lifeline": "Lifeline",
+        "off": "Off"
+      },
       "controller": {
         "title": "EMS Dispatch Controller",
         "shortTitle": "EMS Dispatch",

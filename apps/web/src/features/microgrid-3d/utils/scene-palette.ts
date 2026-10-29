@@ -51,6 +51,7 @@ export const BATTERY_STATUS_BG_CLASS: Record<BatteryStatusColor, string> = {
 /**
  * Interior light per building status: served buildings glow, partially served flicker
  * at half, unserved go dark (reads as "lights out" without opening a panel).
+ * @deprecated Prefer `glowFromIntensity(intensity)` (PL-T9) for continuous lighting.
  */
 export const WINDOW_GLOW_BY_STATUS: Record<BuildingStatus, number> = {
   full: 1,
@@ -59,6 +60,18 @@ export const WINDOW_GLOW_BY_STATUS: Record<BuildingStatus, number> = {
   unknown: 0.35,
   disconnected: 0,
 };
+
+/**
+ * Continuous window and street lamp glow from feeder intensity (PL-T9):
+ * 0 → dark (no current served or no load),
+ * lifeline floor (~0.1–0.25) → faint warm glow (a single incandescent lightbulb),
+ * 1 → full radiant light.
+ */
+export function glowFromIntensity(intensity: number): number {
+  if (!Number.isFinite(intensity) || intensity <= 0) return 0;
+  const clamped = Math.min(1, intensity);
+  return Math.min(1, Math.max(0, 0.18 + 0.82 * Math.pow(clamped, 0.85)));
+}
 
 /** Tailwind text class per status, for 2D diagram wires (SVG uses `currentColor`). */
 export const STATUS_TEXT_CLASS: Record<StatusColor, string> = {

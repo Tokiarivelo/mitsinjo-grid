@@ -152,11 +152,23 @@ describe('GridDiagram', () => {
     expect(onSelect).toHaveBeenCalledWith('water');
   });
 
-  it('renders a legend that explains the electrons and limiter', () => {
+  it('renders a legend that explains the electrons, lifeline, and limiter (PL-T12)', () => {
     renderDiagram('topology', 12);
     const legend = screen.getByRole('list', { name: 'Diagram legend' });
     expect(within(legend).getByText('Current flowing (electrons)')).toBeInTheDocument();
+    expect(within(legend).getByText('Lifeline (survival mode)')).toBeInTheDocument();
     expect(within(legend).getByText('Limiter active (lifeline)')).toBeInTheDocument();
+  });
+
+  it('renders building cards with mode badge and power metrics (PL-T12)', () => {
+    renderDiagram('topology', 12);
+    // Each connected sector card displays its mode badge (Full / Limited / Lifeline / Off)
+    const badges = screen.getAllByText(/Full|Limited|Lifeline|Off/i);
+    expect(badges.length).toBeGreaterThanOrEqual(1);
+
+    // Displays served / demand kW on cards
+    const waterCard = screen.getByRole('button', { name: /Water/i });
+    expect(within(waterCard).getAllByText(/kW/i).length).toBeGreaterThanOrEqual(1);
   });
 
   it.each(['topology', 'circuit'] as const)(

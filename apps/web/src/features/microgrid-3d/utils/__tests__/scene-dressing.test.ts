@@ -15,7 +15,7 @@ import { ANCHOR_HEIGHT, POLE_HEIGHT, pointAlongCable, routeCable } from '../cabl
 import { createHipRoofGeometry } from '../hip-roof';
 import { skyPalette } from '../sky-palette';
 import { GROUND_HEX, terrainColor } from '../terrain-colors';
-import { WINDOW_GLOW_BY_STATUS } from '../scene-palette';
+import { WINDOW_GLOW_BY_STATUS, glowFromIntensity } from '../scene-palette';
 import { SECTOR_POSITIONS } from '../to-scene-model';
 import { mergeParts } from '../merge-parts';
 import { CANOPY_VARIANTS, createCanopyTree } from '../canopy-tree';
@@ -164,6 +164,35 @@ describe('WINDOW_GLOW_BY_STATUS', () => {
     expect(WINDOW_GLOW_BY_STATUS.unserved).toBe(0);
     expect(WINDOW_GLOW_BY_STATUS.partial).toBeGreaterThan(0);
     expect(WINDOW_GLOW_BY_STATUS.partial).toBeLessThan(1);
+  });
+});
+
+describe('glowFromIntensity (PL-T9)', () => {
+  it('returns 0 for zero or negative intensity (lights out)', () => {
+    expect(glowFromIntensity(0)).toBe(0);
+    expect(glowFromIntensity(-0.5)).toBe(0);
+    expect(glowFromIntensity(Number.NaN)).toBe(0);
+  });
+
+  it('produces a faint warm glow at lifeline floor and full radiant light at 1', () => {
+    const lifeline = glowFromIntensity(0.15);
+    expect(lifeline).toBeGreaterThan(0.2);
+    expect(lifeline).toBeLessThan(0.4);
+    expect(glowFromIntensity(1)).toBe(1);
+    expect(glowFromIntensity(1.5)).toBe(1);
+  });
+
+  it('increases monotonically with feeder intensity', () => {
+    const g0 = glowFromIntensity(0);
+    const gLow = glowFromIntensity(0.1);
+    const gMid = glowFromIntensity(0.5);
+    const gHigh = glowFromIntensity(0.9);
+    const gFull = glowFromIntensity(1);
+
+    expect(g0).toBeLessThan(gLow);
+    expect(gLow).toBeLessThan(gMid);
+    expect(gMid).toBeLessThan(gHigh);
+    expect(gHigh).toBeLessThan(gFull);
   });
 });
 

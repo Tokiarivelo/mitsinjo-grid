@@ -27,6 +27,8 @@ const building = (over: Partial<BuildingSceneModel> = {}): BuildingSceneModel =>
   isCritical: true,
   connected: true,
   loadMultiplier: 1,
+  intensity: 1,
+  mode: 'full',
   ...over,
 });
 

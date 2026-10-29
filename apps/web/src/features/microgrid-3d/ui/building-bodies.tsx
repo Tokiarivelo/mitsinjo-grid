@@ -336,7 +336,10 @@ function MarketBody({ glow }: BodyProps) {
     }
     return mergeParts(parts);
   }, []);
-  const bulbColor = useMemo(() => windowColor(Math.max(0.15, glow)).multiplyScalar(1.3), [glow]);
+  const bulbColor = useMemo(
+    () => (glow <= 0 ? new THREE.Color('#1a1a1a') : windowColor(glow).multiplyScalar(1.3)),
+    [glow]
+  );
 
   return (
     <group name="market-mesh">

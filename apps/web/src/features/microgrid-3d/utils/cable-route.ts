@@ -1,3 +1,6 @@
+import type { SectorId } from '@mitsinjo/engine';
+import type { LineFlowSceneModel } from '../types';
+
 /**
  * Pure cable routing: utility poles every `spacing` units between two anchors,
  * with a catenary-like sag in each span. Visual only.
@@ -11,6 +14,40 @@ export interface CableRoute {
   poles: [number, number][];
   /** Polyline points along the whole cable. */
   points: [number, number, number][];
+}
+
+export interface SectorPole {
+  x: number;
+  z: number;
+  /** Sector feeder that powers the pole's street lamp (null for trunk lines). */
+  sectorId: SectorId | null;
+}
+
+/**
+ * Maps each distribution pole in the scene to the sector feeder powering it (PL-T10).
+ * Poles along sector lines inherit that sector ID.
+ * Trunk lines (solar array to battery hub, battery to controller) have no sector feeder (null).
+ */
+export function mapPolesToSectors(lines: {
+  solarToBattery: LineFlowSceneModel;
+  batteryToBus: LineFlowSceneModel;
+  busToSectors: Record<string, LineFlowSceneModel>;
+}): SectorPole[] {
+  const result: SectorPole[] = [];
+  // Trunk line poles (solarToBattery, batteryToBus)
+  for (const [x, z] of routeCable(lines.solarToBattery.from, lines.solarToBattery.to).poles) {
+    result.push({ x, z, sectorId: null });
+  }
+  for (const [x, z] of routeCable(lines.batteryToBus.from, lines.batteryToBus.to).poles) {
+    result.push({ x, z, sectorId: null });
+  }
+  // Sector lines: each pole belongs to its sector feeder
+  for (const [sectorId, line] of Object.entries(lines.busToSectors)) {
+    for (const [x, z] of routeCable(line.from, line.to).poles) {
+      result.push({ x, z, sectorId: sectorId as SectorId });
+    }
+  }
+  return result;
 }
 
 export function routeCable(

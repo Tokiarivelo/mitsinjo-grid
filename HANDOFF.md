@@ -1,39 +1,31 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/lifeline-dispatch-controller` · **PR:** [#27](https://github.com/Tokiarivelo/mitsinjo-grid/pull/27)
+**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/lifeline-intensity-lighting`
 
 ## State
 
-- Plan `docs/tasks/PL-lifeline-dispatch.md`: **Phase 2 completed** (PL-T5…T8 done).
-- PL-T5: `toSceneModel` adds `controller: { mode, feeders }` with per-sector `intensity`, `breaker: 'closed' | 'limited' | 'open'`.
-- PL-T6: Village plan & circuit diagram (`grid-diagram.tsx`, `diagram-layout.ts`): new « EMS Dispatch » block + IEC breaker/limiter symbol with tooltip. Zero overlaps and crossings.
-- PL-T7: 3D technical shelter (`DispatchControllerUnit`) at `BUS_POSITION = [0, 0, 1]` with emissive status screen, breaker LEDs, interactive focus click, and camera preset `controller`.
-- PL-T8: Docs (`contracts.md`, `3d-scene.md`, `stitch-map.md`), 100% i18n parity in EN/FR/MG (`check-i18n` green).
-- Fluid 24h timeline scrubbing: continuous phase accumulation in `ElectronFlow` & `FlowWire` (eliminating resets/jumping on speed/hour change), smooth progress fill & `tabular-nums` in `TimelineScrubber`, 500ms playback ticker.
-- Tests: `make typecheck` green, `make test-engine` green, web unit tests green.
-
-- EMS feeders (follow-up, uncommitted): 3D badge moved in front of the shelter (no longer hides the battery);
-  sector cables leave from 6 roof risers (`feederExitPosition`); kW tag per cable (`ui/feeder-tags.tsx`);
-  share bar (`ui/dispatch-share-bar.tsx`) in the 3D badge + 2D EMS cards; topology hub → EMS → bus; circuit
-  EMS switchboard frame + kW tag per feeder. Legacy hub mast removed from `terrain.tsx`. Scenarios S41–S47.
+- Plan `docs/tasks/PL-lifeline-dispatch.md`: **Phase 3 completed** (PL-T9…PL-T13 done).
+- PL-T9: Continuous lighting curve `glowFromIntensity(intensity)` (0 = dark, ~0.25 faint warm glow at lifeline floor, 1 = radiant light). 3D windows & market string lights follow actual served intensity × `lampGlow`. Zero load ≠ full light.
+- PL-T10: `mapPolesToSectors(lines)` maps each utility pole to its powering sector feeder. Street lamps turn black when feeder is cut, dimmed warm amber in lifeline, radiant at night when full. Single instanced draw call (`pole-lamps`).
+- PL-T11: 3D `ElectronFlow` & 2D `FlowWire` electron speed, density, and emissivity scale with line flow kW. Cut lines stay dark/grey conductor without any particles.
+- PL-T12: 2D `GridDiagram` & `FlowWire` stroke width & opacity ∝ intensity; lifeline mode in amber dashed line (`strokeDasharray="4 4"`). Sector cards display numerical `servedKw / demandKw` + mode badge (`full`, `limited`, `lifeline`, `off`) with intensity-driven glow halos via `@theme` tokens. Diagram legend updated.
+- PL-T13: A11y & AA contrast in dark/light themes. `prefers-reduced-motion` cleanly freezes particles in both 2D and 3D.
+- 100% key parity in EN/FR/MG (`make check-i18n` green).
+- Tests: `make typecheck` green, `make test-engine` green, `make check` passing. Manual scenarios S48–S53 added.
 
 ## Next task
 
-- Next phase of PL: Phase 3 — Éclairage selon l'intensité dans toutes les vues (PL-T9…T13).
+- Next phase of PL: Phase 4 — Copilot, tests, doc (PL-T14…PL-T16).
 
 ## Decisions taken
 
-- Feeder colour = `feederTone()` (`utils/feeder-tone.ts`), shared by the 3D view and both 2D views; no demand → neutral grey.
-
-- `ControllerMode` derived purely from engine `SectorStep.mode` and `LIFELINE_SHORTFALL` warning (normal, rationing, lifeline_only).
-- Technical shelter geometry merged into 1 mesh via `mergeParts`, keeping draw calls well below low/high budgets.
-- Breaker state `limited` activates IEC limiter symbol (notch + circle) on feeder in single-line circuit.
+- `glowFromIntensity` curve: `0.18 + 0.82 * intensity^0.85`, clamped in [0, 1]; returns 0 for non-positive intensity.
+- Street lamps on utility poles mapped directly to the sector distribution feeder they carry; trunk lines have null sector and remain unlit.
+- Building card halos and mode badges use `@theme` semantic variables exclusively (zero raw hex).
 
 ## Files touched this session
 
-- EMS feeders: `microgrid-3d/{types.ts,utils/{to-scene-model,feeder-tone,cable-route,diagram-layout,scene-palette}.ts,ui/{dispatch-share-bar,feeder-tags,dispatch-controller-unit,village-canvas,grid-diagram,terrain,camera-controller}.tsx,hooks/use-feeder-labels.ts}` + tests, messages (removed `emsController`), docs
-
-- Web: `apps/web/src/features/microgrid-3d/{types.ts,index.tsx,ui/grid-diagram.tsx,ui/dispatch-controller-unit.tsx,ui/village-canvas.tsx,ui/camera-controller.tsx,utils/diagram-layout.ts,utils/to-scene-model.ts}`, tests
-- Simulation: `apps/web/src/features/simulation/ui/village-viewport.tsx`
+- Web 3D: `microgrid-3d/{types.ts,utils/{scene-palette,to-scene-model,cable-route}.ts,ui/{buildings,building-bodies,distribution-lines,village-canvas,electron-flow,flow-wire,grid-diagram}.tsx}`
+- Tests: `microgrid-3d/utils/__tests__/{scene-dressing,to-scene-model,cable-route,feeder-tone}.test.ts`, `grid-diagram.test.tsx`
 - Messages: `apps/web/src/messages/{en,fr,mg}.json`
-- Docs: `docs/contracts.md`, `docs/design/3d-scene.md`, `docs/design/stitch-map.md`, `docs/tasks/PL-lifeline-dispatch.md`, `docs/tasks/README.md`
+- Docs & Scenarios: `docs/contracts.md`, `docs/design/3d-scene.md`, `docs/tasks/PL-lifeline-dispatch.md`, `test-scenarios/02-simulation.md`, `HANDOFF.md`

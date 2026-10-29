@@ -276,6 +276,7 @@ export function VillageCanvas({
         {perfEnabled && <SceneStatsProbe stats={stats} />}
         <DistributionLines
           lines={model.lines}
+          feeders={model.controller.feeders}
           animate={animate}
           lampGlow={palette.lampGlow}
           halo={high}

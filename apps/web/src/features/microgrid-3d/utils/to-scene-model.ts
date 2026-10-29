@@ -195,6 +195,13 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
 
     const pos = SECTOR_POSITIONS[sectorId];
 
+    // Feeder dispatch model (PL-T5 / PL-T9 / PL-T12)
+    const maxKw = maxServedBySector[sectorId] ?? 0;
+    const intensity = maxKw > 0 ? Math.min(1, Math.max(0, servedKw / maxKw)) : 0;
+    const mode = !connected ? 'off' : (sectorStep?.mode ?? 'off');
+    const breaker: BreakerState =
+      mode === 'lifeline' ? 'limited' : mode === 'full' || mode === 'limited' ? 'closed' : 'open';
+
     buildings[sectorId] = {
       id: sectorId,
       nameKey: `sectors.${sectorId}`,
@@ -209,14 +216,9 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
       isCritical: priority === 'critical',
       connected,
       loadMultiplier,
+      intensity,
+      mode,
     };
-
-    // Feeder dispatch model (PL-T5)
-    const maxKw = maxServedBySector[sectorId] ?? 0;
-    const intensity = maxKw > 0 ? Math.min(1, Math.max(0, servedKw / maxKw)) : 0;
-    const mode = !connected ? 'off' : (sectorStep?.mode ?? 'off');
-    const breaker: BreakerState =
-      mode === 'lifeline' ? 'limited' : mode === 'full' || mode === 'limited' ? 'closed' : 'open';
 
     feeders[sectorId] = {
       mode,

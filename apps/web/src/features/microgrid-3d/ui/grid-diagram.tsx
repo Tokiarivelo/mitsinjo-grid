@@ -34,8 +34,10 @@ export interface GridDiagramProps {
 }
 
 function sectorWireState(b: BuildingSceneModel, active: boolean): WireState {
-  if (active) return 'flow';
-  return b.status === 'unserved' ? 'cut' : 'idle';
+  if (active) {
+    return b.mode === 'lifeline' ? 'lifeline' : 'flow';
+  }
+  return b.status === 'unserved' || (b.demandKw > 0.05 && b.mode === 'off') ? 'cut' : 'idle';
 }
 
 /**
@@ -169,7 +171,14 @@ export function GridDiagram({
                   points={layout.wires.busToSector[id]}
                   line={line}
                   state={state}
-                  colorClass={STATUS_TEXT_CLASS[state === 'cut' ? 'critical-red' : b.statusColor]}
+                  intensity={b.intensity}
+                  colorClass={
+                    state === 'lifeline'
+                      ? 'text-warning-amber'
+                      : state === 'cut'
+                        ? 'text-text-muted'
+                        : STATUS_TEXT_CLASS[b.statusColor]
+                  }
                   animate={animate}
                   glow={glow}
                 />
@@ -269,6 +278,7 @@ export function GridDiagram({
                 building={buildings[id]}
                 hasResult={model.hasResult}
                 statusLabel={t(`status.${buildings[id].status}`)}
+                modeLabel={t(`feederMode.${buildings[id].mode}`)}
                 noLoadLabel={t('status.noLoad')}
                 selected={selectedSector === id}
                 onSelect={onSelectSector}
@@ -333,6 +343,7 @@ function SectorCard({
   building,
   hasResult,
   statusLabel,
+  modeLabel,
   noLoadLabel,
   selected,
   onSelect,
@@ -342,6 +353,7 @@ function SectorCard({
   building: BuildingSceneModel;
   hasResult: boolean;
   statusLabel: string;
+  modeLabel: string;
   noLoadLabel: string;
   selected: boolean;
   onSelect?: (sector: SectorId | null) => void;
@@ -349,22 +361,59 @@ function SectorCard({
   // A sector with no demand this hour is not "powered": show it neutral.
   const noLoad = hasResult && building.status === 'full' && building.demandKw <= 0.05;
   const statusColor = noLoad ? 'idle' : building.statusColor;
+
+  // Halo glow on building cards ∝ intensity & mode (PL-T12, using semantic @theme tokens exclusively)
+  let glowClass = 'border-border shadow-none';
+  if (selected) {
+    glowClass =
+      'border-energy-cyan ring-2 ring-energy-cyan/50 shadow-[0_0_12px_var(--color-energy-cyan)]';
+  } else if (hasResult && building.connected && building.intensity > 0) {
+    if (building.mode === 'lifeline') {
+      glowClass = 'border-warning-amber/60 shadow-[0_0_10px_var(--color-warning-amber)]';
+    } else if (building.intensity > 0.6) {
+      glowClass = 'border-battery-green/60 shadow-[0_0_12px_var(--color-battery-green)]';
+    } else if (building.intensity > 0.2) {
+      glowClass = 'border-battery-green/50 shadow-[0_0_8px_var(--color-battery-green)]';
+    } else {
+      glowClass = 'border-warning-amber/50 shadow-[0_0_6px_var(--color-warning-amber)]';
+    }
+  } else if (building.status === 'unserved') {
+    glowClass = 'border-critical-red/70 shadow-none';
+  }
+
+  const modeBadgeClass =
+    building.mode === 'full'
+      ? 'border-battery-green/40 text-battery-green bg-battery-green/10'
+      : building.mode === 'lifeline'
+        ? 'border-warning-amber/50 text-warning-amber bg-warning-amber/20 font-semibold shadow-[0_0_6px_var(--color-warning-amber)]'
+        : building.mode === 'limited'
+          ? 'border-warning-amber/40 text-warning-amber bg-warning-amber/10'
+          : 'border-border text-text-muted bg-surface-elevated/40';
+
   const className = cn(
-    'flex h-full w-full flex-col justify-center overflow-hidden rounded-[0.9cqw] border bg-surface px-[1.2cqw] text-left text-[1.64cqw] leading-[1.2] transition-colors',
-    selected
-      ? 'border-energy-cyan ring-2 ring-energy-cyan/50'
-      : building.status === 'unserved'
-        ? 'border-critical-red/70'
-        : 'border-border',
+    'flex h-full w-full flex-col justify-center overflow-hidden rounded-[0.9cqw] border bg-surface px-[1.2cqw] text-left text-[1.64cqw] leading-[1.2] transition-all',
+    glowClass,
     onSelect && 'cursor-pointer hover:border-text-secondary'
   );
   const content = (
     <>
-      <span className="flex min-w-0 items-center gap-[0.6cqw]">
-        <SectorIcon sector={id} className="h-[1.9cqw] w-[1.9cqw]" />
-        <span className="truncate font-semibold text-text-primary">{name}</span>
-      </span>
-      <span className="truncate whitespace-nowrap font-mono">
+      <div className="flex items-center justify-between gap-[0.4cqw]">
+        <span className="flex min-w-0 items-center gap-[0.6cqw]">
+          <SectorIcon sector={id} className="h-[1.9cqw] w-[1.9cqw]" />
+          <span className="truncate font-semibold text-text-primary">{name}</span>
+        </span>
+        {hasResult && building.connected && (
+          <span
+            className={cn(
+              'shrink-0 rounded-full border px-[0.5cqw] py-[0.1cqw] font-mono text-[1.05cqw] uppercase tracking-wider',
+              modeBadgeClass
+            )}
+          >
+            {modeLabel}
+          </span>
+        )}
+      </div>
+      <span className="truncate whitespace-nowrap font-mono text-[1.35cqw]">
         <span className={cn('font-semibold', STATUS_TEXT_CLASS[statusColor])}>
           {fmtKw(hasResult ? building.servedKw : null)}
         </span>
@@ -551,6 +600,12 @@ function DiagramLegend() {
       ),
     },
     {
+      key: 'legendLifeline',
+      swatch: (
+        <span className="w-4 border-t-2 border-dashed border-warning-amber" aria-hidden="true" />
+      ),
+    },
+    {
       key: 'legendLimiter',
       swatch: (
         <span className="flex items-center gap-1" aria-hidden="true">
@@ -564,9 +619,7 @@ function DiagramLegend() {
     },
     {
       key: 'legendCut',
-      swatch: (
-        <span className="w-4 border-t border-dashed border-critical-red" aria-hidden="true" />
-      ),
+      swatch: <span className="w-4 border-t border-dashed border-text-muted" aria-hidden="true" />,
     },
     {
       key: 'legendIdle',

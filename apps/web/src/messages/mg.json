@@ -465,10 +465,17 @@
       },
       "legendTitle": "Fanazavana ny kisary",
       "legendFlow": "Misy herinaratra mandeha (elektrôna)",
+      "legendLifeline": "Vonjy aina (herinaratra fototra)",
       "legendLimiter": "Famerana mandeha (vonjy aina)",
       "legendPartial": "Famatsiana ampahany",
       "legendCut": "Tariby tapaka (fanalana enta-mavesatra)",
       "legendIdle": "Tsy misy herinaratra",
+      "feederMode": {
+        "full": "Feno",
+        "limited": "Voafetra",
+        "lifeline": "Vonjy aina",
+        "off": "Tapaka"
+      },
       "controller": {
         "title": "Mpanara-maso ny fitsinjarana EMS",
         "shortTitle": "Fitsinjarana EMS",
