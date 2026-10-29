@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/lifeline-engine` · **PR:** [to create]
+**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/lifeline-engine` · **PR:** [#25](https://github.com/Tokiarivelo/mitsinjo-grid/pull/25)
 
 ## State
 
