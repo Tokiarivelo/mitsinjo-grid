@@ -36,7 +36,7 @@ Reference visuals: `design/reference/Mitsinjo Grid_ Village at Sunset.png` (mast
 ## Camera
 
 - Default front three-quarter view (village in front, hills, lake and sunset behind); smooth orbit; limited zoom range; reset-camera button (aria-label "Reset camera").
-- Presets: `Village` (default), `Solar Array`, `Battery`, `Essential Services`. Transitions short and interruptible; never auto-move while user is exploring.
+- Presets: `Village` (default), `Solar Array`, `Battery`, `EMS Controller`, `Essential Services`. Transitions short and interruptible; never auto-move while user is exploring.
 - Selecting a building (3D badge, viewport chips or inspector list) flies the camera to it, then slowly orbits it (`utils/camera-focus`). A drag stops the orbit; deselecting returns to the current preset. Reduced motion: instant jump, no orbit; no GPU: no orbit.
 
 ## Energy visual mapping (render only; never compute flows here)
@@ -49,6 +49,7 @@ Reference visuals: `design/reference/Mitsinjo Grid_ Village at Sunset.png` (mast
 | Solar-to-network line lit                                                                                                                   | result.steps[t].solarKw > 0                                                                                                                 |
 | Network-to-building line lit                                                                                                                | metrics.perSector[id].servedKwh > 0 (per step if available)                                                                                 |
 | Building status indicator                                                                                                                   | metrics.perSector[id].coveragePct (full / partial / critical)                                                                               |
+| EMS dispatch controller status & breaker LEDs                                                                                               | `model.controller.mode` (normal, rationing, lifeline_only) & feeder breaker states (`closed` green, `limited` amber, `open` red)            |
 | Window / string-light glow                                                                                                                  | building status (full 1 · partial 0.45 · unserved 0 = lights out), scaled by time of day                                                    |
 | Unmet demand warning (restrained)                                                                                                           | metrics.perSector[id].unservedKwh > 0                                                                                                       |
 | Critical sector marker                                                                                                                      | health/water with unservedKwh > 0 or metrics.criticalUnservedKwh > 0                                                                        |

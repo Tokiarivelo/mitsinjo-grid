@@ -61,22 +61,22 @@ représentation de la logique du moteur, pas un équipement réel piloté.
 
 Modèle de vue unique, calculé une fois et partagé par toutes les vues :
 
-- [ ] **PL-T5** `toSceneModel` ajoute `controller: { mode: 'normal' | 'rationing' | 'lifeline_only', feeders:
+- [x] **PL-T5** `toSceneModel` ajoute `controller: { mode: 'normal' | 'rationing' | 'lifeline_only', feeders:
 Record<SectorId, { mode; servedKw; intensity /* 0..1 */; breaker: 'closed' | 'limited' | 'open' }> }`.
       `intensity = servedKw / maxServedKw_s` (max du secteur sur la journée, fourni par le résultat moteur, pas
       recalculé côté UI au-delà d'une division d'affichage). `mode` contrôleur dérivé des `SectorStep.mode` moteur.
       **Done when** tests unitaires de `to-scene-model` (nuit sans soleil, batterie basse, survie seule).
-- [ ] **PL-T6** Plan village + schéma unifilaire (`grid-diagram.tsx`, `diagram-layout.ts`) : nouveau bloc
+- [x] **PL-T6** Plan village + schéma unifilaire (`grid-diagram.tsx`, `diagram-layout.ts`) : nouveau bloc
       **« Contrôleur EMS / tableau de départs »** entre le bus et les secteurs (onduleur-chargeur → bus DC/AC → EMS →
       un départ par secteur avec disjoncteur **+ limiteur de courant**). Symbole limiteur actif quand `breaker =
 'limited'` (mode survie). Infobulle : règle appliquée (stratégie + plancher). Même composant réutilisé par
       `grid-schematic-preview.tsx` (pas de duplication).
-- [ ] **PL-T7** Maquette 3D (`/designer-3d` puis `/scene-3d`) : un **local technique** près de la batterie
+- [x] **PL-T7** Maquette 3D (`/designer-3d` puis `/scene-3d`) : un **local technique** près de la batterie
       (`BUS_POSITION`) : armoire EMS avec écran de statut, rangée de 5 disjoncteurs/limiteurs avec voyant par
       départ (vert plein / ambre survie / rouge ouvert), câbles du tableau vers chaque départ. Ajouter le preset
       caméra `controller` et le focus au clic. Géométries instanciées / fusionnées (`merge-parts.ts`) ; budget
       draw calls de `docs/performance.md` respecté.
-- [ ] **PL-T8** Stitch + doc design : maquette du bloc contrôleur (plan, unifilaire, carte 3D) en dark et light,
+- [x] **PL-T8** Stitch + doc design : maquette du bloc contrôleur (plan, unifilaire, carte 3D) en dark et light,
       mobile 320 px ; `docs/design/stitch-map.md` + spec écran mis à jour. Clés i18n EN/FR/MG
       (`controller.*`, `feeder.mode.*`), `make check-i18n` vert.
 

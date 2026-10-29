@@ -175,6 +175,7 @@
       "presetVillage": "Village",
       "presetSolar": "Solaire",
       "presetBattery": "Batterie",
+      "presetController": "Contrôleur",
       "presetEssential": "Essentiel",
       "resetCamera": "Réinitialiser la caméra",
       "webglUnavailable": "La visualisation 3D n'est pas disponible sur cet appareil. Affichage du schéma 2D.",
@@ -182,6 +183,7 @@
       "solarArray": "Champ Solaire PV",
       "liveOutput": "Production Directe",
       "bessBattery": "Stockage BESS Central",
+      "emsController": "Contrôleur de dispatch EMS",
       "clickNodeToInspect": "Cliquez sur un secteur du village pour inspecter l allocation et la résilience.",
       "cursorAt": "Curseur temporel : {hour}h00",
       "socValue": "{pct} SoC",
@@ -464,9 +466,29 @@
       },
       "legendTitle": "Légende du schéma",
       "legendFlow": "Courant qui passe (électrons)",
+      "legendLimiter": "Limiteur actif (survie)",
       "legendPartial": "Alimentation partielle",
       "legendCut": "Ligne coupée (délestage)",
-      "legendIdle": "Pas de courant"
+      "legendIdle": "Pas de courant",
+      "controller": {
+        "title": "Contrôleur de dispatch EMS",
+        "shortTitle": "Dispatch EMS",
+        "mode": {
+          "normal": "Normal",
+          "rationing": "Rationnement",
+          "lifeline_only": "Survie seule"
+        },
+        "ruleDesc": {
+          "normal": "Tous les secteurs alimentés à 100%",
+          "rationing": "Énergie partagée selon la stratégie",
+          "lifeline_only": "Mode secours : eau et santé prioritaires, autres secteurs coupés"
+        }
+      },
+      "breakerTooltip": {
+        "closed": "{sector} : Fermé ({kw})",
+        "limited": "{sector} : Limiteur de courant actif ({kw})",
+        "open": "{sector} : Ouvert / Coupé (0 kW)"
+      }
     }
   },
   "copilot": {

@@ -1,13 +1,13 @@
 'use client';
 
 import { useId, useMemo, type ReactNode } from 'react';
-import { BatteryCharging, Sun } from 'lucide-react';
-import type { SectorId } from '@mitsinjo/engine';
+import { BatteryCharging, Cpu, Sun } from 'lucide-react';
+import type { SectorId, StrategyId } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtKw, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
 import { SectorIcon } from '@/components/ui/sector-icon';
-import type { BuildingSceneModel, SceneModel } from '../types';
+import type { BreakerState, BuildingSceneModel, ControllerSceneModel, SceneModel } from '../types';
 import { useReducedMotion } from '../hooks/use-reduced-motion';
 import {
   DIAGRAM_H,
@@ -146,20 +146,28 @@ export function GridDiagram({
 
             {layout.breakers &&
               DIAGRAM_SECTORS.map((id) => {
-                const on = lines.busToSectors[id].active;
                 const b = buildings[id];
+                const feeder = model.controller.feeders[id];
+                const breakerState =
+                  feeder?.breaker ?? (lines.busToSectors[id].active ? 'closed' : 'open');
                 return (
                   <Breaker
                     key={id}
                     at={layout.breakers![id]}
-                    closed={on}
+                    state={breakerState}
                     colorClass={
-                      on
-                        ? STATUS_TEXT_CLASS[b.statusColor]
-                        : b.status === 'unserved'
-                          ? 'text-critical-red'
-                          : 'text-text-muted'
+                      breakerState === 'limited'
+                        ? 'text-warning-amber'
+                        : breakerState === 'closed'
+                          ? STATUS_TEXT_CLASS[b.statusColor]
+                          : b.status === 'unserved'
+                            ? 'text-critical-red'
+                            : 'text-text-muted'
                     }
+                    tooltip={t(`breakerTooltip.${breakerState}`, {
+                      sector: tSectors(id),
+                      kw: fmtKw(b.servedKw),
+                    })}
                   />
                 );
               })}
@@ -177,6 +185,10 @@ export function GridDiagram({
             >
               {t('bus')} · {fmtKw(model.hasResult ? lines.batteryToBus.flowKw : null)}
             </span>
+          </Slot>
+
+          <Slot box={layout.boxes.controller}>
+            <ControllerNodeCard controller={model.controller} strategy={model.strategy} />
           </Slot>
 
           <Slot box={layout.boxes.solar}>
@@ -344,11 +356,81 @@ function SectorCard({
   );
 }
 
-/** IEC-style breaker on a horizontal feeder: closed = straight bar; open = lifted blade. */
-function Breaker({ at, closed, colorClass }: { at: Pt; closed: boolean; colorClass: string }) {
+function ControllerNodeCard({
+  controller,
+  strategy,
+}: {
+  controller: ControllerSceneModel;
+  strategy: StrategyId;
+}) {
+  const t = useTranslations('features.gridDiagram');
+  const tStrategies = useTranslations('strategies');
+  const mode = controller.mode;
+
+  const modeBadgeClass =
+    mode === 'normal'
+      ? 'border-battery-green/40 text-battery-green bg-battery-green/10'
+      : mode === 'lifeline_only'
+        ? 'border-warning-amber/50 text-warning-amber bg-warning-amber/15 animate-pulse'
+        : 'border-warning-amber/40 text-warning-amber bg-warning-amber/10';
+
+  const dotClass = mode === 'normal' ? 'bg-battery-green' : 'bg-warning-amber';
+
+  const tooltipText = `${t('controller.title')} (${t(`controller.mode.${mode}`)}): ${t(`controller.ruleDesc.${mode}`)} · ${tStrategies(strategy)}`;
+
+  return (
+    <div
+      title={tooltipText}
+      tabIndex={0}
+      role="region"
+      aria-label={tooltipText}
+      className={cn(
+        'group relative flex h-full items-center justify-between gap-[0.5cqw] overflow-hidden rounded-[0.9cqw] border bg-surface px-[0.8cqw] text-[1.45cqw] leading-[1.2] transition-colors',
+        mode === 'normal'
+          ? 'border-energy-cyan/50 hover:border-energy-cyan'
+          : 'border-warning-amber/60 hover:border-warning-amber ring-1 ring-warning-amber/20'
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-[0.4cqw]">
+        <Cpu className="h-[1.9cqw] w-[1.9cqw] shrink-0 text-energy-cyan" aria-hidden="true" />
+        <div className="min-w-0 truncate">
+          <span className="block truncate font-semibold text-text-primary">
+            {t('controller.shortTitle')}
+          </span>
+          <span className="block truncate font-mono text-[1.25cqw] text-text-muted">
+            {tStrategies(strategy)}
+          </span>
+        </div>
+      </div>
+      <span
+        className={cn(
+          'flex shrink-0 items-center gap-[0.3cqw] rounded-full border px-[0.5cqw] py-[0.1cqw] font-mono text-[1.15cqw]',
+          modeBadgeClass
+        )}
+      >
+        <span className={cn('h-[0.6cqw] w-[0.6cqw] rounded-full', dotClass)} aria-hidden="true" />
+        <span className="truncate">{t(`controller.mode.${mode}`)}</span>
+      </span>
+    </div>
+  );
+}
+
+/** IEC-style breaker with current limiter (PL-T6): closed = straight bar; limited = bar + limiter notch; open = lifted blade. */
+function Breaker({
+  at,
+  state,
+  colorClass,
+  tooltip,
+}: {
+  at: Pt;
+  state: BreakerState;
+  colorClass: string;
+  tooltip?: string;
+}) {
   const [x, y] = at;
   return (
     <g className={colorClass} stroke="currentColor" strokeWidth={1.4} strokeLinecap="round">
+      {tooltip && <title>{tooltip}</title>}
       <rect
         x={x - 8}
         y={y - 6}
@@ -360,10 +442,23 @@ function Breaker({ at, closed, colorClass }: { at: Pt; closed: boolean; colorCla
       />
       <circle cx={x - 5} cy={y} r={1.1} fill="currentColor" stroke="none" />
       <circle cx={x + 5} cy={y} r={1.1} fill="currentColor" stroke="none" />
-      {closed ? (
-        <line x1={x - 5} y1={y} x2={x + 5} y2={y} />
-      ) : (
+      {state === 'open' ? (
         <line x1={x - 5} y1={y} x2={x + 4} y2={y - 4.5} />
+      ) : state === 'limited' ? (
+        <>
+          {/* Closed contact with current limiter symbol (IEC diagonal slash / notch) */}
+          <line x1={x - 5} y1={y} x2={x + 5} y2={y} />
+          <line x1={x - 2} y1={y - 3} x2={x + 2} y2={y + 3} strokeWidth={1.2} />
+          <circle
+            cx={x}
+            cy={y}
+            r={1.8}
+            className="fill-warning-amber/20 stroke-warning-amber"
+            strokeWidth={0.7}
+          />
+        </>
+      ) : (
+        <line x1={x - 5} y1={y} x2={x + 5} y2={y} />
       )}
     </g>
   );
@@ -403,6 +498,14 @@ function DiagramLegend() {
         <span className="flex items-center gap-0.5" aria-hidden="true">
           <span className="h-1.5 w-1.5 rounded-full bg-energy-cyan shadow-[0_0_6px_var(--color-energy-cyan)]" />
           <span className="h-1.5 w-1.5 rounded-full bg-energy-cyan shadow-[0_0_6px_var(--color-energy-cyan)]" />
+        </span>
+      ),
+    },
+    {
+      key: 'legendLimiter',
+      swatch: (
+        <span className="flex items-center gap-1" aria-hidden="true">
+          <span className="h-2 w-2 rounded-full border border-warning-amber bg-warning-amber/40" />
         </span>
       ),
     },

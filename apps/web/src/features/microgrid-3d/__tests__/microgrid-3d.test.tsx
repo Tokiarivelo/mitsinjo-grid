@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { scenarios, simulate } from '@mitsinjo/engine';
-import { VillageScenePlaceholder } from '../index';
+import { DispatchControllerUnit, VillageScenePlaceholder } from '../index';
+import { toSceneModel, BUS_POSITION } from '../utils/to-scene-model';
+import { CAMERA_PRESETS } from '../ui/camera-controller';
 import { VillageViewport } from '@/features/simulation/ui/village-viewport';
 
 // Mock WebGL canvas in JSDOM environment
@@ -52,5 +54,31 @@ describe('Microgrid 3D & Viewport Integration (P7-T1..P7-T7)', () => {
     expect(screen.getByText(/primary school/i)).toBeInTheDocument();
     expect(screen.getByText(/village households/i)).toBeInTheDocument();
     expect(screen.getByText(/local market/i)).toBeInTheDocument();
+  });
+
+  it('defines CAMERA_PRESETS.controller targeting BUS_POSITION (PL-T7)', () => {
+    expect(CAMERA_PRESETS.controller).toBeDefined();
+    expect(CAMERA_PRESETS.controller.target).toEqual([BUS_POSITION[0], 1.1, BUS_POSITION[2]]);
+  });
+
+  it('renders DispatchControllerUnit with status HUD badge and handles focus clicks (PL-T7)', () => {
+    const model = toSceneModel({ input: baselineInput, result, timeIndex: 12 });
+    const onFocus = vi.fn();
+
+    render(
+      <DispatchControllerUnit
+        model={model.controller}
+        totalServedKw={12.4}
+        onFocus={onFocus}
+        nameLabel="EMS Dispatch"
+      />
+    );
+
+    const button = screen.getByRole('button', { name: /EMS Dispatch/i });
+    expect(button).toBeInTheDocument();
+    expect(button).toHaveTextContent(/12\.4 kW/i);
+
+    fireEvent.click(button);
+    expect(onFocus).toHaveBeenCalled();
   });
 });

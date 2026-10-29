@@ -23,7 +23,7 @@ export const DIAGRAM_H = 200;
 export const DIAGRAM_SECTORS: readonly SectorId[] = SECTOR_IDS;
 
 export interface DiagramLayout {
-  boxes: { solar: Box; hub: Box; sectors: Record<SectorId, Box> };
+  boxes: { solar: Box; hub: Box; controller: Box; sectors: Record<SectorId, Box> };
   wires: { solarToHub: Pt[]; hubToBus: Pt[]; busToSector: Record<SectorId, Pt[]> };
   /** Distribution bus bar; feeders leave from points on it. */
   busBar: [Pt, Pt];
@@ -50,6 +50,7 @@ function topologyLayout(): DiagramLayout {
   const busY = 128;
   const solar = box(46, 27, 68, 28);
   const hub = box(150, 74, 76, 32);
+  const controller = box(178, 108, 48, 22);
   const sectors: Record<SectorId, Box> = {
     school: box(196, 26, SW, SH),
     industry: box(284, 26, SW, SH),
@@ -87,7 +88,7 @@ function topologyLayout(): DiagramLayout {
     ],
   };
   return {
-    boxes: { solar, hub, sectors },
+    boxes: { solar, hub, controller, sectors },
     wires: {
       solarToHub: [
         [46, bottom(solar)],
@@ -117,6 +118,7 @@ function circuitLayout(): DiagramLayout {
   const rowH = Math.min(36, (DIAGRAM_H - firstY - 18) / Math.max(1, DIAGRAM_SECTORS.length - 1));
   const solar = box(52, 40, 76, 30);
   const hub = box(52, 120, 76, 40);
+  const controller = box(166, 12, 56, 18);
   const sectors = {} as Record<SectorId, Box>;
   const busToSector = {} as Record<SectorId, Pt[]>;
   const breakers = {} as Record<SectorId, Pt>;
@@ -130,7 +132,7 @@ function circuitLayout(): DiagramLayout {
     ];
   });
   return {
-    boxes: { solar, hub, sectors },
+    boxes: { solar, hub, controller, sectors },
     wires: {
       solarToHub: [
         [52, solar.y + solar.h],
@@ -146,7 +148,7 @@ function circuitLayout(): DiagramLayout {
       [busX, firstY - 8],
       [busX, firstY + (DIAGRAM_SECTORS.length - 1) * rowH + 8],
     ],
-    busLabel: { x: busX - 27, y: 2, w: 54, h: 11 },
+    busLabel: { x: 74, y: 6, w: 52, h: 14 },
     breakers,
   };
 }

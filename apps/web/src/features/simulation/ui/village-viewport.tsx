@@ -54,6 +54,7 @@ const CAMERA_PRESET_KEYS: { id: CameraPreset; labelKey: string }[] = [
   { id: 'village', labelKey: 'presetVillage' },
   { id: 'solar', labelKey: 'presetSolar' },
   { id: 'battery', labelKey: 'presetBattery' },
+  { id: 'controller', labelKey: 'presetController' },
   { id: 'essential', labelKey: 'presetEssential' },
 ];
 
@@ -262,6 +263,7 @@ export function VillageViewport({
             selectedSector={selectedSector}
             onSelectSector={onSelectSector}
             cameraPreset={cameraPreset}
+            onSelectPreset={applyPreset}
             cameraResetKey={cameraResetKey}
             className={cn(
               'w-full h-full absolute inset-0 transition-opacity',

@@ -108,7 +108,7 @@ git-hooks: ## Install the git pre-commit hook (Prettier on staged files; also ru
 
 check-i18n: ## Verify i18n key parity and completeness across locales
 	$(need_ws)
-	$(PNPM) --filter $(WEB) test -- i18n-parity
+	$(PNPM) --filter $(WEB) test i18n-parity
 
 check: typecheck lint test check-i18n ## typecheck + lint + test + i18n check (run before handoff)
 

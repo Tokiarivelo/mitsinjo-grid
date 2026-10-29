@@ -10,6 +10,10 @@ import type {
   BuildingSceneModel,
   BuildingStatus,
   BatteryStatusColor,
+  BreakerState,
+  ControllerMode,
+  ControllerSceneModel,
+  FeederSceneModel,
   LineFlowSceneModel,
   SceneModel,
   StatusColor,
@@ -105,9 +109,25 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     statusColor: batteryColor,
   };
 
-  // 3. Buildings model (every engine sector)
+  // 3. Buildings & controller model (every engine sector)
   const buildings = {} as Record<SectorId, BuildingSceneModel>;
   const busToSectors = {} as Record<SectorId, LineFlowSceneModel>;
+  const feeders = {} as Record<SectorId, FeederSceneModel>;
+
+  // Daily peak served kW per sector from the engine result (P7-T1 / PL-T5: pure display divisor).
+  const maxServedBySector = {} as Record<SectorId, number>;
+  for (const sId of SECTOR_IDS) {
+    let maxKw = 0;
+    if (result) {
+      for (const st of result.steps) {
+        const sec = st.sectors[sId];
+        if (sec && sec.servedKw > maxKw) {
+          maxKw = sec.servedKw;
+        }
+      }
+    }
+    maxServedBySector[sId] = maxKw;
+  }
 
   for (const sectorId of SECTOR_IDS) {
     const sectorConfig = input.sectors.find((s) => s.id === sectorId);
@@ -159,6 +179,26 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
       loadMultiplier,
     };
 
+    // Feeder dispatch model (PL-T5)
+    const maxKw = maxServedBySector[sectorId] ?? 0;
+    const intensity = maxKw > 0 ? Math.min(1, Math.max(0, servedKw / maxKw)) : 0;
+    const mode = !connected ? 'off' : (sectorStep?.mode ?? 'off');
+    let breaker: BreakerState = 'open';
+    if (connected && mode === 'lifeline') {
+      breaker = 'limited';
+    } else if (connected && (mode === 'full' || mode === 'limited')) {
+      breaker = 'closed';
+    } else {
+      breaker = 'open';
+    }
+
+    feeders[sectorId] = {
+      mode,
+      servedKw,
+      intensity,
+      breaker,
+    };
+
     // Bus to building transmission line
     const activeLine = servedKw > 0.05;
     busToSectors[sectorId] = {
@@ -171,6 +211,40 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
       color: STATUS_HEX[statusColor],
     };
   }
+
+  // Controller mode derived from engine SectorStep.mode & warnings (PL-T5)
+  let controllerMode: ControllerMode = 'normal';
+  if (result && step) {
+    const activeFeeders = SECTOR_IDS.map((id) => ({
+      id,
+      feeder: feeders[id]!,
+      demandKw: step.sectors[id]?.demandKw ?? 0,
+      connected: (input.sectors.find((s) => s.id === id)?.loadMultiplier ?? 1) > 0,
+    })).filter((f) => f.connected && f.demandKw > 0.05);
+
+    const hasLifelineShortfall = result.warnings.some(
+      (w) => w.code === 'LIFELINE_SHORTFALL' && validTime >= w.fromHour && validTime <= w.toHour
+    );
+
+    const allFull =
+      activeFeeders.length === 0 || activeFeeders.every((f) => f.feeder.mode === 'full');
+    const allLifelineOrOff =
+      activeFeeders.length > 0 &&
+      activeFeeders.every((f) => f.feeder.mode === 'lifeline' || f.feeder.mode === 'off');
+
+    if (allFull) {
+      controllerMode = 'normal';
+    } else if (hasLifelineShortfall || allLifelineOrOff) {
+      controllerMode = 'lifeline_only';
+    } else {
+      controllerMode = 'rationing';
+    }
+  }
+
+  const controller: ControllerSceneModel = {
+    mode: controllerMode,
+    feeders,
+  };
 
   // 4. Intersite lines
   const solarActive = currentSolarKw > 0.05;
@@ -210,6 +284,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     weather,
     solar,
     battery,
+    controller,
     buildings,
     lines: {
       solarToBattery,

@@ -197,6 +197,27 @@ Store (`useSimulationStore`): `workflow` (default `[{ weather: 'sunny' }]` = pla
 
 3D `SceneModel.weather: WeatherId` (from `toSceneModel({ weather })`, default `sunny`): drives sky, clouds and rain only.
 
+### 3D and 2D SceneModel Controller (PL-T5)
+
+```ts
+type ControllerMode = 'normal' | 'rationing' | 'lifeline_only';
+type BreakerState = 'closed' | 'limited' | 'open';
+
+interface FeederSceneModel {
+  mode: SectorMode;
+  servedKw: number;
+  intensity: number; // 0..1 relative to peak served kW of the sector
+  breaker: BreakerState;
+}
+
+interface ControllerSceneModel {
+  mode: ControllerMode;
+  feeders: Record<SectorId, FeederSceneModel>;
+}
+```
+
+`SceneModel.controller: ControllerSceneModel` (pure display mapping from `toSceneModel`, shared across 3D digital twin and 2D single-line circuit / topology diagram). Camera preset `'controller'` frames the shelter at `BUS_POSITION`.
+
 ### Sensitivity sweep
 
 ```ts

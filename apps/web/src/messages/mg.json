@@ -175,6 +175,7 @@
       "presetVillage": "Tanàna",
       "presetSolar": "Masoandro",
       "presetBattery": "Bateria",
+      "presetController": "Mpanara-maso",
       "presetEssential": "Zava-dehibe",
       "resetCamera": "Avereno ny fakantsary",
       "webglUnavailable": "Tsy afaka aseho amin'ity fitaovana ity ny sary 3D. Aseho ny kisary 2D.",
@@ -182,6 +183,7 @@
       "solarArray": "Tontolon ny Masoandro PV",
       "liveOutput": "Famokarana Mivantana",
       "bessBattery": "Fitahirizana BESS Foibe",
+      "emsController": "Mpanara-maso ny fitsinjarana EMS",
       "clickNodeToInspect": "Tsindrio ny sokajin-tanàna iray hijerena ny fizarana sy ny faharetana.",
       "cursorAt": "Fotoana voatondro: {hour}:00",
       "socValue": "{pct} SoC",
@@ -464,9 +466,29 @@
       },
       "legendTitle": "Fanazavana ny kisary",
       "legendFlow": "Misy herinaratra mandeha (elektrôna)",
+      "legendLimiter": "Famerana mandeha (vonjy aina)",
       "legendPartial": "Famatsiana ampahany",
       "legendCut": "Tariby tapaka (fanalana enta-mavesatra)",
-      "legendIdle": "Tsy misy herinaratra"
+      "legendIdle": "Tsy misy herinaratra",
+      "controller": {
+        "title": "Mpanara-maso ny fitsinjarana EMS",
+        "shortTitle": "Fitsinjarana EMS",
+        "mode": {
+          "normal": "Ara-dalàna",
+          "rationing": "Fitsinjarana voafetra",
+          "lifeline_only": "Hery vonjy aina ihany"
+        },
+        "ruleDesc": {
+          "normal": "Ireo sehatra rehetra mahazo herinaratra feno",
+          "rationing": "Herinaratra zaraina araka ny paikady",
+          "lifeline_only": "Fomba vonjy taitra: rano sy fahasalamana lohalaharana, ny hafa tapaka"
+        }
+      },
+      "breakerTooltip": {
+        "closed": "{sector}: Mikatona ({kw})",
+        "limited": "{sector}: Famerana mandeha ({kw})",
+        "open": "{sector}: Misokatra / Tapaka (0 kW)"
+      }
     }
   },
   "copilot": {

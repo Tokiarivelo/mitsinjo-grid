@@ -22,6 +22,7 @@ import { SceneStatsProbe } from './scene-stats-probe';
 import { VillageTerrain } from './terrain';
 import { SolarArray } from './solar-array';
 import { BatteryUnit } from './battery-unit';
+import { DispatchControllerUnit } from './dispatch-controller-unit';
 import { DistributionLines } from './distribution-lines';
 import { VillageBuildings } from './buildings';
 import { CameraController } from './camera-controller';
@@ -43,6 +44,8 @@ export interface VillageCanvasProps {
   selectedSector: SectorId | null;
   onSelectSector: (sector: SectorId | null) => void;
   cameraPreset?: CameraPreset;
+  /** Select or focus on a camera preset (e.g. clicking the EMS controller). */
+  onSelectPreset?: (preset: CameraPreset) => void;
   /** Bump to re-apply the current preset (reset camera after the user orbits). */
   cameraResetKey?: number;
   /** Render tier override. Default: the shared tier from `useSceneQuality` (toggle + auto-downgrade). */
@@ -55,6 +58,7 @@ export function VillageCanvas({
   selectedSector,
   onSelectSector,
   cameraPreset = 'village',
+  onSelectPreset,
   cameraResetKey = 0,
   quality: qualityOverride,
   className,
@@ -244,6 +248,13 @@ export function VillageCanvas({
           statusLabels={batteryStatusLabels}
           socLabel={socLabel}
           nameLabel={tSim('bessBattery')}
+          htmlPortal={htmlPortal}
+        />
+        <DispatchControllerUnit
+          model={model.controller}
+          totalServedKw={model.lines.batteryToBus.flowKw}
+          onFocus={() => onSelectPreset?.('controller')}
+          nameLabel={tSim('emsController')}
           htmlPortal={htmlPortal}
         />
         {perfEnabled && <SceneStatsProbe stats={stats} />}

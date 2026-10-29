@@ -24,6 +24,10 @@ export const CAMERA_PRESETS: Record<CameraPreset, { position: Vec3; target: Vec3
     position: [6, 7, 5],
     target: [0, 1, -2],
   },
+  controller: {
+    position: [3.5, 4.2, 6.5],
+    target: [0, 1.1, 1],
+  },
   essential: {
     position: [14, 13, 16],
     target: [4, 1, -2],

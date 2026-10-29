@@ -18,6 +18,7 @@ import {
 const allBoxes = (l: DiagramLayout): Box[] => [
   l.boxes.solar,
   l.boxes.hub,
+  l.boxes.controller,
   l.busLabel,
   ...DIAGRAM_SECTORS.map((id) => l.boxes.sectors[id]),
 ];
@@ -127,9 +128,22 @@ describe('GridDiagram', () => {
     expect(onSelect).toHaveBeenCalledWith('water');
   });
 
-  it('renders a legend that explains the electrons', () => {
+  it('renders a legend that explains the electrons and limiter', () => {
     renderDiagram('topology', 12);
     const legend = screen.getByRole('list', { name: 'Diagram legend' });
     expect(within(legend).getByText('Current flowing (electrons)')).toBeInTheDocument();
+    expect(within(legend).getByText('Limiter active (lifeline)')).toBeInTheDocument();
+  });
+
+  it('renders the EMS dispatch controller block with mode and rule tooltip in topology and circuit (PL-T6)', () => {
+    const topo = renderDiagram('topology', 12);
+    expect(
+      topo.container.querySelector('[aria-label*="EMS Dispatch Controller"]')
+    ).toBeInTheDocument();
+
+    const circuit = renderDiagram('circuit', 12);
+    expect(
+      circuit.container.querySelector('[aria-label*="EMS Dispatch Controller"]')
+    ).toBeInTheDocument();
   });
 });
