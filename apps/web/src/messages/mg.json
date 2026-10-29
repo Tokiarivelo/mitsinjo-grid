@@ -736,6 +736,26 @@
         "capHoursOrder": "Tsy maintsy aorian'ny ora fanombohana ny ora fiafarana.",
         "allWeightsZero": "Tsy maintsy misy lanja iray farafahakeliny mihoatra ny 0."
       }
+    },
+    "sensitivity": {
+      "title": "Fandinihana ny fahatsapana (Sensitivity)",
+      "subtitle": "Hery ilaina maika tsy voazara araka ny fiovan'ny masontsivana",
+      "summary": "Tabilao tsipika mampiseho ny angovo maika tsy voazara amin'ny kWh araka ny fiovan'ny {param} ho an'ireo paikady ampitahaina.",
+      "paramLabel": "Masontsivana hadihadiana",
+      "params": {
+        "solarDropPct": "Fidinan'ny herin'ny masoandro (%)",
+        "demandMultiplier": "Fampitomboana ny filana (×)",
+        "initialSocPct": "Fahafenoan'ny vatoaratra (SoC %)"
+      },
+      "currentValue": "Ankehitriny : {value}",
+      "markerLabel": "Zava-misy ankehitriny",
+      "criticalUnserved": "Maika tsy voazara",
+      "divergenceTitle": "Fiavian'ny fahasamihafan'ny paikady",
+      "divergenceDesc": "Eo amin'ny {param} = {value}, dia misy elanelana {diff} kWh ny angovo maika tsy voazara eo amin'ny paikady. Ny {best} no miaro tsara indrindra ({bestVal} kWh tsy voazara raha {worstVal} kWh ho an'ny {worst}).",
+      "noDivergenceTitle": "Mitovy ny fiarovana omen'ny paikady",
+      "noDivergenceDesc": "Amin'ny refin'ny {param} nozahana rehetra, mitovy tanteraka ny fiarovana ny asa maika omen'ireo paikady voafidy.",
+      "emptyTitle": "Tsy misy data momba ny fahatsapana",
+      "emptyDesc": "Misafidiana fetra mety mba hikajiana ny tsipiky ny fahatsapana."
     }
   },
   "charts": {

@@ -736,6 +736,26 @@
         "capHoursOrder": "End hour must be after start hour.",
         "allWeightsZero": "At least one priority weight must be greater than 0."
       }
+    },
+    "sensitivity": {
+      "title": "Sensitivity Sweep Analysis",
+      "subtitle": "Critical load unserved across parameter variations",
+      "summary": "Line chart showing critical unserved energy in kWh across variation of {param} for compared strategies.",
+      "paramLabel": "Swept parameter",
+      "params": {
+        "solarDropPct": "Solar drop (%)",
+        "demandMultiplier": "Demand multiplier (×)",
+        "initialSocPct": "Battery SoC (%)"
+      },
+      "currentValue": "Current: {value}",
+      "markerLabel": "Current scenario",
+      "criticalUnserved": "Critical unserved",
+      "divergenceTitle": "Strategy Divergence Threshold",
+      "divergenceDesc": "At {param} = {value}, strategies diverge by {diff} kWh in critical unserved energy. {best} protects critical loads best ({bestVal} kWh unserved vs {worstVal} kWh for {worst}).",
+      "noDivergenceTitle": "Strategies Remain Aligned",
+      "noDivergenceDesc": "Across the tested {param} range, all selected strategies deliver identical critical service protection.",
+      "emptyTitle": "No sensitivity data",
+      "emptyDesc": "Select valid parameter bounds to compute the sensitivity curve."
     }
   },
   "charts": {

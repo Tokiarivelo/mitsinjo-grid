@@ -29,7 +29,10 @@ import {
   toggleStrategySubset,
 } from '../utils/strategy-subset';
 import { useAutoCompare } from '../hooks/use-auto-compare';
+import { useSensitivitySweep } from '../hooks/use-sensitivity-sweep';
 import { StrategyParamsPanel } from './strategy-params-panel';
+import { SensitivityChart } from './sensitivity-chart';
+import { DivergenceCallout } from './divergence-callout';
 
 const STRATEGY_CARDS: readonly {
   id: StrategyId;
@@ -97,6 +100,10 @@ export function StrategyLabPage() {
   };
 
   const activeResult = comparison[activeStrategy];
+
+  // Sensitivity sweep analysis (PZ-T11..T14)
+  const { selectedParam, setSelectedParam, sweepResult, divergence, currentValue } =
+    useSensitivitySweep(input, selectedStrategies);
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
@@ -201,7 +208,19 @@ export function StrategyLabPage() {
         </ChartCard>
       </div>
 
-      {/* 3. Bottom Row: Active Warnings & Copilot Link */}
+      {/* 3. Sensitivity Sweep & Divergence Analysis (Phase 3: PZ-T11..T14) */}
+      <div className="grid grid-cols-1 gap-6">
+        <DivergenceCallout divergence={divergence} param={selectedParam} />
+        <SensitivityChart
+          result={sweepResult}
+          param={selectedParam}
+          currentValue={currentValue}
+          strategies={selectedStrategies}
+          onParamChange={setSelectedParam}
+        />
+      </div>
+
+      {/* 4. Bottom Row: Active Warnings & Copilot Link */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <ImpactBanner warnings={activeResult?.warnings ?? []} />

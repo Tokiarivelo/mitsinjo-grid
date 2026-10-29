@@ -94,10 +94,13 @@ function allocateWithCaps(
   return result as Record<SectorId, SectorStep>;
 }
 
-export function simulate(input: SimulationInput, strategy: StrategyId): SimulationResult {
-  const inputHash = computeInputHash(input);
-  const id = computeResultId(inputHash, strategy);
+export interface SimStepsOutput {
+  steps: StepResult[];
+  metrics: ReturnType<typeof calculateMetrics>;
+  violations: number;
+}
 
+export function simulateSteps(input: SimulationInput, strategy: StrategyId): SimStepsOutput {
   let storedKwh = (input.battery.initialSocPct / 100) * input.battery.capacityKwh;
   let violations = 0;
   const steps: StepResult[] = new Array(HORIZON_H);
@@ -158,6 +161,13 @@ export function simulate(input: SimulationInput, strategy: StrategyId): Simulati
   }
 
   const metrics = calculateMetrics(steps, input.battery, violations);
+  return { steps, metrics, violations };
+}
+
+export function simulate(input: SimulationInput, strategy: StrategyId): SimulationResult {
+  const inputHash = computeInputHash(input);
+  const id = computeResultId(inputHash, strategy);
+  const { steps, metrics } = simulateSteps(input, strategy);
   const warnings = generateWarnings(steps, input.battery, input);
 
   return {

@@ -37,6 +37,7 @@ Route: /strategies. Goal: compare allocation strategies under identical demand, 
   Invalid values stay visible with an inline error and are never dispatched. Sector rows: 1 col, 2 cols ≥ lg, 3 cols ≥ 2xl.
 - Strategy columns: card with name, rule text, StatusBadge, comparison inclusion checkbox (min 2; excluding the active strategy moves the selection to the first included one; "Use this strategy" on an excluded card re-includes it), MetricCards (compact), 5 EnergyBar rows, Button "Use this strategy".
 - Comparison: ChartCard with grouped or aligned horizontal bars (renders only included strategies).
+- Sensitivity sweep: `SensitivityChart` (ChartCard + Recharts lines per strategy, y = critical unserved kWh, parameter picker for solar drop %, demand multiplier, or battery SoC, reference line marker at current value) + `DivergenceCallout` (InsightCard origin=computed showing the first point where strategies diverge by > 0.1 kWh). Runs in `useDeferredValue` for fluid slider interaction.
 - Decision summary: InsightCard origin=computed (evaluates any subset of at least 2 strategies).
 - Optional AI explain: Button ghost "Explain this result" -> /copilot (violet-labeled).
 

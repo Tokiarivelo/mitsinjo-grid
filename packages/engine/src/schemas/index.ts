@@ -2,6 +2,7 @@ export * from './common';
 export * from './input';
 export * from './result';
 export * from './workflow';
+export * from './sweep';
 
 import { SimulationInput, SimulationInputSchema } from './input';
 

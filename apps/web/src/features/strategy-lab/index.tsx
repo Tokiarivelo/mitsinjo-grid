@@ -4,4 +4,8 @@ export * from './utils/summarize';
 export * from './ui/strategy-params-panel';
 export * from './ui/sector-rule-row';
 export * from './hooks/use-auto-compare';
+export * from './hooks/use-sensitivity-sweep';
 export * from './utils/sector-caps';
+export * from './utils/divergence';
+export * from './ui/sensitivity-chart';
+export * from './ui/divergence-callout';
