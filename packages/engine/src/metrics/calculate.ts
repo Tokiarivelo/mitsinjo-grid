@@ -1,11 +1,19 @@
 import { EPS } from '../constants';
 import type { BatteryConfig, Metrics, SectorId, SectorMetrics, StepResult } from '../schemas';
 import { SECTOR_IDS } from '../schemas';
+import { type LifelineFloorsByHour, lifelineFloorsByHour } from '../strategies/lifeline';
+
+const DEFAULT_FLOORS_BY_HOUR = lifelineFloorsByHour(
+  SECTOR_IDS.map((id) => ({ id })),
+  undefined
+);
 
 export function calculateMetrics(
   steps: readonly StepResult[],
   battery: BatteryConfig,
-  violations: number
+  violations: number,
+  /** Cap-aware floors by hour (`lifelineFloorsByHour`); default floors when omitted. */
+  floorsByHour: LifelineFloorsByHour = DEFAULT_FLOORS_BY_HOUR
 ): Metrics {
   let demandKwh = 0;
   let servedKwh = 0;
@@ -15,6 +23,7 @@ export function calculateMetrics(
   let criticalUnmetHours = 0;
   let solarKwh = 0;
   let curtailedKwh = 0;
+  let heldSectorHours = 0;
 
   const perSectorAccum: Record<
     SectorId,
@@ -41,6 +50,7 @@ export function calculateMetrics(
     }
 
     let stepHasCriticalUnmet = false;
+    const floors = floorsByHour[step.t] ?? {};
 
     for (const secId of SECTOR_IDS) {
       const secStep = step.sectors[secId];
@@ -57,6 +67,11 @@ export function calculateMetrics(
         if (critUnserved > EPS) {
           stepHasCriticalUnmet = true;
         }
+
+        const targetFloor = Math.min(secStep.demandKw, floors[secId] ?? 0);
+        if (secStep.servedKw >= targetFloor - EPS) {
+          heldSectorHours++;
+        }
       }
     }
 
@@ -64,6 +79,12 @@ export function calculateMetrics(
       criticalUnmetHours++;
     }
   }
+
+  const totalSectorHours = steps.length * SECTOR_IDS.length;
+  const lifelineCoveragePct =
+    totalSectorHours > 0
+      ? Math.max(0, Math.min(100, (heldSectorHours / totalSectorHours) * 100))
+      : 100;
 
   const criticalCoveragePct =
     criticalDemandKwh > EPS
@@ -105,6 +126,7 @@ export function calculateMetrics(
     criticalUnservedKwh,
     criticalUnmetHours,
     criticalCoveragePct,
+    lifelineCoveragePct,
     affectedSectors,
     solarKwh,
     curtailedKwh,

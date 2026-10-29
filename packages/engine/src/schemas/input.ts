@@ -9,6 +9,7 @@ export const SectorConfigSchema = z.object({
   profileKw: z.array(z.number().min(0)).length(24),
   flexible: z.boolean(),
   meterReadings: z.array(z.number().min(0)).length(24).optional(),
+  lifelineKw: z.number().min(0).optional(),
 });
 export type SectorConfig = z.infer<typeof SectorConfigSchema>;
 
@@ -103,8 +104,14 @@ export const BalancedWeightsSchema = BalancedWeightsShape.refine(
 );
 export type BalancedWeights = z.infer<typeof BalancedWeightsSchema>;
 
+export const LifelineParamsSchema = z.object({
+  enabled: z.boolean(),
+});
+export type LifelineParams = z.infer<typeof LifelineParamsSchema>;
+
 export const StrategyParamsSchema = z.object({
   balancedWeights: BalancedWeightsSchema.optional(),
+  lifeline: LifelineParamsSchema.optional(),
 });
 export type StrategyParams = z.infer<typeof StrategyParamsSchema>;
 
@@ -150,5 +157,11 @@ export const InputPatchSchema = z.object({
   meterReadings: z.record(SectorIdSchema, z.array(z.number().min(0)).length(24)).optional(),
   criticalShares: z.record(SectorIdSchema, z.number().min(0).max(1)).optional(),
   balancedWeights: BalancedWeightsShape.partial().optional(),
+  lifeline: z
+    .object({
+      enabled: z.boolean().optional(),
+      kw: z.record(SectorIdSchema, z.number().min(0).max(2)).optional(),
+    })
+    .optional(),
 });
 export type InputPatch = z.infer<typeof InputPatchSchema>;

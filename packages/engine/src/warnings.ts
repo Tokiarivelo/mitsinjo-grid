@@ -1,5 +1,6 @@
 import { EPS } from './constants';
 import { computeProfileDemandKw } from './model/demand';
+import { type LifelineFloorsByHour, lifelineFloorsByHour } from './strategies/lifeline';
 import type { BatteryConfig, SectorId, SimulationInput, SimWarning, StepResult } from './schemas';
 
 interface RawWarning {
@@ -11,9 +12,14 @@ interface RawWarning {
 export function generateWarnings(
   steps: readonly StepResult[],
   battery: BatteryConfig,
-  input?: SimulationInput
+  input?: SimulationInput,
+  floorsByHour?: LifelineFloorsByHour
 ): SimWarning[] {
   const raw: RawWarning[] = [];
+  const lifelineFloors =
+    input && input.strategyParams?.lifeline?.enabled !== false
+      ? (floorsByHour ?? lifelineFloorsByHour(input.sectors, input.sectorCaps, steps.length))
+      : null;
 
   for (let t = 0; t < steps.length; t++) {
     const step = steps[t];
@@ -68,6 +74,18 @@ export function generateWarnings(
           if (s && s.demandKw > cap.maxKw + EPS && s.servedKw <= cap.maxKw + EPS) {
             raw.push({ code: 'SECTOR_CAPPED', sector: cap.sector, hour: t });
           }
+        }
+      }
+    }
+
+    // 5b. LIFELINE_SHORTFALL (PL-T3): a sector below its (cap-aware) lifeline floor this hour
+    if (lifelineFloors) {
+      const floors = lifelineFloors[t] ?? {};
+      for (const [secId, s] of sectorEntries) {
+        if (!s) continue;
+        const targetFloor = Math.min(s.demandKw, floors[secId] ?? 0);
+        if (targetFloor > EPS && s.servedKw < targetFloor - EPS) {
+          raw.push({ code: 'LIFELINE_SHORTFALL', sector: secId, hour: t });
         }
       }
     }

@@ -1,11 +1,12 @@
 import type { SectorDemandStep } from '../model/demand';
-import { PRIORITY_ORDER, type SectorId, type SectorStep } from '../schemas';
+import { PRIORITY_ORDER, type SectorId } from '../schemas';
+import type { BaseSectorStep } from './lifeline';
 
 export function runEssentialFirstStrategy(
   availableKw: number,
   sectors: readonly SectorDemandStep[]
-): Record<SectorId, SectorStep> {
-  const result = {} as Record<SectorId, SectorStep>;
+): Record<SectorId, BaseSectorStep> {
+  const result = {} as Record<SectorId, BaseSectorStep>;
   let remainingKw = Math.max(0, availableKw);
 
   for (const priority of PRIORITY_ORDER) {

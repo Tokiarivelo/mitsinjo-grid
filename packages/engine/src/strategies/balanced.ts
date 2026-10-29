@@ -1,13 +1,14 @@
 import { DEFAULT_BALANCED_WEIGHTS } from '../constants';
 import type { SectorDemandStep } from '../model/demand';
-import type { Priority, SectorId, SectorStep } from '../schemas';
+import type { Priority, SectorId } from '../schemas';
+import type { BaseSectorStep } from './lifeline';
 
 export function runBalancedStrategy(
   availableKw: number,
   sectors: readonly SectorDemandStep[],
   weights: Record<Priority, number> = DEFAULT_BALANCED_WEIGHTS
-): Record<SectorId, SectorStep> {
-  const result = {} as Record<SectorId, SectorStep>;
+): Record<SectorId, BaseSectorStep> {
+  const result = {} as Record<SectorId, BaseSectorStep>;
   let totalCriticalKw = 0;
 
   for (const s of sectors) {

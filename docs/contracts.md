@@ -36,6 +36,7 @@ interface SectorConfig {
   profileKw: number[]; // length 24, hourly demand kW
   flexible: boolean; // shiftable load (water pump) — used only by stretch features
   meterReadings?: number[]; // length 24, optional measured demand override
+  lifelineKw?: number; // ≥ 0, survival power floor (kW; defaults in DEFAULT_LIFELINE_KW)
 }
 interface BatteryConfig {
   capacityKwh: number;
@@ -75,24 +76,33 @@ interface SimulationInput {
   events: ScenarioEvent[];
   demandMultiplier: number; // global, 0.5–2
   sectorCaps?: SectorCap[];
-  strategyParams?: { balancedWeights?: Record<Priority, number> };
+  strategyParams?: {
+    balancedWeights?: Record<Priority, number>;
+    lifeline?: { enabled: boolean }; // default enabled
+  };
 }
 ```
 
 Validation bounds (Zod, reject — never silently clamp): `peakKw 0–500`, `capacityKwh 1–2000`,
 `initialSocPct/minSocPct 0–100` with `min < initial`, effs `0.5–1`, `factor 0–3`,
 `startHour 0–23`, `startHour + durationH ≤ 24`, `durationH 1–24`, exactly 5 sectors with unique ids,
+`sector.lifelineKw ≥ 0` (defaults: health 0.3, water 0.2, school 0.1, households 0.4, market 0.1),
 `sectorCaps` `maxKw 0–500`, `fromHour 0–23`, `toHour 1–24`, `fromHour < toHour`,
-`strategyParams.balancedWeights` weights 0–10, at least one > 0 (defaults 4/3/2/1).
+`strategyParams.balancedWeights` weights 0–10, at least one > 0 (defaults 4/3/2/1),
+`strategyParams.lifeline.enabled` boolean (default true).
 
 ## Result
 
 ```ts
+type SectorMode = 'full' | 'limited' | 'lifeline' | 'off';
+
 interface SectorStep {
   demandKw: number;
   servedKw: number;
   criticalDemandKw: number;
   criticalServedKw: number;
+  lifelineServedKw: number;
+  mode: SectorMode;
 }
 interface StepResult {
   t: number; // hour index 0–23
@@ -119,6 +129,7 @@ interface Metrics {
   criticalUnservedKwh: number;
   criticalUnmetHours: number;
   criticalCoveragePct: number; // essential-services coverage shown in UI (from criticalShare, all sectors)
+  lifelineCoveragePct: number; // % of sector-hours where the cap-aware lifeline floor is held
   affectedSectors: SectorId[]; // sectors with unservedKwh > ε
   solarKwh: number;
   curtailedKwh: number;
@@ -134,7 +145,8 @@ type WarningCode =
   | 'RESERVE_REACHED'
   | 'CURTAILMENT'
   | 'ANOMALY_TO_VERIFY'
-  | 'SECTOR_CAPPED';
+  | 'SECTOR_CAPPED'
+  | 'LIFELINE_SHORTFALL';
 interface SimWarning {
   code: WarningCode;
   sector?: SectorId;
@@ -206,6 +218,7 @@ type SweepResult = SweepPoint[]; // length ≤ 20
 ```ts
 simulate(input: SimulationInput, strategy: StrategyId): SimulationResult
 compare(input: SimulationInput, strategies?: StrategyId[]): Comparison
+compareLifelineCoverage(comparison: Comparison): LifelineComparisonSummary
 sweep(input: SimulationInput, config: SweepConfig, strategies?: StrategyId[]): SweepResult // ≤ 20 points
 
 Points use the same mapping as `applyPatch`; both range ends are validated, so an invalid range (e.g. `initialSocPct ≤ minSocPct`) throws `ZodError`.
@@ -244,6 +257,7 @@ interface InputPatch {
   meterReadings?: Partial<Record<SectorId, number[]>>;
   criticalShares?: Partial<Record<SectorId, number>>; // 0–1
   balancedWeights?: Partial<Record<Priority, number>>; // 0–10, at least one > 0
+  lifeline?: { enabled?: boolean; kw?: Partial<Record<SectorId, number>> }; // 0–2 kW
 }
 ```
 

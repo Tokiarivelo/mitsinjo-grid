@@ -3,6 +3,7 @@ import {
   BatteryCharging,
   CheckCircle2,
   Info,
+  LifeBuoy,
   Search,
   Sliders,
   ZapOff,
@@ -118,6 +119,19 @@ export function ImpactBanner({ warnings, className, showNominal = true }: Impact
             icon = <Sliders className="h-4 w-4 text-energy-cyan" aria-hidden="true" />;
             title = tWarnings('sectorCappedTitle');
             desc = tWarnings('sectorCappedDesc', { sector: sectorName, from: fromStr, to: toStr });
+            break;
+          }
+
+          case 'LIFELINE_SHORTFALL': {
+            const sectorName = w.sector ? tSectors(w.sector) : '';
+            toneClass = 'border-critical-red/40 bg-critical-red/10 text-critical-red';
+            icon = <LifeBuoy className="h-4 w-4 text-critical-red" aria-hidden="true" />;
+            title = tWarnings('lifelineShortfallTitle');
+            desc = tWarnings('lifelineShortfallDesc', {
+              sector: sectorName,
+              from: fromStr,
+              to: toStr,
+            });
             break;
           }
         }

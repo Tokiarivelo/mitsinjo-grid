@@ -1,29 +1,35 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/strategy-sensitivity-sweep` · **PR:** [#24](https://github.com/Tokiarivelo/mitsinjo-grid/pull/24)
+**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/lifeline-engine` · **PR:** [#25](https://github.com/Tokiarivelo/mitsinjo-grid/pull/25)
 
 ## State
 
-- Plan `docs/tasks/PZ-strategy-params.md`: **Phases 1, 2 & 3 completed** (PZ-T1…T14 done).
-- PZ-T11: `sweep(input, config, strategies)` in `@mitsinjo/engine` (pure, ≤ 20 points, verified monotonic critical unserved).
-- PZ-T12: `SensitivityChart` (ChartCard + Recharts lines, parameter picker, current value reference line).
-- PZ-T13: `DivergenceCallout` (computed InsightCard for first point where strategies diverge by > 0.1 kWh).
-- PZ-T14: `useSensitivitySweep` leverages `useDeferredValue` (sweep runs in ~16 ms, well under 50 ms budget).
-- `make check` green (engine 131 tests, web 363 tests). 100% i18n key parity across EN/FR/MG.
+- Plan `docs/tasks/PL-lifeline-dispatch.md`: **Phase 1 completed** (PL-T1…T4 done).
+- PL-T1: `SectorConfig.lifelineKw`, `DEFAULT_LIFELINE_KW`, `SectorStep.lifelineServedKw`, `SectorStep.mode`, hash stability.
+- PL-T2: Common Pass 0 across strategies (`strategies/lifeline.ts`), emergency mode (`dispo < Σ planchers`).
+- PL-T3: Invariant `LIFELINE_MET`, warning `LIFELINE_SHORTFALL`, metric `lifelineCoveragePct`.
+- PL-T4: `InputPatch.lifeline` (`enabled`, `kw`), `compareLifelineCoverage`.
+- `make check` green (engine 151 tests, web 366 tests). 100% i18n key parity across EN/FR/MG.
 
 ## Next task
 
-- Review & merge PR #23 into main.
-- Next roadmap feature: PL Lifeline power, dispatch controller, intensity lighting (`docs/tasks/PL-lifeline-dispatch.md`).
+- Review & merge PR (PL phase 1 engine).
+- Begin PL Phase 2 & 3: dispatch controller & intensity lighting in 2D & 3D (`docs/tasks/PL-lifeline-dispatch.md` PL-T5, PL-T9…T13).
 
 ## Decisions taken
 
-- `sweep()` extracts `simulateSteps()` to skip redundant canonical JSON hashing and warning generation during parameter sweeps, running 20 points across all strategies in ~16 ms.
-- Sensitivity parameter picker supports Solar drop %, Demand multiplier ×, and Battery SoC % with accessible radio group.
-- `findDivergencePoint`: scans points in ascending order for max - min critical unserved > 0.1 kWh.
+- Default planchers: health 0.3 kW, water 0.2, school 0.1, households 0.4, market 0.1 (sum = 1.1 kW).
+- Lifeline enabled by default: hash is stable when default is used; `lifeline.enabled = false` reverts to base allocations.
+- Emergency mode (`dispo < Σ planchers`): water & health split available power equally; remaining surplus (if any) shared among others proportional to planchers; otherwise others are 0 kW (`mode = 'off'`).
+- Sector caps priority: `cap < plancher` -> cap wins.
+- PR #25 review: base strategies return `BaseSectorStep`; `executeStrategy` alone adds `lifelineServedKw`/`mode`.
+  Shared helpers in `strategies/lifeline.ts` (`resolveLifelineKw`, `buildCapMap`, `effectiveFloorKw`,
+  `lifelineFloorsAt`, `lifelineFloorsByHour` computed once per run for invariants, metrics, warnings).
+- `mode`: `full` checked first (small fully served load ≠ `off`); lifeline disabled → floor 0 (no `lifeline` mode).
+- `LIFELINE_SHORTFALL` rendered in `ImpactBanner` (EN/FR/MG). Perf budget tests (`sweep` < 50 ms) flake on a loaded laptop; CI is the reference.
 
 ## Files touched this session
 
-- Engine: `packages/engine/src/{schemas/sweep,sweep,simulate,index}.ts`, `src/__tests__/sweep.test.ts`
-- Web: `apps/web/src/features/strategy-lab/{hooks/use-sensitivity-sweep,ui/sensitivity-chart,ui/divergence-callout,ui/strategy-lab-page,utils/divergence}.tsx?` + tests
-- Docs & i18n: `apps/web/src/messages/{en,fr,mg}.json`, `docs/contracts.md`, `docs/performance.md`, `docs/design/screens/strategy-lab.md`, `docs/tasks/PZ-strategy-params.md`, `docs/tasks/README.md`
+- Engine: `packages/engine/src/{constants,hash,invariants,patch,simulate,warnings,compare}.ts`, `src/schemas/*`, `src/strategies/*`, `src/__tests__/{lifeline,invariants,smoke}.test.ts`
+- Web: `apps/web/src/features/strategy-lab/utils/__tests__/divergence.test.ts`
+- Docs: `docs/contracts.md`, `docs/engine-spec.md`, `docs/tasks/PL-lifeline-dispatch.md`, `docs/tasks/README.md`

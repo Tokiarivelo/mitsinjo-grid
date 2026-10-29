@@ -1,4 +1,5 @@
 import type { Priority, ScenarioEvent, SectorConfig, SectorId } from '../schemas';
+import { resolveLifelineKw } from '../strategies/lifeline';
 
 export interface SectorDemandStep {
   sectorId: SectorId;
@@ -6,6 +7,7 @@ export interface SectorDemandStep {
   criticalDemandKw: number;
   priority: Priority;
   criticalShare: number;
+  lifelineKw?: number;
   profileDemandKw?: number;
   hasMeterOverride?: boolean;
 }
@@ -64,6 +66,7 @@ export function computeDemandStep(
       criticalDemandKw,
       priority: s.priority,
       criticalShare: s.criticalShare,
+      lifelineKw: resolveLifelineKw(s.id, s.lifelineKw),
       profileDemandKw,
       hasMeterOverride,
     };

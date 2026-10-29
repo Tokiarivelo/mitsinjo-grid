@@ -31,3 +31,6 @@ export const ScenarioIdSchema = z.enum([
   'meter_anomaly',
 ]);
 export type ScenarioId = z.infer<typeof ScenarioIdSchema>;
+
+export const SectorModeSchema = z.enum(['full', 'limited', 'lifeline', 'off']);
+export type SectorMode = z.infer<typeof SectorModeSchema>;

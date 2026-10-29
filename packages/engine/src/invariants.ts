@@ -1,5 +1,5 @@
 import { EPS } from './constants';
-import type { BatteryConfig, SectorCap, SectorStep, StepResult } from './schemas';
+import type { BatteryConfig, SectorCap, SectorId, SectorStep, StepResult } from './schemas';
 
 export interface InvariantCheckParams {
   t: number;
@@ -9,6 +9,9 @@ export interface InvariantCheckParams {
   availableKw: number;
   battery: BatteryConfig;
   sectorCaps?: readonly SectorCap[];
+  /** Effective (cap-aware) lifeline floor per sector at this step: `lifelineFloorsAt`. */
+  lifelineFloors?: Partial<Record<SectorId, number>>;
+  lifelineEnabled?: boolean;
 }
 
 /**
@@ -97,6 +100,30 @@ export function checkStepInvariants(params: InvariantCheckParams): number {
         if (sec && sec.servedKw > cap.maxKw + EPS) {
           violations++;
         }
+      }
+    }
+  }
+
+  // 9. LIFELINE_MET (PL-T3): when availableKw ≥ Σ min(demand_s, floor_s), each sector gets at least
+  // min(demand_s, floor_s); lifelineServedKw stays within [0, min(served_s, target_s)].
+  if (params.lifelineEnabled !== false && params.lifelineFloors) {
+    const targets: [SectorStep, number][] = [];
+    let totalTargets = 0;
+    for (const [secId, floor] of Object.entries(params.lifelineFloors) as [SectorId, number][]) {
+      const sec = step.sectors[secId];
+      if (!sec) continue;
+      const target = Math.min(sec.demandKw, floor);
+      targets.push([sec, target]);
+      totalTargets += target;
+    }
+    const floorsAffordable = availableKw >= totalTargets - EPS;
+    for (const [sec, target] of targets) {
+      if (floorsAffordable && sec.servedKw < target - EPS) violations++;
+      if (
+        sec.lifelineServedKw < -EPS ||
+        sec.lifelineServedKw > Math.min(sec.servedKw, target) + EPS
+      ) {
+        violations++;
       }
     }
   }

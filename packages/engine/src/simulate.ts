@@ -19,7 +19,13 @@ import type {
   StepResult,
   StrategyId,
 } from './schemas';
-import { executeStrategy } from './strategies';
+import {
+  buildCapMap,
+  cappedSectorStep,
+  executeStrategy,
+  type LifelineFloorsByHour,
+  lifelineFloorsByHour,
+} from './strategies';
 import { generateWarnings } from './warnings';
 
 function allocateWithCaps(
@@ -27,25 +33,28 @@ function allocateWithCaps(
   availableKw: number,
   sectors: readonly SectorDemandStep[],
   activeCaps: readonly SectorCap[],
-  weights?: Record<Priority, number>
+  weights?: Record<Priority, number>,
+  lifelineEnabled: boolean = true
 ): Record<SectorId, SectorStep> {
   if (activeCaps.length === 0) {
-    return executeStrategy(strategy, availableKw, sectors, weights);
+    return executeStrategy(strategy, availableKw, sectors, weights, lifelineEnabled);
   }
 
-  // Build sector -> cap map (minimum cap if multiple active for the same sector)
-  const capMap = new Map<SectorId, number>();
-  for (const c of activeCaps) {
-    const existing = capMap.get(c.sector);
-    capMap.set(c.sector, existing !== undefined ? Math.min(existing, c.maxKw) : c.maxKw);
-  }
+  const capMap = buildCapMap(activeCaps);
 
   const result: Partial<Record<SectorId, SectorStep>> = {};
   let currentAvailable = Math.max(0, availableKw);
   let uncappedSectors = [...sectors];
 
   while (uncappedSectors.length > 0) {
-    const trialAllocation = executeStrategy(strategy, currentAvailable, uncappedSectors, weights);
+    const trialAllocation = executeStrategy(
+      strategy,
+      currentAvailable,
+      uncappedSectors,
+      weights,
+      lifelineEnabled,
+      activeCaps
+    );
     const newlyConstrained: SectorDemandStep[] = [];
 
     for (const s of uncappedSectors) {
@@ -64,31 +73,13 @@ function allocateWithCaps(
     }
 
     for (const s of newlyConstrained) {
-      const cap = capMap.get(s.sectorId)!;
-      const servedKw = Math.min(s.demandKw, cap);
-      const criticalServedKw = Math.min(servedKw, s.criticalDemandKw);
-      result[s.sectorId] = {
-        demandKw: s.demandKw,
-        servedKw,
-        criticalDemandKw: s.criticalDemandKw,
-        criticalServedKw,
-      };
-      currentAvailable = Math.max(0, currentAvailable - servedKw);
+      const step = cappedSectorStep(s, capMap.get(s.sectorId)!, lifelineEnabled);
+      result[s.sectorId] = step;
+      currentAvailable = Math.max(0, currentAvailable - step.servedKw);
     }
 
     const constrainedIds = new Set(newlyConstrained.map((s) => s.sectorId));
     uncappedSectors = uncappedSectors.filter((s) => !constrainedIds.has(s.sectorId));
-  }
-
-  for (const s of sectors) {
-    if (!result[s.sectorId]) {
-      result[s.sectorId] = {
-        demandKw: s.demandKw,
-        servedKw: 0,
-        criticalDemandKw: s.criticalDemandKw,
-        criticalServedKw: 0,
-      };
-    }
   }
 
   return result as Record<SectorId, SectorStep>;
@@ -98,12 +89,15 @@ export interface SimStepsOutput {
   steps: StepResult[];
   metrics: ReturnType<typeof calculateMetrics>;
   violations: number;
+  lifelineFloors: LifelineFloorsByHour;
 }
 
 export function simulateSteps(input: SimulationInput, strategy: StrategyId): SimStepsOutput {
   let storedKwh = (input.battery.initialSocPct / 100) * input.battery.capacityKwh;
   let violations = 0;
   const steps: StepResult[] = new Array(HORIZON_H);
+  const lifelineFloors = lifelineFloorsByHour(input.sectors, input.sectorCaps);
+  const lifelineEnabled = input.strategyParams?.lifeline?.enabled !== false;
 
   for (let t = 0; t < HORIZON_H; t++) {
     const solarKw = computeSolarStep(input.solar, input.events, t);
@@ -119,7 +113,8 @@ export function simulateSteps(input: SimulationInput, strategy: StrategyId): Sim
       availableKw,
       demandResult.sectorList,
       activeCaps,
-      input.strategyParams?.balancedWeights
+      input.strategyParams?.balancedWeights,
+      lifelineEnabled
     );
 
     let servedKw = 0;
@@ -154,21 +149,23 @@ export function simulateSteps(input: SimulationInput, strategy: StrategyId): Sim
       availableKw,
       battery: input.battery,
       sectorCaps: input.sectorCaps,
+      lifelineFloors: lifelineFloors[t],
+      lifelineEnabled,
     });
 
     storedKwh = batteryResult.storedKwh;
     steps[t] = stepResult;
   }
 
-  const metrics = calculateMetrics(steps, input.battery, violations);
-  return { steps, metrics, violations };
+  const metrics = calculateMetrics(steps, input.battery, violations, lifelineFloors);
+  return { steps, metrics, violations, lifelineFloors };
 }
 
 export function simulate(input: SimulationInput, strategy: StrategyId): SimulationResult {
   const inputHash = computeInputHash(input);
   const id = computeResultId(inputHash, strategy);
-  const { steps, metrics } = simulateSteps(input, strategy);
-  const warnings = generateWarnings(steps, input.battery, input);
+  const { steps, metrics, lifelineFloors } = simulateSteps(input, strategy);
+  const warnings = generateWarnings(steps, input.battery, input, lifelineFloors);
 
   return {
     id,

@@ -1,11 +1,13 @@
 import { z } from 'zod';
-import { SectorIdSchema, StrategyIdSchema } from './common';
+import { SectorIdSchema, SectorModeSchema, StrategyIdSchema } from './common';
 
 export const SectorStepSchema = z.object({
   demandKw: z.number(),
   servedKw: z.number(),
   criticalDemandKw: z.number(),
   criticalServedKw: z.number(),
+  lifelineServedKw: z.number(),
+  mode: SectorModeSchema,
 });
 export type SectorStep = z.infer<typeof SectorStepSchema>;
 
@@ -38,6 +40,7 @@ export const MetricsSchema = z.object({
   criticalUnservedKwh: z.number(),
   criticalUnmetHours: z.number(),
   criticalCoveragePct: z.number(),
+  lifelineCoveragePct: z.number(),
   affectedSectors: z.array(SectorIdSchema),
   solarKwh: z.number(),
   curtailedKwh: z.number(),
@@ -56,6 +59,7 @@ export const WarningCodeSchema = z.enum([
   'CURTAILMENT',
   'ANOMALY_TO_VERIFY',
   'SECTOR_CAPPED',
+  'LIFELINE_SHORTFALL',
 ]);
 export type WarningCode = z.infer<typeof WarningCodeSchema>;
 

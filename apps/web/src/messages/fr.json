@@ -602,6 +602,8 @@
     "anomalyToVerifyDesc": "Écart >25 % par rapport au profil attendu détecté sur {sector} entre {from} et {to}. Vérification requise (ne pas présumer d'une panne ou d'une fraude).",
     "sectorCappedTitle": "Plafond de capacité sectorielle actif",
     "sectorCappedDesc": "L'alimentation de {sector} a été plafonnée selon la limite de l'opérateur entre {from} et {to}.",
+    "lifelineShortfallTitle": "Courant de survie non assuré",
+    "lifelineShortfallDesc": "{sector} a reçu moins que son minimum de survie entre {from} et {to}. L'eau et la santé restent alimentées en priorité.",
     "hoursRange": "{from} - {to}"
   },
   "overview": {

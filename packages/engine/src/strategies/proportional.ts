@@ -1,11 +1,12 @@
 import type { SectorDemandStep } from '../model/demand';
-import type { SectorId, SectorStep } from '../schemas';
+import type { SectorId } from '../schemas';
+import type { BaseSectorStep } from './lifeline';
 
 export function runProportionalStrategy(
   availableKw: number,
   sectors: readonly SectorDemandStep[]
-): Record<SectorId, SectorStep> {
-  const result = {} as Record<SectorId, SectorStep>;
+): Record<SectorId, BaseSectorStep> {
+  const result = {} as Record<SectorId, BaseSectorStep>;
   let totalDemandKw = 0;
 
   for (const s of sectors) {

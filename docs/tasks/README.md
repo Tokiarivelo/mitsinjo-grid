@@ -18,7 +18,7 @@ Meta feature and carries external-API risk; 3D is local work and easy to time-bo
 | —   | PX Anomaly signal                                            | `PX-anomaly.md`           | ❌ stretch              |
 | —   | PY Sector control proposals (priorities, caps)               | `PY-sector-control.md`    | ❌ stretch              |
 | —   | PZ Parametrable Strategy Lab (params, rules, sweep)          | `PZ-strategy-params.md`   | phases 1–3 ✅           |
-| —   | PL Lifeline power, dispatch controller, intensity lighting   | `PL-lifeline-dispatch.md` | ❌ planned              |
+| —   | PL Lifeline power, dispatch controller, intensity lighting   | `PL-lifeline-dispatch.md` | phase 1 ✅ (engine)     |
 
 ## Cut order if late
 

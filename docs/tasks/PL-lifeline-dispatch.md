@@ -32,12 +32,12 @@ représentation de la logique du moteur, pas un équipement réel piloté.
 
 ## Phase 1 — Moteur : courant de survie (`/engine-change`, contrat d'abord)
 
-- [ ] **PL-T1** Contrat : `SectorConfig.lifelineKw?: number` (≥ 0, plancher de survie par secteur ; défaut dans
+- [x] **PL-T1** Contrat : `SectorConfig.lifelineKw?: number` (≥ 0, plancher de survie par secteur ; défaut dans
       `constants.ts` `DEFAULT_LIFELINE_KW` : health 0.3, water 0.2, school 0.1, households 0.4, market 0.1 — **validé**) et `SimulationInput.strategyParams.lifeline?: { enabled: boolean }`
       (défaut **activé**). `SectorStep` gagne `lifelineServedKw` et `mode: 'full' | 'limited' | 'lifeline' | 'off'`.
       Mettre à jour `docs/contracts.md`.
       **Done when** schémas Zod + types exportés, hash stable quand la valeur = défaut (même règle que `balancedWeights`).
-- [ ] **PL-T2** Passe 0 commune aux 3 stratégies (`strategies/lifeline.ts`, appelée dans `strategies/index.ts`
+- [x] **PL-T2** Passe 0 commune aux 3 stratégies (`strategies/lifeline.ts`, appelée dans `strategies/index.ts`
       avant la stratégie choisie) : servir `min(demand_s, lifeline_s)` à **tous** les secteurs, puis passer le reste à
       la stratégie avec la demande diminuée du plancher déjà servi. Les `sectorCaps` (PY) restent prioritaires :
       plafond `< plancher` → le plafond gagne + warning.
@@ -50,10 +50,10 @@ représentation de la logique du moteur, pas un équipement réel piloté.
       `lifeline.enabled = false` → résultats et id identiques à aujourd'hui ; cas `dispo < Σ planchers` : eau et
       santé reçoivent la même puissance (à ε près) tant qu'aucune n'atteint son plancher, et les autres secteurs ne
       reçoivent rien avant que eau et santé soient à leur plancher.
-- [ ] **PL-T3** Invariant `LIFELINE_MET` (§3) + warning `LIFELINE_SHORTFALL` (énergie < Σ planchers) + métrique
+- [x] **PL-T3** Invariant `LIFELINE_MET` (§3) + warning `LIFELINE_SHORTFALL` (énergie < Σ planchers) + métrique
       `lifelineCoveragePct` (part des heures-secteur où le plancher est tenu). Champ `mode` calculé par le moteur
       (`off` < 0.05 kW, `lifeline` ≤ plancher + ε, `limited` < demande, `full`). Mettre à jour `engine-spec.md` §2–4.
-- [ ] **PL-T4** `InputPatch` : `lifeline?: { enabled?: boolean; kw?: Partial<Record<SectorId, number>> }`
+- [x] **PL-T4** `InputPatch` : `lifeline?: { enabled?: boolean; kw?: Partial<Record<SectorId, number>> }`
       (bornes LLM-safe 0–2 kW) + `applyPatch` + tests. Comparaison : `compare.ts` expose le gain de
       `lifelineCoveragePct` entre stratégies.
 

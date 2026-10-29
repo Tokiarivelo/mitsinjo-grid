@@ -1,6 +1,6 @@
-import type { Priority, StrategyId, WeatherId } from './schemas';
+import type { Priority, SectorId, StrategyId, WeatherId } from './schemas';
 
-export const ENGINE_VERSION = '0.1.0';
+export const ENGINE_VERSION = '0.2.0';
 
 export const EPS = 1e-9;
 
@@ -16,6 +16,18 @@ export const DEFAULT_BALANCED_WEIGHTS: Record<Priority, number> = {
   high: 3,
   medium: 2,
   low: 1,
+};
+
+/**
+ * Validated baseline lifeline power floors (kW) per sector (PL-T1).
+ * When energy is constrained, connected sectors maintain this floor instead of dropping to 0 kW.
+ */
+export const DEFAULT_LIFELINE_KW: Record<SectorId, number> = {
+  health: 0.3,
+  water: 0.2,
+  school: 0.1,
+  households: 0.4,
+  market: 0.1,
 };
 
 export const STRATEGIES: Record<StrategyId, { label: string; rule: string }> = {

@@ -602,6 +602,8 @@
     "anomalyToVerifyDesc": "Divergence >25% vs expected profile detected on {sector} from {from} to {to}. Requires verification (do not assume hardware fault or fraud).",
     "sectorCappedTitle": "Sector Capacity Cap Active",
     "sectorCappedDesc": "{sector} power intake was capped by operator limit between {from} and {to}.",
+    "lifelineShortfallTitle": "Survival power not held",
+    "lifelineShortfallDesc": "{sector} received less than its survival minimum between {from} and {to}. Water and health are kept on first.",
     "hoursRange": "{from} - {to}"
   },
   "overview": {
