@@ -11,6 +11,7 @@ React re-renders, chart redraws, 3D, or bundle size. Fix those before optimising
 | LCP /overview (desktop, prod build)                   | ≤ 2.0 s                                         |
 | INP while dragging a slider                           | ≤ 100 ms                                        |
 | `compare()` all strategies                            | ≤ 10 ms                                         |
+| `sweep()` 20 points across all strategies             | ≤ 50 ms                                         |
 | 3D `low` tier (integrated GPU)                        | ≥ 45 fps · draw calls < 150 · triangles ≤ 150 k |
 | 3D `high` tier (default, discrete GPU)                | ≥ 30 fps · draw calls < 400 · triangles ≤ 800 k |
 | Copilot first token visible                           | ≤ 2 s after send (activity shown at once)       |

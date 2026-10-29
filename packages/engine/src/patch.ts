@@ -29,7 +29,14 @@ export function getSolarDrop(input: SimulationInput): SolarDropSettings {
  */
 export function applyPatch(input: SimulationInput, rawPatch: InputPatch): SimulationInput {
   // Patches may come from the LLM: enforce InputPatch bounds (e.g. solarDropPct ≤ 90).
-  const patch = InputPatchSchema.parse(rawPatch);
+  return parseInput(patchInputUnchecked(input, InputPatchSchema.parse(rawPatch)));
+}
+
+/**
+ * Same mapping as `applyPatch` without Zod validation of the patch or the result.
+ * Only for hot loops whose values were already validated (see `sweep`). Never mutates `input`.
+ */
+export function patchInputUnchecked(input: SimulationInput, patch: InputPatch): SimulationInput {
   const cloned = structuredClone(input);
   cloned.scenarioId = 'custom';
 
@@ -131,5 +138,5 @@ export function applyPatch(input: SimulationInput, rawPatch: InputPatch): Simula
     }
   }
 
-  return parseInput(cloned);
+  return cloned;
 }

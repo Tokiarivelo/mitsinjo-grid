@@ -736,6 +736,26 @@
         "capHoursOrder": "L'heure de fin doit être après l'heure de début.",
         "allWeightsZero": "Au moins un poids de priorité doit être supérieur à 0."
       }
+    },
+    "sensitivity": {
+      "title": "Analyse de sensibilité",
+      "subtitle": "Charge critique non desservie selon la variation des paramètres",
+      "summary": "Graphique linéaire montrant l'énergie critique non desservie en kWh selon la variation de {param} pour les stratégies comparées.",
+      "paramLabel": "Paramètre balayé",
+      "params": {
+        "solarDropPct": "Chute solaire (%)",
+        "demandMultiplier": "Multiplicateur de demande (×)",
+        "initialSocPct": "SoC batterie (%)"
+      },
+      "currentValue": "Actuel : {value}",
+      "markerLabel": "Scénario actuel",
+      "criticalUnserved": "Critique non desservi",
+      "divergenceTitle": "Seuil de divergence des stratégies",
+      "divergenceDesc": "À {param} = {value}, les stratégies divergent de {diff} kWh d'énergie critique non desservie. {best} protège le mieux les charges critiques ({bestVal} kWh non desservis contre {worstVal} kWh pour {worst}).",
+      "noDivergenceTitle": "Stratégies alignées",
+      "noDivergenceDesc": "Sur toute la plage testée de {param}, toutes les stratégies sélectionnées offrent une protection identique des services critiques.",
+      "emptyTitle": "Aucune donnée de sensibilité",
+      "emptyDesc": "Sélectionnez des bornes de paramètres valides pour calculer la courbe de sensibilité."
     }
   },
   "charts": {

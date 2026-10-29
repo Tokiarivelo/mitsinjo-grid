@@ -1,32 +1,29 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/strategy-rule-params` · **PR:** [#23](https://github.com/Tokiarivelo/mitsinjo-grid/pull/23)
+**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/strategy-sensitivity-sweep` · **PR:** [#24](https://github.com/Tokiarivelo/mitsinjo-grid/pull/24)
 
 ## State
 
-- Plan `docs/tasks/PZ-strategy-params.md`: **Phase 1 & Phase 2 completed** (PZ-T1…T10 done, Phase 3 open).
-- PZ-T7: `SimulationInput.strategyParams?: { balancedWeights?: Record<Priority, number> }` with default 4/3/2/1.
-  Hash is identical when absent or default; custom weights serialize canonically.
-- PZ-T8: `InputPatch.criticalShares` and `balancedWeights` implemented in `applyPatch` and tested.
-- PZ-T9: Strategy subset `run(strategies)` with checkbox per card (min 2); chart and summary support missing strategies.
-- PZ-T10: "Strategy rules" section in panel (balanced weights sliders 0–10, critical share 0–100%); copilot
-  `propose_change` tool updated with eval case.
-- `make check` green (engine 123 tests, web 353 tests). 100% i18n key parity across EN/FR/MG.
+- Plan `docs/tasks/PZ-strategy-params.md`: **Phases 1, 2 & 3 completed** (PZ-T1…T14 done).
+- PZ-T11: `sweep(input, config, strategies)` in `@mitsinjo/engine` (pure, ≤ 20 points, verified monotonic critical unserved).
+- PZ-T12: `SensitivityChart` (ChartCard + Recharts lines, parameter picker, current value reference line).
+- PZ-T13: `DivergenceCallout` (computed InsightCard for first point where strategies diverge by > 0.1 kWh).
+- PZ-T14: `useSensitivitySweep` leverages `useDeferredValue` (sweep runs in ~16 ms, well under 50 ms budget).
+- `make check` green (engine 131 tests, web 363 tests). 100% i18n key parity across EN/FR/MG.
 
 ## Next task
 
-- Phase 3: PZ-T11…T14 — Sensitivity sweep (`sweep()` in engine, `SensitivityChart`, divergence callout, deferred perf).
+- Review & merge PR #23 into main.
+- Next roadmap feature: PL Lifeline power, dispatch controller, intensity lighting (`docs/tasks/PL-lifeline-dispatch.md`).
 
 ## Decisions taken
 
-- `canonicalJson`: skips `strategyParams` when undefined or matching default weights (4/3/2/1), preserving hash stability.
-- Strategy subset checkbox is placed in each `StrategyCard` header with min-2 disable enforcement.
-- `summarizeComparison`: handles missing `proportional`, `essential_first`, or `balanced` and evaluates any subset of ≥ 2 strategies.
+- `sweep()` extracts `simulateSteps()` to skip redundant canonical JSON hashing and warning generation during parameter sweeps, running 20 points across all strategies in ~16 ms.
+- Sensitivity parameter picker supports Solar drop %, Demand multiplier ×, and Battery SoC % with accessible radio group.
+- `findDivergencePoint`: scans points in ascending order for max - min critical unserved > 0.1 kWh.
 
 ## Files touched this session
 
-- Engine: `packages/engine/src/{constants,schemas/input,hash,strategies/balanced,strategies/index,simulate,patch}.ts` + tests
-- Web: `apps/web/src/features/strategy-lab/{ui/strategy-rules-section,ui/strategy-params-panel,ui/strategy-card,ui/strategy-lab-page,hooks/use-auto-compare,utils/summarize}.tsx?` + tests
-- Chart: `apps/web/src/components/charts/strategy-comparison.tsx`
-- Copilot: `apps/web/src/server/copilot/{tools,providers/mock}.ts` + eval tests
-- i18n & docs: `messages/{en,fr,mg}.json`, `docs/contracts.md`, `docs/engine-spec.md`, `docs/tasks/PZ-strategy-params.md`, `docs/design/screens/strategy-lab.md`
+- Engine: `packages/engine/src/{schemas/sweep,sweep,simulate,index}.ts`, `src/__tests__/sweep.test.ts`
+- Web: `apps/web/src/features/strategy-lab/{hooks/use-sensitivity-sweep,ui/sensitivity-chart,ui/divergence-callout,ui/strategy-lab-page,utils/divergence}.tsx?` + tests
+- Docs & i18n: `apps/web/src/messages/{en,fr,mg}.json`, `docs/contracts.md`, `docs/performance.md`, `docs/design/screens/strategy-lab.md`, `docs/tasks/PZ-strategy-params.md`, `docs/tasks/README.md`

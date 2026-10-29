@@ -184,11 +184,31 @@ Store (`useSimulationStore`): `workflow` (default `[{ weather: 'sunny' }]` = pla
 
 3D `SceneModel.weather: WeatherId` (from `toSceneModel({ weather })`, default `sunny`): drives sky, clouds and rain only.
 
+### Sensitivity sweep
+
+```ts
+type SweepParam = 'solarDropPct' | 'demandMultiplier' | 'initialSocPct';
+interface SweepConfig {
+  param: SweepParam;
+  from: number;
+  to: number;
+  step: number; // point count between 1 and 20
+}
+interface SweepPoint {
+  value: number;
+  metrics: Partial<Record<StrategyId, Metrics>>;
+}
+type SweepResult = SweepPoint[]; // length ≤ 20
+```
+
 ## Engine public API (`@mitsinjo/engine`)
 
 ```ts
 simulate(input: SimulationInput, strategy: StrategyId): SimulationResult
 compare(input: SimulationInput, strategies?: StrategyId[]): Comparison
+sweep(input: SimulationInput, config: SweepConfig, strategies?: StrategyId[]): SweepResult // ≤ 20 points
+
+Points use the same mapping as `applyPatch`; both range ends are validated, so an invalid range (e.g. `initialSocPct ≤ minSocPct`) throws `ZodError`.
 applyWeather(input: SimulationInput, weather: WeatherId): SimulationInput // solar profile × WEATHER_SOLAR_FACTOR
 simulateWorkflow(input: SimulationInput, workflow: Workflow, strategy: StrategyId): WorkflowResult // throws ZodError
 compareWorkflow(input: SimulationInput, workflow: Workflow, strategies?: StrategyId[]): WorkflowComparison

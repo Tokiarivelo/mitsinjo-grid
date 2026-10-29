@@ -12,7 +12,7 @@ describe('StrategyLabPage (P4-T5, P4-T7)', () => {
   it('renders simulated badge and 3 strategy columns with empty initial states', () => {
     render(<StrategyLabPage />);
 
-    expect(screen.getByText('SIMULATED DATA')).toBeInTheDocument();
+    expect(screen.getAllByText('SIMULATED DATA').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Proportional Allocation')).toBeInTheDocument();
     expect(screen.getByText('Essential-First Priority')).toBeInTheDocument();
     expect(screen.getByText('Balanced Distribution')).toBeInTheDocument();
@@ -199,6 +199,37 @@ describe('StrategyLabPage (P4-T5, P4-T7)', () => {
       expect(
         useSimulationStore.getState().input.sectors.find((s) => s.id === 'health')?.criticalShare
       ).toBeCloseTo(0.95);
+    });
+
+    it('renders Sensitivity Sweep analysis chart and allows switching parameters (PZ-T12..T14)', () => {
+      useSimulationStore.getState().loadScenario('cloudy_afternoon');
+      render(<StrategyLabPage />);
+
+      expect(screen.getByText('Sensitivity Sweep Analysis')).toBeInTheDocument();
+
+      const radioGroup = screen.getByRole('radiogroup', { name: /swept parameter/i });
+      expect(radioGroup).toBeInTheDocument();
+
+      const solarBtn = within(radioGroup).getByRole('radio', { name: /solar drop/i });
+      const demandBtn = within(radioGroup).getByRole('radio', { name: /demand multiplier/i });
+      const batteryBtn = within(radioGroup).getByRole('radio', { name: /battery soc/i });
+
+      expect(solarBtn).toHaveAttribute('aria-checked', 'true');
+      expect(demandBtn).toHaveAttribute('aria-checked', 'false');
+
+      // Switch to demand multiplier
+      fireEvent.click(demandBtn);
+      expect(demandBtn).toHaveAttribute('aria-checked', 'true');
+      expect(solarBtn).toHaveAttribute('aria-checked', 'false');
+
+      // Switch to battery SoC
+      fireEvent.click(batteryBtn);
+      expect(batteryBtn).toHaveAttribute('aria-checked', 'true');
+
+      // Verify divergence callout is rendered
+      expect(
+        screen.getByText(/Strategy Divergence Threshold|Strategies Remain Aligned/i)
+      ).toBeInTheDocument();
     });
   });
 });

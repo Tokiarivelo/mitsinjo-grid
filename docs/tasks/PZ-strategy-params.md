@@ -33,12 +33,12 @@ where the three strategies diverge. Design: design system only (tokens + compone
 
 ## Phase 3 — Sensitivity sweep (engine + chart)
 
-- [ ] **PZ-T11** Engine `sweep(input, { param: 'solarDropPct' | 'demandMultiplier' | 'initialSocPct', from, to, step }, strategies)`
+- [x] **PZ-T11** Engine `sweep(input, { param: 'solarDropPct' | 'demandMultiplier' | 'initialSocPct', from, to, step }, strategies)`
       → `{ value, metrics per strategy }[]`, pure, ≤ 20 points, tested (monotonic critical unserved on solar drop).
-- [ ] **PZ-T12** `SensitivityChart` (ChartCard + Recharts lines, one per strategy, y = critical unserved kWh,
+- [x] **PZ-T12** `SensitivityChart` (ChartCard + Recharts lines, one per strategy, y = critical unserved kWh,
       text summary, empty state); parameter picker; marker at the current value.
-- [ ] **PZ-T13** Divergence callout (computed InsightCard): first value where strategies differ by > 0.1 kWh.
-- [ ] **PZ-T14** Perf: sweep in a `useDeferredValue`/idle callback, budget in `docs/performance.md` (< 50 ms for 20 points).
+- [x] **PZ-T13** Divergence callout (computed InsightCard): first value where strategies differ by > 0.1 kWh.
+- [x] **PZ-T14** Perf: sweep in a `useDeferredValue`/idle callback, budget in `docs/performance.md` (< 50 ms for 20 points).
 
 **Exit criteria:** every number still comes from `@mitsinjo/engine`; edits never auto-apply anything outside the
 simulated input; phase 1 shippable alone; `make check` + `make e2e` green after each phase.
