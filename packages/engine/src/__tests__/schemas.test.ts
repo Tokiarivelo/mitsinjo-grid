@@ -1,3 +1,4 @@
+import { SECTOR_IDS } from '../schemas';
 import { describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
 import {
@@ -15,7 +16,7 @@ describe('Schema validation & bounds (P3-T1)', () => {
     const input = createBaselineInput();
     const parsed = parseInput(input);
     expect(parsed.scenarioId).toBe('baseline');
-    expect(parsed.sectors).toHaveLength(5);
+    expect(parsed.sectors).toHaveLength(SECTOR_IDS.length);
   });
 
   describe('SolarConfig bounds', () => {

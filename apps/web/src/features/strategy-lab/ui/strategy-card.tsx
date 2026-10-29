@@ -1,7 +1,7 @@
 'use client';
 
 import { Award, Check, ShieldCheck, Zap } from 'lucide-react';
-import type { SimulationResult, StrategyId } from '@mitsinjo/engine';
+import type { SectorConfig, SimulationResult, StrategyId } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtKwh, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
@@ -21,6 +21,8 @@ export interface StrategyCardProps {
   included?: boolean;
   onToggleInclude?: () => void;
   canExclude?: boolean;
+  /** Connected sectors to list (`connectedSectors(input)`), in engine order. */
+  sectors: readonly SectorConfig[];
 }
 
 export function StrategyCard({
@@ -35,6 +37,7 @@ export function StrategyCard({
   included = true,
   onToggleInclude,
   canExclude = true,
+  sectors,
 }: StrategyCardProps) {
   const tStrategies = useTranslations('strategies');
   const tSectors = useTranslations('sectors');
@@ -177,43 +180,21 @@ export function StrategyCard({
           </div>
         </div>
 
-        {/* 5 Sector EnergyBar Rows */}
+        {/* One EnergyBar per connected sector (engine order and priority) */}
         <div className="pt-2 border-t border-border/40 flex flex-col divide-y divide-border/30">
-          <EnergyBar
-            label={tSectors('health')}
-            valuePct={hasResults && metrics ? (metrics.perSector.health?.coveragePct ?? 0) : 0}
-            servedKwh={metrics?.perSector.health?.servedKwh}
-            demandKwh={metrics?.perSector.health?.demandKwh}
-            priority="critical"
-          />
-          <EnergyBar
-            label={tSectors('water')}
-            valuePct={hasResults && metrics ? (metrics.perSector.water?.coveragePct ?? 0) : 0}
-            servedKwh={metrics?.perSector.water?.servedKwh}
-            demandKwh={metrics?.perSector.water?.demandKwh}
-            priority="critical"
-          />
-          <EnergyBar
-            label={tSectors('school')}
-            valuePct={hasResults && metrics ? (metrics.perSector.school?.coveragePct ?? 0) : 0}
-            servedKwh={metrics?.perSector.school?.servedKwh}
-            demandKwh={metrics?.perSector.school?.demandKwh}
-            priority="medium"
-          />
-          <EnergyBar
-            label={tSectors('households')}
-            valuePct={hasResults && metrics ? (metrics.perSector.households?.coveragePct ?? 0) : 0}
-            servedKwh={metrics?.perSector.households?.servedKwh}
-            demandKwh={metrics?.perSector.households?.demandKwh}
-            priority="low"
-          />
-          <EnergyBar
-            label={tSectors('market')}
-            valuePct={hasResults && metrics ? (metrics.perSector.market?.coveragePct ?? 0) : 0}
-            servedKwh={metrics?.perSector.market?.servedKwh}
-            demandKwh={metrics?.perSector.market?.demandKwh}
-            priority="low"
-          />
+          {sectors.map((sec) => {
+            const sm = metrics?.perSector[sec.id];
+            return (
+              <EnergyBar
+                key={sec.id}
+                label={tSectors(sec.id)}
+                valuePct={hasResults && sm ? sm.coveragePct : 0}
+                servedKwh={sm?.servedKwh}
+                demandKwh={sm?.demandKwh}
+                priority={sec.priority}
+              />
+            );
+          })}
         </div>
       </div>
 

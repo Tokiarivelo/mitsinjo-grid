@@ -12,6 +12,7 @@ import {
   rainDropCount,
 } from '../utils/weather-atmosphere';
 import { mulberry32 } from '../utils/noise';
+import { useAmbientFrame } from '../hooks/use-ambient-frame';
 
 export interface WeatherEffectsProps {
   weather: WeatherId;
@@ -54,6 +55,7 @@ function CloudLayer({
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const invalidate = useThree((s) => s.invalidate);
+  const requestFrame = useAmbientFrame();
   const puffs = useMemo(() => cloudPuffs(cover), [cover]);
   const color = useMemo(
     () =>
@@ -82,11 +84,11 @@ function CloudLayer({
     if (animate) invalidate();
   }, [animate, invalidate]);
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (!animate || !groupRef.current) return;
     // Slow drift across the sky.
     groupRef.current.rotation.y += delta * 0.006;
-    state.invalidate();
+    requestFrame();
   });
 
   if (puffs.length === 0) return null;
@@ -158,6 +160,7 @@ function Rain({
   animate: boolean;
 }) {
   const invalidate = useThree((s) => s.invalidate);
+  const requestFrame = useAmbientFrame();
 
   const geometry = useMemo(() => {
     const rand = mulberry32(42);
@@ -205,7 +208,7 @@ function Rain({
   useFrame((state) => {
     if (!animate || !materialRef.current) return;
     setUniform(materialRef.current, 'uTime', state.clock.elapsedTime);
-    state.invalidate();
+    requestFrame();
   });
 
   return (
@@ -228,12 +231,13 @@ const LIGHTNING_PEAK = 7;
 
 /** Storm flashes: one light whose intensity follows a fixed schedule. */
 function Lightning() {
+  const requestFrame = useAmbientFrame();
   const lightRef = useRef<THREE.DirectionalLight>(null);
   useFrame((state) => {
     const light = lightRef.current;
     if (!light) return;
     light.intensity = lightningFlash(state.clock.elapsedTime) * LIGHTNING_PEAK;
-    state.invalidate();
+    requestFrame();
   });
   return (
     <directionalLight

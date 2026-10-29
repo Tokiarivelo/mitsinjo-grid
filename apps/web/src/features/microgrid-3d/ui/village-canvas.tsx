@@ -2,13 +2,16 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { ContactShadows, Environment } from '@react-three/drei';
-import type { Priority, SectorId } from '@mitsinjo/engine';
+import { Environment } from '@react-three/drei';
+import { SECTOR_IDS, type Priority, type SectorId } from '@mitsinjo/engine';
 import { useTranslations } from '@/lib/i18n';
 import { fmtKw } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import type { BatteryStatusColor, CameraPreset, SceneModel } from '../types';
 import { useReducedMotion } from '../hooks/use-reduced-motion';
 import { usePerfFlag } from '../hooks/use-perf-flag';
+import { useInView } from '../hooks/use-in-view';
+import { useContextLoss } from '../hooks/use-context-loss';
 import { useSceneQuality, type SceneQuality } from '../hooks/use-scene-quality';
 import { isSoftwareRenderer } from '../utils/webgl';
 import { createSceneStats, sampleSceneStats, type SceneStatsSample } from '../utils/scene-stats';
@@ -28,8 +31,10 @@ import { Vehicles } from './vehicles';
 import { PostEffects } from './post-effects';
 import { QualityProbe } from './quality-probe';
 import { WeatherEffects } from './weather-effects';
+import { BakedContactShadows, ResumeOnVisible, ShadowBake } from './render-control';
+import { VillageScenePlaceholder } from './scene-placeholder';
 
-export const SUNSET_HDRI_URL = '/3d/sunset_1k.hdr';
+export const SUNSET_HDRI_URL = '/3d/sunset_512.hdr';
 
 const KEY_LIGHT_DISTANCE = 70;
 
@@ -62,6 +67,7 @@ export function VillageCanvas({
   const tSectors = useTranslations('sectors');
   const tPriorities = useTranslations('priorities');
   const tSim = useTranslations('features.simulation');
+  const tDiagram = useTranslations('features.gridDiagram');
 
   const reducedMotion = useReducedMotion();
   // A modified scenario shows the last result frozen: no flow animation.
@@ -71,13 +77,10 @@ export function VillageCanvas({
   const animate = !reducedMotion && !model.isModified && !softwareGl;
   const high = quality === 'high';
 
-  const sectorNames: Record<SectorId, string> = {
-    health: tSectors('health'),
-    water: tSectors('water'),
-    school: tSectors('school'),
-    households: tSectors('households'),
-    market: tSectors('market'),
-  };
+  const sectorNames = Object.fromEntries(SECTOR_IDS.map((id) => [id, tSectors(id)])) as Record<
+    SectorId,
+    string
+  >;
 
   const priorityLabels: Record<Priority, string> = {
     critical: tPriorities('critical'),
@@ -95,6 +98,10 @@ export function VillageCanvas({
 
   // Fixed parent for in-scene HTML labels, so drei's <Html> never re-targets after mount.
   const htmlPortal = useRef<HTMLDivElement>(null);
+  // Off-screen canvas: stop the frame loop (no hidden 60 fps render while reading the page).
+  const inView = useInView(htmlPortal);
+  // Lost WebGL context → placeholder, then a fresh canvas (never a white box).
+  const contextLoss = useContextLoss();
 
   // ?perf=1 -> draw calls / fps readout, sampled at 2 Hz (no per-frame React state).
   const perfEnabled = usePerfFlag();
@@ -151,20 +158,28 @@ export function VillageCanvas({
     ],
     [sunDirection]
   );
+  // Shadow casters are static: re-bake the sun shadow map only when light or data change.
+  const shadowBakeKey = useMemo(() => [keyLightPos, model] as const, [keyLightPos, model]);
 
   return (
-    <div ref={htmlPortal} className={className} style={{ width: '100%', height: '100%' }}>
+    <div
+      ref={htmlPortal}
+      className={cn('relative', className)}
+      style={{ width: '100%', height: '100%' }}
+    >
       {perfEnabled && perf && (
         <div className="absolute bottom-24 right-3 z-20 px-2 py-1 rounded-control bg-surface-elevated/90 border border-border text-[10px] font-mono text-text-secondary pointer-events-none">
           {tSim('perfOverlay', { calls: perf.calls, fps: perf.fps })}
         </div>
       )}
+      {contextLoss.lost && <VillageScenePlaceholder className="absolute inset-0 z-10" />}
       <Canvas
-        // Remount on tier change: shadow maps, MSAA and shaders differ per tier.
-        key={quality}
+        // Remount on tier change (shadow maps, MSAA and shaders differ) and after a lost context.
+        key={`${quality}-${contextLoss.epoch}`}
+        onCreated={({ gl, get }) => contextLoss.attach(gl.domElement, () => get().internal.active)}
         camera={{ position: [2, 10.5, 28], fov: 42, near: 0.5, far: 1400 }}
         dpr={high ? [1, 1.5] : [1, 1.25]}
-        frameloop="demand"
+        frameloop={inView ? 'demand' : 'never'}
         shadows={high ? 'soft' : false}
         gl={{ antialias: !high, powerPreference: 'high-performance' }}
         style={{ background: palette.horizon }}
@@ -213,7 +228,10 @@ export function VillageCanvas({
         <Suspense fallback={null}>
           <Vegetation quality={quality} />
           <Vehicles />
+          {/* Inside the casters' Suspense so the first bake includes the loaded trees. */}
+          {high && <ShadowBake bakeKey={shadowBakeKey} />}
         </Suspense>
+        <ResumeOnVisible />
 
         <SolarArray
           model={model.solar}
@@ -241,6 +259,7 @@ export function VillageCanvas({
           onSelectSector={onSelectSector}
           sectorNames={sectorNames}
           priorityLabels={priorityLabels}
+          disconnectedLabel={tDiagram('status.disconnected')}
           htmlPortal={htmlPortal}
           lampGlow={palette.lampGlow}
         />
@@ -248,19 +267,12 @@ export function VillageCanvas({
         {high ? (
           <>
             <PostEffects />
-            {onSlowDevice && <QualityProbe onSlow={onSlowDevice} />}
+            {/* Probe only on screen: a paused loop would starve it and force a downgrade. */}
+            {onSlowDevice && inView && <QualityProbe onSlow={onSlowDevice} />}
           </>
         ) : (
           // Low tier: one baked contact shadow instead of real-time shadow maps.
-          <ContactShadows
-            position={[0, 0.01, 0]}
-            opacity={0.55}
-            scale={44}
-            blur={1.8}
-            far={8}
-            frames={1}
-            color="#1a1408"
-          />
+          <BakedContactShadows />
         )}
 
         <CameraController

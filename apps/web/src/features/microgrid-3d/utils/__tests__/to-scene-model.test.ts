@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { scenarios, simulate } from '@mitsinjo/engine';
+import { SECTOR_IDS, applyPatch, scenarios, simulate } from '@mitsinjo/engine';
+import { KEEP_OUT_ZONES } from '../landscape';
 import { toSceneModel, SECTOR_POSITIONS } from '../to-scene-model';
 import { STATUS_HEX } from '../scene-palette';
 
@@ -144,5 +145,36 @@ describe('toSceneModel palette & modified flag (PR #10 review)', () => {
 
   it('passes the modified flag through so the scene can freeze', () => {
     expect(toSceneModel({ input, result, isModified: true }).isModified).toBe(true);
+  });
+
+  it('places every engine sector, each with its own tree-free clearing', () => {
+    const model = toSceneModel({ input: scenarios.baseline.input, result: null, timeIndex: 12 });
+    expect(Object.keys(model.buildings).sort()).toEqual([...SECTOR_IDS].sort());
+    for (const id of SECTOR_IDS) {
+      const [x, , z] = SECTOR_POSITIONS[id];
+      expect(KEEP_OUT_ZONES.some((k) => Math.hypot(k.x - x, k.z - z) < 0.01)).toBe(true);
+    }
+  });
+
+  it('shows the factory as not connected by default (no coverage, idle color)', () => {
+    const result = simulate(scenarios.baseline.input, 'essential_first');
+    const model = toSceneModel({ input: scenarios.baseline.input, result, timeIndex: 10 });
+    const factory = model.buildings.industry;
+    expect(factory.connected).toBe(false);
+    expect(factory.status).toBe('disconnected');
+    expect(factory.statusColor).toBe('idle');
+    expect(factory.coveragePct).toBeNull();
+    expect(model.lines.busToSectors.industry.active).toBe(false);
+  });
+
+  it('lights the factory once connected (load from the engine result)', () => {
+    const input = applyPatch(scenarios.baseline.input, { sectorLoads: { industry: 1 } });
+    const result = simulate(input, 'proportional');
+    const model = toSceneModel({ input, result, timeIndex: 10 });
+    const factory = model.buildings.industry;
+    expect(factory.connected).toBe(true);
+    expect(factory.loadMultiplier).toBe(1);
+    expect(factory.demandKw).toBeCloseTo(result.steps[10]!.sectors.industry!.demandKw);
+    expect(factory.status).not.toBe('disconnected');
   });
 });

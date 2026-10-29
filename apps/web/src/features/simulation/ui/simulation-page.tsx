@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { connectedSectorIds } from '@mitsinjo/engine';
 import {
   Activity,
   BatteryCharging,
@@ -53,6 +54,7 @@ import { CopilotWorkspace } from '@/features/copilot';
 import { SimControlsPanel } from './sim-controls-panel';
 import { TimelineScrubber } from './timeline-scrubber';
 import { BuildingInspectorPanel } from './building-inspector-panel';
+import { SectorLoadPanel } from './sector-load-panel';
 import { VillageViewport } from './village-viewport';
 import { PlaybackActions } from './playback-actions';
 import { WeatherWorkflowPanel } from './weather-workflow-panel';
@@ -151,7 +153,8 @@ export function SimulationPage() {
     }
   };
 
-  const sectorsOrder = ['health', 'water', 'school', 'households', 'market'] as const;
+  // Connected sectors only (a disconnected one is managed in the Buildings tab).
+  const sectorsOrder = useMemo(() => connectedSectorIds(input), [input]);
 
   return (
     <div className="flex flex-col gap-6 max-w-[1720px] w-full mx-auto">
@@ -475,7 +478,7 @@ export function SimulationPage() {
                       {tOverview('serviceAllocationTitle')}
                     </h3>
                     <span className="text-[10px] font-mono text-text-muted">
-                      {tOverview('sectorsCount', { count: 5 })}
+                      {tOverview('sectorsCount', { count: sectorsOrder.length })}
                     </span>
                   </div>
 
@@ -541,6 +544,7 @@ export function SimulationPage() {
                 hidden={activeTab !== 'buildings'}
                 className={cn('space-y-4', activeTab !== 'buildings' && 'hidden')}
               >
+                <SectorLoadPanel />
                 <BuildingInspectorPanel
                   selectedSector={selectedSector}
                   onSelectSector={handleSelectSector}

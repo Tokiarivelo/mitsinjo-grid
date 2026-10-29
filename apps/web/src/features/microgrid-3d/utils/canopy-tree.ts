@@ -89,7 +89,8 @@ export function createCanopyTree(variant: CanopyVariant, detail = 1): CanopyTree
   }
   merged.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-  const trunk = new THREE.CylinderGeometry(0.035, 0.06, spec.trunkH + 0.1, 6);
+  // Open-ended: the base sits in the ground and the top inside the canopy (half the triangles).
+  const trunk = new THREE.CylinderGeometry(0.035, 0.06, spec.trunkH + 0.1, 6, 1, true);
   trunk.translate(0, (spec.trunkH + 0.1) / 2, 0);
   return { foliage: merged, trunk };
 }

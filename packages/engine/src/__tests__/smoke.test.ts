@@ -9,7 +9,7 @@ import {
 
 describe('Engine smoke test', () => {
   it('exports engine version', () => {
-    expect(ENGINE_VERSION).toBe('0.2.0');
+    expect(ENGINE_VERSION).toBe('0.3.0');
   });
 
   it('validates sector ids', () => {

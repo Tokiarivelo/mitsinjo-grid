@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ENGINE_VERSION } from '../constants';
 import { scenarios } from '../scenarios';
 import { simulate } from '../simulate';
+import { SECTOR_IDS } from '../schemas';
 
 describe('simulate (P3-T5)', () => {
   it('returns valid simulation result with 24 steps', () => {
@@ -18,13 +19,7 @@ describe('simulate (P3-T5)', () => {
       expect(step).toBeDefined();
       if (step) {
         expect(step.t).toBe(t);
-        expect(Object.keys(step.sectors)).toEqual([
-          'health',
-          'water',
-          'school',
-          'households',
-          'market',
-        ]);
+        expect(Object.keys(step.sectors)).toEqual([...SECTOR_IDS]);
       }
     }
   });

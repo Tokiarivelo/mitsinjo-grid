@@ -17,6 +17,11 @@ const BUDGETS = {
   low: { calls: 150, triangles: 150_000 },
   high: { calls: 400, triangles: 800_000 },
 };
+/**
+ * WebGL contexts one page may open: the R3F canvas + the cached capability probe (released).
+ * More means a leak: browsers keep ~16 and drop the oldest one, the scene (white canvas).
+ */
+const MAX_WEBGL_CONTEXTS = 3;
 const TIERS = (process.env.SCENE_AUDIT_TIERS ?? 'low,high').split(',').map((t) => t.trim());
 const ROUTES = [
   { route: 'simulation', file: (tier) => `simulation-3d${tier === 'high' ? '' : `-${tier}`}.png` },
@@ -30,6 +35,15 @@ const GL_ARGS =
 mkdirSync(outDir, { recursive: true });
 const browser = await chromium.launch({ args: GL_ARGS });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+// Count WebGL context requests per page load (the counter resets on navigation).
+await page.addInitScript(() => {
+  const original = HTMLCanvasElement.prototype.getContext;
+  window.__webglContexts = 0;
+  HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
+    if (/webgl/.test(String(type))) window.__webglContexts++;
+    return original.call(this, type, ...rest);
+  };
+});
 let failed = false;
 
 for (const tier of TIERS) {
@@ -60,12 +74,17 @@ for (const tier of TIERS) {
     const calls = Math.max(0, ...valid.map((s) => s.calls));
     const triangles = Math.max(0, ...valid.map((s) => s.triangles));
     const fps = valid.length ? Math.round(valid.reduce((a, s) => a + s.fps, 0) / valid.length) : 0;
+    const contexts = await page.evaluate(() => window.__webglContexts ?? 0);
     const out = join(outDir, file(tier));
     await page.screenshot({ path: out, timeout: 120_000 });
-    const ok = valid.length > 0 && calls < budget.calls && triangles <= budget.triangles;
+    const ok =
+      valid.length > 0 &&
+      calls < budget.calls &&
+      triangles <= budget.triangles &&
+      contexts <= MAX_WEBGL_CONTEXTS;
     failed ||= !ok;
     console.log(
-      `${ok ? '✓' : '✗'} [${tier}] /${route}: ${calls} draw calls (<${budget.calls}), ${triangles} triangles (≤${budget.triangles}), ~${fps} fps (${process.env.SCENE_AUDIT_GL === 'gpu' ? 'GPU' : 'software GL'}) → ${out}`
+      `${ok ? '✓' : '✗'} [${tier}] /${route}: ${calls} draw calls (<${budget.calls}), ${triangles} triangles (≤${budget.triangles}), ${contexts} WebGL contexts (≤${MAX_WEBGL_CONTEXTS}), ~${fps} fps (${process.env.SCENE_AUDIT_GL === 'gpu' ? 'GPU' : 'software GL'}) → ${out}`
     );
   }
 }

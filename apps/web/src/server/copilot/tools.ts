@@ -7,6 +7,8 @@ import {
   type Metrics,
   type InputPatch,
   InputPatchSchema,
+  SECTOR_IDS,
+  SectorIdSchema,
   simulate,
   compare,
   applyPatch,
@@ -69,7 +71,7 @@ export const CompareStrategiesSchema = z.object({
 });
 
 export const GetSectorMetricsSchema = z.object({
-  sector: z.enum(['health', 'water', 'school', 'households', 'market']),
+  sector: SectorIdSchema,
   // Omitted → the user's active strategy (not always proportional).
   strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
 });
@@ -84,12 +86,19 @@ export const ProposeChangeSchema = z
     message: 'At least one of patch or strategy must be specified.',
   });
 
+/** Live sector load (× 0–3, 0 = not connected); shared by run_scenario and propose_change. */
+const SECTOR_LOAD_PATCH_PROPS = {
+  sectorLoads: {
+    type: 'object',
+    description: `Load multiplier per sector (0 to 3; 1 = normal, 0 = not connected) for ${SECTOR_IDS.join(', ')}. The industry sector (small factory) is not connected by default: set it above 0 to connect it.`,
+  },
+} as const;
+
 /** Patch fields that tune strategy rules; shared by run_scenario and propose_change. */
 const STRATEGY_RULE_PATCH_PROPS = {
   criticalShares: {
     type: 'object',
-    description:
-      'Critical lifeline share per sector (0 to 1) for health, water, school, households, market.',
+    description: `Critical lifeline share per sector (0 to 1) for ${SECTOR_IDS.join(', ')}.`,
   },
   balancedWeights: {
     type: 'object',
@@ -160,6 +169,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
               description: 'Minimum reserve battery state of charge (0 to 100%).',
             },
             ...STRATEGY_RULE_PATCH_PROPS,
+            ...SECTOR_LOAD_PATCH_PROPS,
           },
         },
         strategy: {
@@ -192,14 +202,13 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   },
   {
     name: 'get_sector_metrics',
-    description:
-      'Fetch detailed metrics and 24-hour power profile for a specific sector (health, water, school, households, market).',
+    description: `Fetch detailed metrics and 24-hour power profile for a specific sector (${SECTOR_IDS.join(', ')}).`,
     parameters: {
       type: 'object',
       properties: {
         sector: {
           type: 'string',
-          enum: ['health', 'water', 'school', 'households', 'market'],
+          enum: [...SECTOR_IDS],
           description: 'The target sector to examine.',
         },
         strategy: {
@@ -242,7 +251,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
                 properties: {
                   sector: {
                     type: 'string',
-                    enum: ['health', 'water', 'school', 'households', 'market'],
+                    enum: [...SECTOR_IDS],
                   },
                   maxKw: { type: 'number' },
                   fromHour: { type: 'integer' },
@@ -252,6 +261,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
               },
             },
             ...STRATEGY_RULE_PATCH_PROPS,
+            ...SECTOR_LOAD_PATCH_PROPS,
           },
         },
         strategy: {

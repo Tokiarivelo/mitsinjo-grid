@@ -4,7 +4,7 @@
  * Every label has a reserved box and wires stop at box edges, so nothing overlaps
  * or hides a cable (checked by tests). Units: SVG user units in DIAGRAM_W × DIAGRAM_H.
  */
-import type { SectorId } from '@mitsinjo/engine';
+import { SECTOR_IDS, type SectorId } from '@mitsinjo/engine';
 
 export type DiagramVariant = 'topology' | 'circuit';
 export type Pt = [number, number];
@@ -19,8 +19,8 @@ export interface Box {
 export const DIAGRAM_W = 320;
 export const DIAGRAM_H = 200;
 
-/** Same order as the engine's sector priority list (critical first). */
-export const DIAGRAM_SECTORS: SectorId[] = ['health', 'water', 'school', 'households', 'market'];
+/** Every engine sector, in the engine's display order. */
+export const DIAGRAM_SECTORS: readonly SectorId[] = SECTOR_IDS;
 
 export interface DiagramLayout {
   boxes: { solar: Box; hub: Box; sectors: Record<SectorId, Box> };
@@ -42,7 +42,7 @@ const box = (cx: number, cy: number, w: number, h: number): Box => ({
 
 /**
  * Village plan seen from above, same relative places as the 3D scene: solar NW,
- * school N, health E, water W, households SW, market S, hub in the middle.
+ * school N, factory NE, health E, water W, households SW, market S, hub in the middle.
  */
 function topologyLayout(): DiagramLayout {
   const SW = 72;
@@ -51,7 +51,8 @@ function topologyLayout(): DiagramLayout {
   const solar = box(46, 27, 68, 28);
   const hub = box(150, 74, 76, 32);
   const sectors: Record<SectorId, Box> = {
-    school: box(220, 26, SW, SH),
+    school: box(196, 26, SW, SH),
+    industry: box(284, 26, SW, SH),
     health: box(272, 92, SW, SH),
     water: box(46, busY, SW, SH),
     households: box(118, 178, SW, SH),
@@ -71,9 +72,14 @@ function topologyLayout(): DiagramLayout {
       [222, busY],
       [222, sectors.market.y],
     ],
+    // Up the east side, clear of the clinic box.
+    industry: [
+      [314, busY],
+      [314, bottom(sectors.industry)],
+    ],
     school: [
-      [232, busY],
-      [232, bottom(sectors.school)],
+      [208, busY],
+      [208, bottom(sectors.school)],
     ],
     health: [
       [272, busY],
@@ -96,7 +102,7 @@ function topologyLayout(): DiagramLayout {
     },
     busBar: [
       [100, busY],
-      [272, busY],
+      [314, busY],
     ],
     busLabel: { x: 160, y: busY + 5, w: 54, h: 11 },
   };
@@ -106,8 +112,9 @@ function topologyLayout(): DiagramLayout {
 function circuitLayout(): DiagramLayout {
   const busX = 132;
   const cardX = 200;
-  const rowH = 36;
   const firstY = 28;
+  // Rows shrink to fit every sector in the viewBox (36 units for 5 sectors).
+  const rowH = Math.min(36, (DIAGRAM_H - firstY - 18) / Math.max(1, DIAGRAM_SECTORS.length - 1));
   const solar = box(52, 40, 76, 30);
   const hub = box(52, 120, 76, 40);
   const sectors = {} as Record<SectorId, Box>;
@@ -137,7 +144,7 @@ function circuitLayout(): DiagramLayout {
     },
     busBar: [
       [busX, firstY - 8],
-      [busX, firstY + 4 * rowH + 8],
+      [busX, firstY + (DIAGRAM_SECTORS.length - 1) * rowH + 8],
     ],
     busLabel: { x: busX - 27, y: 2, w: 54, h: 11 },
     breakers,

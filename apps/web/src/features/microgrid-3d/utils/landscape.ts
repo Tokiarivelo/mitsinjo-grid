@@ -1,3 +1,4 @@
+import { SECTOR_IDS, type SectorId } from '@mitsinjo/engine';
 import { BATTERY_POSITION, BUS_POSITION, SECTOR_POSITIONS, SOLAR_POSITION } from './to-scene-model';
 import { fbm2d, smoothstep } from './noise';
 
@@ -85,6 +86,12 @@ export const VILLAGE_PATHS: [number, number][][] = [
     [2.5, 4.5],
     [SECTOR_POSITIONS.market[0], SECTOR_POSITIONS.market[2] - 1],
   ],
+  // Service track to the factory (north-east, behind the clinic).
+  [
+    [BUS_POSITION[0], BUS_POSITION[2]],
+    [5, -3],
+    [SECTOR_POSITIONS.industry[0] - 2.4, SECTOR_POSITIONS.industry[2]],
+  ],
   // Main road leaving the village to the south-east.
   [
     [SECTOR_POSITIONS.market[0], SECTOR_POSITIONS.market[2]],
@@ -132,13 +139,23 @@ export interface KeepOutZone {
   r: number;
 }
 
+/** Clearing radius around each sector building (no trees inside). */
+export const SECTOR_KEEP_OUT_R: Record<SectorId, number> = {
+  health: 4.6,
+  water: 3.4,
+  school: 5,
+  households: 4.4,
+  market: 4.2,
+  industry: 4.2,
+};
+
 /** Areas where vegetation must not grow (buildings, pads, pond). */
 export const KEEP_OUT_ZONES: KeepOutZone[] = [
-  { x: SECTOR_POSITIONS.health[0], z: SECTOR_POSITIONS.health[2], r: 4.6 },
-  { x: SECTOR_POSITIONS.water[0], z: SECTOR_POSITIONS.water[2], r: 3.4 },
-  { x: SECTOR_POSITIONS.school[0], z: SECTOR_POSITIONS.school[2], r: 5 },
-  { x: SECTOR_POSITIONS.households[0], z: SECTOR_POSITIONS.households[2], r: 4.4 },
-  { x: SECTOR_POSITIONS.market[0], z: SECTOR_POSITIONS.market[2], r: 4.2 },
+  ...SECTOR_IDS.map((id) => ({
+    x: SECTOR_POSITIONS[id][0],
+    z: SECTOR_POSITIONS[id][2],
+    r: SECTOR_KEEP_OUT_R[id],
+  })),
   { x: SOLAR_POSITION[0], z: SOLAR_POSITION[2], r: 6.6 },
   { x: BATTERY_POSITION[0], z: BATTERY_POSITION[2], r: 3.4 },
   { x: BUS_POSITION[0], z: BUS_POSITION[2], r: 3.2 },

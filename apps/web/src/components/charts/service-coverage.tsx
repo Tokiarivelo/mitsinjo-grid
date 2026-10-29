@@ -10,12 +10,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { SectorId, SectorMetrics } from '@mitsinjo/engine';
+import { SECTOR_IDS, type SectorId, type SectorMetrics } from '@mitsinjo/engine';
 import { fmtKwh, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
 
 export interface ServiceCoverageChartProps {
   perSector: Record<SectorId, SectorMetrics>;
+  /** Sectors to chart, in order. Default: every engine sector. */
+  sectors?: readonly SectorId[];
   height?: number;
   className?: string;
 }
@@ -68,15 +70,14 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
 
 export function ServiceCoverageChart({
   perSector,
+  sectors = SECTOR_IDS,
   height = 240,
   className,
 }: ServiceCoverageChartProps) {
   const tSectors = useTranslations('sectors');
   const tCharts = useTranslations('charts');
 
-  const sectorOrder: SectorId[] = ['health', 'water', 'school', 'households', 'market'];
-
-  const data = sectorOrder.map((id) => {
+  const data = sectors.map((id) => {
     const s = perSector[id];
     const name = tSectors(id);
     const coverage = s ? Math.round(s.coveragePct * 10) / 10 : 0;

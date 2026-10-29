@@ -6,7 +6,8 @@ import { Instance, Instances } from '@react-three/drei';
 import type { SectorId } from '@mitsinjo/engine';
 import { createHipRoofGeometry } from '../utils/hip-roof';
 import { mergeParts, type Part } from '../utils/merge-parts';
-import { VillageHouse, windowColor } from './village-house';
+import { HouseCluster, VillageHouse, windowColor } from './village-house';
+import type { HouseSpec } from '../utils/house-geometry';
 import { solarCellTexture, stripeTexture } from './procedural-textures';
 
 /**
@@ -261,27 +262,22 @@ const HOMES: {
   { pos: [2.0, 0, 2.7], rot: -0.2, w: 1.7, d: 1.4, wall: '#e0caa6', roof: '#8a5a3c' },
 ];
 
+/** All homes merged: 5 draw calls instead of one set of meshes per home. */
+const HOME_SPECS: HouseSpec[] = HOMES.map((h, i) => ({
+  width: h.w,
+  depth: h.d,
+  wallHeight: 1.15,
+  roofHeight: 0.75,
+  wallColor: h.wall,
+  roofColor: h.roof,
+  windowsPerSide: 2,
+  position: h.pos,
+  rotationY: h.rot,
+  veranda: i % 3 === 0,
+}));
+
 function HouseholdsBody({ glow }: BodyProps) {
-  return (
-    <group name="houses-cluster-mesh">
-      {HOMES.map((h, i) => (
-        <VillageHouse
-          key={i}
-          width={h.w}
-          depth={h.d}
-          wallHeight={1.15}
-          roofHeight={0.75}
-          wallColor={h.wall}
-          roofColor={h.roof}
-          windowGlow={glow}
-          windowsPerSide={2}
-          position={h.pos}
-          rotationY={h.rot}
-          veranda={i % 3 === 0}
-        />
-      ))}
-    </group>
-  );
+  return <HouseCluster name="houses-cluster-mesh" houses={HOME_SPECS} windowGlow={glow} />;
 }
 
 // ---------------- Market ----------------
@@ -377,6 +373,48 @@ function MarketBody({ glow }: BodyProps) {
   );
 }
 
+// ---------------- Factory ----------------
+/** Workshop hall: a wide one-storey shed with a long row of windows (reuses the house cluster). */
+const FACTORY_HALL: HouseSpec[] = [
+  {
+    width: 4.4,
+    depth: 3.0,
+    wallHeight: 2.0,
+    roofHeight: 0.6,
+    overhang: 0.2,
+    wallColor: '#a9b4bd',
+    roofColor: '#6d7880',
+    windowsPerSide: 4,
+    // Main door faces the village (west).
+    rotationY: -Math.PI / 2,
+  },
+];
+/** Chimney, silo and loading-bay canopy posts: one steel geometry. */
+const FACTORY_STEEL = mergeParts([
+  {
+    shape: { kind: 'cylinder', radiusTop: 0.16, radiusBottom: 0.22, height: 4.4, segments: 10 },
+    position: [0.9, 2.2, -1.3],
+  },
+  {
+    shape: { kind: 'cylinder', radiusTop: 0.55, radiusBottom: 0.55, height: 2.6, segments: 12 },
+    position: [-0.9, 1.3, 2.75],
+  },
+  {
+    shape: { kind: 'cylinder', radiusTop: 0.05, radiusBottom: 0.55, height: 0.5, segments: 12 },
+    position: [-0.9, 2.85, 2.75],
+  },
+  { shape: { kind: 'box', size: [0.5, 0.1, 0.5] }, position: [0.9, 4.45, -1.3] },
+]);
+
+function FactoryBody({ glow }: BodyProps) {
+  return (
+    <group name="factory-mesh">
+      <HouseCluster houses={FACTORY_HALL} windowGlow={glow} />
+      <mesh geometry={FACTORY_STEEL} material={STEEL} castShadow receiveShadow />
+    </group>
+  );
+}
+
 export function BuildingBody({ id, glow }: { id: SectorId; glow: number }) {
   switch (id) {
     case 'health':
@@ -389,6 +427,8 @@ export function BuildingBody({ id, glow }: { id: SectorId; glow: number }) {
       return <HouseholdsBody glow={glow} />;
     case 'market':
       return <MarketBody glow={glow} />;
+    case 'industry':
+      return <FactoryBody glow={glow} />;
   }
 }
 
@@ -399,4 +439,5 @@ export const BODY_LAYOUT: Record<SectorId, { ringInner: number; ledY: number }> 
   school: { ringInner: 4.2, ledY: 3.4 },
   households: { ringInner: 3.9, ledY: 2.6 },
   market: { ringInner: 3.4, ledY: 2.9 },
+  industry: { ringInner: 3.7, ledY: 5.0 },
 };

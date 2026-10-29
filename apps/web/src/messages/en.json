@@ -237,6 +237,18 @@
           "rainy": "Rainy",
           "storm": "Storm"
         }
+      },
+      "sectorLoad": {
+        "title": "Sector load (live)",
+        "description": "Each change re-runs the simulation instantly: 3D, metrics and charts follow, even during playback.",
+        "unit": "×",
+        "connected": "Connected",
+        "disconnected": "Not connected",
+        "notConnected": "Not connected: no demand on the grid. Raise the load or press Connect.",
+        "connect": "Connect",
+        "disconnect": "Disconnect",
+        "connectAria": "Connect {sector} to the grid",
+        "disconnectAria": "Disconnect {sector} from the grid"
       }
     },
     "strategyLab": {
@@ -447,7 +459,8 @@
         "partial": "Partial",
         "unserved": "Cut",
         "unknown": "No data",
-        "noLoad": "No load"
+        "noLoad": "No load",
+        "disconnected": "Not connected"
       },
       "legendTitle": "Diagram legend",
       "legendFlow": "Current flowing (electrons)",
@@ -580,7 +593,8 @@
     "water": "Water Pumping Station",
     "school": "Primary School",
     "households": "Village Households",
-    "market": "Local Market & Artisans"
+    "market": "Local Market & Artisans",
+    "industry": "Small Factory"
   },
   "warnings": {
     "title": "Grid Alerts",

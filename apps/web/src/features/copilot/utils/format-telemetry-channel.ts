@@ -1,4 +1,6 @@
-export const KNOWN_SECTORS = new Set(['health', 'water', 'school', 'households', 'market']);
+import { SECTOR_IDS } from '@mitsinjo/engine';
+
+export const KNOWN_SECTORS = new Set<string>(SECTOR_IDS);
 
 export const KNOWN_STRATEGIES = new Set(['essential_first', 'proportional', 'balanced']);
 

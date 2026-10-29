@@ -14,7 +14,7 @@ import {
   Sun,
   Zap,
 } from 'lucide-react';
-import { scenarios, type ScenarioId } from '@mitsinjo/engine';
+import { connectedSectors, scenarios, type ScenarioId } from '@mitsinjo/engine';
 import {
   selectActiveMetrics,
   selectActiveResult,
@@ -248,9 +248,9 @@ export function OverviewPage() {
               <Shield className="h-4 w-4 text-energy-cyan shrink-0" aria-hidden="true" />
             </div>
 
-            {/* 5 Sectors in hierarchy order */}
+            {/* Connected sectors in hierarchy order (a sector at load 0 is not on the grid) */}
             <div className="flex flex-col divide-y divide-border/40">
-              {input.sectors.map((sec) => {
+              {connectedSectors(input).map((sec) => {
                 const sm = metrics?.perSector[sec.id];
                 return (
                   <EnergyBar

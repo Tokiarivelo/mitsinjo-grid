@@ -1,9 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
-import { createHipRoofGeometry } from '../utils/hip-roof';
-import { mergeParts, type Part } from '../utils/merge-parts';
+import { buildHouseCluster, type HouseSpec } from '../utils/house-geometry';
 import { corrugatedTexture } from './procedural-textures';
 
 /** Window glass when the building is unlit. */
@@ -13,6 +12,33 @@ const WARM_LIGHT = '#ffb25e';
 
 const TRIM_MAT = new THREE.MeshStandardMaterial({ color: '#6e5a48', roughness: 0.9 });
 const VERANDA_MAT = new THREE.MeshStandardMaterial({ color: '#d9cfbf', roughness: 0.85 });
+/** Wall color comes from the per-house `color` vertex attribute. */
+const WALL_MAT = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88 });
+
+export type RoofFinish = 'corrugated' | 'tile';
+
+const roofMats = new Map<RoofFinish, THREE.MeshStandardMaterial>();
+/** One shared roof material per finish; the roof color is per-house vertex color. */
+function roofMaterial(finish: RoofFinish): THREE.MeshStandardMaterial {
+  let mat = roofMats.get(finish);
+  if (!mat) {
+    const tex = finish === 'corrugated' ? corrugatedTexture().clone() : null;
+    if (tex) {
+      tex.needsUpdate = true;
+      tex.repeat.set(0.9, 1);
+    }
+    mat = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      map: tex,
+      bumpMap: tex,
+      bumpScale: 0.6,
+      roughness: finish === 'corrugated' ? 0.55 : 0.8,
+      metalness: finish === 'corrugated' ? 0.35 : 0.05,
+    });
+    roofMats.set(finish, mat);
+  }
+  return mat;
+}
 
 /** Shared window color for a 0..1 glow (0 = dark glass). */
 export function windowColor(glow: number): THREE.Color {
@@ -23,162 +49,108 @@ export function windowColor(glow: number): THREE.Color {
     .multiplyScalar(1 + glow * 2.4);
 }
 
-export interface VillageHouseProps {
-  width: number;
-  depth: number;
-  wallHeight: number;
-  roofHeight: number;
-  wallColor: string;
-  roofColor: string;
-  /** Eave overhang beyond the walls. */
-  overhang?: number;
+export interface HouseClusterProps {
+  houses: readonly HouseSpec[];
   /** Interior light, 0..1 (data-driven by the parent: served / partial / unserved). */
   windowGlow?: number;
-  windowsPerSide?: number;
-  /** Covered front veranda with posts. */
-  veranda?: boolean;
-  position?: [number, number, number];
-  rotationY?: number;
   /** Corrugated metal (default) or smooth tiles. */
-  roofFinish?: 'corrugated' | 'tile';
+  roofFinish?: RoofFinish;
+  name?: string;
 }
 
-export function VillageHouse({
-  width,
-  depth,
-  wallHeight,
-  roofHeight,
-  wallColor,
-  roofColor,
-  overhang = 0.32,
+/**
+ * Any number of houses in 4–5 draw calls (trim, walls, roofs, windows, verandas).
+ * Pass a stable `houses` array (module constant or memoized): it is rebuilt on change.
+ */
+export function HouseCluster({
+  houses,
   windowGlow = 0,
-  windowsPerSide = 2,
-  veranda = false,
-  position = [0, 0, 0],
-  rotationY = 0,
   roofFinish = 'corrugated',
-}: VillageHouseProps) {
-  const roofW = width + overhang * 2;
-  const roofD = depth + overhang * 2 + (veranda ? 0.9 : 0);
-  const roofGeom = useMemo(
-    () => createHipRoofGeometry(roofW, roofD, roofHeight),
-    [roofW, roofD, roofHeight]
-  );
-
-  const roofMat = useMemo(() => {
-    const tex = roofFinish === 'corrugated' ? corrugatedTexture().clone() : null;
-    if (tex) {
-      tex.needsUpdate = true;
-      tex.repeat.set(0.9, 1);
-    }
-    return new THREE.MeshStandardMaterial({
-      color: roofColor,
-      map: tex,
-      bumpMap: tex,
-      bumpScale: 0.6,
-      roughness: roofFinish === 'corrugated' ? 0.55 : 0.8,
-      metalness: roofFinish === 'corrugated' ? 0.35 : 0.05,
-    });
-  }, [roofColor, roofFinish]);
-
-  const wallMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.88 }),
-    [wallColor]
+  name,
+}: HouseClusterProps) {
+  const geo = useMemo(() => buildHouseCluster(houses), [houses]);
+  useEffect(
+    () => () => {
+      geo.trim.dispose();
+      geo.walls.dispose();
+      geo.roofs.dispose();
+      geo.windows.dispose();
+      geo.verandas?.dispose();
+    },
+    [geo]
   );
   const glassColor = useMemo(() => windowColor(windowGlow), [windowGlow]);
 
-  const winW = Math.min(0.42, (width * 0.6) / windowsPerSide);
-  const winH = wallHeight * 0.38;
-  const winY = wallHeight * 0.58 + 0.12;
-  const roofZ = veranda ? 0.45 : 0;
-
-  // All panes of the house in one geometry (1 draw call).
-  const windowsGeom = useMemo(() => {
-    const n = Math.max(1, windowsPerSide);
-    const usable = width * 0.72;
-    const xs = Array.from({ length: n }, (_, i) =>
-      n === 1 ? 0 : -usable / 2 + (usable / (n - 1)) * i
-    );
-    const parts: Part[] = [];
-    for (const side of [1, -1]) {
-      for (const x of xs) {
-        parts.push({
-          shape: { kind: 'plane', size: [winW, winH] },
-          position: [x, winY, side * (depth / 2 + 0.012)],
-          rotation: [0, side === 1 ? 0 : Math.PI, 0],
-        });
-      }
-      parts.push({
-        shape: { kind: 'plane', size: [winW, winH] },
-        position: [side * (width / 2 + 0.012), winY, 0],
-        rotation: [0, (side * Math.PI) / 2, 0],
-      });
-    }
-    return mergeParts(parts);
-  }, [width, depth, windowsPerSide, winW, winH, winY]);
-
-  const trimGeom = useMemo(
-    () =>
-      mergeParts([
-        {
-          shape: { kind: 'box', size: [width + 0.16, 0.12, depth + 0.16] },
-          position: [0, 0.06, 0],
-        },
-        {
-          shape: { kind: 'plane', size: [0.34, wallHeight * 0.62] },
-          position: [
-            windowsPerSide > 1 ? 0 : width * 0.28,
-            0.12 + wallHeight * 0.33,
-            depth / 2 + 0.014,
-          ],
-        },
-      ]),
-    [width, depth, wallHeight, windowsPerSide]
-  );
-
-  // Veranda deck + posts in one geometry.
-  const verandaGeom = useMemo(() => {
-    if (!veranda) return null;
-    const n = Math.max(2, Math.round(width / 1.3)) + 1;
-    const parts: Part[] = [
-      {
-        shape: { kind: 'box', size: [width + 0.1, 0.08, 0.95] },
-        position: [0, 0.1, depth / 2 + 0.5],
-      },
-    ];
-    for (let i = 0; i < n; i++) {
-      const x = -width / 2 + 0.08 + ((width - 0.16) / (n - 1)) * i;
-      parts.push({
-        shape: { kind: 'box', size: [0.08, wallHeight, 0.08] },
-        position: [x, wallHeight / 2 + 0.1, depth / 2 + 0.88],
-      });
-    }
-    return mergeParts(parts);
-  }, [veranda, width, depth, wallHeight]);
-
   return (
-    <group position={position} rotation={[0, rotationY, 0]}>
-      {/* Plinth + door: one geometry, one dark-earth material */}
-      <mesh geometry={trimGeom} material={TRIM_MAT} receiveShadow castShadow />
-      {/* Walls */}
-      <mesh position={[0, wallHeight / 2 + 0.12, 0]} material={wallMat} castShadow receiveShadow>
-        <boxGeometry args={[width, wallHeight, depth]} />
-      </mesh>
-      {/* Roof */}
-      <mesh
-        geometry={roofGeom}
-        material={roofMat}
-        position={[0, wallHeight + 0.1, roofZ]}
-        castShadow
-        receiveShadow
-      />
+    <group name={name}>
+      <mesh geometry={geo.trim} material={TRIM_MAT} receiveShadow castShadow />
+      <mesh geometry={geo.walls} material={WALL_MAT} castShadow receiveShadow />
+      <mesh geometry={geo.roofs} material={roofMaterial(roofFinish)} castShadow receiveShadow />
       {/* Windows (data-driven glow) */}
-      <mesh geometry={windowsGeom}>
+      <mesh geometry={geo.windows}>
         <meshBasicMaterial color={glassColor} toneMapped={false} />
       </mesh>
-      {verandaGeom && (
-        <mesh geometry={verandaGeom} material={VERANDA_MAT} castShadow receiveShadow />
+      {geo.verandas && (
+        <mesh geometry={geo.verandas} material={VERANDA_MAT} castShadow receiveShadow />
       )}
     </group>
   );
+}
+
+export interface VillageHouseProps extends HouseSpec {
+  windowGlow?: number;
+  roofFinish?: RoofFinish;
+}
+
+/** A single house: a one-house cluster. */
+export function VillageHouse({ windowGlow, roofFinish, ...spec }: VillageHouseProps) {
+  const {
+    width,
+    depth,
+    wallHeight,
+    roofHeight,
+    wallColor,
+    roofColor,
+    overhang,
+    windowsPerSide,
+    veranda,
+    position,
+    rotationY,
+  } = spec;
+  const px = position?.[0] ?? 0;
+  const py = position?.[1] ?? 0;
+  const pz = position?.[2] ?? 0;
+  const houses = useMemo<HouseSpec[]>(
+    () => [
+      {
+        width,
+        depth,
+        wallHeight,
+        roofHeight,
+        wallColor,
+        roofColor,
+        overhang,
+        windowsPerSide,
+        veranda,
+        position: [px, py, pz],
+        rotationY,
+      },
+    ],
+    [
+      width,
+      depth,
+      wallHeight,
+      roofHeight,
+      wallColor,
+      roofColor,
+      overhang,
+      windowsPerSide,
+      veranda,
+      px,
+      py,
+      pz,
+      rotationY,
+    ]
+  );
+  return <HouseCluster houses={houses} windowGlow={windowGlow} roofFinish={roofFinish} />;
 }

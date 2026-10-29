@@ -28,13 +28,9 @@ export function calculateMetrics(
   const perSectorAccum: Record<
     SectorId,
     { demandKwh: number; servedKwh: number; unservedKwh: number }
-  > = {
-    health: { demandKwh: 0, servedKwh: 0, unservedKwh: 0 },
-    water: { demandKwh: 0, servedKwh: 0, unservedKwh: 0 },
-    school: { demandKwh: 0, servedKwh: 0, unservedKwh: 0 },
-    households: { demandKwh: 0, servedKwh: 0, unservedKwh: 0 },
-    market: { demandKwh: 0, servedKwh: 0, unservedKwh: 0 },
-  };
+  > = Object.fromEntries(
+    SECTOR_IDS.map((id) => [id, { demandKwh: 0, servedKwh: 0, unservedKwh: 0 }])
+  ) as Record<SectorId, { demandKwh: number; servedKwh: number; unservedKwh: number }>;
 
   let socMinPct = battery.initialSocPct;
 

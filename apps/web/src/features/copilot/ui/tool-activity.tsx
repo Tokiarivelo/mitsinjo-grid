@@ -2,6 +2,7 @@
 
 import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { KNOWN_SECTORS } from '../utils/format-telemetry-channel';
 import { useTranslations } from '@/lib/i18n';
 import type { CopilotActivity } from '../types';
 
@@ -13,7 +14,6 @@ const KNOWN_TOOLS = new Set([
   'get_sector_metrics',
   'propose_change',
 ]);
-const KNOWN_SECTORS = new Set(['health', 'water', 'school', 'households', 'market']);
 
 export interface ToolActivityProps {
   activity: CopilotActivity;

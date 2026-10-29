@@ -237,6 +237,18 @@
           "rainy": "Pluvieux",
           "storm": "Orage"
         }
+      },
+      "sectorLoad": {
+        "title": "Charge des secteurs (en direct)",
+        "description": "Chaque changement relance la simulation aussitôt : 3D, métriques et graphiques suivent, même pendant la lecture.",
+        "unit": "×",
+        "connected": "Raccordé",
+        "disconnected": "Non raccordé",
+        "notConnected": "Non raccordé : aucune demande sur le réseau. Augmentez la charge ou appuyez sur Raccorder.",
+        "connect": "Raccorder",
+        "disconnect": "Débrancher",
+        "connectAria": "Raccorder {sector} au réseau",
+        "disconnectAria": "Débrancher {sector} du réseau"
       }
     },
     "strategyLab": {
@@ -447,7 +459,8 @@
         "partial": "Partiel",
         "unserved": "Coupé",
         "unknown": "Aucune donnée",
-        "noLoad": "Sans charge"
+        "noLoad": "Sans charge",
+        "disconnected": "Non raccordé"
       },
       "legendTitle": "Légende du schéma",
       "legendFlow": "Courant qui passe (électrons)",
@@ -580,7 +593,8 @@
     "water": "Station de pompage d'eau",
     "school": "École primaire",
     "households": "Foyers du village",
-    "market": "Marché local et artisans"
+    "market": "Marché local et artisans",
+    "industry": "Petite usine"
   },
   "warnings": {
     "title": "Alertes du réseau",

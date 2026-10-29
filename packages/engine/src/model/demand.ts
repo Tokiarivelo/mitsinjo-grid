@@ -21,7 +21,8 @@ export interface DemandStepResult {
 
 /**
  * Expected (profile-based) demand of one sector at hour t:
- * profileKw[t] × demandMultiplier × active demand_spike factors. Ignores meterReadings.
+ * profileKw[t] × sector loadMultiplier (default 1) × demandMultiplier × active demand_spike
+ * factors. Ignores meterReadings.
  */
 export function computeProfileDemandKw(
   sector: SectorConfig,
@@ -40,7 +41,8 @@ export function computeProfileDemandKw(
       spikeMultiplier *= event.factor;
     }
   }
-  return Math.max(0, (sector.profileKw[t] ?? 0) * demandMultiplier * spikeMultiplier);
+  const load = sector.loadMultiplier ?? 1;
+  return Math.max(0, (sector.profileKw[t] ?? 0) * load * demandMultiplier * spikeMultiplier);
 }
 
 export function computeDemandStep(

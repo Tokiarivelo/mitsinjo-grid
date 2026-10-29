@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { scenarios, simulate } from '@mitsinjo/engine';
+import { SECTOR_IDS, scenarios, simulate } from '@mitsinjo/engine';
 import { I18nProvider } from '@/lib/i18n';
 import { GridDiagram } from '../ui/grid-diagram';
 import { toSceneModel } from '../utils/to-scene-model';
@@ -109,8 +109,8 @@ describe('GridDiagram', () => {
     const states = Array.from(container.querySelectorAll('[data-wire-state]')).map((g) =>
       g.getAttribute('data-wire-state')
     );
-    // solar (night: idle), feeder, 5 sector lines
-    expect(states).toHaveLength(7);
+    // solar (night: idle), feeder, one line per sector
+    expect(states).toHaveLength(2 + SECTOR_IDS.length);
     expect(states.filter((s) => s === 'cut').length).toBeGreaterThanOrEqual(1);
 
     for (const g of container.querySelectorAll('[data-wire-state]')) {

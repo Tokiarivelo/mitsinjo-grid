@@ -1,7 +1,8 @@
 import type { SectorId, Priority, StrategyId, WeatherId } from '@mitsinjo/engine';
 
 /** `unknown` = no simulation result for this step yet. */
-export type BuildingStatus = 'full' | 'partial' | 'unserved' | 'unknown';
+/** `disconnected`: sector load set to 0 (e.g. the factory before it is connected). */
+export type BuildingStatus = 'full' | 'partial' | 'unserved' | 'unknown' | 'disconnected';
 export type StatusColor = 'battery-green' | 'warning-amber' | 'critical-red' | 'idle';
 export type BatteryStatusColor = 'healthy' | 'warning' | 'critical';
 
@@ -18,6 +19,10 @@ export interface BuildingSceneModel {
   status: BuildingStatus;
   statusColor: StatusColor;
   isCritical: boolean;
+  /** False when the sector's load multiplier is 0 (not connected to the grid). */
+  connected: boolean;
+  /** Sector load multiplier from the input (× 0–3, default 1). */
+  loadMultiplier: number;
 }
 
 export interface SolarSceneModel {

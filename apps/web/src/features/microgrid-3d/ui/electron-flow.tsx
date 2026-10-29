@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { LineFlowSceneModel } from '../types';
+import { useAmbientFrame } from '../hooks/use-ambient-frame';
 import { routeCable } from '../utils/cable-route';
 import {
   buildArcPath,
@@ -43,6 +44,7 @@ interface Track {
 export function ElectronFlow({ lines, animate = true }: ElectronFlowProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const invalidate = useThree((s) => s.invalidate);
+  const requestFrame = useAmbientFrame();
 
   const { tracks, total, colors } = useMemo(() => {
     const list: Track[] = [];
@@ -100,7 +102,7 @@ export function ElectronFlow({ lines, animate = true }: ElectronFlowProps) {
   useFrame((state) => {
     if (!isFlowing) return;
     place(state.clock.elapsedTime);
-    state.invalidate();
+    requestFrame();
   });
 
   if (total === 0) return null;
