@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/lifeline-intensity-lighting`
+**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/lifeline-intensity-lighting` · **PR:** [#28](https://github.com/Tokiarivelo/mitsinjo-grid/pull/28)
 
 ## State
 
