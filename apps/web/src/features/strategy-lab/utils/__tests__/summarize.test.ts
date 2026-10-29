@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compare, scenarios } from '@mitsinjo/engine';
-import { summarizeComparison } from '../summarize';
+import { bestMetricsFor, bestStrategies, summarizeComparison } from '../summarize';
 
 describe('summarizeComparison rule engine (P4-T5, P4-T7)', () => {
   it('returns null when comparison is missing or incomplete', () => {
@@ -20,7 +20,9 @@ describe('summarizeComparison rule engine (P4-T5, P4-T7)', () => {
     expect(summary?.titleKey).toBe('summaryNominalTitle');
     expect(summary?.descriptionKey).toBe('summaryNominalDesc');
     expect(summary?.evidenceRef).toContain('unservedKwh=0.0');
-    expect(summary?.bestEssentialCoverage).toBeDefined();
+    // Every strategy ties on baseline: no metric gets a best-value badge
+    expect(summary?.bestEssentialCoverage).toEqual([]);
+    expect(summary?.bestDelivered).toEqual([]);
   });
 
   it('generates hero summary on cloudy_afternoon deficit recommending essential_first', () => {
@@ -36,7 +38,8 @@ describe('summarizeComparison rule engine (P4-T5, P4-T7)', () => {
     expect(summary?.titleKey).toBe('summaryHeroTitle');
     expect(summary?.descriptionKey).toBe('summaryHeroDesc');
     expect(summary?.descriptionParams?.propUnserved).toBeDefined();
-    expect(summary?.bestEssentialCoverage).toBe('essential_first');
+    // essential_first and balanced both serve 100 % critical: both get the badge, not proportional
+    expect(summary?.bestEssentialCoverage).toEqual(['essential_first', 'balanced']);
   });
 
   it('stress summary recommends the strategy with the lowest critical unserved energy', () => {
@@ -54,7 +57,7 @@ describe('summarizeComparison rule engine (P4-T5, P4-T7)', () => {
 
     expect(summary?.titleKey).toBe('summaryStressTitle');
     expect(summary?.recommendedStrategy).toBe(lowest);
-    expect(summary?.recommendedStrategy).toBe(summary?.bestEssentialCoverage);
+    expect(summary?.bestEssentialCoverage).toEqual([summary?.recommendedStrategy]);
   });
 
   it('stress summary is not hardwired to essential_first', () => {
@@ -68,7 +71,7 @@ describe('summarizeComparison rule engine (P4-T5, P4-T7)', () => {
     const flipped = summarizeComparison(swapped);
 
     expect(original?.recommendedStrategy).not.toBe(flipped?.recommendedStrategy);
-    expect(flipped?.recommendedStrategy).toBe(flipped?.bestEssentialCoverage);
+    expect(flipped?.bestEssentialCoverage).toEqual([flipped?.recommendedStrategy]);
   });
 
   it('hero summary passes both critical unserved values as params (no hardcoded numbers)', () => {
@@ -78,6 +81,49 @@ describe('summarizeComparison rule engine (P4-T5, P4-T7)', () => {
     expect(summary?.descriptionParams).toEqual({
       essUnserved: '0.0 kWh',
       propUnserved: expect.stringMatching(/kWh$/),
+    });
+  });
+
+  it('bestStrategies returns every tied winner, and nothing when all strategies tie', () => {
+    const comp = compare(scenarios.cloudy_afternoon.input, [
+      'proportional',
+      'essential_first',
+      'balanced',
+    ]);
+    const ranked = (['proportional', 'essential_first', 'balanced'] as const).map((id) => ({
+      id,
+      res: comp[id]!,
+    }));
+
+    expect(bestStrategies(ranked, (m) => m.criticalUnservedKwh, 'min')).toEqual([
+      'essential_first',
+      'balanced',
+    ]);
+    // Total served is identical across strategies (they only redistribute): no winner
+    expect(bestStrategies(ranked, (m) => m.servedKwh, 'max')).toEqual([]);
+    expect(bestStrategies(ranked.slice(0, 1), (m) => m.servedKwh, 'max')).toEqual([]);
+  });
+
+  it('bestMetricsFor maps the summary to per-card badge flags', () => {
+    const comp = compare(scenarios.cloudy_afternoon.input, [
+      'proportional',
+      'essential_first',
+      'balanced',
+    ]);
+    const summary = summarizeComparison(comp);
+
+    expect(bestMetricsFor(summary, 'essential_first')).toEqual({
+      delivered: false,
+      essential: true,
+      unmet: false,
+      soc: false,
+    });
+    expect(bestMetricsFor(summary, 'proportional').essential).toBe(false);
+    expect(bestMetricsFor(null, 'balanced')).toEqual({
+      delivered: false,
+      essential: false,
+      unmet: false,
+      soc: false,
     });
   });
 });

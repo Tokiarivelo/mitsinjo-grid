@@ -701,7 +701,29 @@
     "badgeTop": "TOP",
     "badgeBest": "MEILLEUR",
     "badgeMin": "MIN",
-    "badgeMax": "MAX"
+    "badgeMax": "MAX",
+    "params": {
+      "title": "Paramètres de comparaison",
+      "subtitle": "Mêmes entrées pour les trois stratégies. Les résultats se mettent à jour automatiquement.",
+      "show": "Afficher les paramètres",
+      "hide": "Masquer les paramètres",
+      "reset": "Revenir au scénario",
+      "conditions": "Solaire, demande et batterie",
+      "sectorRules": "Priorités et plafonds par secteur",
+      "sectorRulesDesc": "Les priorités changent Essential-First et Balanced ; Proportional les ignore. Les plafonds s'appliquent à toutes les stratégies.",
+      "priorityFor": "Priorité pour {sector}",
+      "limitPower": "Limiter la puissance",
+      "removeLimit": "Retirer la limite",
+      "limitFor": "Limiter la puissance pour {sector}",
+      "removeLimitFor": "Retirer la limite de puissance pour {sector}",
+      "maxKw": "Puissance max",
+      "fromHour": "De",
+      "toHour": "À",
+      "errors": {
+        "outOfRange": "Valeur hors limites (0–500 kW, heures 0–24).",
+        "capHoursOrder": "L'heure de fin doit être après l'heure de début."
+      }
+    }
   },
   "charts": {
     "hourAxis": "Heure du jour",

@@ -11,6 +11,7 @@ import {
   selectInput,
   selectIsRunning,
   selectScenarioId,
+  selectStatus,
   useSimulationStore,
 } from '@/stores';
 import { useTranslations } from '@/lib/i18n';
@@ -21,7 +22,18 @@ import { InsightCard } from '@/components/ui/insight-card';
 import { ImpactBanner } from '@/components/ui/impact-banner';
 import { StrategyComparisonChart } from '@/components/charts';
 import { StrategyCard } from './strategy-card';
-import { summarizeComparison } from '../utils/summarize';
+import { bestMetricsFor, summarizeComparison } from '../utils/summarize';
+import { useAutoCompare } from '../hooks/use-auto-compare';
+import { StrategyParamsPanel } from './strategy-params-panel';
+
+const STRATEGY_CARDS: readonly {
+  id: StrategyId;
+  ruleKey: 'proportionalRule' | 'essentialFirstRule' | 'balancedRule';
+}[] = [
+  { id: 'proportional', ruleKey: 'proportionalRule' },
+  { id: 'essential_first', ruleKey: 'essentialFirstRule' },
+  { id: 'balanced', ruleKey: 'balancedRule' },
+];
 
 export function StrategyLabPage() {
   const tCommon = useTranslations('common');
@@ -35,8 +47,18 @@ export function StrategyLabPage() {
   const comparison = useSimulationStore(selectComparison);
   const activeStrategy = useSimulationStore(selectActiveStrategy);
 
+  const status = useSimulationStore(selectStatus);
   const runComparison = useSimulationStore((s) => s.run);
   const selectStrategy = useSimulationStore((s) => s.selectStrategy);
+  const patchInput = useSimulationStore((s) => s.patchInput);
+  const resetInput = useSimulationStore((s) => s.reset);
+
+  useAutoCompare();
+
+  const handleReset = () => {
+    resetInput();
+    runComparison();
+  };
 
   // Derive decision summary strictly by rule from engine comparison
   const summary = useMemo(() => {
@@ -84,6 +106,15 @@ export function StrategyLabPage() {
         </div>
       </div>
 
+      {/* Shared inputs: every edit re-runs all strategies (useAutoCompare) */}
+      <StrategyParamsPanel
+        input={input}
+        status={status}
+        isModified={status === 'modified'}
+        onPatch={patchInput}
+        onReset={handleReset}
+      />
+
       {/* Decision Summary InsightCard (rule-derived from engine numbers) */}
       {hasResults && summary && (
         <div className="grid grid-cols-1 gap-4">
@@ -109,65 +140,18 @@ export function StrategyLabPage() {
 
       {/* 1. Side-by-side Strategy Columns (Proportional vs Essential-First vs Balanced) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Proportional Strategy Card */}
-        <StrategyCard
-          strategyId="proportional"
-          name={tStrategies('proportional')}
-          rule={tStrategies('proportionalRule')}
-          result={comparison.proportional}
-          isActive={activeStrategy === 'proportional'}
-          bestMetrics={
-            summary
-              ? {
-                  delivered: summary.bestDelivered === 'proportional',
-                  essential: summary.bestEssentialCoverage === 'proportional',
-                  unmet: summary.lowestUnmet === 'proportional',
-                  soc: summary.highestEndSoc === 'proportional',
-                }
-              : undefined
-          }
-          onSelectStrategy={() => handleUseStrategy('proportional')}
-        />
-
-        {/* Essential-First Priority Strategy Card */}
-        <StrategyCard
-          strategyId="essential_first"
-          name={tStrategies('essential_first')}
-          rule={tStrategies('essentialFirstRule')}
-          result={comparison.essential_first}
-          isActive={activeStrategy === 'essential_first'}
-          bestMetrics={
-            summary
-              ? {
-                  delivered: summary.bestDelivered === 'essential_first',
-                  essential: summary.bestEssentialCoverage === 'essential_first',
-                  unmet: summary.lowestUnmet === 'essential_first',
-                  soc: summary.highestEndSoc === 'essential_first',
-                }
-              : undefined
-          }
-          onSelectStrategy={() => handleUseStrategy('essential_first')}
-        />
-
-        {/* Balanced Strategy Card */}
-        <StrategyCard
-          strategyId="balanced"
-          name={tStrategies('balanced')}
-          rule={tStrategies('balancedRule')}
-          result={comparison.balanced}
-          isActive={activeStrategy === 'balanced'}
-          bestMetrics={
-            summary
-              ? {
-                  delivered: summary.bestDelivered === 'balanced',
-                  essential: summary.bestEssentialCoverage === 'balanced',
-                  unmet: summary.lowestUnmet === 'balanced',
-                  soc: summary.highestEndSoc === 'balanced',
-                }
-              : undefined
-          }
-          onSelectStrategy={() => handleUseStrategy('balanced')}
-        />
+        {STRATEGY_CARDS.map(({ id, ruleKey }) => (
+          <StrategyCard
+            key={id}
+            strategyId={id}
+            name={tStrategies(id)}
+            rule={tStrategies(ruleKey)}
+            result={comparison[id]}
+            isActive={activeStrategy === id}
+            bestMetrics={bestMetricsFor(summary, id)}
+            onSelectStrategy={() => handleUseStrategy(id)}
+          />
+        ))}
       </div>
 
       {/* 2. Comparison Chart Matrix */}

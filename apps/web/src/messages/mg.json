@@ -701,7 +701,29 @@
     "badgeTop": "AMBONY",
     "badgeBest": "TSARA INDRINDRA",
     "badgeMin": "MIN",
-    "badgeMax": "MAX"
+    "badgeMax": "MAX",
+    "params": {
+      "title": "Masontsivana fampitahana",
+      "subtitle": "Angona mitovy ho an'ireo paikady telo. Mivaozina ho azy ny vokatra.",
+      "show": "Asehoy ny masontsivana",
+      "hide": "Afeno ny masontsivana",
+      "reset": "Avereno amin'ny toe-javatra",
+      "conditions": "Masoandro, filana ary bateria",
+      "sectorRules": "Laharam-pahamehana sy fetran'ny herinaratra isaky ny sehatra",
+      "sectorRulesDesc": "Ny laharam-pahamehana dia manova ny Essential-First sy Balanced; tsy raharahian'ny Proportional izany. Mihatra amin'ny paikady rehetra ny fetra.",
+      "priorityFor": "Laharam-pahamehana ho an'ny {sector}",
+      "limitPower": "Fetero ny herinaratra",
+      "removeLimit": "Esory ny fetra",
+      "limitFor": "Fetero ny herinaratra ho an'ny {sector}",
+      "removeLimitFor": "Esory ny fetran'ny herinaratra ho an'ny {sector}",
+      "maxKw": "Hery ambony indrindra",
+      "fromHour": "Manomboka",
+      "toHour": "Hatramin'ny",
+      "errors": {
+        "outOfRange": "Tsy ao anatin'ny fetra azo ekena ny sanda (0–500 kW, ora 0–24).",
+        "capHoursOrder": "Tsy maintsy aorian'ny ora fanombohana ny ora fiafarana."
+      }
+    }
   },
   "charts": {
     "hourAxis": "Ora amin'ny andro",

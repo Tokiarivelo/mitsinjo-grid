@@ -1,33 +1,15 @@
 'use client';
 
-import { useState } from 'react';
 import { AlertTriangle, RotateCcw, Sliders } from 'lucide-react';
-import {
-  getSolarDrop,
-  type InputPatch,
-  type SimulationInput,
-  type StrategyId,
-} from '@mitsinjo/engine';
+import type { InputPatch, SimulationInput, StrategyId } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
-import { SimControl } from '@/components/ui/sim-control';
 import { Button } from '@/components/ui/button';
 import { PlaybackActions } from './playback-actions';
 import { simStatusBadgeVariant } from '../utils/playback';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useTranslations } from '@/lib/i18n';
-import { validatePatch } from '../utils/validate-patch';
-
-const DROP_FIELDS: ReadonlyArray<keyof InputPatch> = [
-  'solarDropPct',
-  'dropStartHour',
-  'dropDurationH',
-];
-
-function withoutDropErrors(errors: Record<string, string>): Record<string, string> {
-  const rest = { ...errors };
-  for (const f of DROP_FIELDS) delete rest[f];
-  return rest;
-}
+import { useConditionControls } from '../hooks/use-condition-controls';
+import { ConditionControlsGrid } from './condition-controls-grid';
 
 export interface SimControlsPanelProps {
   input: SimulationInput;
@@ -65,97 +47,17 @@ export function SimControlsPanel({
   const tSectors = useTranslations('sectors');
   const tPriorities = useTranslations('priorities');
 
-  // Committed solar drop (engine input). Start/duration sliders keep a draft so a rejected
-  // value stays visible until a compensating move makes start + duration fit the horizon.
-  const {
-    pct: currentDropPct,
-    startHour: initialDropStart,
-    durationH: initialDropDuration,
-  } = getSolarDrop(input);
-
-  const [draftStart, setDraftStart] = useState<number>(initialDropStart);
-  const [draftDuration, setDraftDuration] = useState<number>(initialDropDuration);
-
-  // Validation error dictionary for inline feedback
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Track previous input & status to sync draft state during render without cascading effects
-  const [prevInput, setPrevInput] = useState(input);
-  const [prevStatus, setPrevStatus] = useState(status);
-  if (prevInput !== input || prevStatus !== status) {
-    setPrevInput(input);
-    setPrevStatus(status);
-    if (status === 'ready' || status === 'complete') {
-      // Reset or run (incl. the header Run button): drafts follow the committed input again,
-      // so their pending horizon errors no longer apply.
-      setDraftStart(initialDropStart);
-      setDraftDuration(initialDropDuration);
-      setErrors((prev) => (status === 'ready' ? {} : withoutDropErrors(prev)));
-    }
-  }
-
-  const validateAndPatch = (field: keyof InputPatch, candidate: InputPatch) => {
-    const error = validatePatch(field, candidate, input);
-    const newErrors = { ...errors };
-    if (error) {
-      newErrors[field] = tSim(`errors.${error.key}`, error.params);
-      setErrors(newErrors);
-      return;
-    }
-    delete newErrors[field];
-    // The three drop controls are validated together: one valid move clears all of them.
-    setErrors(DROP_FIELDS.includes(field) ? withoutDropErrors(newErrors) : newErrors);
-    onPatch(candidate);
-  };
-
-  const handleSolarDropChange = (val: number) => {
-    validateAndPatch('solarDropPct', {
-      solarDropPct: val,
-      dropStartHour: draftStart,
-      dropDurationH: draftDuration,
-    });
-  };
-
-  const handleDropStartChange = (val: number) => {
-    setDraftStart(val);
-    validateAndPatch('dropStartHour', {
-      dropStartHour: val,
-      dropDurationH: draftDuration,
-      solarDropPct: currentDropPct,
-    });
-  };
-
-  const handleDropDurationChange = (val: number) => {
-    setDraftDuration(val);
-    validateAndPatch('dropDurationH', {
-      dropDurationH: val,
-      dropStartHour: draftStart,
-      solarDropPct: currentDropPct,
-    });
-  };
+  const { controls, hasErrors, draftsDirty, resetControls } = useConditionControls(
+    input,
+    status,
+    onPatch
+  );
 
   const handleReset = () => {
-    setErrors({});
-    setDraftStart(initialDropStart);
-    setDraftDuration(initialDropDuration);
+    resetControls();
     onReset();
   };
 
-  const handleDemandMultiplierChange = (val: number) => {
-    // Round to 1 decimal place to prevent floating point noise
-    const rounded = Math.round(val * 10) / 10;
-    validateAndPatch('demandMultiplier', { demandMultiplier: rounded });
-  };
-
-  const handleBatteryCapacityChange = (val: number) => {
-    validateAndPatch('batteryCapacityKwh', { batteryCapacityKwh: val });
-  };
-
-  const handleInitialSocChange = (val: number) => {
-    validateAndPatch('initialSocPct', { initialSocPct: val });
-  };
-
-  const hasErrors = Object.keys(errors).length > 0;
   const isModified = status === 'modified';
 
   return (
@@ -181,13 +83,7 @@ export function SimControlsPanel({
             variant="secondary"
             size="sm"
             onClick={handleReset}
-            disabled={
-              status === 'ready' &&
-              !isModified &&
-              !hasErrors &&
-              draftStart === initialDropStart &&
-              draftDuration === initialDropDuration
-            }
+            disabled={status === 'ready' && !isModified && !hasErrors && !draftsDirty}
             icon={<RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />}
             aria-label={tSim('resetScenario')}
           >
@@ -214,86 +110,7 @@ export function SimControlsPanel({
         </div>
       )}
 
-      {/* Controls Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {/* 1. Solar Drop % */}
-        <SimControl
-          label={tSim('solarDropPct')}
-          value={currentDropPct}
-          unit="%"
-          min={0}
-          max={90}
-          step={5}
-          onChange={handleSolarDropChange}
-          error={errors.solarDropPct}
-          description={tSim('solarDropDesc')}
-        />
-
-        {/* 2. Drop Start Hour */}
-        <SimControl
-          label={tSim('dropStartHour')}
-          value={draftStart}
-          unit="h"
-          min={0}
-          max={23}
-          step={1}
-          onChange={handleDropStartChange}
-          error={errors.dropStartHour}
-          description={tSim('dropStartDesc')}
-        />
-
-        {/* 3. Drop Duration */}
-        <SimControl
-          label={tSim('dropDuration')}
-          value={draftDuration}
-          unit="h"
-          min={1}
-          max={24}
-          step={1}
-          onChange={handleDropDurationChange}
-          error={errors.dropDurationH}
-          description={tSim('dropDurationDesc')}
-        />
-
-        {/* 4. Demand Multiplier */}
-        <SimControl
-          label={tSim('demandMultiplier')}
-          value={input.demandMultiplier}
-          unit="×"
-          min={0.5}
-          max={2.0}
-          step={0.1}
-          onChange={handleDemandMultiplierChange}
-          error={errors.demandMultiplier}
-          description={tSim('demandMultiplierDesc')}
-        />
-
-        {/* 5. Battery Capacity */}
-        <SimControl
-          label={tSim('batteryCapacity')}
-          value={input.battery.capacityKwh}
-          unit="kWh"
-          min={1}
-          max={2000}
-          step={10}
-          onChange={handleBatteryCapacityChange}
-          error={errors.batteryCapacityKwh}
-          description={tSim('batteryCapacityDesc')}
-        />
-
-        {/* 6. Initial SoC */}
-        <SimControl
-          label={tSim('initialSoc')}
-          value={input.battery.initialSocPct}
-          unit="%"
-          min={0}
-          max={100}
-          step={5}
-          onChange={handleInitialSocChange}
-          error={errors.initialSocPct}
-          description={tSim('initialSocDesc')}
-        />
-      </div>
+      <ConditionControlsGrid controls={controls} />
 
       {/* Active Sector Priorities & Caps (PY-T4) */}
       <div className="pt-2 border-t border-border/60 flex flex-col gap-2">

@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Lock, RotateCcw, Settings, Sliders } from 'lucide-react';
 import { SectorIcon } from '@/components/ui/sector-icon';
 import {
-  getSolarDrop,
   HORIZON_H,
   STEP_H,
   type InputPatch,
@@ -14,9 +13,19 @@ import {
 import { cn } from '@/lib/utils';
 import { fmtKw, fmtPct } from '@/lib/format';
 import { Button } from '@/components/ui/button';
-import { SimControl } from '@/components/ui/sim-control';
 import { useTranslations } from '@/lib/i18n';
-import { validatePatch } from '@/features/simulation';
+import {
+  ConditionControlsGrid,
+  useConditionControls,
+  type ConditionField,
+} from '@/features/simulation';
+
+const INSPECTOR_FIELDS: readonly ConditionField[] = [
+  'solarDropPct',
+  'demandMultiplier',
+  'batteryCapacityKwh',
+  'initialSocPct',
+];
 
 export interface AssumptionsInspectorProps {
   scenarioId: ScenarioId;
@@ -38,28 +47,12 @@ export function AssumptionsInspector({
   className,
 }: AssumptionsInspectorProps) {
   const tScenarios = useTranslations('features.scenarios');
-  const tSim = useTranslations('features.simulation');
   const tSectors = useTranslations('sectors');
   const tPriorities = useTranslations('priorities');
 
   // Confirmation state for reset
   const [confirmReset, setConfirmReset] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const { pct: dropPct, startHour: dropStart, durationH: dropDuration } = getSolarDrop(input);
-
-  const validateAndPatch = (field: keyof InputPatch, candidate: InputPatch) => {
-    const error = validatePatch(field, candidate, input);
-    const newErrors = { ...errors };
-    if (error) {
-      newErrors[field] = tSim(`errors.${error.key}`, error.params);
-      setErrors(newErrors);
-      return;
-    }
-    delete newErrors[field];
-    setErrors(newErrors);
-    onPatch(candidate);
-  };
+  const { controls } = useConditionControls(input, isModified ? 'modified' : 'ready', onPatch);
 
   const handleResetClick = () => {
     if (!confirmReset) {
@@ -113,60 +106,12 @@ export function AssumptionsInspector({
           <span>{tScenarios('editableOperatingParameters')}</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <SimControl
-            label={tSim('solarDropPct')}
-            value={dropPct}
-            unit="%"
-            min={0}
-            max={90}
-            step={5}
-            onChange={(val) =>
-              validateAndPatch('solarDropPct', {
-                solarDropPct: val,
-                dropStartHour: dropStart,
-                dropDurationH: dropDuration,
-              })
-            }
-            error={errors.solarDropPct}
-          />
-
-          <SimControl
-            label={tSim('demandMultiplier')}
-            value={input.demandMultiplier}
-            unit="×"
-            min={0.5}
-            max={2.0}
-            step={0.1}
-            onChange={(val) => {
-              const rounded = Math.round(val * 10) / 10;
-              validateAndPatch('demandMultiplier', { demandMultiplier: rounded });
-            }}
-            error={errors.demandMultiplier}
-          />
-
-          <SimControl
-            label={tSim('batteryCapacity')}
-            value={input.battery.capacityKwh}
-            unit="kWh"
-            min={1}
-            max={2000}
-            step={10}
-            onChange={(val) => validateAndPatch('batteryCapacityKwh', { batteryCapacityKwh: val })}
-            error={errors.batteryCapacityKwh}
-          />
-
-          <SimControl
-            label={tSim('initialSoc')}
-            value={input.battery.initialSocPct}
-            unit="%"
-            min={0}
-            max={100}
-            step={5}
-            onChange={(val) => validateAndPatch('initialSocPct', { initialSocPct: val })}
-            error={errors.initialSocPct}
-          />
-        </div>
+        <ConditionControlsGrid
+          controls={controls}
+          fields={INSPECTOR_FIELDS}
+          showDescriptions={false}
+          className="sm:grid-cols-2 lg:grid-cols-2"
+        />
       </div>
 
       {/* Read-Only Engine Constraints Section (Precedence 1) */}
