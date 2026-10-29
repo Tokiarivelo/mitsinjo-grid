@@ -9,3 +9,4 @@ export * from './utils/sector-caps';
 export * from './utils/divergence';
 export * from './ui/sensitivity-chart';
 export * from './ui/divergence-callout';
+export * from './utils/sweep-value';

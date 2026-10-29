@@ -9,7 +9,7 @@ import type {
   SweepParam,
   SweepResult,
 } from '@mitsinjo/engine';
-import { findDivergencePoint } from '../utils/divergence';
+import { DIVERGENCE_THRESHOLD_KWH, findDivergencePoint } from '../utils/divergence';
 import type { DivergenceInfo } from '../utils/divergence';
 
 export interface UseSensitivitySweepResult {
@@ -82,7 +82,7 @@ export function useSensitivitySweep(
   }, [deferredInput, config, deferredStrategies]);
 
   const divergence = useMemo(() => {
-    return findDivergencePoint(sweepResult, 0.1, deferredStrategies);
+    return findDivergencePoint(sweepResult, DIVERGENCE_THRESHOLD_KWH, deferredStrategies);
   }, [sweepResult, deferredStrategies]);
 
   return {

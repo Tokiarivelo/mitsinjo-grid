@@ -11,13 +11,16 @@ export interface DivergenceInfo {
   point?: SweepPoint;
 }
 
+/** Critical unserved gap (kWh) above which strategies count as diverging. */
+export const DIVERGENCE_THRESHOLD_KWH = 0.1;
+
 /**
  * Finds the first sweep point where critical unserved energy differs between
- * strategies by more than `threshold` kWh (default 0.1 kWh).
+ * strategies by more than `threshold` kWh. Values are raw engine numbers; the UI formats them.
  */
 export function findDivergencePoint(
   points: SweepResult,
-  threshold = 0.1,
+  threshold = DIVERGENCE_THRESHOLD_KWH,
   strategies?: readonly StrategyId[]
 ): DivergenceInfo {
   if (!points || points.length === 0) {
@@ -57,11 +60,11 @@ export function findDivergencePoint(
       return {
         found: true,
         value: point.value,
-        diff: Math.round(diff * 100) / 100,
+        diff,
         bestStrategy: bestStrat,
-        bestVal: Math.round(minVal * 100) / 100,
+        bestVal: minVal,
         worstStrategy: worstStrat,
-        worstVal: Math.round(maxVal * 100) / 100,
+        worstVal: maxVal,
         point,
       };
     }

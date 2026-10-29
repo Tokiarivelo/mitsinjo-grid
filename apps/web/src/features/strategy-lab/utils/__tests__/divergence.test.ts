@@ -104,10 +104,10 @@ describe('findDivergencePoint (PZ-T13)', () => {
     const result = findDivergencePoint(points, 0.1);
     expect(result.found).toBe(true);
     expect(result.value).toBe(30);
-    expect(result.diff).toBe(0.75);
+    expect(result.diff).toBeCloseTo(0.75);
     expect(result.bestStrategy).toBe('essential_first');
-    expect(result.bestVal).toBe(0.1);
+    expect(result.bestVal).toBeCloseTo(0.1);
     expect(result.worstStrategy).toBe('proportional');
-    expect(result.worstVal).toBe(0.85);
+    expect(result.worstVal).toBeCloseTo(0.85);
   });
 });

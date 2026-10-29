@@ -13,6 +13,7 @@ import {
 import type { SimulationResult, StrategyId } from '@mitsinjo/engine';
 import { fmtKwh, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
+import { STRATEGY_COLORS } from './strategy-colors';
 
 export interface StrategyComparisonChartProps {
   comparison: Partial<Record<StrategyId, SimulationResult>>;
@@ -137,7 +138,7 @@ export function StrategyComparisonChart({
             <Bar
               dataKey="proportional"
               name={tStrategies('proportional')}
-              fill="var(--color-energy-cyan)"
+              fill={STRATEGY_COLORS.proportional}
               radius={[4, 4, 0, 0]}
             />
           )}
@@ -145,7 +146,7 @@ export function StrategyComparisonChart({
             <Bar
               dataKey="essential_first"
               name={tStrategies('essential_first')}
-              fill="var(--color-solar-amber)"
+              fill={STRATEGY_COLORS.essential_first}
               radius={[4, 4, 0, 0]}
             />
           )}
@@ -153,7 +154,7 @@ export function StrategyComparisonChart({
             <Bar
               dataKey="balanced"
               name={tStrategies('balanced')}
-              fill="var(--color-battery-green)"
+              fill={STRATEGY_COLORS.balanced}
               radius={[4, 4, 0, 0]}
             />
           )}

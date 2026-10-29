@@ -13,9 +13,11 @@ import {
 } from 'recharts';
 import type { StrategyId, SweepParam, SweepResult } from '@mitsinjo/engine';
 import { ChartCard } from '@/components/ui/chart-card';
+import { STRATEGY_COLORS } from '@/components/charts/strategy-colors';
 import { fmtKwh } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { fmtSweepValue } from '../utils/sweep-value';
 
 export interface SensitivityChartProps {
   result: SweepResult;
@@ -44,7 +46,7 @@ function CustomTooltip({ active, payload, label, param }: CustomTooltipProps) {
     return null;
   }
 
-  const formattedLabel = param === 'demandMultiplier' ? `${label}×` : `${label}%`;
+  const formattedLabel = fmtSweepValue(param, label);
 
   return (
     <div className="rounded-card bg-surface-elevated/95 p-3 shadow-lg border border-border backdrop-blur text-xs font-mono">
@@ -69,11 +71,7 @@ function CustomTooltip({ active, payload, label, param }: CustomTooltipProps) {
   );
 }
 
-const STRATEGY_COLORS: Record<StrategyId, string> = {
-  proportional: '#f59e0b', // solar-amber
-  essential_first: '#10b981', // battery-green
-  balanced: '#06b6d4', // energy-cyan
-};
+const STRATEGY_ORDER = Object.keys(STRATEGY_COLORS) as StrategyId[];
 
 export function SensitivityChart({
   result,
@@ -94,18 +92,14 @@ export function SensitivityChart({
 
   const paramLabel = tStrategies(`sensitivity.params.${param}`);
 
-  const chartData = result.map((p) => ({
-    value: p.value,
-    ...(p.metrics.proportional?.criticalUnservedKwh !== undefined
-      ? { proportional: Math.round(p.metrics.proportional.criticalUnservedKwh * 100) / 100 }
-      : {}),
-    ...(p.metrics.essential_first?.criticalUnservedKwh !== undefined
-      ? { essential_first: Math.round(p.metrics.essential_first.criticalUnservedKwh * 100) / 100 }
-      : {}),
-    ...(p.metrics.balanced?.criticalUnservedKwh !== undefined
-      ? { balanced: Math.round(p.metrics.balanced.criticalUnservedKwh * 100) / 100 }
-      : {}),
-  }));
+  const chartData = result.map((p) => {
+    const row: Record<string, number> = { value: p.value };
+    for (const id of STRATEGY_ORDER) {
+      const m = p.metrics[id];
+      if (m) row[id] = m.criticalUnservedKwh;
+    }
+    return row;
+  });
 
   const paramPicker = (
     <div
@@ -152,89 +146,60 @@ export function SensitivityChart({
       <div style={{ width: '100%', height }}>
         <ResponsiveContainer width="100%" height="100%" debounce={100}>
           <LineChart data={chartData} margin={{ top: 12, right: 24, left: 0, bottom: 20 }}>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="var(--color-border, #e2e8f0)"
-              opacity={0.6}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.6} />
             <XAxis
               dataKey="value"
               type="number"
               domain={['dataMin', 'dataMax']}
-              tickFormatter={(v: number) => (param === 'demandMultiplier' ? `${v}×` : `${v}%`)}
-              tick={{ fontSize: 11, fill: 'var(--color-text-secondary, #64748b)' }}
-              axisLine={{ stroke: 'var(--color-border, #e2e8f0)' }}
+              tickFormatter={(v: number) => fmtSweepValue(param, v)}
+              tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
+              axisLine={{ stroke: 'var(--color-border)' }}
               tickLine={false}
             />
             <YAxis
               tickFormatter={(v: number) => `${v}`}
-              tick={{ fontSize: 11, fill: 'var(--color-text-secondary, #64748b)' }}
-              axisLine={{ stroke: 'var(--color-border, #e2e8f0)' }}
+              tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
+              axisLine={{ stroke: 'var(--color-border)' }}
               tickLine={false}
               width={40}
             />
             <Tooltip
               content={<CustomTooltip param={param} />}
-              cursor={{ stroke: 'var(--color-border-strong, #cbd5e1)', strokeDasharray: '4 4' }}
+              cursor={{ stroke: 'var(--color-border-strong)', strokeDasharray: '4 4' }}
             />
             <Legend
               verticalAlign="top"
               align="right"
               wrapperStyle={{ paddingBottom: 12 }}
               formatter={(value: string) => (
-                <span className="text-xs text-text-secondary">
-                  {tStrategies(value as StrategyId)}
-                </span>
+                <span className="text-xs text-text-secondary">{value}</span>
               )}
             />
             <ReferenceLine
               x={currentValue}
-              stroke="#64748b"
+              stroke="var(--color-text-muted)"
               strokeDasharray="4 4"
               strokeWidth={1.5}
               label={{
                 value: tStrategies('sensitivity.markerLabel'),
                 position: 'top',
-                fill: '#64748b',
+                fill: 'var(--color-text-muted)',
                 fontSize: 10,
               }}
             />
-            {strategies.includes('proportional') && (
+            {STRATEGY_ORDER.filter((id) => strategies.includes(id)).map((id) => (
               <Line
+                key={id}
                 type="monotone"
-                dataKey="proportional"
-                name="proportional"
-                stroke={STRATEGY_COLORS.proportional}
+                dataKey={id}
+                name={tStrategies(id)}
+                stroke={STRATEGY_COLORS[id]}
                 strokeWidth={2}
-                dot={{ r: 3, fill: STRATEGY_COLORS.proportional }}
+                dot={{ r: 3, fill: STRATEGY_COLORS[id] }}
                 activeDot={{ r: 5 }}
                 isAnimationActive={false}
               />
-            )}
-            {strategies.includes('essential_first') && (
-              <Line
-                type="monotone"
-                dataKey="essential_first"
-                name="essential_first"
-                stroke={STRATEGY_COLORS.essential_first}
-                strokeWidth={2}
-                dot={{ r: 3, fill: STRATEGY_COLORS.essential_first }}
-                activeDot={{ r: 5 }}
-                isAnimationActive={false}
-              />
-            )}
-            {strategies.includes('balanced') && (
-              <Line
-                type="monotone"
-                dataKey="balanced"
-                name="balanced"
-                stroke={STRATEGY_COLORS.balanced}
-                strokeWidth={2}
-                dot={{ r: 3, fill: STRATEGY_COLORS.balanced }}
-                activeDot={{ r: 5 }}
-                isAnimationActive={false}
-              />
-            )}
+            ))}
           </LineChart>
         </ResponsiveContainer>
       </div>
