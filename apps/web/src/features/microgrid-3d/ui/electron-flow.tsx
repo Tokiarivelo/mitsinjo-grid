@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import type { LineFlowSceneModel } from '../types';
 import { useAmbientFrame } from '../hooks/use-ambient-frame';
 import { routeCable } from '../utils/cable-route';
+import { NO_LOAD_KW } from '../utils/feeder-tone';
+import { flowFactor } from '../utils/scene-palette';
 import {
   buildArcPath,
   electronCount,
@@ -21,8 +23,6 @@ export interface ElectronFlowProps {
   animate?: boolean;
 }
 
-/** One electron every ~1.1 world units of cable. */
-const SPACING = 1.1;
 /** Line `speed` (0.5–2.5) → world units per second. */
 const SPEED_SCALE = 2.2;
 const RADIUS = 0.085;
@@ -52,10 +52,18 @@ export function ElectronFlow({ lines, animate = true }: ElectronFlowProps) {
     const cols: THREE.Color[] = [];
     let n = 0;
     for (const line of lines) {
-      if (!line.active || line.direction === 'idle') continue;
+      // Cut or idle cable: no particles (PL-T11)
+      if (!line.active || line.direction === 'idle' || line.flowKw <= NO_LOAD_KW) continue;
       const path = buildArcPath(routeCable(line.from, line.to).points);
-      const count = electronCount(path.total, SPACING);
-      const period = electronPeriodS(path.total, line.speed * SPEED_SCALE);
+
+      // Density ∝ feeder kW: wider spacing (fewer dots) at low power, 2.2 → 1.1 world units
+      const kwFactor = flowFactor(line.flowKw);
+      const lineSpacing = 2.2 - 1.1 * kwFactor;
+      const count = electronCount(path.total, lineSpacing);
+
+      // Speed ∝ feeder kW
+      const speed = Math.max(0.4, Math.min(3.0, line.speed * (0.6 + 1.2 * kwFactor)));
+      const period = electronPeriodS(path.total, speed * SPEED_SCALE);
       const key = `${line.from.join(',')}-${line.to.join(',')}`;
       list.push({
         key,
@@ -65,9 +73,11 @@ export function ElectronFlow({ lines, animate = true }: ElectronFlowProps) {
         reverse: line.direction === 'backward',
         firstInstance: n,
       });
-      // Whitened status color, pushed > 1 so the bloom pass makes it glow.
+
+      // Emissive ∝ kW: faint glow in survival (1.3), full bloom at high power (3.2)
       const c = new THREE.Color(line.color).lerp(new THREE.Color('#ffffff'), 0.35);
-      c.multiplyScalar(3);
+      const emissiveMultiplier = 1.3 + 1.9 * kwFactor;
+      c.multiplyScalar(emissiveMultiplier);
       for (let i = 0; i < count; i++) cols.push(c);
       n += count;
     }

@@ -109,6 +109,9 @@ The collapsible side deck contains four structured tabs:
       read "No load" (neutral). Legend under the diagram.
     - Every label has a reserved box (`utils/diagram-layout.ts`); tests assert no box overlaps another
       and no wire passes under a label.
+    - Zoom & pan (`useZoomPan`, `utils/zoom-pan.ts`, 100–400 %): zoom buttons bottom-right, Ctrl/⌘ + wheel or
+      pinch, drag to pan once zoomed (a tap still selects a sector). Full-screen button in the HUD for both 2D
+      views; in full screen the plain wheel zooms.
 
 ### 4. Tab `Copilote IA` (AI Copilot & Insights)
 

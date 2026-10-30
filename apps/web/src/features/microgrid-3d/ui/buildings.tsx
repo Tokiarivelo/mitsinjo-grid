@@ -8,12 +8,7 @@ import { SectorIcon } from '@/components/ui/sector-icon';
 import { cn } from '@/lib/utils';
 import { fmtPct } from '@/lib/format';
 import type { BuildingSceneModel } from '../types';
-import {
-  STATUS_BG_CLASS,
-  STATUS_HEX,
-  TOKEN_HEX,
-  WINDOW_GLOW_BY_STATUS,
-} from '../utils/scene-palette';
+import { STATUS_BG_CLASS, STATUS_HEX, TOKEN_HEX, glowFromIntensity } from '../utils/scene-palette';
 import { BODY_LAYOUT, BuildingBody } from './building-bodies';
 
 export interface VillageBuildingsProps {
@@ -196,7 +191,7 @@ export function VillageBuildings({
           >
             <BuildingBody
               id={id}
-              glow={WINDOW_GLOW_BY_STATUS[model.status] * (0.3 + 0.7 * lampGlow)}
+              glow={glowFromIntensity(model.intensity) * (0.3 + 0.7 * lampGlow)}
             />
           </BuildingFrame>
         );

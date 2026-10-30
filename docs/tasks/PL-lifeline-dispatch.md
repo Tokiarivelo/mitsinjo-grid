@@ -82,20 +82,20 @@ Record<SectorId, { mode; servedKw; intensity /* 0..1 */; breaker: 'closed' | 'li
 
 ## Phase 3 — Éclairage selon l'intensité, dans toutes les vues
 
-- [ ] **PL-T9** 3D fenêtres : remplacer `WINDOW_GLOW_BY_STATUS[status]` par une courbe continue
+- [x] **PL-T9** 3D fenêtres : remplacer `WINDOW_GLOW_BY_STATUS[status]` par une courbe continue
       `glowFromIntensity(intensity)` (`scene-palette.ts`, testée) : 0 → noir, plancher de survie → faible lueur
       chaude (une ampoule), 1 → pleine lumière. Secteur sans charge ≠ plein éclairage. Multiplié par `lampGlow`
       (heure) comme aujourd'hui.
-- [ ] **PL-T10** 3D lampadaires et guirlande du marché : `distribution-lines.tsx` reçoit l'intensité **du départ
+- [x] **PL-T10** 3D lampadaires et guirlande du marché : `distribution-lines.tsx` reçoit l'intensité **du départ
       qui alimente chaque poteau** (mapping poteau → secteur dans `cable-route.ts`) ; départ coupé → lampes
       éteintes, survie → lampes atténuées. Couleur instanciée par lampe (une seule draw call conservée).
-- [ ] **PL-T11** 3D flux : `electron-flow.tsx` / `flow-wire.tsx` — vitesse, densité et émissivité des particules
+- [x] **PL-T11** 3D flux : `electron-flow.tsx` / `flow-wire.tsx` — vitesse, densité et émissivité des particules
       ∝ kW du départ ; fil coupé gris sans particules.
-- [ ] **PL-T12** 2D (plan, unifilaire, aperçu overview) : épaisseur et opacité du trait ∝ intensité, halo
+- [x] **PL-T12** 2D (plan, unifilaire, aperçu overview) : épaisseur et opacité du trait ∝ intensité, halo
       `glow` sur les bâtiments selon intensité (tokens `@theme` uniquement, pas de hex), état « survie » en ambre
       pointillé. Légende mise à jour. Carte bâtiment : `servedKw / demandKw` + badge mode (`full / limited /
 lifeline / off`).
-- [ ] **PL-T13** Accessibilité : l'intensité n'est jamais portée par la couleur seule (libellé de mode + valeur
+- [x] **PL-T13** Accessibilité : l'intensité n'est jamais portée par la couleur seule (libellé de mode + valeur
       kW), contraste AA dark/light, `prefers-reduced-motion` coupe l'animation des particules.
 
 ## Phase 4 — Copilot, tests, doc

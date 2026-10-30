@@ -1,7 +1,7 @@
 'use client';
 
-import { useId, useMemo, type ReactNode } from 'react';
-import { BatteryCharging, Cpu, Sun } from 'lucide-react';
+import { useEffect, useId, useMemo, type ReactNode } from 'react';
+import { BatteryCharging, Cpu, RotateCcw, Sun, ZoomIn, ZoomOut } from 'lucide-react';
 import type { SectorId, StrategyId } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtKw, fmtPct } from '@/lib/format';
@@ -9,6 +9,8 @@ import { useTranslations } from '@/lib/i18n';
 import { SectorIcon } from '@/components/ui/sector-icon';
 import type { BreakerState, BuildingSceneModel, ControllerSceneModel, SceneModel } from '../types';
 import { useReducedMotion } from '../hooks/use-reduced-motion';
+import { useZoomPan } from '../hooks/use-zoom-pan';
+import { ZOOM_MAX, ZOOM_MIN, toTransform } from '../utils/zoom-pan';
 import {
   DIAGRAM_H,
   DIAGRAM_SECTORS,
@@ -21,6 +23,7 @@ import {
 } from '../utils/diagram-layout';
 import { toSvgPath } from '../utils/flow-path';
 import { STATUS_BG_CLASS, STATUS_TEXT_CLASS } from '../utils/scene-palette';
+import { NO_LOAD_KW } from '../utils/feeder-tone';
 import { useFeederLabels } from '../hooks/use-feeder-labels';
 import { FlowWire, type WireState } from './flow-wire';
 import { DispatchShareBar, FeederChip, type DispatchSegment } from './dispatch-share-bar';
@@ -31,11 +34,15 @@ export interface GridDiagramProps {
   selectedSector?: SectorId | null;
   onSelectSector?: (sector: SectorId | null) => void;
   className?: string;
+  /** Plain mouse wheel zooms (full screen). Otherwise Ctrl/⌘ + wheel, pinch or the buttons. */
+  wheelZoom?: boolean;
 }
 
 function sectorWireState(b: BuildingSceneModel, active: boolean): WireState {
-  if (active) return 'flow';
-  return b.status === 'unserved' ? 'cut' : 'idle';
+  if (active) {
+    return b.mode === 'lifeline' ? 'lifeline' : 'flow';
+  }
+  return b.status === 'unserved' || (b.demandKw > NO_LOAD_KW && b.mode === 'off') ? 'cut' : 'idle';
 }
 
 /**
@@ -50,6 +57,7 @@ export function GridDiagram({
   selectedSector = null,
   onSelectSector,
   className,
+  wheelZoom = false,
 }: GridDiagramProps) {
   const t = useTranslations('features.gridDiagram');
   const tSectors = useTranslations('sectors');
@@ -59,6 +67,9 @@ export function GridDiagram({
   const glow = `url(#${glowId})`;
 
   const layout = useMemo(() => diagramLayout(variant), [variant]);
+  const { viewportRef, zoom, zoomIn, zoomOut, reset, handlers } = useZoomPan({ wheelZoom });
+  // A new view starts unzoomed.
+  useEffect(() => reset(), [variant, reset]);
   const feeders = useFeederLabels(model);
   const { lines, solar, battery, buildings } = model;
   const feederOn = lines.batteryToBus.active;
@@ -76,209 +87,291 @@ export function GridDiagram({
       className={cn('flex flex-col gap-2 w-full h-full min-h-0', className)}
       data-variant={variant}
     >
-      {/* Fit a 16:10 box (same ratio as the viewBox) in the space the parent gives. */}
-      <div className="flex-1 min-h-0 w-full flex items-center justify-center [container-type:size]">
+      {/* Zoom/pan viewport; the content layer is transformed, layout (and cqw text) is not. */}
+      <div
+        ref={viewportRef}
+        data-zoom={zoom.scale.toFixed(2)}
+        className={cn(
+          'relative flex-1 min-h-0 w-full overflow-hidden select-none',
+          // Zoomed: every gesture pans. Unzoomed: one finger still scrolls the page.
+          zoom.scale > 1 ? 'touch-none cursor-grab active:cursor-grabbing' : 'touch-pan-y'
+        )}
+        {...handlers}
+      >
+        {/* Fit a 16:10 box (same ratio as the viewBox) in the space the parent gives. */}
         <div
-          role="group"
-          aria-label={t(variant === 'circuit' ? 'circuitLabel' : 'topologyLabel')}
-          className="relative aspect-[8/5] w-[min(100cqw,160cqh)] [container-type:size]"
+          className="absolute inset-0 flex items-center justify-center origin-top-left [container-type:size]"
+          style={{ transform: toTransform(zoom) }}
         >
-          <svg
-            viewBox={`0 0 ${DIAGRAM_W} ${DIAGRAM_H}`}
-            className="absolute inset-0 h-full w-full"
-            aria-hidden="true"
+          <div
+            role="group"
+            aria-label={t(variant === 'circuit' ? 'circuitLabel' : 'topologyLabel')}
+            className="relative aspect-[8/5] w-[min(100cqw,160cqh)] [container-type:size]"
           >
-            <defs>
-              <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="1.4" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
+            <svg
+              viewBox={`0 0 ${DIAGRAM_W} ${DIAGRAM_H}`}
+              className="absolute inset-0 h-full w-full"
+              aria-hidden="true"
+            >
+              <defs>
+                <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="1.4" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
 
-            {variant === 'topology' && <TopologyGround layout={layout} />}
+              {variant === 'topology' && <TopologyGround layout={layout} />}
 
-            {/* Circuit: EMS switchboard frame, bus bar + every breaker inside it */}
-            {layout.enclosure && (
-              <rect
-                x={layout.enclosure.x}
-                y={layout.enclosure.y}
-                width={layout.enclosure.w}
-                height={layout.enclosure.h}
-                rx={3}
-                strokeWidth={0.8}
-                strokeDasharray="3 2"
-                className={cn(
-                  'fill-energy-cyan/5',
-                  model.controller.mode === 'normal'
-                    ? 'stroke-energy-cyan/60'
-                    : 'stroke-warning-amber/70'
-                )}
+              {/* Circuit: EMS switchboard frame, bus bar + every breaker inside it */}
+              {layout.enclosure && (
+                <rect
+                  x={layout.enclosure.x}
+                  y={layout.enclosure.y}
+                  width={layout.enclosure.w}
+                  height={layout.enclosure.h}
+                  rx={3}
+                  strokeWidth={0.8}
+                  strokeDasharray="3 2"
+                  className={cn(
+                    'fill-energy-cyan/5',
+                    model.controller.mode === 'normal'
+                      ? 'stroke-energy-cyan/60'
+                      : 'stroke-warning-amber/70'
+                  )}
+                />
+              )}
+
+              {/* Bus bar under the feeders */}
+              <line
+                x1={layout.busBar[0][0]}
+                y1={layout.busBar[0][1]}
+                x2={layout.busBar[1][0]}
+                y2={layout.busBar[1][1]}
+                stroke="currentColor"
+                strokeWidth={3.5}
+                strokeLinecap="round"
+                className={feederOn ? 'text-energy-cyan' : 'text-border-strong'}
+                filter={feederOn ? glow : undefined}
               />
-            )}
 
-            {/* Bus bar under the feeders */}
-            <line
-              x1={layout.busBar[0][0]}
-              y1={layout.busBar[0][1]}
-              x2={layout.busBar[1][0]}
-              y2={layout.busBar[1][1]}
-              stroke="currentColor"
-              strokeWidth={3.5}
-              strokeLinecap="round"
-              className={feederOn ? 'text-energy-cyan' : 'text-border-strong'}
-              filter={feederOn ? glow : undefined}
-            />
-
-            <FlowWire
-              points={layout.wires.solarToHub}
-              line={lines.solarToBattery}
-              state={lines.solarToBattery.active ? 'flow' : 'idle'}
-              colorClass="text-solar-amber"
-              animate={animate}
-              glow={glow}
-            />
-            <FlowWire
-              points={layout.wires.hubToBus}
-              line={lines.batteryToBus}
-              state={feederOn ? 'flow' : 'idle'}
-              colorClass="text-energy-cyan"
-              animate={animate}
-              glow={glow}
-            />
-            {layout.wires.controllerToBus && (
               <FlowWire
-                points={layout.wires.controllerToBus}
+                points={layout.wires.solarToHub}
+                line={lines.solarToBattery}
+                state={lines.solarToBattery.active ? 'flow' : 'idle'}
+                colorClass="text-solar-amber"
+                animate={animate}
+                glow={glow}
+              />
+              <FlowWire
+                points={layout.wires.hubToBus}
                 line={lines.batteryToBus}
                 state={feederOn ? 'flow' : 'idle'}
                 colorClass="text-energy-cyan"
                 animate={animate}
                 glow={glow}
               />
-            )}
-            {DIAGRAM_SECTORS.map((id) => {
-              const b = buildings[id];
-              const line = lines.busToSectors[id];
-              const state = sectorWireState(b, line.active);
-              return (
+              {layout.wires.controllerToBus && (
                 <FlowWire
-                  key={id}
-                  points={layout.wires.busToSector[id]}
-                  line={line}
-                  state={state}
-                  colorClass={STATUS_TEXT_CLASS[state === 'cut' ? 'critical-red' : b.statusColor]}
+                  points={layout.wires.controllerToBus}
+                  line={lines.batteryToBus}
+                  state={feederOn ? 'flow' : 'idle'}
+                  colorClass="text-energy-cyan"
                   animate={animate}
                   glow={glow}
                 />
-              );
-            })}
-
-            {layout.breakers &&
-              DIAGRAM_SECTORS.map((id) => (
-                <Breaker
-                  key={id}
-                  at={layout.breakers![id]}
-                  state={model.controller.feeders[id].breaker}
-                  colorClass={STATUS_TEXT_CLASS[feeders.tones[id]]}
-                  tooltip={feeders.titles[id]}
-                />
-              ))}
-          </svg>
-
-          {/* Labels in their reserved boxes (same geometry as the SVG) */}
-          <Slot box={layout.busLabel}>
-            <span
-              className={cn(
-                'flex h-full items-center justify-center whitespace-nowrap rounded-full border bg-surface-elevated px-[0.9cqw] font-mono text-[1.5cqw] tracking-wide',
-                feederOn
-                  ? 'border-energy-cyan/40 text-energy-cyan'
-                  : 'border-border text-text-muted'
               )}
-            >
-              {t('bus')} · {fmtKw(model.hasResult ? lines.batteryToBus.flowKw : null)}
-            </span>
-          </Slot>
+              {DIAGRAM_SECTORS.map((id) => {
+                const b = buildings[id];
+                const line = lines.busToSectors[id];
+                const state = sectorWireState(b, line.active);
+                return (
+                  <FlowWire
+                    key={id}
+                    points={layout.wires.busToSector[id]}
+                    line={line}
+                    state={state}
+                    intensity={b.intensity}
+                    colorClass={STATUS_TEXT_CLASS[b.statusColor]}
+                    animate={animate}
+                    glow={glow}
+                  />
+                );
+              })}
 
-          <Slot box={layout.boxes.controller}>
-            <ControllerNodeCard
-              controller={model.controller}
-              strategy={model.strategy}
-              compact={variant === 'circuit'}
-              segments={
-                model.hasResult
-                  ? DIAGRAM_SECTORS.map((id) => ({
-                      id,
-                      share: model.controller.feeders[id].share,
-                      tone: feeders.tones[id],
-                      title: feeders.titles[id],
-                    }))
-                  : []
-              }
-            />
-          </Slot>
+              {layout.breakers &&
+                DIAGRAM_SECTORS.map((id) => (
+                  <Breaker
+                    key={id}
+                    at={layout.breakers![id]}
+                    state={model.controller.feeders[id].breaker}
+                    colorClass={STATUS_TEXT_CLASS[feeders.tones[id]]}
+                    tooltip={feeders.titles[id]}
+                  />
+                ))}
+            </svg>
 
-          {/* kW the controller sends down each feeder */}
-          {model.hasResult &&
-            DIAGRAM_SECTORS.filter((id) => buildings[id].connected).map((id) => (
-              <Slot key={`tag-${id}`} box={layout.feederTags[id]}>
-                <FeederChip
+            {/* Labels in their reserved boxes (same geometry as the SVG) */}
+            <Slot box={layout.busLabel}>
+              <span
+                className={cn(
+                  'flex h-full items-center justify-center whitespace-nowrap rounded-full border bg-surface-elevated px-[0.9cqw] font-mono text-[1.5cqw] tracking-wide',
+                  feederOn
+                    ? 'border-energy-cyan/40 text-energy-cyan'
+                    : 'border-border text-text-muted'
+                )}
+              >
+                {t('bus')} · {fmtKw(model.hasResult ? lines.batteryToBus.flowKw : null)}
+              </span>
+            </Slot>
+
+            <Slot box={layout.boxes.controller}>
+              <ControllerNodeCard
+                controller={model.controller}
+                strategy={model.strategy}
+                compact={variant === 'circuit'}
+                segments={
+                  model.hasResult
+                    ? DIAGRAM_SECTORS.map((id) => ({
+                        id,
+                        share: model.controller.feeders[id].share,
+                        tone: feeders.tones[id],
+                        title: feeders.titles[id],
+                      }))
+                    : []
+                }
+              />
+            </Slot>
+
+            {/* kW the controller sends down each feeder */}
+            {model.hasResult &&
+              DIAGRAM_SECTORS.filter((id) => buildings[id].connected).map((id) => (
+                <Slot key={`tag-${id}`} box={layout.feederTags[id]}>
+                  <FeederChip
+                    id={id}
+                    size="sm"
+                    showIcon={false}
+                    kwLabel={fmtKw(buildings[id].servedKw)}
+                    tone={feeders.tones[id]}
+                    coveragePct={null}
+                    title={feeders.titles[id]}
+                  />
+                </Slot>
+              ))}
+
+            <Slot box={layout.boxes.solar}>
+              <NodeCard
+                tone="solar"
+                icon={<Sun className="h-[2.2cqw] w-[2.2cqw] text-solar-amber" />}
+              >
+                <span className="block truncate text-text-secondary">{t('solar')}</span>
+                <span className="block truncate font-mono font-semibold text-solar-amber">
+                  {fmtKw(model.hasResult ? solar.currentKw : null)}
+                </span>
+              </NodeCard>
+            </Slot>
+
+            <Slot box={layout.boxes.hub}>
+              <NodeCard
+                tone="battery"
+                icon={<BatteryCharging className="h-[2.2cqw] w-[2.2cqw] text-battery-green" />}
+              >
+                <span className="block truncate text-text-secondary">{t('battery')}</span>
+                <span className="block truncate font-mono font-semibold text-battery-green">
+                  {t('soc', { pct: fmtPct(battery.socPct, 0) })}
+                </span>
+                <span className="block truncate font-mono text-text-muted">{batteryState}</span>
+              </NodeCard>
+            </Slot>
+
+            {DIAGRAM_SECTORS.map((id) => (
+              <Slot key={id} box={layout.boxes.sectors[id]}>
+                <SectorCard
                   id={id}
-                  size="sm"
-                  showIcon={false}
-                  kwLabel={fmtKw(buildings[id].servedKw)}
-                  tone={feeders.tones[id]}
-                  coveragePct={null}
-                  title={feeders.titles[id]}
+                  name={tSectors(id)}
+                  building={buildings[id]}
+                  hasResult={model.hasResult}
+                  statusLabel={t(`status.${buildings[id].status}`)}
+                  modeLabel={t(`feederMode.${buildings[id].mode}`)}
+                  noLoadLabel={t('status.noLoad')}
+                  selected={selectedSector === id}
+                  onSelect={onSelectSector}
                 />
               </Slot>
             ))}
-
-          <Slot box={layout.boxes.solar}>
-            <NodeCard
-              tone="solar"
-              icon={<Sun className="h-[2.2cqw] w-[2.2cqw] text-solar-amber" />}
-            >
-              <span className="block truncate text-text-secondary">{t('solar')}</span>
-              <span className="block truncate font-mono font-semibold text-solar-amber">
-                {fmtKw(model.hasResult ? solar.currentKw : null)}
-              </span>
-            </NodeCard>
-          </Slot>
-
-          <Slot box={layout.boxes.hub}>
-            <NodeCard
-              tone="battery"
-              icon={<BatteryCharging className="h-[2.2cqw] w-[2.2cqw] text-battery-green" />}
-            >
-              <span className="block truncate text-text-secondary">{t('battery')}</span>
-              <span className="block truncate font-mono font-semibold text-battery-green">
-                {t('soc', { pct: fmtPct(battery.socPct, 0) })}
-              </span>
-              <span className="block truncate font-mono text-text-muted">{batteryState}</span>
-            </NodeCard>
-          </Slot>
-
-          {DIAGRAM_SECTORS.map((id) => (
-            <Slot key={id} box={layout.boxes.sectors[id]}>
-              <SectorCard
-                id={id}
-                name={tSectors(id)}
-                building={buildings[id]}
-                hasResult={model.hasResult}
-                statusLabel={t(`status.${buildings[id].status}`)}
-                noLoadLabel={t('status.noLoad')}
-                selected={selectedSector === id}
-                onSelect={onSelectSector}
-              />
-            </Slot>
-          ))}
+          </div>
         </div>
+        <ZoomControls scale={zoom.scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={reset} />
       </div>
 
       <DiagramLegend />
+    </div>
+  );
+}
+
+/** Floating zoom buttons (bottom-right of the diagram viewport). */
+function ZoomControls({
+  scale,
+  onZoomIn,
+  onZoomOut,
+  onReset,
+}: {
+  scale: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onReset: () => void;
+}) {
+  const tCommon = useTranslations('common');
+  const t = useTranslations('features.gridDiagram');
+  const btn =
+    'flex h-10 w-10 md:h-8 md:w-8 items-center justify-center rounded-control-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary disabled:opacity-40 disabled:pointer-events-none cursor-pointer';
+  return (
+    <div
+      role="group"
+      aria-label={t('zoomControls')}
+      title={t('zoomHint')}
+      className="absolute bottom-2 right-2 z-10 flex items-center gap-0.5 rounded-control border border-border bg-surface-elevated/90 p-0.5 shadow-xs backdrop-blur"
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        onClick={onZoomOut}
+        disabled={scale <= ZOOM_MIN}
+        aria-label={tCommon('zoomOut')}
+        title={tCommon('zoomOut')}
+        className={btn}
+      >
+        <ZoomOut className="h-4 w-4" aria-hidden="true" />
+      </button>
+      <span
+        className="min-w-[3ch] text-center font-mono text-[11px] text-text-muted"
+        aria-live="polite"
+      >
+        {fmtPct(scale * 100, 0)}
+      </span>
+      <button
+        type="button"
+        onClick={onZoomIn}
+        disabled={scale >= ZOOM_MAX}
+        aria-label={tCommon('zoomIn')}
+        title={tCommon('zoomIn')}
+        className={btn}
+      >
+        <ZoomIn className="h-4 w-4" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        onClick={onReset}
+        disabled={scale <= ZOOM_MIN}
+        aria-label={tCommon('resetZoom')}
+        title={tCommon('resetZoom')}
+        className={btn}
+      >
+        <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
     </div>
   );
 }
@@ -333,6 +426,7 @@ function SectorCard({
   building,
   hasResult,
   statusLabel,
+  modeLabel,
   noLoadLabel,
   selected,
   onSelect,
@@ -342,6 +436,7 @@ function SectorCard({
   building: BuildingSceneModel;
   hasResult: boolean;
   statusLabel: string;
+  modeLabel: string;
   noLoadLabel: string;
   selected: boolean;
   onSelect?: (sector: SectorId | null) => void;
@@ -349,22 +444,59 @@ function SectorCard({
   // A sector with no demand this hour is not "powered": show it neutral.
   const noLoad = hasResult && building.status === 'full' && building.demandKw <= 0.05;
   const statusColor = noLoad ? 'idle' : building.statusColor;
+
+  // Halo glow on building cards ∝ intensity & mode (PL-T12, using semantic @theme tokens exclusively)
+  let glowClass = 'border-border shadow-none';
+  if (selected) {
+    glowClass =
+      'border-energy-cyan ring-2 ring-energy-cyan/50 shadow-[0_0_12px_var(--color-energy-cyan)]';
+  } else if (hasResult && building.connected && building.intensity > 0) {
+    if (building.mode === 'lifeline') {
+      glowClass = 'border-warning-amber/60 shadow-[0_0_10px_var(--color-warning-amber)]';
+    } else if (building.intensity > 0.6) {
+      glowClass = 'border-battery-green/60 shadow-[0_0_12px_var(--color-battery-green)]';
+    } else if (building.intensity > 0.2) {
+      glowClass = 'border-battery-green/50 shadow-[0_0_8px_var(--color-battery-green)]';
+    } else {
+      glowClass = 'border-warning-amber/50 shadow-[0_0_6px_var(--color-warning-amber)]';
+    }
+  } else if (building.status === 'unserved') {
+    glowClass = 'border-critical-red/70 shadow-none';
+  }
+
+  const modeBadgeClass =
+    building.mode === 'full'
+      ? 'border-battery-green/40 text-battery-green bg-battery-green/10'
+      : building.mode === 'lifeline'
+        ? 'border-warning-amber/50 text-warning-amber bg-warning-amber/20 font-semibold shadow-[0_0_6px_var(--color-warning-amber)]'
+        : building.mode === 'limited'
+          ? 'border-warning-amber/40 text-warning-amber bg-warning-amber/10'
+          : 'border-border text-text-muted bg-surface-elevated/40';
+
   const className = cn(
-    'flex h-full w-full flex-col justify-center overflow-hidden rounded-[0.9cqw] border bg-surface px-[1.2cqw] text-left text-[1.64cqw] leading-[1.2] transition-colors',
-    selected
-      ? 'border-energy-cyan ring-2 ring-energy-cyan/50'
-      : building.status === 'unserved'
-        ? 'border-critical-red/70'
-        : 'border-border',
+    'flex h-full w-full flex-col justify-center overflow-hidden rounded-[0.9cqw] border bg-surface px-[1.2cqw] text-left text-[1.64cqw] leading-[1.2] transition-all',
+    glowClass,
     onSelect && 'cursor-pointer hover:border-text-secondary'
   );
   const content = (
     <>
-      <span className="flex min-w-0 items-center gap-[0.6cqw]">
-        <SectorIcon sector={id} className="h-[1.9cqw] w-[1.9cqw]" />
-        <span className="truncate font-semibold text-text-primary">{name}</span>
-      </span>
-      <span className="truncate whitespace-nowrap font-mono">
+      <div className="flex items-center justify-between gap-[0.4cqw]">
+        <span className="flex min-w-0 items-center gap-[0.6cqw]">
+          <SectorIcon sector={id} className="h-[1.9cqw] w-[1.9cqw]" />
+          <span className="truncate font-semibold text-text-primary">{name}</span>
+        </span>
+        {hasResult && building.connected && (
+          <span
+            className={cn(
+              'shrink-0 rounded-full border px-[0.5cqw] py-[0.1cqw] font-mono text-[1.05cqw] uppercase tracking-wider',
+              modeBadgeClass
+            )}
+          >
+            {modeLabel}
+          </span>
+        )}
+      </div>
+      <span className="truncate whitespace-nowrap font-mono text-[1.35cqw]">
         <span className={cn('font-semibold', STATUS_TEXT_CLASS[statusColor])}>
           {fmtKw(hasResult ? building.servedKw : null)}
         </span>
@@ -551,6 +683,12 @@ function DiagramLegend() {
       ),
     },
     {
+      key: 'legendLifeline',
+      swatch: (
+        <span className="w-4 border-t-2 border-dashed border-warning-amber" aria-hidden="true" />
+      ),
+    },
+    {
       key: 'legendLimiter',
       swatch: (
         <span className="flex items-center gap-1" aria-hidden="true">
@@ -564,9 +702,7 @@ function DiagramLegend() {
     },
     {
       key: 'legendCut',
-      swatch: (
-        <span className="w-4 border-t border-dashed border-critical-red" aria-hidden="true" />
-      ),
+      swatch: <span className="w-4 border-t border-dashed border-text-muted" aria-hidden="true" />,
     },
     {
       key: 'legendIdle',

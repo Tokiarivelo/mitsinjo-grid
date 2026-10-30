@@ -197,11 +197,12 @@ Store (`useSimulationStore`): `workflow` (default `[{ weather: 'sunny' }]` = pla
 
 3D `SceneModel.weather: WeatherId` (from `toSceneModel({ weather })`, default `sunny`): drives sky, clouds and rain only.
 
-### 3D and 2D SceneModel Controller (PL-T5)
+### 3D and 2D SceneModel Controller & Intensity Lighting (PL-T5, PL-T9..PL-T13)
 
 ```ts
 type ControllerMode = 'normal' | 'rationing' | 'lifeline_only';
 type BreakerState = 'closed' | 'limited' | 'open';
+type WireState = 'flow' | 'lifeline' | 'cut' | 'idle';
 
 interface FeederSceneModel {
   mode: SectorMode;
@@ -215,10 +216,23 @@ interface ControllerSceneModel {
   mode: ControllerMode;
   feeders: Record<SectorId, FeederSceneModel>;
 }
+
+interface SectorPole {
+  x: number;
+  z: number;
+  sectorId: SectorId | null;
+}
 ```
 
 `SceneModel.controller: ControllerSceneModel` (pure display mapping from `toSceneModel`, shared across 3D digital twin and 2D single-line circuit / topology diagram). Camera preset `'controller'` frames the shelter at `BUS_POSITION`.
 Every sector cable starts at `feederExitPosition(id)` (one riser per feeder on the controller roof, ordered west → east by `FEEDER_EXIT_X`); the hub cable ends at `BUS_INLET_POSITION`. Display tone of a feeder = `feederTone(feeder, building)` (`utils/feeder-tone.ts`), shared by the 3D LEDs/risers/tags and both diagrams. `DiagramLayout` adds `feederTags` (kW tag box per feeder), `wires.controllerToBus` (topology: hub → EMS → bus) and `enclosure` (circuit: EMS switchboard around bus bar + breakers).
+
+**Intensity-Driven Lighting (PL-T9..PL-T13):**
+
+- **3D Windows & Market Lights:** `glowFromIntensity(intensity)` (`utils/scene-palette.ts`) replaces discrete status lookup with a continuous curve: 0 → black/off (zero load or unserved), ~0.25 → faint warm glow at lifeline floor, 1 → full radiant light. Multiplied by `lampGlow` (sky time-of-day).
+- **3D Street Lamps:** `mapPolesToSectors(lines)` (`utils/cable-route.ts`) maps utility poles to their powering sector feeder. Unserved/cut feeders shut off pole street lamps (black); lifeline feeders dim them; trunk poles (no feeder) stay lit while the bus is energized. Single instanced draw call (`pole-lamps`).
+- **3D Particles (`ElectronFlow`):** Speed, electron count/density, and bloom emissivity scale with line flow kW via `flowFactor(flowKw)` (`utils/scene-palette.ts`, saturates at `FLOW_SATURATION_KW`). Cut lines have zero particles.
+- **2D Diagrams (`GridDiagram`, `FlowWire`, `SectorCard`):** Core and halo stroke width & opacity scale with feeder intensity. Lifeline mode is represented by amber dashed line (`strokeDasharray="4 4"`). Cut lines are neutral grey (`text-text-muted`, dashed, no electrons). Building cards render `servedKw / demandKw`, mode badges (`full`, `limited`, `lifeline`, `off`), and intensity-driven glow halos via semantic `@theme` tokens. All text labels follow 100% key parity in EN/FR/MG. Reduced motion halts electron flow in both 2D and 3D.
 
 ### Sensitivity sweep
 

@@ -1,39 +1,39 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-29 · **By:** Antigravity · **Branch:** `feat/lifeline-dispatch-controller` · **PR:** [#27](https://github.com/Tokiarivelo/mitsinjo-grid/pull/27)
+**Updated:** 2026-10-30 · **By:** Claude Code · **Branch:** `feat/lifeline-intensity-lighting` · **PR:** [#28](https://github.com/Tokiarivelo/mitsinjo-grid/pull/28) (reviewed, fixes pushed)
 
 ## State
 
-- Plan `docs/tasks/PL-lifeline-dispatch.md`: **Phase 2 completed** (PL-T5…T8 done).
-- PL-T5: `toSceneModel` adds `controller: { mode, feeders }` with per-sector `intensity`, `breaker: 'closed' | 'limited' | 'open'`.
-- PL-T6: Village plan & circuit diagram (`grid-diagram.tsx`, `diagram-layout.ts`): new « EMS Dispatch » block + IEC breaker/limiter symbol with tooltip. Zero overlaps and crossings.
-- PL-T7: 3D technical shelter (`DispatchControllerUnit`) at `BUS_POSITION = [0, 0, 1]` with emissive status screen, breaker LEDs, interactive focus click, and camera preset `controller`.
-- PL-T8: Docs (`contracts.md`, `3d-scene.md`, `stitch-map.md`), 100% i18n parity in EN/FR/MG (`check-i18n` green).
-- Fluid 24h timeline scrubbing: continuous phase accumulation in `ElectronFlow` & `FlowWire` (eliminating resets/jumping on speed/hour change), smooth progress fill & `tabular-nums` in `TimelineScrubber`, 500ms playback ticker.
-- Tests: `make typecheck` green, `make test-engine` green, web unit tests green.
-
-- EMS feeders (follow-up, uncommitted): 3D badge moved in front of the shelter (no longer hides the battery);
-  sector cables leave from 6 roof risers (`feederExitPosition`); kW tag per cable (`ui/feeder-tags.tsx`);
-  share bar (`ui/dispatch-share-bar.tsx`) in the 3D badge + 2D EMS cards; topology hub → EMS → bus; circuit
-  EMS switchboard frame + kW tag per feeder. Legacy hub mast removed from `terrain.tsx`. Scenarios S41–S47.
+- Plan `docs/tasks/PL-lifeline-dispatch.md`: **Phase 3 done** (PL-T9…PL-T13): intensity lighting
+  (`glowFromIntensity`), pole lamps per feeder (`mapPolesToSectors`), electrons ∝ kW (`flowFactor`),
+  lifeline amber dashed wires + mode badges on 2D cards.
+- PR #28 review fixes: trunk-line street lamps stay lit while the bus is energized (were always dark);
+  shared `flowFactor()` replaces duplicated kW/3 scaling; `NO_LOAD_KW` instead of 0.05; FlowWire owns
+  lifeline/cut colors; named lamp hex constants; tests for lifeline wires + `flowFactor`.
+- Owner requests added on the same PR: 3D EMS badge centered on the shelter front (was hanging below the
+  pad); 2D Topology/Circuit zoom 100–400 % (buttons, Ctrl/⌘ + wheel, pinch), drag to pan, full screen
+  (plain wheel zooms there); HUD/legend padding fix (`sm:p-4` overrode it).
+- `useFullscreen` support check is hydration-safe (`useSyncExternalStore`, server snapshot false).
+- Manual scenarios S54–S61 added (`test-scenarios/02-simulation.md`).
 
 ## Next task
 
-- Next phase of PL: Phase 3 — Éclairage selon l'intensité dans toutes les vues (PL-T9…T13).
+- PL Phase 4 — Copilot, tests, doc (PL-T14…PL-T16).
 
 ## Decisions taken
 
-- Feeder colour = `feederTone()` (`utils/feeder-tone.ts`), shared by the 3D view and both 2D views; no demand → neutral grey.
+- Trunk poles (no feeder) follow `lines.batteryToBus.active`; sector poles follow feeder intensity.
+- Zoom keys `zoomIn/zoomOut/resetZoom` live in `common` (shared by diagram and copilot lightbox).
+- Wheel zoom needs Ctrl/⌘ outside full screen so the page still scrolls; unzoomed diagram keeps
+  `touch-pan-y` so one finger scrolls the page on mobile.
 
-- `ControllerMode` derived purely from engine `SectorStep.mode` and `LIFELINE_SHORTFALL` warning (normal, rationing, lifeline_only).
-- Technical shelter geometry merged into 1 mesh via `mergeParts`, keeping draw calls well below low/high budgets.
-- Breaker state `limited` activates IEC limiter symbol (notch + circle) on feeder in single-line circuit.
+## Known issues
+
+- Engine perf tests (`compare < 10 ms`, `sweep < 50 ms`) and two `simulation.test.tsx` cases time out
+  under CPU load (parallel `make check`, dev server running); they pass alone.
 
 ## Files touched this session
 
-- EMS feeders: `microgrid-3d/{types.ts,utils/{to-scene-model,feeder-tone,cable-route,diagram-layout,scene-palette}.ts,ui/{dispatch-share-bar,feeder-tags,dispatch-controller-unit,village-canvas,grid-diagram,terrain,camera-controller}.tsx,hooks/use-feeder-labels.ts}` + tests, messages (removed `emsController`), docs
-
-- Web: `apps/web/src/features/microgrid-3d/{types.ts,index.tsx,ui/grid-diagram.tsx,ui/dispatch-controller-unit.tsx,ui/village-canvas.tsx,ui/camera-controller.tsx,utils/diagram-layout.ts,utils/to-scene-model.ts}`, tests
-- Simulation: `apps/web/src/features/simulation/ui/village-viewport.tsx`
-- Messages: `apps/web/src/messages/{en,fr,mg}.json`
-- Docs: `docs/contracts.md`, `docs/design/3d-scene.md`, `docs/design/stitch-map.md`, `docs/tasks/PL-lifeline-dispatch.md`, `docs/tasks/README.md`
+- 3D/2D: `microgrid-3d/{utils/{scene-palette,zoom-pan}.ts,hooks/{use-zoom-pan,use-fullscreen}.ts,ui/{grid-diagram,flow-wire,electron-flow,distribution-lines,building-bodies,dispatch-controller-unit}.tsx}`
+- `simulation/ui/village-viewport.tsx`, `copilot/ui/media-lightbox-modal.tsx`, messages `{en,fr,mg}.json`
+- Docs: `docs/contracts.md`, `docs/design/screens/live-simulation.md`, `docs/design/stitch-map.md`

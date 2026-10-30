@@ -140,8 +140,30 @@ describe('GridDiagram', () => {
 
     for (const g of container.querySelectorAll('[data-wire-state]')) {
       const hasElectrons = g.querySelector('[data-electrons]') !== null;
-      expect(hasElectrons).toBe(g.getAttribute('data-wire-state') === 'flow');
+      const state = g.getAttribute('data-wire-state');
+      expect(hasElectrons).toBe(state === 'flow' || state === 'lifeline');
     }
+  });
+
+  it('draws lifeline feeders as amber wires that still carry electrons (PL-T12)', () => {
+    const result = simulate(stress, 'essential_first');
+    const hour = result.steps.findIndex((s) =>
+      Object.values(s.sectors).some((sec) => sec.mode === 'lifeline' && sec.servedKw > 0)
+    );
+    expect(hour).toBeGreaterThanOrEqual(0);
+    const model = toSceneModel({ input: stress, result, timeIndex: hour });
+    const { container } = render(
+      <I18nProvider>
+        <GridDiagram model={model} variant="topology" />
+      </I18nProvider>
+    );
+    const lifeline = container.querySelectorAll('[data-wire-state="lifeline"]');
+    expect(lifeline.length).toBeGreaterThanOrEqual(1);
+    for (const g of lifeline) {
+      expect(g.getAttribute('class')).toContain('text-warning-amber');
+      expect(g.querySelector('[data-electrons]')).not.toBeNull();
+    }
+    expect(screen.getAllByText('Lifeline').length).toBeGreaterThanOrEqual(1);
   });
 
   it('draws breakers in the circuit view and reports sector clicks', () => {
@@ -152,11 +174,36 @@ describe('GridDiagram', () => {
     expect(onSelect).toHaveBeenCalledWith('water');
   });
 
-  it('renders a legend that explains the electrons and limiter', () => {
+  it('renders a legend that explains the electrons, lifeline, and limiter (PL-T12)', () => {
     renderDiagram('topology', 12);
     const legend = screen.getByRole('list', { name: 'Diagram legend' });
     expect(within(legend).getByText('Current flowing (electrons)')).toBeInTheDocument();
+    expect(within(legend).getByText('Lifeline (survival mode)')).toBeInTheDocument();
     expect(within(legend).getByText('Limiter active (lifeline)')).toBeInTheDocument();
+  });
+
+  it('renders building cards with mode badge and power metrics (PL-T12)', () => {
+    renderDiagram('topology', 12);
+    // Each connected sector card displays its mode badge (Full / Limited / Lifeline / Off)
+    const badges = screen.getAllByText(/Full|Limited|Lifeline|Off/i);
+    expect(badges.length).toBeGreaterThanOrEqual(1);
+
+    // Displays served / demand kW on cards
+    const waterCard = screen.getByRole('button', { name: /Water/i });
+    expect(within(waterCard).getAllByText(/kW/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('zooms with the zoom buttons and resets (diagram zoom)', () => {
+    const { container } = renderDiagram('circuit', 12);
+    const controls = screen.getByRole('group', { name: 'Diagram zoom' });
+    const zoomOut = within(controls).getByRole('button', { name: 'Zoom out' });
+    const reset = within(controls).getByRole('button', { name: 'Reset zoom' });
+    expect(zoomOut).toBeDisabled();
+    fireEvent.click(within(controls).getByRole('button', { name: 'Zoom in' }));
+    expect(container.querySelector('[data-zoom]')!.getAttribute('data-zoom')).toBe('1.25');
+    expect(zoomOut).toBeEnabled();
+    fireEvent.click(reset);
+    expect(container.querySelector('[data-zoom]')!.getAttribute('data-zoom')).toBe('1.00');
   });
 
   it.each(['topology', 'circuit'] as const)(

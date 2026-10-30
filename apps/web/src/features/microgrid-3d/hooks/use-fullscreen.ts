@@ -1,11 +1,13 @@
-import { type RefObject, useCallback, useEffect, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+
+const noopSubscribe = () => () => {};
+const fullscreenSupported = () => typeof document.documentElement?.requestFullscreen === 'function';
 
 /** Fullscreen toggle for one element (the 3D viewport card). */
 export function useFullscreen(ref: RefObject<HTMLElement | null>) {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const supported =
-    typeof document !== 'undefined' &&
-    typeof document.documentElement?.requestFullscreen === 'function';
+  // Server snapshot is `false`, so the server render and hydration match.
+  const supported = useSyncExternalStore(noopSubscribe, fullscreenSupported, () => false);
 
   useEffect(() => {
     const onChange = () =>

@@ -41,6 +41,10 @@ export interface BuildingSceneModel {
   connected: boolean;
   /** Sector load multiplier from the input (× 0–3, default 1). */
   loadMultiplier: number;
+  /** Intensity 0..1 relative to the sector's daily peak served kW from the engine result (PL-T9/PL-T12). */
+  intensity: number;
+  /** Feeder / sector mode from engine (PL-T12). */
+  mode: SectorMode;
 }
 
 export interface SolarSceneModel {

@@ -3,8 +3,10 @@
 import { useMemo } from 'react';
 import { Instance, Instances, Line } from '@react-three/drei';
 import * as THREE from 'three';
-import type { LineFlowSceneModel } from '../types';
-import { POLE_HEIGHT, routeCable } from '../utils/cable-route';
+import type { FeederSceneModel, LineFlowSceneModel } from '../types';
+import type { SectorId } from '@mitsinjo/engine';
+import { POLE_HEIGHT, mapPolesToSectors, routeCable } from '../utils/cable-route';
+import { STREET_LAMP_HEX, glowFromIntensity } from '../utils/scene-palette';
 import { ElectronFlow } from './electron-flow';
 
 export interface DistributionLinesProps {
@@ -13,6 +15,8 @@ export interface DistributionLinesProps {
     batteryToBus: LineFlowSceneModel;
     busToSectors: Record<string, LineFlowSceneModel>;
   };
+  /** Sector dispatch feeders to modulate street lamps per sector line (PL-T10). */
+  feeders?: Record<SectorId, FeederSceneModel>;
   /** False under reduced motion or a modified scenario: electrons freeze in place. */
   animate?: boolean;
   /** Street-lamp brightness from the sky palette (night → 1). */
@@ -74,6 +78,7 @@ function TransmissionCable({ line, halo }: SingleLineProps) {
 
 export function DistributionLines({
   lines,
+  feeders,
   animate = true,
   lampGlow = 0.5,
   halo = true,
@@ -87,11 +92,26 @@ export function DistributionLines({
     return list;
   }, [lines]);
 
-  const poles = useMemo(() => allLines.flatMap((l) => routeCable(l.from, l.to).poles), [allLines]);
-  const lampColor = useMemo(
-    () => new THREE.Color('#ffc078').multiplyScalar(0.6 + lampGlow * 2.4),
-    [lampGlow]
-  );
+  // Utility poles mapped to the sector feeder that powers them (PL-T10)
+  const mappedPoles = useMemo(() => mapPolesToSectors(lines), [lines]);
+
+  // Instanced lamp colors: lights follow feeder intensity (faint glow in survival, 0 when cut).
+  // Trunk poles (no feeder) stay lit while the bus is energized.
+  const poleLampColors = useMemo(() => {
+    const trunkIntensity = lines.batteryToBus.active ? 1 : 0;
+    return mappedPoles.map((p) => {
+      const intensity =
+        p.sectorId != null
+          ? (feeders?.[p.sectorId]?.intensity ?? (lines.busToSectors[p.sectorId]?.active ? 1 : 0))
+          : trunkIntensity;
+
+      if (intensity <= 0) {
+        return new THREE.Color(0, 0, 0);
+      }
+      const glow = glowFromIntensity(intensity);
+      return new THREE.Color(STREET_LAMP_HEX).multiplyScalar((0.4 + lampGlow * 2.2) * glow);
+    });
+  }, [mappedPoles, feeders, lines.busToSectors, lines.batteryToBus.active, lampGlow]);
 
   return (
     <group name="distribution-lines">
@@ -101,29 +121,33 @@ export function DistributionLines({
       <ElectronFlow lines={allLines} animate={animate} />
 
       {/* Wooden utility poles, cross-arms, insulators and a street lamp on each */}
-      <Instances limit={Math.max(1, poles.length)} name="pole-shafts" castShadow>
+      <Instances limit={Math.max(1, mappedPoles.length)} name="pole-shafts" castShadow>
         <cylinderGeometry args={[0.06, 0.09, POLE_HEIGHT + 0.25, 7]} />
         <meshStandardMaterial color="#6b4c34" roughness={0.9} />
-        {poles.map(([x, z], i) => (
-          <Instance key={i} position={[x, (POLE_HEIGHT + 0.25) / 2, z]} />
+        {mappedPoles.map((p, i) => (
+          <Instance key={i} position={[p.x, (POLE_HEIGHT + 0.25) / 2, p.z]} />
         ))}
       </Instances>
-      <Instances limit={Math.max(1, poles.length)} name="pole-arms" castShadow>
+      <Instances limit={Math.max(1, mappedPoles.length)} name="pole-arms" castShadow>
         <boxGeometry args={[0.8, 0.07, 0.07]} />
         <meshStandardMaterial color="#5a3f2b" roughness={0.9} />
-        {poles.map(([x, z], i) => (
+        {mappedPoles.map((p, i) => (
           <Instance
             key={i}
-            position={[x, POLE_HEIGHT + 0.05, z]}
+            position={[p.x, POLE_HEIGHT + 0.05, p.z]}
             rotation={[0, (i * 1.3) % Math.PI, 0]}
           />
         ))}
       </Instances>
-      <Instances limit={Math.max(1, poles.length)} name="pole-lamps">
+      <Instances limit={Math.max(1, mappedPoles.length)} name="pole-lamps">
         <sphereGeometry args={[0.07, 8, 6]} />
-        <meshBasicMaterial color={lampColor} toneMapped={false} />
-        {poles.map(([x, z], i) => (
-          <Instance key={i} position={[x, POLE_HEIGHT - 0.35, z + 0.12]} />
+        <meshBasicMaterial toneMapped={false} />
+        {mappedPoles.map((p, i) => (
+          <Instance
+            key={i}
+            position={[p.x, POLE_HEIGHT - 0.35, p.z + 0.12]}
+            color={poleLampColors[i]}
+          />
         ))}
       </Instances>
     </group>

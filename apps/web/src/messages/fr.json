@@ -25,7 +25,10 @@
     "theme": "Thème",
     "toggleTheme": "Changer le thème de couleur",
     "darkTheme": "Sombre",
-    "lightTheme": "Clair"
+    "lightTheme": "Clair",
+    "zoomIn": "Zoomer",
+    "zoomOut": "Dézoomer",
+    "resetZoom": "Réinitialiser le zoom"
   },
   "nav": {
     "overview": "Aperçu",
@@ -399,9 +402,6 @@
       "canvasTitle": "Atelier canevas interactif",
       "canvasMode": "Inspecteur canevas",
       "mediaMode": "Vue média",
-      "zoomIn": "Zoomer",
-      "zoomOut": "Dézoomer",
-      "resetZoom": "Réinitialiser le zoom",
       "gridOverlay": "Grille de repère",
       "clearCanvas": "Effacer le canevas",
       "attachDrawing": "Joindre le dessin au message",
@@ -465,10 +465,17 @@
       },
       "legendTitle": "Légende du schéma",
       "legendFlow": "Courant qui passe (électrons)",
+      "legendLifeline": "Survie (courant garanti)",
       "legendLimiter": "Limiteur actif (survie)",
       "legendPartial": "Alimentation partielle",
       "legendCut": "Ligne coupée (délestage)",
       "legendIdle": "Pas de courant",
+      "feederMode": {
+        "full": "Plein",
+        "limited": "Limité",
+        "lifeline": "Survie",
+        "off": "Coupé"
+      },
       "controller": {
         "title": "Contrôleur de dispatch EMS",
         "shortTitle": "Dispatch EMS",
@@ -487,7 +494,9 @@
         "closed": "{sector} : Fermé ({kw})",
         "limited": "{sector} : Limiteur de courant actif ({kw})",
         "open": "{sector} : Ouvert / Coupé (0 kW)"
-      }
+      },
+      "zoomControls": "Zoom du schéma",
+      "zoomHint": "Ctrl + molette ou pincer pour zoomer · glisser pour déplacer"
     }
   },
   "copilot": {

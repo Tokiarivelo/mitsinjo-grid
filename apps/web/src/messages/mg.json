@@ -25,7 +25,10 @@
     "theme": "Lohahevitra",
     "toggleTheme": "Hanova loko lohahevitra",
     "darkTheme": "Maizina",
-    "lightTheme": "Mazava"
+    "lightTheme": "Mazava",
+    "zoomIn": "Hanalehibe",
+    "zoomOut": "Hanamainty",
+    "resetZoom": "Averina amin'ny habeny"
   },
   "nav": {
     "overview": "Topimaso",
@@ -399,9 +402,6 @@
       "canvasTitle": "Fitaovana solaitra ifandrimbonana",
       "canvasMode": "Mpanara-maso solaitra",
       "mediaMode": "Fijerena haino aman-jery",
-      "zoomIn": "Hanalehibe",
-      "zoomOut": "Hanamainty",
-      "resetZoom": "Averina amin'ny habeny",
       "gridOverlay": "Tari-dalana efamira",
       "clearCanvas": "Fafao ny solaitra",
       "attachDrawing": "Ampidiro amin'ny hafatra ny sary",
@@ -465,10 +465,17 @@
       },
       "legendTitle": "Fanazavana ny kisary",
       "legendFlow": "Misy herinaratra mandeha (elektrôna)",
+      "legendLifeline": "Vonjy aina (herinaratra fototra)",
       "legendLimiter": "Famerana mandeha (vonjy aina)",
       "legendPartial": "Famatsiana ampahany",
       "legendCut": "Tariby tapaka (fanalana enta-mavesatra)",
       "legendIdle": "Tsy misy herinaratra",
+      "feederMode": {
+        "full": "Feno",
+        "limited": "Voafetra",
+        "lifeline": "Vonjy aina",
+        "off": "Tapaka"
+      },
       "controller": {
         "title": "Mpanara-maso ny fitsinjarana EMS",
         "shortTitle": "Fitsinjarana EMS",
@@ -487,7 +494,9 @@
         "closed": "{sector}: Mikatona ({kw})",
         "limited": "{sector}: Famerana mandeha ({kw})",
         "open": "{sector}: Misokatra / Tapaka (0 kW)"
-      }
+      },
+      "zoomControls": "Fanalehibiazana ny kisary",
+      "zoomHint": "Ctrl + kodiarana na tsongoy mba hanalehibe · sintony mba hanetsika"
     }
   },
   "copilot": {

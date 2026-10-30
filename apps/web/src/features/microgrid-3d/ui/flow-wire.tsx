@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { cn } from '@/lib/utils';
 import type { LineFlowSceneModel } from '../types';
 import type { Pt } from '../utils/diagram-layout';
 import {
@@ -9,13 +8,14 @@ import {
   sampleArcPath,
   toSvgPath,
 } from '../utils/flow-path';
+import { flowFactor } from '../utils/scene-palette';
 
-export type WireState = 'flow' | 'cut' | 'idle';
+export type WireState = 'flow' | 'lifeline' | 'cut' | 'idle';
 
 export interface FlowWireProps {
   points: Pt[];
   line: LineFlowSceneModel;
-  /** `cut` = demand present but nothing served (shed); `idle` = no current, no demand. */
+  /** `lifeline` = survival mode (amber dashed); `cut` = shed (grey dashed); `idle` = no demand. */
   state: WireState;
   /** Tailwind text color class; wire and electrons use `currentColor`. */
   colorClass: string;
@@ -23,20 +23,47 @@ export interface FlowWireProps {
   animate: boolean;
   /** `url(#id)` of the diagram's glow filter. */
   glow: string;
+  /** Feeder intensity 0..1 to scale stroke width, opacity, and particles (PL-T11/PL-T12). */
+  intensity?: number;
 }
 
-/** One dot every ~11 user units of wire. */
-const SPACING = 11;
+/** Base electron spacing (user units of wire) modulated by intensity. */
+const BASE_SPACING = 14;
 /** Line `speed` (0.5–2.5) → user units per second. */
 const SPEED_SCALE = 22;
 
-/** A 2D cable: dark conductor, lit core and moving electrons when powered, red dashes when cut. */
-export function FlowWire({ points, line, state, colorClass, animate, glow }: FlowWireProps) {
+/** A 2D cable: conductor, lit core and moving electrons scaled by feeder intensity (PL-T11/PL-T12). */
+export function FlowWire({
+  points,
+  line,
+  state,
+  colorClass,
+  animate,
+  glow,
+  intensity,
+}: FlowWireProps) {
   const d = useMemo(() => toSvgPath(points), [points]);
   const path = useMemo(() => buildArcPath(points), [points]);
   const flowing = state === 'flow';
-  const count = flowing ? electronCount(path.total, SPACING, 2, 16) : 0;
-  const period = electronPeriodS(path.total, line.speed * SPEED_SCALE);
+  const isLifeline = state === 'lifeline';
+
+  // Intensity 0..1 for visual scaling
+  const effectiveIntensity = Math.min(
+    1,
+    Math.max(0.1, intensity ?? (line.flowKw > 0 ? Math.max(0.2, flowFactor(line.flowKw)) : 0.5))
+  );
+
+  // Density ∝ kW / intensity: lifeline has 1-2 dots, full has more
+  const count = flowing
+    ? electronCount(path.total, BASE_SPACING - 5 * effectiveIntensity, 2, 14)
+    : isLifeline
+      ? electronCount(path.total, 24, 1, 3)
+      : 0;
+
+  // Speed ∝ kW / intensity
+  const speed =
+    line.speed * (0.7 + 0.6 * effectiveIntensity) * (isLifeline ? 0.5 : 1) * SPEED_SCALE;
+  const period = electronPeriodS(path.total, Math.max(5, speed));
   const reverse = line.direction === 'backward';
 
   const mid = useMemo(() => sampleArcPath(path, 0.5, [0, 0]), [path]);
@@ -109,11 +136,26 @@ export function FlowWire({ points, line, state, colorClass, animate, glow }: Flo
     };
   }, [animate, count]);
 
+  // Color: lifeline is warning-amber; cut lines are text-muted (gris); idle is border-strong
+  const wireColorClass = isLifeline
+    ? 'text-warning-amber'
+    : state === 'cut'
+      ? 'text-text-muted'
+      : flowing
+        ? colorClass
+        : 'text-border-strong';
+
+  // Dynamic stroke widths & opacities ∝ intensity (PL-T12)
+  const coreStrokeWidth = isLifeline ? 1.5 : Number((1.1 + 1.1 * effectiveIntensity).toFixed(2));
+  const coreStrokeOpacity = isLifeline ? 0.9 : Number((0.5 + 0.5 * effectiveIntensity).toFixed(2));
+  const haloStrokeWidth = Number((3 + 3 * effectiveIntensity).toFixed(2));
+  const haloStrokeOpacity = isLifeline
+    ? 0.15
+    : Number((0.1 + 0.22 * effectiveIntensity).toFixed(2));
+  const electronRadius = isLifeline ? 1.2 : Number((1.3 + 0.6 * effectiveIntensity).toFixed(2));
+
   return (
-    <g
-      data-wire-state={state}
-      className={cn(flowing || state === 'cut' ? colorClass : 'text-border-strong')}
-    >
+    <g data-wire-state={state} className={wireColorClass}>
       <path
         d={d}
         fill="none"
@@ -128,37 +170,66 @@ export function FlowWire({ points, line, state, colorClass, animate, glow }: Flo
             d={d}
             fill="none"
             stroke="currentColor"
-            strokeOpacity={0.25}
-            strokeWidth={5}
+            strokeOpacity={haloStrokeOpacity}
+            strokeWidth={haloStrokeWidth}
             strokeLinejoin="round"
           />
-          <path d={d} fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinejoin="round" />
+          <path
+            d={d}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={coreStrokeWidth}
+            strokeOpacity={coreStrokeOpacity}
+            strokeLinejoin="round"
+          />
+        </>
+      ) : isLifeline ? (
+        <>
+          {/* Survival mode: amber dashes with a faint halo (PL-T12) */}
+          <path
+            d={d}
+            fill="none"
+            stroke="currentColor"
+            strokeOpacity={haloStrokeOpacity}
+            strokeWidth={haloStrokeWidth}
+            strokeLinejoin="round"
+          />
+          <path
+            d={d}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={coreStrokeWidth}
+            strokeDasharray="4 4"
+            strokeOpacity={coreStrokeOpacity}
+            strokeLinejoin="round"
+          />
         </>
       ) : (
+        /* Cut (grey dashes) or idle wire (PL-T11 / PL-T12) */
         <path
           d={d}
           fill="none"
           stroke="currentColor"
           strokeWidth={1.2}
           strokeDasharray={state === 'cut' ? '3 3' : undefined}
-          strokeOpacity={state === 'cut' ? 0.8 : 0.6}
+          strokeOpacity={state === 'cut' ? 0.6 : 0.4}
           strokeLinejoin="round"
         />
       )}
 
       {state === 'cut' && (
-        // Break mark in the middle of a shed line.
-        <g transform={`translate(${mid[0]} ${mid[1]})`} stroke="currentColor" strokeWidth={1.6}>
-          <circle r={4.5} className="fill-canvas" strokeWidth={1} />
-          <line x1={-2.2} y1={-2.2} x2={2.2} y2={2.2} />
-          <line x1={-2.2} y1={2.2} x2={2.2} y2={-2.2} />
+        // Small break mark on a cut wire (PL-T11)
+        <g transform={`translate(${mid[0]} ${mid[1]})`} stroke="currentColor" strokeWidth={1.4}>
+          <circle r={4} className="fill-canvas" strokeWidth={0.8} />
+          <line x1={-2} y1={-2} x2={2} y2={2} />
+          <line x1={-2} y1={2} x2={2} y2={-2} />
         </g>
       )}
 
       {count > 0 && (
         <g ref={groupRef} fill="currentColor" filter={glow} data-electrons={count}>
           {initialPositions.map(([x, y], j) => (
-            <circle key={j} cx={x} cy={y} r={1.7} />
+            <circle key={j} cx={x} cy={y} r={electronRadius} />
           ))}
         </g>
       )}

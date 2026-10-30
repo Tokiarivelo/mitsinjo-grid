@@ -25,7 +25,10 @@
     "theme": "Theme",
     "toggleTheme": "Toggle color theme",
     "darkTheme": "Dark",
-    "lightTheme": "Light"
+    "lightTheme": "Light",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "resetZoom": "Reset zoom"
   },
   "nav": {
     "overview": "Overview",
@@ -399,9 +402,6 @@
       "canvasTitle": "Interactive Canvas Studio",
       "canvasMode": "Canvas Inspector",
       "mediaMode": "Media View",
-      "zoomIn": "Zoom in",
-      "zoomOut": "Zoom out",
-      "resetZoom": "Reset zoom",
       "gridOverlay": "Grid overlay",
       "clearCanvas": "Clear canvas",
       "attachDrawing": "Attach drawing to message",
@@ -465,10 +465,17 @@
       },
       "legendTitle": "Diagram legend",
       "legendFlow": "Current flowing (electrons)",
+      "legendLifeline": "Lifeline (survival mode)",
       "legendLimiter": "Limiter active (lifeline)",
       "legendPartial": "Partial supply",
       "legendCut": "Line cut (shed)",
       "legendIdle": "No current",
+      "feederMode": {
+        "full": "Full",
+        "limited": "Limited",
+        "lifeline": "Lifeline",
+        "off": "Off"
+      },
       "controller": {
         "title": "EMS Dispatch Controller",
         "shortTitle": "EMS Dispatch",
@@ -487,7 +494,9 @@
         "closed": "{sector}: Closed ({kw})",
         "limited": "{sector}: Current limiter active ({kw})",
         "open": "{sector}: Open / Cut (0 kW)"
-      }
+      },
+      "zoomControls": "Diagram zoom",
+      "zoomHint": "Ctrl + scroll or pinch to zoom · drag to pan"
     }
   },
   "copilot": {
