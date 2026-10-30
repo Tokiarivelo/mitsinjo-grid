@@ -110,6 +110,10 @@ lifeline / off`).
 - [x] **PL-T16** Docs : `contracts.md`, `engine-spec.md`, `copilot.md`, `docs/design/*`, `README.md` (fonctionnalité),
       ligne PL dans `docs/tasks/README.md`, `HANDOFF.md`.
 
+- [x] **PL-T17** Curseurs de planchers dans le Labo Stratégies (`StrategyRulesSection`) : bouton
+      « Planchers de survie activés/désactivés » (`lifeline.enabled`) + un curseur 0–2 kW (pas 0,05) par secteur
+      raccordé (`lifeline.kw`). Désactivé → curseurs masqués + avertissement. EN/FR/MG, dark/light, mobile vérifiés.
+
 ## Ordre conseillé et découpage PR
 
 1. **PR 1** = PL-T1…T4 (moteur seul, testable sans UI).

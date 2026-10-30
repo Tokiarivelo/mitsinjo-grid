@@ -197,13 +197,19 @@ make build
 # 3D budgets per quality tier (server running; -gpu = real GPU fps)
 make scene-audit
 make scene-audit-gpu
+
+# Physical scale model (docs/maquette-physique.md, settings: docs/bridge.md): bridge + fake ESP32
+make bridge                     # BRIDGE_MODE=twin make bridge → sensors feed the engine
+make bridge-sim                 # c = cloud over the sun lamp, q = quit
+# Deployed site: open /simulation?bridge=ws://localhost:8787 (add &bridgeToken=… if BRIDGE_TOKEN is set)
+NEXT_PUBLIC_BRIDGE_URL=ws://localhost:8787 make dev-mock   # /simulation → Controls → Physical scale model
 ```
 
 ---
 
 ## 9. Environment Variables
 
-Create `.env` at repo root or `apps/web/.env.local` (see [.env.example](.env.example)):
+Create `.env` at repo root or `apps/web/.env.local` (see [.env.example](.env.example); local vs Vercel checklist: [docs/setup/env.md](docs/setup/env.md)):
 
 ```ini
 # LLM Provider: 'mock' (default, offline, zero-credential) or 'meta'
@@ -226,6 +232,7 @@ The project is configured for continuous deployment on [Vercel](https://vercel.c
 
 - **Continuous Deployment**: Only pushes and merges to `main` trigger production deployments.
 - **Zero Secret Exposure**: All keys are injected through Vercel Project Environment Variables. No secrets are committed to the Git repository.
+- **Vercel env vars**: what to set (and what not to) in [docs/setup/env.md](docs/setup/env.md).
 
 ```bash
 make deploy-link   # Link clone to Vercel project (once per machine)

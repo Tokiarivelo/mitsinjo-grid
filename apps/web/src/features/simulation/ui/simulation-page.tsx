@@ -27,6 +27,8 @@ import {
   selectComparison,
   selectInput,
   selectIsPlaying,
+  selectFollowsDevice,
+  selectDeviceHourMs,
   selectIsRunning,
   selectSelectedSector,
   selectStatus,
@@ -58,6 +60,7 @@ import { SectorLoadPanel } from './sector-load-panel';
 import { VillageViewport } from './village-viewport';
 import { PlaybackActions } from './playback-actions';
 import { WeatherWorkflowPanel } from './weather-workflow-panel';
+import { HardwareLinkSection } from '@/features/hardware-link';
 import { DayStrip } from './day-strip';
 import { usePlaybackTicker } from '../hooks/use-playback-ticker';
 import { simStatusBadgeVariant } from '../utils/playback';
@@ -91,6 +94,8 @@ export function SimulationPage() {
   const comparison = useSimulationStore(selectComparison);
   const isRunning = useSimulationStore(selectIsRunning);
   const isPlaying = useSimulationStore(selectIsPlaying);
+  const followsDevice = useSimulationStore(selectFollowsDevice);
+  const deviceHourMs = useSimulationStore(selectDeviceHourMs);
   const workflow = useSimulationStore(selectWorkflow);
   const dayIndex = useSimulationStore(selectDayIndex);
   const workflowResult = useSimulationStore(selectActiveWorkflowResult);
@@ -174,7 +179,7 @@ export function SimulationPage() {
         {/* Header Action Buttons: Run/Play/Pause/Stop/Restart, Toggle Deck, Copy Summary & Download JSON */}
         <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
           {/* Primary simulation transport controls outside Controls tab */}
-          {!(isPanelOpen && activeTab === 'controls') && (
+          {!followsDevice && !(isPanelOpen && activeTab === 'controls') && (
             <PlaybackActions
               status={status}
               isPlaying={isPlaying}
@@ -287,6 +292,8 @@ export function SimulationPage() {
             onPause={pauseSimulation}
             onStop={stopSimulation}
             onRestart={restartSimulation}
+            followsDevice={followsDevice}
+            deviceHourMs={deviceHourMs}
           />
         </div>
 
@@ -524,6 +531,7 @@ export function SimulationPage() {
                   onReset={resetScenario}
                   onStop={stopSimulation}
                   onRestart={restartSimulation}
+                  followsDevice={followsDevice}
                 />
                 <WeatherWorkflowPanel
                   workflow={workflow}
@@ -534,6 +542,7 @@ export function SimulationPage() {
                   onSetWeather={setDayWeather}
                   onSelectDay={handleSelectDay}
                 />
+                <HardwareLinkSection />
               </div>
 
               {/* TAB 3: BUILDING INSPECTOR */}

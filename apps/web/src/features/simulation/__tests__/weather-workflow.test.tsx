@@ -164,5 +164,5 @@ describe('SimulationPage weather workflow', () => {
     const state = useSimulationStore.getState();
     expect(state.dayIndex).toBe(1);
     expect(state.results.proportional).toBe(state.workflowResults.proportional?.days[1]?.result);
-  });
+  }, 15_000); // full page + many re-runs: ~3–5 s alone, slower under the parallel suite
 });

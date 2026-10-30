@@ -3,6 +3,7 @@ export * from './input';
 export * from './result';
 export * from './workflow';
 export * from './sweep';
+export * from './hardware';
 
 import { SimulationInput, SimulationInputSchema } from './input';
 

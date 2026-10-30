@@ -32,7 +32,9 @@ Route: /strategies. Goal: compare allocation strategies under identical demand, 
 
 - Comparison parameters: `StrategyParamsPanel` = `ConditionControlsGrid` (solar drop %, start, duration, demand ×,
   battery kWh, initial SoC) + one `SectorRuleRow` per sector (priority select, "Limit power" toggle → max kW, from–to h) +
-  `StrategyRulesSection` (priority weights 0–10 for Balanced allocation + critical lifeline share 0–100% per sector).
+  `StrategyRulesSection` (priority weights 0–10 for Balanced allocation + critical lifeline share 0–100% per sector +
+  survival floors: on/off button with `aria-pressed`, one 0–2 kW slider per connected sector, hidden with an amber
+  note when off).
   Every edit patches the store input (`InputPatch`) and re-runs all strategies after 300 ms (`useAutoCompare`).
   Invalid values stay visible with an inline error and are never dispatched. Sector rows: 1 col, 2 cols ≥ lg, 3 cols ≥ 2xl.
 - Strategy columns: card with name, rule text, StatusBadge, comparison inclusion checkbox (min 2; excluding the active strategy moves the selection to the first included one; "Use this strategy" on an excluded card re-includes it), MetricCards (compact), 5 EnergyBar rows, Button "Use this strategy".

@@ -501,6 +501,36 @@
       },
       "zoomControls": "Diagram zoom",
       "zoomHint": "Ctrl + scroll or pinch to zoom · drag to pan"
+    },
+    "hardwareLink": {
+      "title": "Physical scale model",
+      "status": {
+        "connected": "Bridge connected",
+        "connecting": "Connecting…",
+        "disconnected": "Bridge offline"
+      },
+      "device": "Model",
+      "deviceOnline": "Online — sensors received",
+      "deviceOffline": "No sensor data (replay only)",
+      "mode": "Mode",
+      "modes": {
+        "replay": "Replay: the engine drives the model",
+        "twin": "Twin: model sensors feed the engine"
+      },
+      "scale": "Scale",
+      "scaleValue": "1 W = {kw} kW · 1 h = {seconds} s",
+      "clock": "Model clock",
+      "clockValue": "Day {day} · {hour}",
+      "speed": "Speed (real seconds per simulated hour)",
+      "speedOption": "{seconds} s",
+      "speedOptionLabel": "1 simulated hour = {seconds} s",
+      "readOnly": "Read-only: this bridge needs a token to control the model (cloud, speed). Open the link with bridgeToken.",
+      "hint": "Start the local bridge with make bridge (and make bridge-sim without hardware).",
+      "deviceData": "SCALE MODEL DATA",
+      "follow": "Follow the model",
+      "stopFollowing": "Stop following",
+      "cloudOn": "Cloud over the lamp",
+      "cloudOff": "Remove the cloud"
     }
   },
   "copilot": {
@@ -785,7 +815,13 @@
         "outOfRange": "Value is outside the allowed range (0–500 kW, hours 0–24).",
         "capHoursOrder": "End hour must be after start hour.",
         "allWeightsZero": "At least one priority weight must be greater than 0."
-      }
+      },
+      "lifelineFloors": "Survival floors (0–2 kW)",
+      "lifelineFloorsDesc": "Minimum power each connected sector keeps during a deficit (light, phone charging, radio) instead of being cut. Below the total, only water and health stay on.",
+      "lifelineFloorFor": "{sector} survival floor",
+      "lifelineOn": "Survival floors on",
+      "lifelineOff": "Survival floors off",
+      "lifelineOffNote": "Survival floors are off: in a deficit, a sector can drop to 0 kW."
     },
     "sensitivity": {
       "title": "Sensitivity Sweep Analysis",

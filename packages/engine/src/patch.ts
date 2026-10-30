@@ -40,6 +40,10 @@ export function patchInputUnchecked(input: SimulationInput, patch: InputPatch): 
   const cloned = structuredClone(input);
   cloned.scenarioId = 'custom';
 
+  if (patch.solarProfile !== undefined) {
+    cloned.solar.profile = [...patch.solarProfile];
+  }
+
   if (patch.demandMultiplier !== undefined) {
     cloned.demandMultiplier = patch.demandMultiplier;
   }

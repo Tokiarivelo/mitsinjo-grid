@@ -38,3 +38,21 @@ export type ScenarioId = z.infer<typeof ScenarioIdSchema>;
 
 export const SectorModeSchema = z.enum(['full', 'limited', 'lifeline', 'off']);
 export type SectorMode = z.infer<typeof SectorModeSchema>;
+
+/** Dispatch controller state for one hour, derived from sector modes (shared by 3D, 2D and hardware). */
+export const ControllerModeSchema = z.enum(['normal', 'rationing', 'lifeline_only']);
+export type ControllerMode = z.infer<typeof ControllerModeSchema>;
+
+/** Feeder breaker shown or driven for a sector: `limited` = lifeline floor only. */
+export const BreakerStateSchema = z.enum(['closed', 'limited', 'open']);
+export type BreakerState = z.infer<typeof BreakerStateSchema>;
+
+/** Display tone of a feeder (3D, 2D, scale-model LEDs): served, rationed/lifeline, shed, nothing to carry. */
+export const FeederToneSchema = z.enum(['ok', 'warning', 'critical', 'idle']);
+export type FeederTone = z.infer<typeof FeederToneSchema>;
+
+/** Zod object with one entry per sector (all required), built from SECTOR_IDS. */
+export function sectorRecordSchema<T extends z.ZodTypeAny>(schema: T) {
+  const shape = Object.fromEntries(SECTOR_IDS.map((id) => [id, schema])) as Record<SectorId, T>;
+  return z.object(shape);
+}

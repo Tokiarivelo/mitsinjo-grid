@@ -194,6 +194,10 @@ type WorkflowComparison = Record<StrategyId, WorkflowResult>; // only strategies
 Store (`useSimulationStore`): `workflow` (default `[{ weather: 'sunny' }]` = plain 24 h run), `workflowResults`,
 `dayIndex`; `results` is always the comparison of day `dayIndex`. Actions `addWorkflowDay`, `removeWorkflowDay`,
 `setDayWeather` (re-run at once when the run was `complete`, else → `modified`; same for add/remove), `setDayIndex`, `advancePlayback` (hour +1, rolls over to next day, loops to day 1).
+`source: 'scenario' | 'device'` (PH): `applyDeviceRun({ scenarioId, patch, strategy, simHour })` loads the scenario,
+applies the bridge patch, sets the strategy and hour, one-day workflow, then `run()` → `source = 'device'`,
+`deviceHourMs = scale.timeScale × 1000` (null without `scale`); selectors `selectFollowsDevice`, `selectDeviceHourMs`;
+`releaseDevice()` and `loadScenario` set `source = 'scenario'`.
 
 3D `SceneModel.weather: WeatherId` (from `toSceneModel({ weather })`, default `sunny`): drives sky, clouds and rain only.
 
@@ -270,7 +274,92 @@ connectedSectors(input): SectorConfig[] · connectedSectorIds(input): SectorId[]
 getSolarDrop(input: SimulationInput): { pct; startHour; durationH } // defaults 12 h / 3 h (DEFAULT_DROP_*) when no drop
 scenarios: Record<ScenarioId, { title: string; description: string; input: SimulationInput }>
 STRATEGIES: Record<StrategyId, { label: string; rule: string }>
+// Dispatch display state (shared by 3D, 2D and the scale model)
+breakerFromMode(mode: SectorMode): BreakerState      // lifeline → limited · full/limited → closed · off → open
+feederModeAt(input, result, hour, sector): SectorMode // disconnected → 'off'
+controllerModeAt(input, result, hour): ControllerMode
+flowLevel(flowKw: number): number                    // 0–1, saturates at FLOW_SATURATION_KW (3); web alias flowFactor
+feederTone({ connected, demandKw, servedKw, breaker }): FeederTone // 'ok'|'warning'|'critical'|'idle'; web maps to StatusColor
+// Physical scale model (PH)
+scaleTelemetry(samples: TelemetrySample[], scale: HardwareScale, base: SimulationInput): InputPatch
+toHardwareCommand(input, result, hour, scale, seq?): HardwareCommand
+feederNominalKw(scale, sector): number               // nominalW × powerScale / 1000
+DEFAULT_HARDWARE_SCALE                               // powerScale 4000, timeScale 20, luxFullSun 20000
+TIME_SCALE_PRESETS                                   // [60, 20, 10, 5] s per simulated hour (app speed buttons)
 ```
+
+### Physical scale model (PH, `schemas/hardware.ts`)
+
+```ts
+type ControllerMode = 'normal' | 'rationing' | 'lifeline_only'; // ControllerModeSchema
+type BreakerState = 'closed' | 'limited' | 'open'; // BreakerStateSchema
+interface HardwareScale {
+  powerScale: number; // 1–100000; 4000 → 1 W model = 4 kW simulated
+  timeScale: number; // 1–3600; 20 → 1 simulated hour = 20 s
+  luxFullSun: number; // > 0; reference lux = clear-sky hour
+  nominalW: Record<SectorId, number>; // 0–50 W at 100 % duty, all sectors required
+}
+interface ChannelReading {
+  mV: number;
+  mA: number;
+}
+interface TelemetryFrame {
+  v: 1;
+  deviceId: string;
+  seq: number;
+  uptimeMs: number;
+  lux: number;
+  pv: ChannelReading;
+  battery: ChannelReading; // safety only, never the grid SoC
+  feeders: Record<SectorId, ChannelReading>; // served current (check only, never demand)
+  requests: Record<SectorId, number>; // 0–1 demand request (switch / potentiometer)
+}
+interface TelemetrySample {
+  simHour: number; // 0–23, set by the bridge
+  lux: number;
+  requests: Partial<Record<SectorId, number>>;
+}
+interface HardwareCommand {
+  v: 1;
+  seq: number;
+  simHour: number;
+  mode: ControllerMode;
+  socPct: number;
+  batteryKw: number; // engine values
+  feeders: Record<
+    SectorId,
+    { duty: number; breaker: BreakerState; flow: number; tone: FeederTone }
+  >; // duty, flow 0–1
+}
+// apps/bridge → web over WebSocket: { type: 'state', state: BridgeState } every second
+// Zod: BridgeStateSchema / BridgeMessageSchema / BridgeModeSchema in schemas/hardware.ts (shared by bridge and web)
+interface BridgeState {
+  v: 1;
+  mode: 'replay' | 'twin';
+  scenarioId: ScenarioId;
+  strategy: StrategyId;
+  day: number;
+  simHour: number;
+  patch: InputPatch; // apply to scenarios[scenarioId].input and re-run to get the same numbers
+  deviceOnline: boolean; // a valid frame in the last 5 s
+  scale: HardwareScale;
+  command: HardwareCommand;
+}
+// bridge → web (BridgeMessageSchema): { type: 'state', state: BridgeState } each second
+//   | { type: 'access', control: boolean } once per connection (false = read-only, commands ignored)
+// connection URL ?token=<BRIDGE_TOKEN> → control; no BRIDGE_TOKEN set → everyone controls
+// web → bridge (BridgeClientMessageSchema):
+//   { type: 'cloud', on: boolean } → MQTT mitsinjo/v1/cloud (servo over the sun lamp)
+//   { type: 'speed', timeScale: number } → new pace from the current hour (no jump); next state confirms it
+```
+
+MQTT topics: `mitsinjo/v1/telemetry` (device → bridge), `mitsinjo/v1/command` (bridge → device),
+`mitsinjo/v1/cloud` (bridge → device).
+
+`scaleTelemetry`, measured hour h: `solarProfile[h] = base.profile[h] × clamp(mean lux / luxFullSun, 0, 1)`;
+`meterReadings[s][h] = computeProfileDemandKw(s, h) × mean request`. Unmeasured hours keep the base profile and the
+expected demand. `toHardwareCommand`: `duty = clamp(servedKw / feederNominalKw, 0, 1)`, `breaker = breakerFromMode`,
+`flow = flowLevel(servedKw)`, `mode = controllerModeAt`, `socPct` from the step.
 
 ## Copilot tools (LLM-facing; args validated with Zod server-side)
 
@@ -285,6 +374,7 @@ STRATEGIES: Record<StrategyId, { label: string; rule: string }>
 ```ts
 interface InputPatch {
   // all optional; LLM-safe subset
+  solarProfile?: number[]; // length 24, 0–1 → replaces solar.profile (measured by the scale model, PH)
   solarDropPct?: number; // 0–90 → adds/replaces a solar_drop event
   dropStartHour?: number;
   dropDurationH?: number;

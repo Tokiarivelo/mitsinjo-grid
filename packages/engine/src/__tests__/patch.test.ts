@@ -266,3 +266,19 @@ describe('getSolarDrop', () => {
     });
   });
 });
+
+describe('applyPatch solarProfile (PH-H1)', () => {
+  it('replaces the solar profile without touching the base input', () => {
+    const input = createBaselineInput();
+    const profile = input.solar.profile.map((p) => p / 2);
+    const patched = applyPatch(input, { solarProfile: profile });
+    expect(patched.solar.profile).toEqual(profile);
+    expect(input.solar.profile).not.toEqual(profile);
+  });
+
+  it('rejects a profile with a value above 1 or a wrong length', () => {
+    const input = createBaselineInput();
+    expect(() => applyPatch(input, { solarProfile: Array(24).fill(1.2) })).toThrow(ZodError);
+    expect(() => applyPatch(input, { solarProfile: Array(23).fill(0.5) })).toThrow(ZodError);
+  });
+});

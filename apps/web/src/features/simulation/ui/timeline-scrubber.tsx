@@ -5,6 +5,22 @@ import type { StepResult } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtHour, fmtKw, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
+import { useSmoothScrub } from '../hooks/use-smooth-scrub';
+import { PLAYBACK_TICK_MS } from '../hooks/use-playback-ticker';
+
+const LAST_HOUR = 23;
+
+/** Keys that step whole hours (the thumb itself moves continuously under the pointer). */
+const KEY_STEP: Record<string, (h: number) => number> = {
+  ArrowLeft: (h) => h - 1,
+  ArrowDown: (h) => h - 1,
+  ArrowRight: (h) => h + 1,
+  ArrowUp: (h) => h + 1,
+  PageDown: (h) => h - 6,
+  PageUp: (h) => h + 6,
+  Home: () => 0,
+  End: () => LAST_HOUR,
+};
 
 export interface TimelineScrubberProps {
   timeIndex: number;
@@ -16,6 +32,10 @@ export interface TimelineScrubberProps {
   onPause: () => void;
   onStop: () => void;
   onRestart: () => void;
+  /** Scale model drives the hour: transport buttons hidden, thumb runs as a live clock. */
+  followsDevice?: boolean;
+  /** Real length of one model hour (ms) while following; drives the live-clock thumb. */
+  deviceHourMs?: number | null;
   className?: string;
 }
 
@@ -29,6 +49,8 @@ export function TimelineScrubber({
   onPause,
   onStop,
   onRestart,
+  followsDevice = false,
+  deviceHourMs = null,
   className,
 }: TimelineScrubberProps) {
   const tSim = useTranslations('features.simulation');
@@ -42,9 +64,24 @@ export function TimelineScrubber({
   const handlePrev = () => seek((timeIndex - 1 + 24) % 24);
   const handleNext = () => seek((timeIndex + 1) % 24);
 
+  const scrub = useSmoothScrub({
+    max: LAST_HOUR,
+    value: timeIndex,
+    onSeek: seek,
+    playingGlideMs: isPlaying ? PLAYBACK_TICK_MS : undefined,
+    leadMs: followsDevice && deviceHourMs ? deviceHourMs : undefined,
+  });
+  const fillPct = (scrub.pos / LAST_HOUR) * 100;
+
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const nextVal = parseInt(e.target.value, 10);
-    if (!isNaN(nextVal)) seek(nextVal);
+    scrub.onInput(parseFloat(e.target.value));
+  };
+
+  const handleSliderKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const step = KEY_STEP[e.key];
+    if (!step) return;
+    e.preventDefault();
+    seek(Math.min(LAST_HOUR, Math.max(0, step(timeIndex))));
   };
 
   return (
@@ -68,70 +105,74 @@ export function TimelineScrubber({
           </div>
         </div>
 
-        {/* Center/Right Playback Controls */}
+        {/* Center/Right Playback Controls (hidden while the scale model drives the hour) */}
         <div className="flex items-center gap-1.5 self-start sm:self-center">
-          <button
-            type="button"
-            onClick={handlePrev}
-            aria-label={tSim('stepBackward')}
-            className="p-1.5 rounded-control text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
+          {!followsDevice && (
+            <>
+              <button
+                type="button"
+                onClick={handlePrev}
+                aria-label={tSim('stepBackward')}
+                className="p-1.5 rounded-control text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
 
-          <button
-            type="button"
-            onClick={onTogglePlay}
-            aria-label={isPlaying ? tSim('pausePlayback') : tSim('startPlayback')}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-control text-xs font-sans font-medium transition-colors cursor-pointer border',
-              isPlaying
-                ? 'bg-solar-amber/20 text-solar-amber border-solar-amber/40 shadow-xs'
-                : 'bg-surface-elevated text-text-primary border-border hover:bg-surface-hover'
-            )}
-          >
-            {isPlaying ? (
-              <>
-                <Pause className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span>{tSim('pause')}</span>
-              </>
-            ) : (
-              <>
-                <Play className="h-3.5 w-3.5 shrink-0 fill-current" aria-hidden="true" />
-                <span>{tSim('play')}</span>
-              </>
-            )}
-          </button>
+              <button
+                type="button"
+                onClick={onTogglePlay}
+                aria-label={isPlaying ? tSim('pausePlayback') : tSim('startPlayback')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-control text-xs font-sans font-medium transition-colors cursor-pointer border',
+                  isPlaying
+                    ? 'bg-solar-amber/20 text-solar-amber border-solar-amber/40 shadow-xs'
+                    : 'bg-surface-elevated text-text-primary border-border hover:bg-surface-hover'
+                )}
+              >
+                {isPlaying ? (
+                  <>
+                    <Pause className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span>{tSim('pause')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-3.5 w-3.5 shrink-0 fill-current" aria-hidden="true" />
+                    <span>{tSim('play')}</span>
+                  </>
+                )}
+              </button>
 
-          <button
-            type="button"
-            onClick={handleNext}
-            aria-label={tSim('stepForward')}
-            title={tSim('stepForward')}
-            className="p-1.5 rounded-control text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
-          >
-            <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                aria-label={tSim('stepForward')}
+                title={tSim('stepForward')}
+                className="p-1.5 rounded-control text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
+              >
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
 
-          <button
-            type="button"
-            onClick={onStop}
-            aria-label={tSim('stopPlayback')}
-            title={tSim('stopPlayback')}
-            className="p-1.5 rounded-control text-text-muted hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
-          >
-            <Square className="h-3 w-3 fill-current" aria-hidden="true" />
-          </button>
+              <button
+                type="button"
+                onClick={onStop}
+                aria-label={tSim('stopPlayback')}
+                title={tSim('stopPlayback')}
+                className="p-1.5 rounded-control text-text-muted hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
+              >
+                <Square className="h-3 w-3 fill-current" aria-hidden="true" />
+              </button>
 
-          <button
-            type="button"
-            onClick={onRestart}
-            aria-label={tSim('restartPlayback')}
-            title={tSim('restartPlayback')}
-            className="p-1.5 rounded-control text-text-muted hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
-          >
-            <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
+              <button
+                type="button"
+                onClick={onRestart}
+                aria-label={tSim('restartPlayback')}
+                title={tSim('restartPlayback')}
+                className="p-1.5 rounded-control text-text-muted hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
+              >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </>
+          )}
 
           {/* Current Hour Pill */}
           <div className="ml-2 px-2.5 py-1 rounded-control bg-surface-elevated border border-energy-cyan/40 text-energy-cyan font-mono tabular-nums text-xs font-semibold">
@@ -145,20 +186,22 @@ export function TimelineScrubber({
         <input
           type="range"
           min={0}
-          max={23}
-          step={1}
-          value={timeIndex}
+          max={LAST_HOUR}
+          step="any"
+          value={scrub.pos}
           onChange={handleSliderChange}
+          onPointerDown={scrub.onDragStart}
+          onKeyDown={handleSliderKey}
           aria-valuemin={0}
-          aria-valuemax={23}
+          aria-valuemax={LAST_HOUR}
           aria-valuenow={timeIndex}
           aria-valuetext={fmtHour(timeIndex)}
           aria-label={tSim('timelineScrubberLabel')}
           style={{
-            background: `linear-gradient(to right, var(--color-energy-cyan) ${(timeIndex / 23) * 100}%, var(--color-surface-elevated) ${(timeIndex / 23) * 100}%)`,
+            background: `linear-gradient(to right, var(--color-energy-cyan) ${fillPct}%, var(--color-surface-elevated) ${fillPct}%)`,
           }}
           className="w-full h-2 bg-surface-elevated rounded-lg appearance-none cursor-pointer accent-energy-cyan
-            transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+            touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
         />
 
         {/* 24-Hour Markers */}

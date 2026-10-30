@@ -9,6 +9,7 @@ import {
   type WeatherId,
   type Workflow,
   type WorkflowComparison,
+  type BridgeState,
   scenarios,
   compareWorkflow,
   applyPatch,
@@ -17,6 +18,12 @@ import {
 
 export type SimStatus = 'ready' | 'running' | 'complete' | 'modified' | 'error';
 export type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'stopped';
+/** Where the input comes from: a scenario edited in the app, or the physical scale model (PH). */
+export type InputSource = 'scenario' | 'device';
+
+/** What the scale-model bridge sends that the store needs to re-run the same engine call. */
+export type DeviceRun = Pick<BridgeState, 'scenarioId' | 'patch' | 'strategy' | 'simHour'> &
+  Partial<Pick<BridgeState, 'scale'>>;
 
 export interface SimulationState {
   scenarioId: ScenarioId;
@@ -34,6 +41,9 @@ export interface SimulationState {
   selectedSector: SectorId | null;
   timeIndex: number;
   error: string | null;
+  source: InputSource;
+  /** Real length of one simulated hour on the scale model (ms), from its `timeScale`; null = unknown. */
+  deviceHourMs: number | null;
 
   // Actions
   loadScenario: (scenarioId: ScenarioId) => void;
@@ -44,6 +54,10 @@ export interface SimulationState {
   selectSector: (sector: SectorId | null) => void;
   setTimeIndex: (timeIndex: number) => void;
   applyProposal: (patch?: InputPatch, strategy?: StrategyId) => void;
+  /** Follow the scale model: scenario + measured patch, its strategy and hour; runs the engine. */
+  applyDeviceRun: (run: DeviceRun) => void;
+  /** Stop following the scale model (the last input stays, editable). */
+  releaseDevice: () => void;
 
   // Weather workflow actions
   addWorkflowDay: (weather?: WeatherId) => void;
@@ -105,6 +119,8 @@ export const initialSimulationData = {
   selectedSector: null as SectorId | null,
   timeIndex: 12,
   error: null as string | null,
+  source: 'scenario' as InputSource,
+  deviceHourMs: null as number | null,
 };
 
 export function resetSimulationStore() {
@@ -168,6 +184,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     }
     set({
       scenarioId,
+      source: 'scenario',
       input: cloneInput(preset.input),
       status: 'ready',
       isPlaying: false,
@@ -274,6 +291,38 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         playbackStatus: 'idle',
       });
     }
+  },
+
+  applyDeviceRun: ({ scenarioId, patch, strategy, simHour, scale }: DeviceRun) => {
+    try {
+      const base = cloneInput(scenarios[scenarioId].input);
+      const input = Object.keys(patch).length > 0 ? applyPatch(base, patch) : base;
+      set({
+        scenarioId,
+        source: 'device',
+        deviceHourMs: scale ? scale.timeScale * 1000 : null,
+        input,
+        activeStrategy: strategy,
+        // The model runs one day at a time: plain 24 h comparison, cursor on the model's hour.
+        workflow: DEFAULT_WORKFLOW,
+        dayIndex: 0,
+        timeIndex: simHour,
+        isPlaying: false,
+        playbackStatus: 'idle',
+      });
+      get().run();
+    } catch (err) {
+      set({
+        status: 'error',
+        error: err instanceof Error ? err.message : 'Invalid scale model data',
+        isPlaying: false,
+        playbackStatus: 'idle',
+      });
+    }
+  },
+
+  releaseDevice: () => {
+    set({ source: 'scenario' });
   },
 
   play: () => {

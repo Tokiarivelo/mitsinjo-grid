@@ -501,6 +501,36 @@
       },
       "zoomControls": "Zoom du schéma",
       "zoomHint": "Ctrl + molette ou pincer pour zoomer · glisser pour déplacer"
+    },
+    "hardwareLink": {
+      "title": "Maquette physique",
+      "status": {
+        "connected": "Bridge connecté",
+        "connecting": "Connexion…",
+        "disconnected": "Bridge hors ligne"
+      },
+      "device": "Maquette",
+      "deviceOnline": "En ligne — capteurs reçus",
+      "deviceOffline": "Aucune mesure (rejeu seul)",
+      "mode": "Mode",
+      "modes": {
+        "replay": "Rejeu : le moteur pilote la maquette",
+        "twin": "Jumeau : les capteurs alimentent le moteur"
+      },
+      "scale": "Échelle",
+      "scaleValue": "1 W = {kw} kW · 1 h = {seconds} s",
+      "clock": "Horloge maquette",
+      "clockValue": "Jour {day} · {hour}",
+      "speed": "Vitesse (secondes réelles par heure simulée)",
+      "speedOption": "{seconds} s",
+      "speedOptionLabel": "1 heure simulée = {seconds} s",
+      "readOnly": "Lecture seule : ce bridge demande un jeton pour piloter la maquette (nuage, vitesse). Ouvrez le lien avec bridgeToken.",
+      "hint": "Lancez le bridge local avec make bridge (et make bridge-sim sans matériel).",
+      "deviceData": "DONNÉES MAQUETTE",
+      "follow": "Suivre la maquette",
+      "stopFollowing": "Arrêter le suivi",
+      "cloudOn": "Nuage sur la lampe",
+      "cloudOff": "Retirer le nuage"
     }
   },
   "copilot": {
@@ -785,7 +815,13 @@
         "outOfRange": "Valeur hors limites (0–500 kW, heures 0–24).",
         "capHoursOrder": "L'heure de fin doit être après l'heure de début.",
         "allWeightsZero": "Au moins un poids de priorité doit être supérieur à 0."
-      }
+      },
+      "lifelineFloors": "Planchers de survie (0–2 kW)",
+      "lifelineFloorsDesc": "Puissance minimale gardée par chaque secteur raccordé en cas de déficit (lumière, recharge de téléphone, radio) au lieu d'être coupé. Sous le total, seules l'eau et la santé restent alimentées.",
+      "lifelineFloorFor": "Plancher de survie — {sector}",
+      "lifelineOn": "Planchers de survie activés",
+      "lifelineOff": "Planchers de survie désactivés",
+      "lifelineOffNote": "Planchers de survie désactivés : en cas de déficit, un secteur peut tomber à 0 kW."
     },
     "sensitivity": {
       "title": "Analyse de sensibilité",

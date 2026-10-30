@@ -116,3 +116,34 @@
 - [ ] Audio input checked with clean noise suppression.
 - [ ] Language set to English default.
 - [ ] Practice 1 dry-run to ensure pacing lands at 2:55 – 3:00.
+- [ ] Optional live scale-model segment: three terminals started and "Bridge connected" visible (see below).
+
+---
+
+## Optional: Physical Scale Model (live demo, local only)
+
+Not part of the 3-minute video. Shows the same engine driving a scale model (1 W = 4 kW, 1 h = 20 s by default).
+Runs without hardware thanks to the fake ESP32; details in `docs/maquette-physique.md`.
+
+1. Start three terminals:
+
+   ```bash
+   BRIDGE_MODE=twin make bridge                                # bridge: MQTT broker + engine + WebSocket :8787
+   make bridge-sim                                             # fake ESP32 (c = cloud, q = quit); skip with real hardware
+   NEXT_PUBLIC_BRIDGE_URL=ws://localhost:8787 make dev-mock    # web app with the scale-model panel
+   ```
+
+   On the deployed site (no `NEXT_PUBLIC_BRIDGE_URL`): open `/simulation?bridge=ws://localhost:8787` (Chrome/Firefox).
+   Faster clock for a short demo: press **5 s** under "Speed" in the panel (live, no restart), or prefix the first
+   two commands with `HW_TIME_SCALE=4` (1 h = 4 s).
+
+2. Open `/simulation` → **Controls** tab → **Physical scale model** panel → "Bridge connected", "Online — sensors received".
+3. Click **Follow the model**: the app loads the bridge scenario, the hour cursor and 3D follow the model clock,
+   badge **SCALE MODEL DATA** appears.
+4. Around 10:00, click **Cloud over the lamp** (or press `c` in the fake ESP32 terminal): solar output drops in the
+   following hours and the deficit grows (compare strategies in Strategy Lab), then ask the Copilot to explain.
+5. **Stop following** returns to normal scenario editing.
+
+- **Narration**:
+  > _"The same deterministic engine drives a physical scale model. When a cloud covers the model's sun lamp, the
+  > measurement flows back into the engine, every number is recomputed, and the copilot explains the trade-off."_

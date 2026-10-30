@@ -130,7 +130,7 @@ describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
       screen.queryByText(/drop start \+ duration cannot exceed 24 hours/i)
     ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /run simulation/i })).not.toBeDisabled();
-  });
+  }, 15_000); // full page + many re-runs: ~3–5 s alone, slower under the parallel suite
 
   it('clears horizon validation error on reset button click', () => {
     render(<SimulationPage />);
@@ -237,6 +237,19 @@ describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
     expect(screen.getByText('Total Load')).toBeInTheDocument();
     expect(screen.getByText('Power Served')).toBeInTheDocument();
     expect(screen.getByText('Battery Flux')).toBeInTheDocument();
+  });
+
+  it('hides every playback control while the scale model drives the hour', () => {
+    useSimulationStore.getState().run();
+    useSimulationStore.setState({ source: 'device', deviceHourMs: 20_000 });
+    render(<SimulationPage />);
+    expect(screen.queryByRole('button', { name: /stop/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /restart/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /step forward/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /controls/i }));
+    expect(screen.queryByRole('button', { name: /stop/i })).not.toBeInTheDocument();
+    // The hour slider stays usable for inspection.
+    expect(screen.getByLabelText(/hour of day scrubber/i)).toBeInTheDocument();
   });
 
   it('scrubs through hours with timeline scrubber and updates current hour', () => {

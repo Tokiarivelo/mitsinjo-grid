@@ -27,3 +27,12 @@ export const env = envSchema.parse({
   R2_PUBLIC_URL: process.env.R2_PUBLIC_URL,
   DATABASE_URL: process.env.DATABASE_URL || process.env.NEON_DATABASE_URL,
 });
+
+/**
+ * Browser-visible settings (NEXT_PUBLIC_*, inlined at build). Empty string = unset.
+ * NEXT_PUBLIC_BRIDGE_URL: WebSocket of the local scale-model bridge (`make bridge`), e.g. ws://localhost:8787.
+ * Unset → the scale-model panel is hidden (production).
+ */
+export const publicEnv = z
+  .object({ NEXT_PUBLIC_BRIDGE_URL: z.string().url().optional() })
+  .parse({ NEXT_PUBLIC_BRIDGE_URL: process.env.NEXT_PUBLIC_BRIDGE_URL || undefined });
