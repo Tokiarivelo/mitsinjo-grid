@@ -39,6 +39,7 @@ export function compactMetrics(m: Metrics) {
     criticalUnservedKwh: round2(m.criticalUnservedKwh),
     criticalUnmetHours: m.criticalUnmetHours,
     criticalCoveragePct: round2(m.criticalCoveragePct),
+    lifelineCoveragePct: round2(m.lifelineCoveragePct),
     solarKwh: round2(m.solarKwh),
     curtailedKwh: round2(m.curtailedKwh),
     socStartPct: round2(m.socStartPct),
@@ -106,6 +107,26 @@ const STRATEGY_RULE_PATCH_PROPS = {
   },
 } as const;
 
+/** Lifeline power floor (courant de survie) configuration; shared by run_scenario and propose_change. */
+const LIFELINE_PATCH_PROPS = {
+  lifeline: {
+    type: 'object',
+    description:
+      'Lifeline power floor (courant de survie) configuration: guarantee minimum power floor per sector to avoid complete blackouts.',
+    properties: {
+      enabled: {
+        type: 'boolean',
+        description: 'Enable or disable the lifeline floor across all strategies (default: true).',
+      },
+      kw: {
+        type: 'object',
+        description:
+          'Per-sector lifeline power floor in kW (0 to 2 kW; default: health 0.3, water 0.2, school 0.1, households 0.4, market 0.1).',
+      },
+    },
+  },
+} as const;
+
 export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'get_grid_state',
@@ -170,6 +191,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
             },
             ...STRATEGY_RULE_PATCH_PROPS,
             ...SECTOR_LOAD_PATCH_PROPS,
+            ...LIFELINE_PATCH_PROPS,
           },
         },
         strategy: {
@@ -262,6 +284,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
             },
             ...STRATEGY_RULE_PATCH_PROPS,
             ...SECTOR_LOAD_PATCH_PROPS,
+            ...LIFELINE_PATCH_PROPS,
           },
         },
         strategy: {
@@ -406,6 +429,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
           metrics: cm,
         };
         evidence[`${sId}_criticalCoveragePct`] = cm.criticalCoveragePct;
+        evidence[`${sId}_lifelineCoveragePct`] = cm.lifelineCoveragePct;
         evidence[`${sId}_unservedKwh`] = cm.unservedKwh;
         evidence[`${sId}_servedKwh`] = cm.servedKwh;
       }

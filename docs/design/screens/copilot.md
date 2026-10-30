@@ -32,6 +32,7 @@ In panel mode: single column, no context column.
 - Which services have unmet demand?
 - Explain the battery state at the end of the simulation.
 - Suggest a scenario to protect essential services.
+- Le soir, ne coupez pas le quartier, laissez au moins la lumière (proposes lifeline survival floor).
 
 ## Response format (ChatMessage sections)
 
@@ -45,7 +46,7 @@ ChatMessage, ToolActivity ("Reading current scenario", "Running comparison", "Re
 
 - Evidence rows read result.metrics.* and perSector[id].* and steps[t].* exactly; show field label + value + unit.
 - Context column reads active scenario + status.
-- Proposed change: Zod-validated scenario patch -> ConfirmProposalDialog -> applies only on Approve (status -> modified).
+- Proposed change: Zod-validated scenario patch (including lifeline floors, sector caps, priorities, and strategy switch) -> ConfirmProposalDialog -> shows before/after diff -> applies only on Approve (status -> modified).
 
 ## Rules
 

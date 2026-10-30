@@ -202,6 +202,32 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
     expect(screen.getByText('1 kW (18:00–22:00)')).toBeInTheDocument();
   });
 
+  it('renders lifeline diffs in ConfirmProposalDialog (PL-T14)', () => {
+    render(
+      <ConfirmProposalDialog
+        proposal={{
+          proposalId: 'PROP-LIFELINE',
+          patch: {
+            lifeline: {
+              enabled: true,
+              kw: {
+                households: 0.5,
+              },
+            },
+          },
+          reason: 'Guarantee lighting floor for households',
+        }}
+        onApprove={() => {}}
+        onReject={() => {}}
+      />
+    );
+
+    expect(screen.getByText('Guarantee lighting floor for households')).toBeInTheDocument();
+    // Current floor is the engine default for households (0.40 kW), not 0
+    expect(screen.getByText('0.40 kW')).toBeInTheDocument();
+    expect(screen.getByText('0.50 kW')).toBeInTheDocument();
+  });
+
   it('renders ContextPanel with active baseline, specs, and runs simulation', () => {
     render(<ContextPanel />);
 

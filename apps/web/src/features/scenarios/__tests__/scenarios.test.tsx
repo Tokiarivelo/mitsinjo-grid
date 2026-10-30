@@ -70,15 +70,17 @@ describe('ScenariosPage (P5-T3, P5-T6)', () => {
     expect(titleBtn).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('navigates to /simulation when clicking Open in Simulation', () => {
+  it('Open in Simulation is a link to /simulation that loads the scenario once', () => {
     render(<ScenariosPage />);
 
-    const openButtons = screen.getAllByRole('button', { name: /open scenario/i });
-    expect(openButtons.length).toBe(6);
+    const openLinks = screen.getAllByRole('link', { name: /open scenario/i });
+    expect(openLinks.length).toBe(6);
+    expect(openLinks[1]).toHaveAttribute('href', '/simulation');
 
-    fireEvent.click(openButtons[1]!); // Cloudy afternoon card
+    fireEvent.click(openLinks[1]!); // Cloudy afternoon card
     expect(useSimulationStore.getState().scenarioId).toBe('cloudy_afternoon');
-    expect(pushMock).toHaveBeenCalledWith('/simulation');
+    // The link navigates by itself: no second, programmatic push
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it('editing an assumption in AssumptionsInspector updates the store input and sets modified', () => {

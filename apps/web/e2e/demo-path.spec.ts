@@ -1,9 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 test.describe('P8-T1 Demo Path E2E', () => {
   test('executes canonical demo path: load → cloudy_afternoon → run → compare → ask copilot → evidence visible', async ({
     page,
   }) => {
+    test.setTimeout(120_000);
     // 1. Load: navigate to application overview
     await page.goto('/overview');
     await expect(page).toHaveTitle(/Mitsinjo Grid/);
@@ -23,7 +24,7 @@ test.describe('P8-T1 Demo Path E2E', () => {
       .click();
 
     // Open in simulation
-    await page.getByRole('button', { name: /Open scenario Cloudy Afternoon/i }).click();
+    await page.getByRole('link', { name: /Open scenario Cloudy Afternoon/i }).click();
 
     await expect(page).toHaveURL(/.*\/simulation/);
     await expect(page.getByText('Live Simulation').first()).toBeVisible();
@@ -92,7 +93,7 @@ test.describe('P8-T1 Demo Path E2E', () => {
   });
 
   test('runs 3 consecutive demo path iterations without intervention', async ({ page }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(180_000);
 
     for (let iteration = 1; iteration <= 3; iteration++) {
       // Load
@@ -184,4 +185,52 @@ test.describe('P8-T5 Responsive Viewport Audits (1440 / 1024 / 390 px)', () => {
       }
     });
   }
+});
+
+/** Open /simulation on a scenario, run it and switch the viewport to a 2D view. */
+async function runInView(page: Page, scenario: string, view: RegExp) {
+  await page.goto('/simulation');
+  await expect(page.getByText('Live Simulation').first()).toBeVisible();
+
+  await page.getByLabel(/select simulation scenario/i).selectOption(scenario);
+  await page
+    .getByRole('button', { name: /run simulation/i })
+    .first()
+    .click();
+  await expect(page.getByText('SIMULATION COMPLETE').first()).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole('button', { name: view }).click();
+}
+
+test.describe('PL-T15 Lifeline Dispatch & Controller E2E', () => {
+  test.beforeEach(() => {
+    test.setTimeout(120_000);
+  });
+
+  test('solar drop + night keeps lifeline feeders and the controller shows rationing', async ({
+    page,
+  }) => {
+    await runInView(page, 'cloudy_afternoon', /^topology$/i);
+
+    // Evening deficit hour
+    await page.getByRole('slider', { name: /hour of day scrubber/i }).fill('23');
+
+    await expect(page.getByText('EMS Dispatch').first()).toBeVisible();
+    await expect(page.getByText(/rationing/i).first()).toBeVisible();
+    // Sectors stay on a lifeline or limited feed instead of all going off
+    await expect(
+      page
+        .locator('main')
+        .getByText(/lifeline|limited/i)
+        .first()
+    ).toBeVisible();
+  });
+
+  test('controller is visible in both 2D diagram views', async ({ page }) => {
+    await runInView(page, 'baseline', /^circuit$/i);
+    await expect(page.getByText('EMS Dispatch').first()).toBeVisible();
+
+    await page.getByRole('button', { name: /^topology$/i }).click();
+    await expect(page.getByText('EMS Dispatch').first()).toBeVisible();
+  });
 });

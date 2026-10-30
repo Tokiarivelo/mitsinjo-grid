@@ -255,6 +255,47 @@ Run one of the preset scenarios (Baseline or Monsoon Cloud Cover) to inspect sim
       };
     }
 
+    // Lifeline floor / Courant de survie proposal (PL-T14)
+    // "Le soir, ne coupez pas le quartier, laissez au moins la lumière"
+    if (
+      query.includes('ne coupez pas') ||
+      query.includes('laissez au moins la lumière') ||
+      query.includes('pas le quartier') ||
+      query.includes('courant de survie') ||
+      query.includes("don't cut the neighborhood") ||
+      query.includes('leave at least the light') ||
+      query.includes('keep the lights on') ||
+      query.includes('lifeline floor') ||
+      (query.includes('lifeline') &&
+        (query.includes('propose') ||
+          query.includes('floor') ||
+          query.includes('light') ||
+          query.includes('households') ||
+          query.includes('plancher')))
+    ) {
+      const lifelineToolCall: ToolCall = {
+        id: 'call_propose_lifeline',
+        name: 'propose_change',
+        args: {
+          patch: {
+            lifeline: {
+              enabled: true,
+              kw: {
+                households: 0.4,
+              },
+            },
+          },
+          reason: fr
+            ? "Maintien d'un plancher de survie (0.4 kW) pour les foyers le soir afin d'assurer l'éclairage essentiel sans couper le quartier ; arbitrage social soumis à validation opérateur."
+            : 'Maintain a lifeline floor (0.4 kW) for households in the evening for essential lighting without cutting the neighborhood; social trade-off requiring operator approval.',
+        },
+      };
+      return {
+        content: '',
+        toolCalls: [lifelineToolCall],
+      };
+    }
+
     if (
       query.includes('turn off') ||
       query.includes('shut down') ||

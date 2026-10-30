@@ -274,13 +274,13 @@ STRATEGIES: Record<StrategyId, { label: string; rule: string }>
 
 ## Copilot tools (LLM-facing; args validated with Zod server-side)
 
-| Tool                 | Args                                                                                    | Returns                                                               |
-| -------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `get_grid_state`     | `{}`                                                                                    | `{ scenarioId, input summary, metrics of active strategy, resultId }` |
-| `run_scenario`       | `{ scenarioId?, patch?: InputPatch, strategy }`                                         | `{ resultId, metrics, warnings }`                                     |
-| `compare_strategies` | `{ strategies?: StrategyId[] }` (on current input)                                      | `{ [strategy]: { resultId, metrics } }`                               |
-| `get_sector_metrics` | `{ sector: SectorId, strategy?: StrategyId }` (default: active)                         | `SectorMetrics & { priority, hourly: {t,demandKw,servedKw}[] }`       |
-| `propose_change`     | `{ patch?: InputPatch, strategy?: StrategyId, reason: string }` (≥ 1 of patch/strategy) | `{ proposalId }` — **not applied**; UI asks user                      |
+| Tool                 | Args                                                                                    | Returns                                                                         |
+| -------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `get_grid_state`     | `{}`                                                                                    | `{ scenarioId, input summary, metrics of active strategy, resultId }`           |
+| `run_scenario`       | `{ scenarioId?, patch?: InputPatch, strategy }`                                         | `{ resultId, metrics, warnings }`                                               |
+| `compare_strategies` | `{ strategies?: StrategyId[] }` (on current input)                                      | `{ [strategy]: { resultId, metrics } }` (evidence includes lifelineCoveragePct) |
+| `get_sector_metrics` | `{ sector: SectorId, strategy?: StrategyId }` (default: active)                         | `SectorMetrics & { priority, hourly: {t,demandKw,servedKw}[] }`                 |
+| `propose_change`     | `{ patch?: InputPatch, strategy?: StrategyId, reason: string }` (≥ 1 of patch/strategy) | `{ proposalId }` — **not applied**; UI asks user                                |
 
 ```ts
 interface InputPatch {
