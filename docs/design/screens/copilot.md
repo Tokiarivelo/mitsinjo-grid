@@ -46,6 +46,9 @@ ChatMessage, ToolActivity ("Reading current scenario", "Running comparison", "Re
 
 - Evidence rows read result.metrics.* and perSector[id].* and steps[t].* exactly; show field label + value + unit.
 - Context column reads active scenario + status.
+- Voice spectrum (`VoiceSpectrum`, above the input while the mic records): Web Audio `AnalyserNode` (FFT 4096), 48 bars on a
+  log axis 80 Hz–8 kHz, each bar = loudest FFT bin whose centre is in its band; cyan line + "Peak" readout = loudest
+  frequency; shaded "Voice pitch" zone 85–255 Hz. Audio measurement only (no energy number); hidden without Web Audio.
 - Proposed change: Zod-validated scenario patch (including lifeline floors, sector caps, priorities, and strategy switch) -> ConfirmProposalDialog -> shows before/after diff -> applies only on Approve (status -> modified).
 
 ## Rules

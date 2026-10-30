@@ -87,4 +87,28 @@ describe('useVoiceInput (M3-T2)', () => {
     expect(result.current.error).toBe('unsupported');
     expect(alertSpy).not.toHaveBeenCalled();
   });
+
+  it('exposes the live analyser while recording and closes it on stop', async () => {
+    setup(
+      async () => stream,
+      async () => ({ ok: true, json: async () => ({ text: 'ok' }) }) as Response
+    );
+    const close = vi.fn(async () => {});
+    const node = { fftSize: 0 };
+    class FakeAudioContext {
+      createAnalyser = () => node;
+      createMediaStreamSource = () => ({ connect: vi.fn() });
+      close = close;
+    }
+    vi.stubGlobal('AudioContext', FakeAudioContext);
+    const { result } = renderHook(() => useVoiceInput({ locale: 'en', onText: vi.fn() }));
+
+    expect(result.current.analyser).toBeNull();
+    await act(async () => result.current.toggle());
+    expect(result.current.analyser).toBe(node);
+    expect(node.fftSize).toBe(4096);
+    await act(async () => result.current.toggle());
+    expect(result.current.analyser).toBeNull();
+    expect(close).toHaveBeenCalled();
+  });
 });

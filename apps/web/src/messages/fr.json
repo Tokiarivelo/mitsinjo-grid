@@ -517,7 +517,14 @@
         "denied": "Accès au micro refusé. Autorisez-le dans le navigateur, ou tapez votre message.",
         "failed": "Impossible de transcrire l'enregistrement. Réessayez ou tapez votre message.",
         "empty": "Aucune voix entendue. Réessayez plus près du micro.",
-        "dismiss": "Fermer"
+        "dismiss": "Fermer",
+        "spectrumTitle": "Spectre de la voix",
+        "spectrumAria": "Spectre de fréquences du micro en direct, de 80 Hz à 8 kHz",
+        "peak": "Pic {freq}",
+        "peakNone": "Pic —",
+        "pitchZone": "Hauteur de voix",
+        "hz": "{value} Hz",
+        "khz": "{value} kHz"
       }
     },
     "gridDiagram": {

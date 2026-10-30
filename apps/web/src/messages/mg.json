@@ -517,7 +517,14 @@
         "denied": "Nolavina ny fidirana amin'ny mikrô. Avelao ao amin'ny navigateur, na soraty ny hafatrao.",
         "failed": "Tsy voadika ny feo voarakitra. Andramo indray na soraty ny hafatrao.",
         "empty": "Tsy nisy feo re. Andramo indray akaiky kokoa ny mikrô.",
-        "dismiss": "Hidio"
+        "dismiss": "Hidio",
+        "spectrumTitle": "Onjan'ny feo",
+        "spectrumAria": "Onjan'ny feo avy amin'ny mikrô amin'izao fotoana izao, 80 Hz hatramin'ny 8 kHz",
+        "peak": "Ambony indrindra {freq}",
+        "peakNone": "Ambony indrindra —",
+        "pitchZone": "Haavon'ny feo",
+        "hz": "{value} Hz",
+        "khz": "{value} kHz"
       }
     },
     "gridDiagram": {

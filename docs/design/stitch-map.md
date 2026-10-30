@@ -64,3 +64,4 @@ Status values: `not generated` · `generated` · `exported` · `implemented` · 
 - M1-T2 2026-10-30: no mockup. Clinic guard block in ConfirmProposalDialog: critical-red/10 bg, critical-red border
   (50 % → solid when armed), ShieldAlert icon, reason list; Approve button `danger`. Existing tokens only.
 - M1-T1 2026-10-30: no mockup. ConfirmProposalDialog gains an "Engine calculation" block (`proposal-impact.tsx`): energy-cyan border like Computed evidence, grid table Before / After / Change; on < sm the label takes its own line above the 3 values. Negative change `critical-red`, positive `battery-green`. Gate-out: dialog screenshots 1440 + 390, dark + light, no horizontal overflow.
+- Copilot voice spectrum 2026-10-30: built without mockup. Violet because the audio goes to an AI model (Meta Voice); bars updated by refs in `requestAnimationFrame` only while recording.

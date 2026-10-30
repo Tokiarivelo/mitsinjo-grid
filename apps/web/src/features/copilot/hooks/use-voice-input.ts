@@ -3,6 +3,8 @@ import { toVoiceWav } from '../utils/wav';
 
 /** Longest recording; the route refuses more (60 s of 16 kHz WAV). */
 export const VOICE_MAX_MS = 60_000;
+/** FFT size of the spectrum display: ≈ 11.7 Hz per bin at 48 kHz, fine enough for voice pitch. */
+export const VOICE_FFT_SIZE = 4096;
 
 export type VoiceStatus = 'idle' | 'recording' | 'transcribing';
 /** i18n keys under `features.copilot.voice`. */
@@ -24,6 +26,9 @@ export function useVoiceInput({ locale, sessionId, onText }: UseVoiceInputOption
   const [status, setStatus] = useState<VoiceStatus>('idle');
   const [error, setError] = useState<VoiceErrorKey | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  /** Live spectrum of the microphone while recording (null when Web Audio is missing). */
+  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const onTextRef = useRef(onText);
   useEffect(() => {
@@ -58,6 +63,30 @@ export function useVoiceInput({ locale, sessionId, onText }: UseVoiceInputOption
     [locale, sessionId]
   );
 
+  /** Taps the microphone for the spectrum display. Optional: recording works without it. */
+  const openAnalyser = useCallback((stream: MediaStream) => {
+    if (typeof window.AudioContext === 'undefined') return;
+    try {
+      const ctx = new AudioContext();
+      const node = ctx.createAnalyser();
+      node.fftSize = VOICE_FFT_SIZE;
+      node.smoothingTimeConstant = 0.6;
+      node.minDecibels = -90;
+      node.maxDecibels = -20;
+      ctx.createMediaStreamSource(stream).connect(node);
+      audioCtxRef.current = ctx;
+      setAnalyser(node);
+    } catch {
+      setAnalyser(null);
+    }
+  }, []);
+
+  const closeAnalyser = useCallback(() => {
+    void audioCtxRef.current?.close().catch(() => undefined);
+    audioCtxRef.current = null;
+    setAnalyser(null);
+  }, []);
+
   const stop = useCallback(() => {
     clearTimeout(timerRef.current);
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
@@ -82,6 +111,7 @@ export function useVoiceInput({ locale, sessionId, onText }: UseVoiceInputOption
       if (e.data.size > 0) chunks.push(e.data);
     };
     recorder.onstop = () => {
+      closeAnalyser();
       stream.getTracks().forEach((t) => t.stop());
       recorderRef.current = null;
       const recording = new Blob(chunks, { type: recorder.mimeType });
@@ -93,10 +123,11 @@ export function useVoiceInput({ locale, sessionId, onText }: UseVoiceInputOption
       void transcribe(recording);
     };
     recorderRef.current = recorder;
+    openAnalyser(stream);
     recorder.start();
     setStatus('recording');
     timerRef.current = setTimeout(stop, VOICE_MAX_MS);
-  }, [supported, transcribe, stop]);
+  }, [supported, transcribe, stop, openAnalyser, closeAnalyser]);
 
   const toggle = useCallback(() => {
     if (status === 'recording') stop();
@@ -113,9 +144,10 @@ export function useVoiceInput({ locale, sessionId, onText }: UseVoiceInputOption
         rec.stop();
         rec.stream.getTracks().forEach((t) => t.stop());
       }
+      void audioCtxRef.current?.close().catch(() => undefined);
     },
     []
   );
 
-  return { status, error, supported, toggle, clearError: () => setError(null) };
+  return { status, error, supported, toggle, analyser, clearError: () => setError(null) };
 }

@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useCopilot } from '../hooks/use-copilot';
 import { useVoiceInput } from '../hooks/use-voice-input';
+import { VoiceSpectrum } from './voice-spectrum';
 import { useSimulationStore } from '@/stores/simulation.store';
 import type { ChatMediaItem } from '../types';
 import { ChatMessageItem } from './chat-message-item';
@@ -539,6 +540,10 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
                   </div>
                 ))}
               </div>
+            )}
+
+            {isListening && voice.analyser && (
+              <VoiceSpectrum analyser={voice.analyser} className="mb-2" />
             )}
 
             {(voice.error || isTranscribing) && (

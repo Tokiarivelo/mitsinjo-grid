@@ -517,7 +517,14 @@
         "denied": "Microphone access was refused. Allow it in the browser, or type your message.",
         "failed": "Could not transcribe the recording. Try again or type your message.",
         "empty": "Nothing was heard. Try again closer to the microphone.",
-        "dismiss": "Dismiss"
+        "dismiss": "Dismiss",
+        "spectrumTitle": "Voice spectrum",
+        "spectrumAria": "Live frequency spectrum of the microphone, from 80 Hz to 8 kHz",
+        "peak": "Peak {freq}",
+        "peakNone": "Peak —",
+        "pitchZone": "Voice pitch",
+        "hz": "{value} Hz",
+        "khz": "{value} kHz"
       }
     },
     "gridDiagram": {
