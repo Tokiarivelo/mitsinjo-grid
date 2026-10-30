@@ -369,7 +369,13 @@ expected demand. `toHardwareCommand`: `duty = clamp(servedKw / feederNominalKw, 
 | `run_scenario`       | `{ scenarioId?, patch?: InputPatch, strategy }`                                         | `{ resultId, metrics, warnings }`                                               |
 | `compare_strategies` | `{ strategies?: StrategyId[] }` (on current input)                                      | `{ [strategy]: { resultId, metrics } }` (evidence includes lifelineCoveragePct) |
 | `get_sector_metrics` | `{ sector: SectorId, strategy?: StrategyId }` (default: active)                         | `SectorMetrics & { priority, hourly: {t,demandKw,servedKw}[] }`                 |
-| `propose_change`     | `{ patch?: InputPatch, strategy?: StrategyId, reason: string }` (≥ 1 of patch/strategy) | `{ proposalId }` — **not applied**; UI asks user                                |
+| `propose_change`     | `{ patch?: InputPatch, strategy?: StrategyId, reason: string }` (≥ 1 of patch/strategy) | `{ proposalId, impact: ChangeImpact }` — **not applied**; UI asks user          |
+
+`ChangeImpact` (engine `changeImpact(before, after)`, schema `ChangeImpactSchema`): `{ beforeResultId, afterResultId,
+strategyBefore, strategyAfter, socMinPctBefore/After, unservedKwhBefore/After, sectors: Partial<Record<SectorId,
+{ servedKwhBefore, servedKwhAfter, servedKwhDelta, offHoursBefore, offHoursAfter }>> }`. `propose_change` computes it
+on the current input + active strategy vs the patched input + proposed strategy, rounds to 2 decimals, keeps only
+sectors that change, and emits the same numbers as `evidence` (`socMinPctBefore`, `<sector>_servedKwhDelta`, …).
 
 ```ts
 interface InputPatch {
@@ -397,7 +403,7 @@ interface InputPatch {
 `POST /api/copilot` body `{ messages: {role:'user'|'assistant', content:string, media?}[], input: SimulationInput, strategy?, model?, locale?, sessionId?, hour? /*0–23, shown hour*/ }`
 → `text/event-stream` events:
 `activity {tool, sector?, label}` (UI translates `tool`; `label` is English, logs only) · `delta {text}` · `evidence {resultId, fields: Record<string, number|string>}` ·
-`proposal {proposalId, patch?, strategy?, reason}` · `error {code, reason?, message}` · `done {}` ·
+`proposal {proposalId, patch?, strategy?, reason, impact?: ChangeImpact}` · `error {code, reason?, message}` · `done {}` ·
 `model {model, modality, reason}` (modality `chat|reasoning|vision|image`; a second `model` event announces a switch to Wonder) · `image {imageUrl, caption}` ·
 `perception {kind:'segment', concept, count, boxCoverage, instances[], imageWidth, imageHeight, source, model, fallback?}`.
 `error.code = PROVIDER_FALLBACK` carries `reason: 'spend_cap' | 'provider_error'` when known.

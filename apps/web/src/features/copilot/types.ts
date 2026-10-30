@@ -1,4 +1,4 @@
-import type { InputPatch, StrategyId } from '@mitsinjo/engine';
+import type { ChangeImpact, InputPatch, StrategyId } from '@mitsinjo/engine';
 
 export interface CopilotEvidence {
   resultId: string;
@@ -10,6 +10,8 @@ export interface CopilotProposal {
   patch?: InputPatch;
   strategy?: StrategyId;
   reason: string;
+  /** Engine before/after, computed server-side (absent on proposals saved before M1-T1). */
+  impact?: ChangeImpact;
 }
 
 /** Tool activity shown while the copilot works; translated in the UI. */

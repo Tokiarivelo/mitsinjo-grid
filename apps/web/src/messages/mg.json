@@ -343,7 +343,16 @@
         "batteryCapacityKwh": "Fahafahan'ny bateria (kWh)",
         "socStartPct": "Taham-bateria am-piandohana (SoC %)",
         "socEndPct": "Taham-bateria farany (SoC %)",
-        "socMinPct": "Taham-bateria kely indrindra (SoC %)"
+        "socMinPct": "Taham-bateria kely indrindra (SoC %)",
+        "servedKwhBefore": "Angovo nomena teo aloha (kWh)",
+        "servedKwhAfter": "Angovo nomena aorian'ny (kWh)",
+        "servedKwhDelta": "Fiovan'ny angovo nomena (kWh)",
+        "offHoursBefore": "Ora tsy misy jiro teo aloha (h)",
+        "offHoursAfter": "Ora tsy misy jiro aorian'ny (h)",
+        "socMinPctBefore": "Taham-bateria kely indrindra teo aloha (SoC %)",
+        "socMinPctAfter": "Taham-bateria kely indrindra aorian'ny (SoC %)",
+        "unservedKwhBefore": "Angovo tsy nomena teo aloha (kWh)",
+        "unservedKwhAfter": "Angovo tsy nomena aorian'ny (kWh)"
       },
       "errorTitle": "Fampandrenesana simulation",
       "errorFallbackNote": "Mbola azo jerena sy ampiasaina tsara ny voka-panadinana voaisa.",
@@ -449,7 +458,18 @@
         "default": "Fandinihana ny valiny voakajy"
       },
       "unknownValue": "Tsy fantatra",
-      "chartType": "sary {type}"
+      "chartType": "sary {type}",
+      "impactTitle": "Kajy ataon'ny motera",
+      "impactSubtitle": "Andro nalaina tahaka, fanitsiana ankehitriny sy aorian'ny fanekena",
+      "impactColBefore": "Teo aloha",
+      "impactColAfter": "Aoriana",
+      "impactColChange": "Fiovana",
+      "impactServed": "{sector} : angovo nomena",
+      "impactOffHours": "{sector} : ora tsy misy jiro",
+      "impactSocMin": "Fiampangan'ny bateria kely indrindra",
+      "impactUnserved": "Angovo tsy nomena (tanàna)",
+      "impactHours": "{count} ora",
+      "impactNoChange": "Tsy mahita fiovana amin'ny angovo nomena na ora tsy misy jiro ny motera amin'ity tolo-kevitra ity."
     },
     "gridDiagram": {
       "topologyLabel": "Drafitry ny tanàna: fikorianan'ny herinaratra avy amin'ny ivon-masoandro mankany amin'ny sehatra tsirairay",

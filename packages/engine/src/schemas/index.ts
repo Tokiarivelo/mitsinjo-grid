@@ -4,6 +4,7 @@ export * from './result';
 export * from './workflow';
 export * from './sweep';
 export * from './hardware';
+export * from './impact';
 
 import { SimulationInput, SimulationInputSchema } from './input';
 

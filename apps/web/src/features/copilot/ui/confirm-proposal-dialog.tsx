@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { resolveLifelineKw, type SectorId } from '@mitsinjo/engine';
 import { fmtKw } from '@/lib/format';
 import type { CopilotProposal } from '../types';
+import { ProposalImpact } from './proposal-impact';
 
 export interface ConfirmProposalDialogProps {
   proposal: CopilotProposal;
@@ -204,6 +205,9 @@ export function ConfirmProposalDialog({
           </div>
         ))}
       </div>
+
+      {/* Engine before/after (K1) */}
+      {proposal.impact && <ProposalImpact impact={proposal.impact} />}
 
       {/* Actions */}
       <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border/40">

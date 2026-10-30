@@ -76,7 +76,7 @@ le dialogue d'approbation, les libellés SIMULATED / « Généré par IA ».
 L'existant (`propose_change` + `ConfirmProposalDialog`) gère déjà coupure (`sectorCaps maxKw 0`), limite de
 puissance, branchement (`sectorLoads`), plancher de survie, priorités, stratégie.
 
-- [ ] **M1-T1** (K1) Impact chiffré dans le dialogue : le serveur joint à la proposition le résultat moteur
+- [x] **M1-T1** (K1) Impact chiffré dans le dialogue : le serveur joint à la proposition le résultat moteur
       avant / après (`compare` sur l'entrée actuelle et l'entrée patchée) : énergie servie par secteur,
       SoC min, heures coupées. Le dialogue l'affiche en bloc « Calcul moteur ».
       **Done when** test : chiffres du dialogue ⊆ evidence ; dark/light, 390 px.

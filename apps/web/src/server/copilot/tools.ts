@@ -13,6 +13,8 @@ import {
   compare,
   applyPatch,
   scenarios,
+  changeImpact,
+  type ChangeImpact,
 } from '@mitsinjo/engine';
 import type { ToolDefinition } from './provider';
 
@@ -47,6 +49,53 @@ export function compactMetrics(m: Metrics) {
     socMinPct: round2(m.socMinPct),
     affectedSectors: m.affectedSectors,
   };
+}
+
+/**
+ * Engine impact of a proposal, rounded for display. Keeps only sectors whose served energy
+ * or off hours change, so the dialog and the evidence list the same numbers.
+ */
+export function compactImpact(impact: ChangeImpact): ChangeImpact {
+  const sectors: ChangeImpact['sectors'] = {};
+  for (const [id, s] of Object.entries(impact.sectors)) {
+    if (!s) continue;
+    const delta = round2(s.servedKwhDelta);
+    if (delta === 0 && s.offHoursAfter === s.offHoursBefore) continue;
+    sectors[id as keyof ChangeImpact['sectors']] = {
+      servedKwhBefore: round2(s.servedKwhBefore),
+      servedKwhAfter: round2(s.servedKwhAfter),
+      servedKwhDelta: delta,
+      offHoursBefore: s.offHoursBefore,
+      offHoursAfter: s.offHoursAfter,
+    };
+  }
+  return {
+    ...impact,
+    socMinPctBefore: round2(impact.socMinPctBefore),
+    socMinPctAfter: round2(impact.socMinPctAfter),
+    unservedKwhBefore: round2(impact.unservedKwhBefore),
+    unservedKwhAfter: round2(impact.unservedKwhAfter),
+    sectors,
+  };
+}
+
+/** Flat evidence fields for every number the approval dialog shows. */
+export function impactEvidence(impact: ChangeImpact): Record<string, number> {
+  const ev: Record<string, number> = {
+    socMinPctBefore: impact.socMinPctBefore,
+    socMinPctAfter: impact.socMinPctAfter,
+    unservedKwhBefore: impact.unservedKwhBefore,
+    unservedKwhAfter: impact.unservedKwhAfter,
+  };
+  for (const [id, s] of Object.entries(impact.sectors)) {
+    if (!s) continue;
+    ev[`${id}_servedKwhBefore`] = s.servedKwhBefore;
+    ev[`${id}_servedKwhAfter`] = s.servedKwhAfter;
+    ev[`${id}_servedKwhDelta`] = s.servedKwhDelta;
+    ev[`${id}_offHoursBefore`] = s.offHoursBefore;
+    ev[`${id}_offHoursAfter`] = s.offHoursAfter;
+  }
+  return ev;
 }
 
 // Zod argument schemas for the 5 tools
@@ -318,6 +367,7 @@ export interface ToolResult {
     patch?: InputPatch;
     strategy?: StrategyId;
     reason: string;
+    impact?: ChangeImpact;
   };
   evidence?: Record<string, number | string>;
 }
@@ -507,15 +557,34 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       }
       const proposalId = `PROP-${Math.abs(hash).toString(16).toUpperCase().padStart(6, '0').slice(0, 6)}`;
 
+      // Engine before/after (K1): current input + strategy vs patched input + proposed strategy.
+      const currentStrategy: StrategyId = ctx.activeStrategy ?? 'proportional';
+      let patchedInput = ctx.input;
+      if (parsed.data.patch) {
+        try {
+          patchedInput = applyPatch(ctx.input, parsed.data.patch);
+        } catch (err) {
+          return {
+            toolName,
+            error: `Failed to apply patch: ${err instanceof Error ? err.message : String(err)}`,
+          };
+        }
+      }
+      const before = simulate(ctx.input, currentStrategy);
+      const after = simulate(patchedInput, parsed.data.strategy ?? currentStrategy);
+      const impact = compactImpact(changeImpact(before, after));
+
       const proposal = {
         proposalId,
         patch: parsed.data.patch,
         strategy: parsed.data.strategy,
         reason: parsed.data.reason,
+        impact,
       };
 
       return {
         toolName,
+        resultId: after.id,
         proposal,
         data: {
           proposalId,
@@ -523,7 +592,9 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
           patch: parsed.data.patch,
           strategy: parsed.data.strategy,
           reason: parsed.data.reason,
+          impact,
         },
+        evidence: impactEvidence(impact),
       };
     }
 

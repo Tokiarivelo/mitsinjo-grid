@@ -68,6 +68,8 @@ with their own 45 s limit outside the 20 s chat budget (`maxDuration = 120` on t
 
 `loop.ts` collects every numeric field returned by tools into `evidence` events. UI renders evidence
 in a distinct "Computed evidence" block (not LLM text). Test: numbers in a mock answer ⊆ evidence values.
+`propose_change` runs the engine before/after (`changeImpact`) and sends it with the proposal; the approval dialog
+shows it as an "Engine calculation" block. Test (`tools.test.ts`): every impact number ⊆ that tool's evidence.
 
 ## 5. Eval set (P6-T7) — `server/copilot/__tests__/eval.cases.ts`
 

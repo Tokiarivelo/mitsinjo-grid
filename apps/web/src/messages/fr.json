@@ -343,7 +343,16 @@
         "batteryCapacityKwh": "Capacité stockage batterie (kWh)",
         "socStartPct": "Niveau de batterie initial (SoC %)",
         "socEndPct": "Niveau de batterie final (SoC %)",
-        "socMinPct": "Niveau de batterie minimal (SoC %)"
+        "socMinPct": "Niveau de batterie minimal (SoC %)",
+        "servedKwhBefore": "Énergie servie avant (kWh)",
+        "servedKwhAfter": "Énergie servie après (kWh)",
+        "servedKwhDelta": "Écart d'énergie servie (kWh)",
+        "offHoursBefore": "Heures sans courant avant (h)",
+        "offHoursAfter": "Heures sans courant après (h)",
+        "socMinPctBefore": "Batterie minimale avant (SoC %)",
+        "socMinPctAfter": "Batterie minimale après (SoC %)",
+        "unservedKwhBefore": "Énergie non servie avant (kWh)",
+        "unservedKwhAfter": "Énergie non servie après (kWh)"
       },
       "errorTitle": "Avis consultatif de simulation",
       "errorFallbackNote": "Les résultats déterministes de la simulation restent pleinement consultables et actifs.",
@@ -449,7 +458,18 @@
         "default": "Analyse des résultats calculés"
       },
       "unknownValue": "Inconnu",
-      "chartType": "graphique {type}"
+      "chartType": "graphique {type}",
+      "impactTitle": "Calcul moteur",
+      "impactSubtitle": "Journée simulée, réglages actuels vs après approbation",
+      "impactColBefore": "Avant",
+      "impactColAfter": "Après",
+      "impactColChange": "Écart",
+      "impactServed": "{sector} : énergie servie",
+      "impactOffHours": "{sector} : heures sans courant",
+      "impactSocMin": "Charge minimale de la batterie",
+      "impactUnserved": "Énergie non servie (village)",
+      "impactHours": "{count} h",
+      "impactNoChange": "Le moteur ne voit aucun changement d'énergie servie ni d'heures sans courant pour cette proposition."
     },
     "gridDiagram": {
       "topologyLabel": "Plan du village : flux d'énergie du hub solaire vers chaque secteur",

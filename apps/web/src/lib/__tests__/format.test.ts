@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { EMPTY_PLACEHOLDER, fmtDeltaPct, fmtHour, fmtKw, fmtKwh, fmtPct } from '../format';
+import {
+  EMPTY_PLACEHOLDER,
+  fmtDeltaKwh,
+  fmtDeltaPct,
+  fmtHour,
+  fmtKw,
+  fmtKwh,
+  fmtPct,
+} from '../format';
 
 describe('format utilities (P4-T2)', () => {
   describe('fmtKw', () => {
@@ -67,6 +75,15 @@ describe('format utilities (P4-T2)', () => {
     it('handles null and NaN', () => {
       expect(fmtHour(null)).toBe(EMPTY_PLACEHOLDER);
       expect(fmtHour(NaN)).toBe(EMPTY_PLACEHOLDER);
+    });
+  });
+
+  describe('fmtDeltaKwh', () => {
+    it('signs the energy delta and keeps the unit', () => {
+      expect(fmtDeltaKwh(1.5)).toBe('+1.5 kWh');
+      expect(fmtDeltaKwh(-6)).toBe('-6.0 kWh');
+      expect(fmtDeltaKwh(0)).toBe('0.0 kWh');
+      expect(fmtDeltaKwh(NaN)).toBe(EMPTY_PLACEHOLDER);
     });
   });
 

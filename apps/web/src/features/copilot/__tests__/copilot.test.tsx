@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { useSimulationStore, resetSimulationStore } from '@/stores';
 import { CopilotPage } from '../index';
 import { ToolActivity } from '../ui/tool-activity';
@@ -140,6 +140,82 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
     const rejectBtn = screen.getByRole('button', { name: /Reject/i });
     fireEvent.click(rejectBtn);
     expect(onReject).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the engine before/after block with only the impact values (M1-T1)', () => {
+    render(
+      <ConfirmProposalDialog
+        proposal={{
+          proposalId: 'PROP-02',
+          patch: { sectorCaps: [{ sector: 'market', maxKw: 0, fromHour: 8, toHour: 12 }] },
+          reason: 'Cut the market this morning',
+          impact: {
+            beforeResultId: 'SIM-A',
+            afterResultId: 'SIM-B',
+            strategyBefore: 'proportional',
+            strategyAfter: 'proportional',
+            socMinPctBefore: 20,
+            socMinPctAfter: 24.5,
+            unservedKwhBefore: 3.2,
+            unservedKwhAfter: 9.4,
+            sectors: {
+              market: {
+                servedKwhBefore: 20,
+                servedKwhAfter: 14,
+                servedKwhDelta: -6,
+                offHoursBefore: 0,
+                offHoursAfter: 4,
+              },
+            },
+          },
+        }}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+      />
+    );
+
+    const block = within(screen.getByRole('region', { name: 'Engine calculation' }));
+    expect(block.getByText('SIM-B')).toBeInTheDocument();
+    for (const v of [
+      '20.0 kWh',
+      '14.0 kWh',
+      '-6.0 kWh',
+      '0 h',
+      '4 h',
+      '20.0%',
+      '24.5%',
+      '3.2 kWh',
+      '9.4 kWh',
+    ]) {
+      expect(block.getByText(v)).toBeInTheDocument();
+    }
+    expect(block.queryByText(/no change/i)).not.toBeInTheDocument();
+  });
+
+  it('says when the engine sees no change for a proposal (M1-T1)', () => {
+    render(
+      <ConfirmProposalDialog
+        proposal={{
+          proposalId: 'PROP-03',
+          strategy: 'balanced',
+          reason: 'Try balanced',
+          impact: {
+            beforeResultId: 'SIM-A',
+            afterResultId: 'SIM-A2',
+            strategyBefore: 'proportional',
+            strategyAfter: 'balanced',
+            socMinPctBefore: 20,
+            socMinPctAfter: 20,
+            unservedKwhBefore: 0,
+            unservedKwhAfter: 0,
+            sectors: {},
+          },
+        }}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+      />
+    );
+    expect(screen.getByText(/sees no change/i)).toBeInTheDocument();
   });
 
   it('renders strategy switch in proposal dialog and applies it to store (P6-T9)', () => {

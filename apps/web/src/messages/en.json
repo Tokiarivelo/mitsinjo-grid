@@ -343,7 +343,16 @@
         "batteryCapacityKwh": "Battery Storage Capacity (kWh)",
         "socStartPct": "Initial Battery SoC (%)",
         "socEndPct": "Final Battery SoC (%)",
-        "socMinPct": "Minimum Battery SoC (%)"
+        "socMinPct": "Minimum Battery SoC (%)",
+        "servedKwhBefore": "Served energy before (kWh)",
+        "servedKwhAfter": "Served energy after (kWh)",
+        "servedKwhDelta": "Served energy change (kWh)",
+        "offHoursBefore": "Hours without power before (h)",
+        "offHoursAfter": "Hours without power after (h)",
+        "socMinPctBefore": "Minimum battery SoC before (%)",
+        "socMinPctAfter": "Minimum battery SoC after (%)",
+        "unservedKwhBefore": "Unserved energy before (kWh)",
+        "unservedKwhAfter": "Unserved energy after (kWh)"
       },
       "errorTitle": "Simulation Advisory Notice",
       "errorFallbackNote": "Deterministic simulation results remain fully available and active.",
@@ -449,7 +458,18 @@
         "default": "Reviewing computed results"
       },
       "unknownValue": "Unknown",
-      "chartType": "{type} chart"
+      "chartType": "{type} chart",
+      "impactTitle": "Engine calculation",
+      "impactSubtitle": "Simulated day, current settings vs after approval",
+      "impactColBefore": "Before",
+      "impactColAfter": "After",
+      "impactColChange": "Change",
+      "impactServed": "{sector}: served energy",
+      "impactOffHours": "{sector}: hours without power",
+      "impactSocMin": "Minimum battery charge",
+      "impactUnserved": "Unserved energy (village)",
+      "impactHours": "{count} h",
+      "impactNoChange": "The engine sees no change in served energy or hours without power for this proposal."
     },
     "gridDiagram": {
       "topologyLabel": "Village plan: power flow from the solar hub to each sector",

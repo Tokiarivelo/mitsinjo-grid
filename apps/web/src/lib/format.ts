@@ -77,6 +77,21 @@ export function fmtDeltaPct(
 }
 
 /**
+ * Format signed energy delta (e.g. +1.5 kWh or -6.0 kWh).
+ */
+export function fmtDeltaKwh(
+  delta: number | null | undefined,
+  decimals = 1,
+  fallback = EMPTY_PLACEHOLDER
+): string {
+  if (delta === null || delta === undefined || !Number.isFinite(delta)) {
+    return fallback;
+  }
+  const sign = delta > 0 ? '+' : '';
+  return `${sign}${delta.toFixed(decimals)} kWh`;
+}
+
+/**
  * Format a bare number (unit shown separately, e.g. by MetricCard).
  * e.g. fmtNum(40.23) => "40.2"
  */

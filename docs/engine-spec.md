@@ -78,6 +78,9 @@ Warnings: merge consecutive hours into ranges. `CRITICAL_UNMET` (any critical sh
 `CURTAILMENT` (curtailedKw > 0), `SECTOR_CAPPED` (sector allocation constrained by a capacity cap),
 `ANOMALY_TO_VERIFY` (meter readings persistently diverge from expected profile by > 25% for ≥ 2 consecutive hours),
 `LIFELINE_SHORTFALL` (energy < Σ planchers, identifies sectors experiencing shortfall).
+Change impact (`changeImpact(before, after)`): per sector `servedKwh` before/after/delta and `offHours` (steps with
+demand > ε and `mode = 'off'`; a sector without load is never off), plus `socMinPct` and `unservedKwh` before/after.
+Used by the approval dialog ("Engine calculation").
 
 ## 5. Default parameters
 
