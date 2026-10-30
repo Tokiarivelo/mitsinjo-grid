@@ -8,7 +8,8 @@ LLM explains, engine computes. Tool I/O and SSE events: `docs/contracts.md`.
 server/copilot/
 ├── provider.ts        # interface LlmProvider { chat(messages, tools): Promise<LlmTurn> }
 ├── providers/meta.ts  # Meta Model API, default `muse-spark-1.3` (OpenAI-compatible chat + tools; `tool_choice` auto only)
-├── providers/mock.ts  # deterministic: keyword → tool plan → templated answer from evidence
+├── providers/mock.ts  # deterministic: keyword → tool plan → templated answer from evidence (never its own numbers;
+│                      #   charts from `get_grid_state({hourly:true})`)
 ├── tools.ts           # tool defs (JSON schema from Zod) + handlers calling @mitsinjo/engine
 ├── prompt.ts          # system prompt (below), ≤ 400 tokens
 ├── loop.ts            # max 4 tool rounds, 40 s chat budget (paused during slow tools, +30 s after a Wonder switch), SSE events

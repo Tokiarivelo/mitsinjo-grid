@@ -57,6 +57,48 @@ function isFrenchQuery(text: string): boolean {
   );
 }
 
+/** Chart answer built only from the `get_grid_state(hourly)` tool result (engine values, already rounded). */
+export function describeProfileChart(payload: Record<string, unknown>, fr: boolean): string {
+  const hourly = payload.hourly as {
+    t: number;
+    solarKw: number;
+    demandKw: number;
+    socPct: number;
+  }[];
+  const h = (payload.highlights ?? {}) as Record<string, number>;
+  const resultId = String(payload.resultId ?? '');
+  const chart = JSON.stringify({
+    type: 'line',
+    title: fr
+      ? 'Production solaire, charge et batterie (24 h)'
+      : '24 h solar production, load and battery',
+    xAxisKey: 'hour',
+    series: [
+      { key: 'solar', label: fr ? 'Solaire PV (kW)' : 'Solar PV (kW)' },
+      { key: 'demand', label: fr ? 'Charge totale (kW)' : 'Total load (kW)' },
+      { key: 'battery', label: fr ? 'SoC batterie (%)' : 'Battery SoC (%)' },
+    ],
+    data: hourly.map((p) => ({
+      hour: `${String(p.t).padStart(2, '0')}h`,
+      solar: p.solarKw,
+      demand: p.demandKw,
+      battery: p.socPct,
+    })),
+  });
+  const at = (hour: number | undefined) => `${String(hour ?? 0).padStart(2, '0')}:00`;
+  return fr
+    ? `### Ce qui s'est passé\nProfil simulé sur 24 h : production solaire, charge du village et état de charge de la batterie (moteur, ${resultId}).\n\n` +
+        `\`\`\`chart\n${chart}\n\`\`\`\n\n` +
+        `### Preuves calculées\n- Pointe solaire : ${h.peakSolarKw} kW à ${at(h.peakSolarHour)}\n- Pointe de charge : ${h.peakDemandKw} kW à ${at(h.peakDemandHour)}\n- SoC batterie le plus bas : ${h.lowestSocPct} % à ${at(h.lowestSocHour)}\n\n` +
+        `### Pourquoi c'est important\nLes heures où la charge dépasse le solaire vident la batterie : ce sont elles qui menacent les services essentiels.\n\n` +
+        `### Et ensuite\nTester une baisse d'ensoleillement pour voir la batterie descendre plus tôt.`
+    : `### What happened\nSimulated 24 h profile: solar production, village load and battery state of charge (engine, ${resultId}).\n\n` +
+        `\`\`\`chart\n${chart}\n\`\`\`\n\n` +
+        `### Computed evidence\n- Solar peak: ${h.peakSolarKw} kW at ${at(h.peakSolarHour)}\n- Load peak: ${h.peakDemandKw} kW at ${at(h.peakDemandHour)}\n- Lowest battery SoC: ${h.lowestSocPct}% at ${at(h.lowestSocHour)}\n\n` +
+        `### Why it matters\nHours where load exceeds solar drain the battery: those are the hours that threaten essential services.\n\n` +
+        `### Explore next\nSimulate a solar drop to see the battery fall earlier.`;
+}
+
 export class MockLlmProvider implements LlmProvider {
   readonly name = 'mock';
 
@@ -126,12 +168,12 @@ export class MockLlmProvider implements LlmProvider {
           ? `### Analyse visuelle du micro-réseau\nJ'ai bien analysé votre ${mediaType} jointe relative à la configuration du micro-réseau.\n\n` +
             `**Constatations clés :**\n` +
             `- **Composants détectés :** Panneaux photovoltaïques, onduleur central et liaison batterie.\n` +
-            `- **Alignement simulation :** Les spécifications correspondent au modèle nominal de 45 kWc avec stockage 120 kWh.\n` +
+            `- **Alignement simulation :** À comparer avec la puissance PV et la batterie du scénario actif (demandez « état du réseau » pour les valeurs du moteur).\n` +
             `- **Recommandation :** Vous pouvez lancer une simulation avec une chute d'ensoleillement de 40% pour tester la résilience.`
           : `### Microgrid Visual Analysis\nI have inspected the attached ${hasVideo ? 'video' : 'image'} regarding your microgrid layout.\n\n` +
             `**Key Observations:**\n` +
             `- **Detected Components:** Solar PV array, centralized inverter, and battery storage link.\n` +
-            `- **Simulation Alignment:** Layout matches nominal 45 kWp PV and 120 kWh battery capacity.\n` +
+            `- **Simulation Alignment:** Compare with the PV power and battery of the active scenario (ask for the grid state to get the engine values).\n` +
             `- **Recommendation:** Run a stress simulation with a 40% solar drop to evaluate resilience.`,
       };
     }
@@ -144,52 +186,9 @@ export class MockLlmProvider implements LlmProvider {
       query.includes('courbe') ||
       query.includes('diagramme')
     ) {
-      const chartJson = JSON.stringify(
-        {
-          type: 'line',
-          title: fr
-            ? 'Évolution de la production solaire et de la charge (24h)'
-            : '24h Solar Production vs Demand Profile',
-          xAxisKey: 'hour',
-          series: [
-            { key: 'solar', label: fr ? 'Solaire PV (kW)' : 'Solar PV (kW)', color: '#f59e0b' },
-            {
-              key: 'demand',
-              label: fr ? 'Charge totale (kW)' : 'Total Load (kW)',
-              color: '#38bdf8',
-            },
-            {
-              key: 'battery',
-              label: fr ? 'SoC Batterie (%)' : 'Battery SoC (%)',
-              color: '#10b981',
-            },
-          ],
-          data: [
-            { hour: '00h', solar: 0, demand: 8, battery: 60 },
-            { hour: '04h', solar: 0, demand: 7, battery: 52 },
-            { hour: '08h', solar: 18, demand: 14, battery: 58 },
-            { hour: '12h', solar: 42, demand: 26, battery: 85 },
-            { hour: '16h', solar: 22, demand: 28, battery: 92 },
-            { hour: '20h', solar: 0, demand: 24, battery: 74 },
-            { hour: '23h', solar: 0, demand: 12, battery: 64 },
-          ],
-        },
-        null,
-        2
-      );
-
+      // Chart values come from the engine: ask for the 24 h series, build the chart from the result.
       return {
-        content: fr
-          ? `### Que s'est-il passé\nVoici le profil de génération solaire simulé sur 24 heures en comparaison avec la charge du village et l'état de charge de la batterie.\n\n` +
-            `\`\`\`chart\n${chartJson}\n\`\`\`\n\n` +
-            `### Preuves calculées\n- Production solaire de pointe : 42 kW à 12h00\n- Charge de pointe en soirée : 28 kW à 16h00\n- SoC batterie minimal : 52 % à 04h00\n\n` +
-            `### Pourquoi c'est important\nLa batterie maintient la couverture énergétique nocturne sans coupure pour les services vitaux.\n\n` +
-            `### Explorer ensuite\nTester une baisse d'ensoleillement de 40% pour observer la sollicitation accrue de la batterie.`
-          : `### What happened\nHere is the simulated 24-hour solar generation profile plotted against total village load and battery State of Charge.\n\n` +
-            `\`\`\`chart\n${chartJson}\n\`\`\`\n\n` +
-            `### Computed evidence\n- Solar peak production: 42 kW at 12:00\n- Evening peak load: 28 kW at 16:00\n- Minimum battery SoC: 52% at 04:00\n\n` +
-            `### Why it matters\nThe battery buffer reliably supports essential services throughout nocturnal deficit hours.\n\n` +
-            `### Explore next\nSimulate a 40% afternoon solar drop to inspect battery stress under constrained generation.`,
+        toolCalls: [{ id: 'call_chart_profile', name: 'get_grid_state', args: { hourly: true } }],
       };
     }
 
@@ -614,6 +613,9 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
         ),
       };
     }
+    if (toolName === 'get_grid_state' && !err && Array.isArray(payload.hourly)) {
+      return { content: describeProfileChart(payload, fr) };
+    }
     if (toolName === 'generate_image' && !err) {
       return {
         content: fr
@@ -927,9 +929,9 @@ Test a simulated cloud cover event to observe battery discharge behavior.`,
   <g transform="translate(560, 250)">
     <rect width="160" height="90" rx="6" fill="#1e293b" stroke="#10b981" stroke-width="2"/>
     <rect x="15" y="20" width="130" height="25" rx="3" fill="#065f46"/>
-    <text x="80" y="37" fill="#6ee7b7" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle">BATTERIE 200 kWh</text>
+    <text x="80" y="37" fill="#6ee7b7" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle">BATTERIE</text>
     <circle cx="35" cy="65" r="6" fill="#10b981"/>
-    <text x="50" y="69" fill="#94a3b8" font-family="monospace" font-size="11">SOC: 60%</text>
+    <text x="50" y="69" fill="#94a3b8" font-family="monospace" font-size="11">SIMULATION</text>
   </g>
   <text x="40" y="50" fill="#38bdf8" font-family="monospace" font-size="16" font-weight="bold">MITSINJO MICROGRID — SIMULATION</text>
   <text x="40" y="75" fill="#94a3b8" font-family="sans-serif" font-size="13">${prompt.slice(0, 60)}</text>

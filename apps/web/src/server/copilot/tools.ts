@@ -16,6 +16,7 @@ import {
   changeImpact,
   clinicGuard,
   type ChangeImpact,
+  type StepResult,
 } from '@mitsinjo/engine';
 import type { ToolDefinition } from './provider';
 
@@ -100,7 +101,35 @@ export function impactEvidence(impact: ChangeImpact): Record<string, number> {
 }
 
 // Zod argument schemas for the 5 tools
-export const GetGridStateSchema = z.object({});
+export const GetGridStateSchema = z.object({
+  /** Adds the 24 h solar / demand / battery series and their peak hours (for charts). */
+  hourly: z.boolean().optional(),
+});
+
+/** One hour of the engine run, rounded for the model (charts). */
+export interface HourlyPoint {
+  t: number;
+  solarKw: number;
+  demandKw: number;
+  socPct: number;
+}
+
+/** Engine hours where solar and demand peak and the battery is lowest (picked from the steps, no new math). */
+export function profileHighlights(steps: readonly StepResult[]) {
+  const pick = (better: (a: StepResult, b: StepResult) => boolean) =>
+    steps.reduce((best, s) => (better(s, best) ? s : best));
+  const solar = pick((a, b) => a.solarKw > b.solarKw);
+  const demand = pick((a, b) => a.demandKw > b.demandKw);
+  const soc = pick((a, b) => a.socPct < b.socPct);
+  return {
+    peakSolarKw: round2(solar.solarKw),
+    peakSolarHour: solar.t,
+    peakDemandKw: round2(demand.demandKw),
+    peakDemandHour: demand.t,
+    lowestSocPct: round2(soc.socPct),
+    lowestSocHour: soc.t,
+  };
+}
 
 export const RunScenarioSchema = z.object({
   scenarioId: z
@@ -181,10 +210,16 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'get_grid_state',
     description:
-      'Inspect the current microgrid simulation state, active scenario parameters, and summary metrics.',
+      'Inspect the current microgrid simulation state, active scenario parameters, and summary metrics. Set hourly=true to also get the 24 h solar, demand and battery series (use it for any chart: never invent chart values).',
     parameters: {
       type: 'object',
-      properties: {},
+      properties: {
+        hourly: {
+          type: 'boolean',
+          description:
+            'Include the 24 h series (solarKw, demandKw, socPct) and their peak / lowest hours.',
+        },
+      },
       additionalProperties: false,
     },
   },
@@ -386,6 +421,15 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       const strategy: StrategyId = ctx.activeStrategy || 'proportional';
       const result = simulate(ctx.input, strategy);
       const metrics = compactMetrics(result.metrics);
+      const highlights = parsed.data.hourly ? profileHighlights(result.steps) : undefined;
+      const hourly: HourlyPoint[] | undefined = parsed.data.hourly
+        ? result.steps.map((s) => ({
+            t: s.t,
+            solarKw: round2(s.solarKw),
+            demandKw: round2(s.demandKw),
+            socPct: round2(s.socPct),
+          }))
+        : undefined;
 
       return {
         toolName,
@@ -402,11 +446,13 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
           strategy,
           resultId: result.id,
           metrics,
+          ...(hourly && { hourly, highlights }),
         },
         evidence: {
           ...extractNumericMetrics(metrics),
           solarPeakKw: ctx.input.solar.peakKw,
           batteryCapacityKwh: ctx.input.battery.capacityKwh,
+          ...highlights,
         },
       };
     }

@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-30 · **By:** Claude Code · **Branch:** `feat/meta-models` · **PR:** none yet · **All uncommitted**
+**Updated:** 2026-10-30 · **By:** Claude Code · **Branch:** `feat/meta-models` · **PR:** none yet · committed 46e8265 + mock fix
 
 ## State
 
@@ -18,15 +18,14 @@
   the next; FR "Et ensuite" + MG headings), i18n for model labels/alts, touch targets ≥ 40 px.
 - Voice: `useVoiceInput` (MediaRecorder → 16 kHz WAV → `POST /api/voice` → text in the input). Replaces Web Speech API
   (failed on Firefox/Linux Chromium with "Reconnaissance vocale non supportée").
-- Checks: typecheck ✓ lint ✓ i18n ✓ prettier ✓; engine 209, web 585 all pass. `make test` exits 1 only on a Vitest
-  worker RPC timeout (machine thermally throttled, load ≈ 24). `simulation.test.tsx` timeout raised to 15 s.
-- Screenshots /simulation copilot tab 1440/390 dark/light ✓ (stubbed SSE), no overflow.
+- Mock numbers: chart answer calls `get_grid_state({hourly:true})` (24 h series + highlights, in evidence); photo answer
+  and fallback SVG carry no invented numbers.
+- Checks: `make check` ✓ (engine 209, web 587). Shots /simulation copilot tab 1440/390 dark/light ✓.
+  `make e2e` reuses dev server :3001; on this throttled machine navigation steps time out at random (pages untouched).
 
 ## Next task
 
-- Commit (not asked yet). Live check A53–A65 with Meta key (fallback reasons, voice with Meta, compaction).
-- Then **M1-T3** (K2 "now" → `fromHour`). Known issue: mock chart answer hardcodes "42 kW / 52 %" (`providers/mock.ts`,
-  chart branch) — breaks "numbers only from engine"; fix by building it from engine output.
+- Rerun `make e2e` in CI / dev server stopped. Live check A53–A67 with Meta key. Then **M1-T3** (K2 "now" → `fromHour`).
 
 ## Decisions taken
 
@@ -36,9 +35,5 @@
 
 ## Files touched this session
 
-- Engine: `safety.ts`, `schemas/impact.ts`, `index.ts`, tests. Server: `copilot/{loop,compaction,history,tools}.ts`,
-  `providers/mock.ts`, `db/neon.ts`, `app/api/{copilot/route,copilot/sessions/[id]/route,voice/route}.ts`
-- Web copilot: `types.ts`, hooks `use-copilot`, `use-proposal-diff`, `use-voice-input`; ui `confirm-proposal-dialog`,
-  `clinic-guard-warning`, `proposal-diff-list`, `proposal-decision-message`, `chat-message-item`, `copilot-workspace`,
-  `suggested-prompts`, `proposal-impact`, `tool-activity`; utils `decisions`, `history`, `parse-sections`, `wav`; messages ×3
-- Docs: contracts, copilot, architecture, engine-spec, design/{components,stitch-map}, tasks/PM, README. Scenarios A50–A65, A36.
+- Engine `safety.ts`; server `copilot/{loop,compaction,history,tools}.ts`, `providers/mock.ts`, `db/neon.ts`, api `copilot`,
+  `sessions/[id]`, `voice`; web `features/copilot/**` (hooks, ui, utils), messages ×3; docs; scenarios A36, A50–A67.

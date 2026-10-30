@@ -363,13 +363,17 @@ expected demand. `toHardwareCommand`: `duty = clamp(servedKw / feederNominalKw, 
 
 ## Copilot tools (LLM-facing; args validated with Zod server-side)
 
-| Tool                 | Args                                                                                    | Returns                                                                         |
-| -------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `get_grid_state`     | `{}`                                                                                    | `{ scenarioId, input summary, metrics of active strategy, resultId }`           |
-| `run_scenario`       | `{ scenarioId?, patch?: InputPatch, strategy }`                                         | `{ resultId, metrics, warnings }`                                               |
-| `compare_strategies` | `{ strategies?: StrategyId[] }` (on current input)                                      | `{ [strategy]: { resultId, metrics } }` (evidence includes lifelineCoveragePct) |
-| `get_sector_metrics` | `{ sector: SectorId, strategy?: StrategyId }` (default: active)                         | `SectorMetrics & { priority, hourly: {t,demandKw,servedKw}[] }`                 |
-| `propose_change`     | `{ patch?: InputPatch, strategy?: StrategyId, reason: string }` (≥ 1 of patch/strategy) | `{ proposalId, impact: ChangeImpact }` — **not applied**; UI asks user          |
+| Tool                 | Args                                                                                    | Returns                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `get_grid_state`     | `{ hourly?: boolean }`                                                                  | `{ scenarioId, input summary, metrics of active strategy, resultId, hourly?, highlights? }` |
+| `run_scenario`       | `{ scenarioId?, patch?: InputPatch, strategy }`                                         | `{ resultId, metrics, warnings }`                                                           |
+| `compare_strategies` | `{ strategies?: StrategyId[] }` (on current input)                                      | `{ [strategy]: { resultId, metrics } }` (evidence includes lifelineCoveragePct)             |
+| `get_sector_metrics` | `{ sector: SectorId, strategy?: StrategyId }` (default: active)                         | `SectorMetrics & { priority, hourly: {t,demandKw,servedKw}[] }`                             |
+| `propose_change`     | `{ patch?: InputPatch, strategy?: StrategyId, reason: string }` (≥ 1 of patch/strategy) | `{ proposalId, impact: ChangeImpact }` — **not applied**; UI asks user                      |
+
+`get_grid_state({hourly:true})` adds `hourly: {t, solarKw, demandKw, socPct}[24]` (engine steps, rounded) and `highlights
+{ peakSolarKw, peakSolarHour, peakDemandKw, peakDemandHour, lowestSocPct, lowestSocHour }` (picked from the steps), also in
+evidence. Charts in answers must use these values.
 
 `ChangeImpact` (engine `changeImpact(before, after)`, schema `ChangeImpactSchema`): `{ beforeResultId, afterResultId,
 strategyBefore, strategyAfter, socMinPctBefore/After, unservedKwhBefore/After, sectors: Partial<Record<SectorId,

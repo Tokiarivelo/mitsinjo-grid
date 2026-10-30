@@ -328,4 +328,26 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
       expect(proposal?.patch?.sectorCaps?.[0]).toMatchObject({ sector: 'health', maxKw: 0 });
     }
   });
+
+  it('Chart request → get_grid_state(hourly); every number in the answer comes from the engine', async () => {
+    for (const prompt of [
+      'Show me a chart of solar vs demand',
+      'Montre-moi un graphique solaire et charge',
+    ]) {
+      const { fullText, evidenceList, events } = await runEvalPrompt(prompt);
+      expect(fullText).toContain('```chart');
+      expect(fullText).not.toMatch(/42 kW|52 ?%|28 kW/);
+      const ev = evidenceList.find((e) => 'peakSolarKw' in e.fields)!.fields;
+      expect(fullText).toContain(`${ev.peakSolarKw} kW`);
+      expect(fullText).toContain(`${ev.lowestSocPct}`);
+      // Chart points = the tool's hourly series, unchanged.
+      const chart = JSON.parse(fullText.split('```chart\n')[1]!.split('\n```')[0]!);
+      expect(chart.data).toHaveLength(24);
+      const peakRow = chart.data.find((r: { solar: number }) => r.solar === ev.peakSolarKw);
+      expect(peakRow).toBeDefined();
+      expect(events.some((e) => e.name === 'activity' && e.data.tool === 'get_grid_state')).toBe(
+        true
+      );
+    }
+  });
 });

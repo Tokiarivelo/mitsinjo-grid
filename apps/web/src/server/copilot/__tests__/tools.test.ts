@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scenarios } from '@mitsinjo/engine';
+import { scenarios, simulate } from '@mitsinjo/engine';
 import {
   executeTool,
   GetGridStateSchema,
@@ -138,6 +138,20 @@ describe('Copilot Tools (P6-T2)', () => {
         stressed
       );
       expect(implicit.resultId).toBe(explicit.resultId);
+    });
+
+    it('get_grid_state hourly: 24 engine points and highlights picked from them, all in evidence', () => {
+      const res = executeTool('get_grid_state', { hourly: true }, ctx);
+      const hourly = res.data?.hourly as { t: number; solarKw: number; socPct: number }[];
+      expect(hourly).toHaveLength(24);
+      const sim = simulate(ctx.input, ctx.activeStrategy ?? 'proportional');
+      expect(hourly[12]?.solarKw).toBeCloseTo(sim.steps[12]!.solarKw, 2);
+      const h = res.data?.highlights as Record<string, number>;
+      expect(h.peakSolarKw).toBe(Math.max(...hourly.map((p) => p.solarKw)));
+      expect(h.lowestSocPct).toBe(Math.min(...hourly.map((p) => p.socPct)));
+      expect(res.evidence).toMatchObject(h);
+      // Without the flag the payload stays compact.
+      expect(executeTool('get_grid_state', {}, ctx).data?.hourly).toBeUndefined();
     });
 
     it('executes propose_change without mutating state', () => {
