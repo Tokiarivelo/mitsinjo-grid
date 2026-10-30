@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { resetSimulationStore } from '@/stores';
+import { resetSimulationStore, useSimulationStore } from '@/stores';
 import { useProposalDiff } from '../use-proposal-diff';
 
 describe('useProposalDiff', () => {
@@ -34,5 +34,17 @@ describe('useProposalDiff', () => {
       { label: 'Drop Window', current: 'None', proposed: '13:00–15:00 (2 h)' },
       { label: 'Health Clinic Load', current: '1×', proposed: 'Not connected' },
     ]);
+  });
+
+  it('marks a cap that starts at the hour shown in the app as "starts now" (K2)', () => {
+    useSimulationStore.setState({ timeIndex: 14 });
+    const { result } = renderHook(() =>
+      useProposalDiff({
+        proposalId: 'P',
+        reason: 'r',
+        patch: { sectorCaps: [{ sector: 'market', maxKw: 0, fromHour: 14, toHour: 24 }] },
+      })
+    );
+    expect(result.current[0]?.proposed).toBe('0 kW (14:00–24:00) · starts now');
   });
 });

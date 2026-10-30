@@ -371,6 +371,7 @@
       "diffLifelineStatus": "Lifeline Status",
       "diffLifelineFloor": "Lifeline Floor",
       "noCap": "None (uncapped)",
+      "capStartsNow": "{range} · starts now",
       "contextPanelAria": "Active simulation context",
       "contextTitle": "ACTIVE CONTEXT (COMPUTED)",
       "contextActiveScenario": "Active Baseline",

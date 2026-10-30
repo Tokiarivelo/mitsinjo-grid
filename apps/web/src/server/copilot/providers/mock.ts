@@ -1,7 +1,9 @@
 import 'server-only';
 
 import type { LlmProvider, ChatMessage, ToolDefinition, LlmTurn, ToolCall } from '../provider';
+import type { SectorId } from '@mitsinjo/engine';
 import { describeSegment } from '../model-tools';
+import { parseAppHour } from '../prompt';
 
 /** Model id reported (and accepted) when `LLM_PROVIDER=mock`. */
 export const MOCK_MODEL_ID = 'mock-deterministic-v1';
@@ -21,6 +23,30 @@ const MOCK_SEGMENT_CONCEPTS: Array<{ match: RegExp; concept: string }> = [
   { match: /maison|house|trano/i, concept: 'house' },
   { match: /arbre|tree|hazo/i, concept: 'tree' },
 ];
+
+/** "Cut <sector> now" (K2). Power-switch wording ("turn off", "éteindre") keeps the hardware refusal. */
+const MOCK_CUT_WORDS = /\b(cut|coupe|couper|coupez|délest\w*|tapaho)\b/i;
+const MOCK_NOW_WORDS = /\b(now|maintenant|ankehitriny)\b/i;
+const MOCK_SECTOR_WORDS: Array<{ match: RegExp; sector: SectorId }> = [
+  { match: /market|marché|tsena/i, sector: 'market' },
+  { match: /school|école|sekoly/i, sector: 'school' },
+  { match: /industry|factory|usine|atelier|ozinina/i, sector: 'industry' },
+  { match: /\b(water|pump|eau|pompe|rano)\b/i, sector: 'water' },
+  { match: /household|foyer|ménage|tokantrano/i, sector: 'households' },
+  { match: /clinic|clinique|santé|health|toeram-pahasalamana/i, sector: 'health' },
+];
+/** Same default as the loop when the client sends no hour. */
+const MOCK_DEFAULT_HOUR = 12;
+
+/** Hour from the loop's app-context system note, if any. */
+function appHourFrom(messages: ChatMessage[]): number | undefined {
+  for (const m of messages) {
+    if (m.role !== 'system') continue;
+    const hour = parseAppHour(m.content ?? '');
+    if (hour !== undefined) return hour;
+  }
+  return undefined;
+}
 
 function mockSegmentConcept(query: string): string {
   return MOCK_SEGMENT_CONCEPTS.find((c) => c.match.test(query))?.concept ?? 'solar panel';
@@ -50,6 +76,8 @@ function isFrenchQuery(text: string): boolean {
     q.includes('hier') ||
     q.includes('éteindre') ||
     q.includes('couper') ||
+    q.includes('maintenant') ||
+    q.includes('marché') ||
     q.includes('combien') ||
     q.includes('maison') ||
     q.includes('génère') ||
@@ -332,6 +360,27 @@ Run one of the preset scenarios (Baseline or Monsoon Cloud Cover) to inspect sim
       return {
         content: '',
         toolCalls: [capToolCall],
+      };
+    }
+
+    // Cut a sector now -> cap from the hour shown in the app to the end of the day (M1-T3, K2)
+    const nowSector = MOCK_SECTOR_WORDS.find((s) => s.match.test(query))?.sector;
+    if (nowSector && MOCK_CUT_WORDS.test(query) && MOCK_NOW_WORDS.test(query)) {
+      const fromHour = appHourFrom(messages) ?? MOCK_DEFAULT_HOUR;
+      return {
+        content: '',
+        toolCalls: [
+          {
+            id: 'call_cap_now',
+            name: 'propose_change',
+            args: {
+              patch: { sectorCaps: [{ sector: nowSector, maxKw: 0, fromHour, toHour: 24 }] },
+              reason: fr
+                ? `Proposition simulée : ${nowSector} à 0 kW maintenant, de ${fromHour}:00 à 24:00 (heure affichée dans l'app ; aucun actionneur physique).`
+                : `Simulated proposal: ${nowSector} at 0 kW now, from ${fromHour}:00 to 24:00 (hour shown in the app; no physical actuator).`,
+            },
+          },
+        ],
       };
     }
 

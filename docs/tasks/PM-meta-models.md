@@ -82,7 +82,7 @@ puissance, branchement (`sectorLoads`), plancher de survie, priorités, stratég
       **Done when** test : chiffres du dialogue ⊆ evidence ; dark/light, 390 px.
 - [x] **M1-T2** (K6) Garde clinique **par du code** : patch qui coupe `health` ou met son plancher à 0 →
       avertissement rouge + seconde confirmation. **Done when** test unitaire de la règle + test UI.
-- [ ] **M1-T3** (K2) « Maintenant » : le contexte du chat envoie l'heure courante (lecture ou maquette) ;
+- [x] **M1-T3** (K2) « Maintenant » : le contexte du chat envoie l'heure courante (lecture ou maquette) ;
       le prompt l'utilise pour `fromHour` ; le dialogue affiche la plage retenue. **Done when** éval
       « Coupe le marché maintenant » → `fromHour` = heure courante.
 - [ ] **M1-T4** (K4) Historique des changements approuvés + « Annuler le dernier » (store).

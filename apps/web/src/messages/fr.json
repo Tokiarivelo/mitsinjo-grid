@@ -371,6 +371,7 @@
       "diffLifelineStatus": "Courant de survie",
       "diffLifelineFloor": "Plancher de survie",
       "noCap": "Aucun (non plafonné)",
+      "capStartsNow": "{range} · dès maintenant",
       "contextPanelAria": "Contexte actif de simulation",
       "contextTitle": "CONTEXTE ACTIF (CALCULÉ)",
       "contextActiveScenario": "Référence active",

@@ -4,7 +4,7 @@ import { simulate, type SimulationInput, type StrategyId } from '@mitsinjo/engin
 import { type LlmProvider, type ChatMessage, type LlmImageResult } from './provider';
 import { MockLlmProvider } from './providers/mock';
 import { TOOL_DEFINITIONS, executeTool, type ToolContext } from './tools';
-import { getSystemPrompt } from './prompt';
+import { appHourNote, getSystemPrompt } from './prompt';
 import { detectAdaptiveRoute, pickChatModel } from './adaptive-router';
 import { MODEL_TOOL_DEFINITIONS, MODEL_TOOL_NAMES, executeModelTool } from './model-tools';
 import { describeVillageScene } from './village-scene';
@@ -50,7 +50,7 @@ export interface CopilotLoopOptions {
   spendGuard?: SpendGuard;
   /** Injectable for tests; defaults to `getPerceptionClient(budgetKey)`. */
   perception?: Pick<PerceptionClient, 'segmentImage'>;
-  /** Hour shown in the app (timeline / scale model), for "show the village now". Default 12. */
+  /** Hour shown in the app (timeline / scale model): "now" for caps (K2) and the village image. Default 12. */
   hour?: number;
   /** Chat budget in ms (tests only); default 40 s. */
   chatBudgetMs?: number;
@@ -272,6 +272,10 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
     const chatHistory: ChatMessage[] = [
       { role: 'system', content: systemPromptContent },
       ...(summary ? [{ role: 'system' as const, content: summaryNote(summary) }] : []),
+      // Hour shown in the app → "now" in a request (K2). Only when the client sent it.
+      ...(options.hour !== undefined
+        ? [{ role: 'system' as const, content: appHourNote(options.hour) }]
+        : []),
       ...trimmedInputMessages.map((m) => ({
         role: m.role,
         content: m.content,

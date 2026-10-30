@@ -22,6 +22,7 @@ export function useProposalDiff(proposal: CopilotProposal): ProposalDiffItem[] {
   const tCommon = useTranslations('common');
   const input = useSimulationStore((s) => s.input);
   const activeStrategy = useSimulationStore((s) => s.activeStrategy);
+  const timeIndex = useSimulationStore((s) => s.timeIndex);
 
   const patch = proposal.patch;
   const items: ProposalDiffItem[] = [];
@@ -56,7 +57,13 @@ export function useProposalDiff(proposal: CopilotProposal): ProposalDiffItem[] {
             to: existing.toHour,
           })
         : t('noCap'),
-      proposed: tCommon('capRange', { maxKw: cap.maxKw, from: cap.fromHour, to: cap.toHour }),
+      // A cap that starts at the hour shown in the app is a "now" order (K2): say so.
+      proposed:
+        cap.fromHour === timeIndex
+          ? t('capStartsNow', {
+              range: tCommon('capRange', { maxKw: cap.maxKw, from: cap.fromHour, to: cap.toHour }),
+            })
+          : tCommon('capRange', { maxKw: cap.maxKw, from: cap.fromHour, to: cap.toHour }),
     });
   }
 

@@ -62,3 +62,25 @@ Ataovy latsaky ny teny 180 ny valiny.`;
 
   return SYSTEM_PROMPT;
 }
+
+/** Marker the mock provider reads back; keep it in sync with `parseAppHour`. */
+const APP_HOUR_PREFIX = '[App context] The app shows hour ';
+
+/**
+ * System note with the hour shown in the app (timeline or scale model), so "now" becomes `fromHour` (K2).
+ * The engine works on whole hours of one simulated day.
+ */
+export function appHourNote(hour: number): string {
+  return (
+    `${APP_HOUR_PREFIX}${hour}:00 of the simulated day. ` +
+    `When the user says "now" (maintenant, ankehitriny), use fromHour=${hour} in sectorCaps; ` +
+    `toHour = the end the user gives, else 24. State the chosen range in your answer.`
+  );
+}
+
+/** Hour carried by an `appHourNote`, or undefined. */
+export function parseAppHour(content: string): number | undefined {
+  if (!content.startsWith(APP_HOUR_PREFIX)) return undefined;
+  const hour = Number.parseInt(content.slice(APP_HOUR_PREFIX.length), 10);
+  return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : undefined;
+}

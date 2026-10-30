@@ -371,6 +371,7 @@
       "diffLifelineStatus": "Herinaratra vonjy aina",
       "diffLifelineFloor": "Fetra ambany vonjy aina",
       "noCap": "Tsy misy fetra",
+      "capStartsNow": "{range} · manomboka izao",
       "contextPanelAria": "Toe-javatra simulation miasa",
       "contextTitle": "TOE-JAVATRA MIASA (VOAPAIKA)",
       "contextActiveScenario": "Scenario miasa",

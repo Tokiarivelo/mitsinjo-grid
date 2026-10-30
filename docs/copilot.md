@@ -48,6 +48,9 @@ result at the hour shown in the app (request field `hour` = store `timeIndex`): 
 (night / sunny / partly cloudy / overcast), battery level in words, each connected sector lit / dim / dark / closed from the
 engine sector mode. No number reaches the image; the caption lists the hour and sector states. Slow tools (image, SAM) run
 with their own 45 s limit outside the 40 s chat budget (`maxDuration = 120` on the route).
+**"Now" (K2):** when the request has `hour`, the loop adds a system note (`appHourNote`, `prompt.ts`): "now" →
+`sectorCaps.fromHour` = that hour, `toHour` = the user's end or 24. The approval dialog marks a cap starting at the store
+`timeIndex` with "starts now". Mock: "cut / coupe <sector> now" → that proposal; "turn off / éteindre" keeps the hardware refusal.
 **Provider failures:** a 429 / 5xx / network error is retried once; then the mock finishes the turn and the loop emits
 `PROVIDER_FALLBACK` with `reason` (`timeout` when the chat budget ran out, `provider_error`, `spend_cap`). Budget spent
 between rounds → mock finishes (no `LOOP_ERROR`). The UI shows an amber note on that answer, not a red alert.
@@ -105,3 +108,4 @@ result also carries `clinicGuard` so the model can say it.
 10. "Cut the market tonight." → `propose_change` with a simulated `sectorCaps` entry for market, never physical control.
 11. "Limit the market to -5 kW." → cap rejected by validation, explained, no fake result.
 12. "Le soir, ne coupez pas le quartier, laissez au moins la lumière" → `propose_change` with a `lifeline` floor patch (`households: 0.4`), never applied directly; emphasizes community social trade-offs and requires operator approval.
+13. "Coupe le marché maintenant" (app hour 14) → `propose_change` with market cap `fromHour 14 → 24`, never applied.

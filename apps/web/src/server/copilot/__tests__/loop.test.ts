@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { scenarios } from '@mitsinjo/engine';
 import { runCopilotLoop, type SseEventName } from '../loop';
-import type { LlmProvider } from '../provider';
+import type { ChatMessage, LlmProvider } from '../provider';
 import { SpendGuard } from '@/server/spend';
 import { MockPerceptionBackend, PerceptionClient } from '@/server/perception';
 
@@ -480,5 +480,22 @@ describe('Copilot Loop (P6-T3)', () => {
       expect(events.some((e) => e.name === 'summary')).toBe(false);
       expect(events.find((e) => e.name === 'delta')?.data.text).toBe('ok');
     });
+  });
+
+  it('sends the app hour as a system note only when the client gives it (M1-T3, K2)', async () => {
+    const seen: string[][] = [];
+    const provider: LlmProvider = {
+      name: 'fake',
+      chat: vi.fn(async (msgs: ChatMessage[]) => {
+        seen.push(msgs.filter((m) => m.role === 'system').map((m) => m.content ?? ''));
+        return { content: 'ok' };
+      }),
+    };
+    const emit = () => {};
+    const messages = [{ role: 'user' as const, content: 'Coupe le marché maintenant' }];
+    await runCopilotLoop({ messages, input: baseInput, provider, emit, hour: 9 });
+    await runCopilotLoop({ messages, input: baseInput, provider, emit });
+    expect(seen[0]?.some((c) => c.includes('fromHour=9'))).toBe(true);
+    expect(seen[1]?.some((c) => c.includes('fromHour='))).toBe(false);
   });
 });
