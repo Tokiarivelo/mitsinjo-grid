@@ -147,6 +147,8 @@ export const SimulationInputSchema = z.object({
 export type SimulationInput = z.infer<typeof SimulationInputSchema>;
 
 export const InputPatchSchema = z.object({
+  /** Replaces solar.profile (24 values 0–1), e.g. measured by the physical scale model (PH). */
+  solarProfile: z.array(z.number().min(0).max(1)).length(24).optional(),
   solarDropPct: z.number().min(0).max(90).optional(),
   dropStartHour: z.number().int().min(0).max(23).optional(),
   dropDurationH: z.number().int().min(1).max(24).optional(),

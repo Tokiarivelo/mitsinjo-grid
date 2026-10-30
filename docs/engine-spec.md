@@ -129,6 +129,13 @@ whole solar profile (`WEATHER_SOLAR_FACTOR`): sunny 1 · partly_cloudy 0.75 · c
 Scenario events still apply every day on top. Battery carries over: day N+1 `initialSocPct` = day N `socEndPct`.
 One sunny day is identical to `simulate(input)`.
 
+### Physical scale model (PH)
+
+`hardware/` converts what the scale model measures into an `InputPatch` (`scaleTelemetry`) and turns a result
+into feeder setpoints (`toHardwareCommand`); `dispatch/` holds the breaker / controller / flow mapping shared with
+the 3D and 2D views. No new energy math: demand comes from `computeProfileDemandKw` × request, served kW from the
+result. Contract and formulas: `contracts.md` § Physical scale model; hardware design: `docs/maquette-physique.md`.
+
 ## 7. Tests (Vitest, `packages/engine/src/__tests__`)
 
 nominal no-deficit · solar drop changes results · never below reserve · never above capacity ·

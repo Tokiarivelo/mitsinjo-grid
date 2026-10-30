@@ -12,3 +12,5 @@ export * from './compare';
 export * from './patch';
 export * from './workflow';
 export * from './sweep';
+export * from './dispatch';
+export * from './hardware';
