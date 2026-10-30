@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-30 · **By:** Gemini / Antigravity · **Branch:** `feat/lifeline-copilot-tests-docs` · **PR:** Pending creation
+**Updated:** 2026-10-30 · **By:** Gemini / Antigravity · **Branch:** `feat/lifeline-copilot-tests-docs` · **PR:** [#29](https://github.com/Tokiarivelo/mitsinjo-grid/pull/29)
 
 ## State
 
@@ -20,7 +20,7 @@
 
 ## Next task
 
-- Open Pull Request for `feat/lifeline-copilot-tests-docs` targeting `main`.
+- Review and merge PR #29. Plan the next feature/roadmap task.
 
 ## Decisions taken
 
