@@ -1,9 +1,28 @@
 import 'server-only';
 
 import type { LlmProvider, ChatMessage, ToolDefinition, LlmTurn, ToolCall } from '../provider';
+import { describeSegment } from '../model-tools';
 
 /** Model id reported (and accepted) when `LLM_PROVIDER=mock`. */
 export const MOCK_MODEL_ID = 'mock-deterministic-v1';
+
+/**
+ * Offline stand-ins for Spark's own tool choice (model-switch tools). Only the mock reads keywords:
+ * with Meta, Spark decides from the meaning of the request.
+ */
+const MOCK_IMAGE_WORDS =
+  /(génère une image|générer une image|crée une image|dessine|illustration|affiche|generate an? (image|picture)|draw|mamorona sary)/i;
+const MOCK_COUNT_WORDS = /(combien|compte |compte-|count|how many|détecte|detect|ohatrinona)/i;
+const MOCK_SEGMENT_CONCEPTS: Array<{ match: RegExp; concept: string }> = [
+  { match: /fumée|smoke|setroka/i, concept: 'smoke' },
+  { match: /toit|roof|tafo/i, concept: 'roof' },
+  { match: /maison|house|trano/i, concept: 'house' },
+  { match: /arbre|tree|hazo/i, concept: 'tree' },
+];
+
+function mockSegmentConcept(query: string): string {
+  return MOCK_SEGMENT_CONCEPTS.find((c) => c.match.test(query))?.concept ?? 'solar panel';
+}
 
 function isFrenchQuery(text: string): boolean {
   const q = text.toLowerCase();
@@ -28,7 +47,11 @@ function isFrenchQuery(text: string): boolean {
     q.includes('poème') ||
     q.includes('hier') ||
     q.includes('éteindre') ||
-    q.includes('couper')
+    q.includes('couper') ||
+    q.includes('combien') ||
+    q.includes('maison') ||
+    q.includes('génère') ||
+    q.includes('dessine')
   );
 }
 
@@ -58,6 +81,32 @@ export class MockLlmProvider implements LlmProvider {
     console.info(
       `[copilot:mock] Generating synthetic response for user query: "${userMsg?.content?.slice(0, 50).replace(/\n/g, ' ') || ''}..." (french: ${fr})`
     );
+
+    const hasImage = Boolean(userMsg?.media?.some((m) => m.type === 'image'));
+    if (hasImage && MOCK_COUNT_WORDS.test(query)) {
+      return {
+        toolCalls: [
+          {
+            id: 'call_segment',
+            name: 'segment_image',
+            args: { concept: mockSegmentConcept(query) },
+          },
+        ],
+      };
+    }
+    if (!hasImage && MOCK_IMAGE_WORDS.test(query)) {
+      return {
+        toolCalls: [
+          {
+            id: 'call_image',
+            name: 'generate_image',
+            args: {
+              prompt: `Rural Malagasy village with a solar microgrid: ${userMsg?.content ?? ''}`,
+            },
+          },
+        ],
+      };
+    }
 
     // Multimodal simulated response if user attached media
     if (userMsg?.media && userMsg.media.length > 0) {
@@ -519,6 +568,27 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
 
     const toolName = toolMsg.name || '';
     const err = payload.error as string | undefined;
+
+    if (toolName === 'segment_image' && !err) {
+      return {
+        content: describeSegment(
+          {
+            concept: String(payload.concept ?? ''),
+            count: Number(payload.count ?? 0),
+            boxCoverage: Number(payload.boxCoverage ?? 0),
+            model: String(payload.model ?? 'mock'),
+          },
+          fr ? 'fr' : 'en'
+        ),
+      };
+    }
+    if (toolName === 'generate_image' && !err) {
+      return {
+        content: fr
+          ? "### Ce qui s'est passé\nIllustration générée par IA pour visualiser le micro-réseau simulé (aucun chiffre dans l'image).\n\n### Et ensuite\nVoulez-vous simuler une baisse solaire ou comparer les stratégies ?"
+          : '### What happened\nAI-generated illustration of the simulated microgrid (no numbers in the picture).\n\n### Explore next\nWould you like to simulate a solar drop or compare strategies?',
+      };
+    }
 
     if (err) {
       if (fr) {

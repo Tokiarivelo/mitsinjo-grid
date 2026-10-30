@@ -443,6 +443,9 @@
         "compare_strategies": "Fampitahana ireo paikady",
         "get_sector_metrics": "Fandinihana ny angon-drakitry ny sehatra {sector}",
         "propose_change": "Fanomanana tolo-kevitra ho hamarinina",
+        "segment_image": "Fitadiavana zavatra eo amin'ny sary",
+        "generate_image": "Famoronana sary",
+        "escalate_deep_reasoning": "Mifindra amin'ny fandinihana lalina",
         "default": "Fandinihana ny valiny voakajy"
       },
       "unknownValue": "Tsy fantatra",

@@ -13,6 +13,9 @@ const KNOWN_TOOLS = new Set([
   'compare_strategies',
   'get_sector_metrics',
   'propose_change',
+  'segment_image',
+  'generate_image',
+  'escalate_deep_reasoning',
 ]);
 
 export interface ToolActivityProps {

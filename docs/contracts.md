@@ -397,4 +397,23 @@ interface InputPatch {
 `POST /api/copilot` body `{ messages: {role:'user'|'assistant', content:string}[], input: SimulationInput }`
 → `text/event-stream` events:
 `activity {tool, sector?, label}` (UI translates `tool`; `label` is English, logs only) · `delta {text}` · `evidence {resultId, fields: Record<string, number|string>}` ·
-`proposal {proposalId, patch?, strategy?, reason}` · `error {code, message}` · `done {}`.
+`proposal {proposalId, patch?, strategy?, reason}` · `error {code, reason?, message}` · `done {}` ·
+`model {model, modality, reason}` (modality `chat|reasoning|vision|image`; a second `model` event announces a switch to Wonder) · `image {imageUrl, caption}` ·
+`perception {kind:'segment', concept, count, boxCoverage, instances[], imageWidth, imageHeight, source, model, fallback?}`.
+`error.code = PROVIDER_FALLBACK` carries `reason: 'spend_cap' | 'provider_error'` when known.
+
+Model-switch tools (Zod in `server/copilot/model-tools.ts`, results go back to the model):
+`generate_image {prompt, caption?}` → `{ok, model, caption}` + `image` event · `segment_image {concept}` →
+`{concept, count, boxCoverage, model, source, note}` + `perception` event · `escalate_deep_reasoning {reason}` → `{ok, model}` + `model` event.
+Invalid args or failure → `{error}`.
+
+## Perception (`server/perception`, Zod in `schemas.ts`)
+
+Observations, never energy values: any number must become an `InputPatch` proposal before the engine uses it.
+Every result carries `{ source: 'meta'|'mock', model, fallback?: 'provider_error'|'spend_cap'|'not_configured' }`.
+
+```ts
+Transcript { text; durationMs; turns: { startMs; endMs; text; speaker? }[] }
+VisionResult { summary; observations: { label; value: number|string|boolean; unit?; confidence /*0–1*/ }[] }
+SegmentResult { concept; imageWidth; imageHeight; instances: { box:{x1,y1,x2,y2}; confidence? }[]; count; boxCoverage /*0–1*/ }
+```

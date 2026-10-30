@@ -1,43 +1,39 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-30 · **By:** Claude Code · **Branch:** `feat/hardware-twin` · **PR:** #30
+**Updated:** 2026-10-30 · **By:** Claude Code · **Branch:** `feat/meta-models` (from `main` after PR #30) · **PR:** none yet
 
 ## State
 
-- **PL-T17 done:** survival floor sliders in Strategy Lab (`StrategyRulesSection`): on/off button
-  (`lifeline.enabled`) + 0–2 kW slider per connected sector (`lifeline.kw`); hidden + amber note when off.
-- Plan `docs/tasks/PH-hardware-twin.md` (physical scale model; study `docs/maquette-physique.md`, FR):
-  - **H1** engine: `solarProfile` patch, hardware Zod contracts, `scaleTelemetry`, `toHardwareCommand`.
-  - **H2** engine `dispatch/`: breaker, controller mode, flow level, `feederTone` shared with web 3D/2D.
-  - **H3** `apps/bridge`: `BridgeSession` (tested), embedded aedes MQTT broker, WebSocket, fake ESP32
-    (`make bridge`, `make bridge-sim`, `make test-bridge`).
-  - **H4-T1** web: `BridgeStateSchema` in engine; store `source` + `applyDeviceRun`/`releaseDevice`;
-    `features/hardware-link` (`useHardwareLink`, `HardwareLinkPanel` in /simulation Controls tab, shown only
-    when `NEXT_PUBLIC_BRIDGE_URL` is set). Verified live with bridge + fake device, dark/light, 1440 and 390 px.
-  - `docs/bridge.md` (FR): settings + deploy § 8. **H8-T0** live speed buttons (default 20 s/h). **H8-T1** `?bridge=`
-    link (tab session, `useBridgeTarget`). **H8-T2** `BRIDGE_TOKEN` (read-only without it), `MQTT_USERNAME/PASSWORD`.
-- **Scrubber fluide:** `useSmoothScrub` (thumb continu, glisse en lecture, horloge live en suivi maquette via
-  store `deviceHourMs`); boutons de lecture masqués quand `source === 'device'`. Guide env local/Vercel: `docs/setup/env.md`.
-- Checks: engine 202 ✓, bridge 21 ✓, web 459 ✓, typecheck ✓, lint ✓, i18n ✓, prettier ✓. Pre-existing: `sweep.test.ts`
-  perf budget fails under `make check` (parallel packages), passes alone; also on clean `main`.
+- Plan `docs/tasks/PM-meta-models.md` (voice, vision, SAM, image, chat control, fire alarm), ideas in
+  `docs/ideas-meta-models.md`. **PM-M0 done** except the human part of M0-T1 (Malagasy speech test).
+- `server/perception/`: Meta + deterministic mock for `transcribe`, `analyzeImage`, `segmentImage`; never throws
+  (`fallback` field). `server/spend/`: per-session cap `META_SPEND_CAP_USD` → mock + `PROVIDER_FALLBACK reason: spend_cap`.
+- **Model choice by Spark tool calls** (`server/copilot/model-tools.ts`): `generate_image` (Muse Image, numbers stripped),
+  `segment_image` (SAM on the attached photo, `perception` SSE event), `escalate_deep_reasoning` (Wonder for the rest of
+  the turn). `adaptive-router.ts` keeps only structural rules (explicit model, attached image → vision). Mock imitates
+  the choice with keywords (offline only). Prompt rule 6b in EN/FR/MG.
+- **Contributor preferred** (`providers/contributor.ts`, `META_PREFER_CONTRIBUTOR=true` default): chat + vision use
+  `muse-spark-1.3-contributor`; 403/404/429 → resend on standard id, pause (60 s / 1 h). Spend guard bills the id that answered.
+- Checks: web 513 ✓ (simulation test once timed out under full-suite load, passes alone), typecheck ✓, lint ✓, i18n ✓,
+  prettier ✓. Engine `sweep.test.ts` perf budget fails on this machine (pre-existing).
+- **Not verified live:** tool choice by the real Spark + contributor access (dev server commands were not permitted).
+  Run test-scenarios A30–A38 with `make dev`.
 
 ## Next task
 
-- PR #30 merged. Then H5 (hardware build + ESP32 firmware), H4-T2 (calibration panel).
+- Live check A30–A38, then **M1** (chat control + approval with engine impact).
+- M0-T1 human part: record FR + Malagasy WAV phrases, verdict "MG usable".
 
 ## Decisions taken
 
-- Scale 1 W = 4 kW, 1 h = 20 s (live 60/20/10/5); displayed SoC always engine output; model battery = buffer only.
-- Bridge sends scenario + patch + strategy + hour; the web re-runs the engine (numbers never taken from the bridge).
-- Scrubber: store still gets whole hours; only the thumb is fractional (no extra engine/3D re-renders).
-- Panel hidden unless `?bridge=` link or `NEXT_PUBLIC_BRIDGE_URL`; bridge never on Vercel (needs a permanent process). Follow stops on "Stop following" / scenario load.
+- No keyword routing with Meta: Spark decides through tools; code keeps only structural rules and safety (spend cap).
+- Contributor on by default per user (cost); data is simulated. Turn off for real user data (Meta trains on it).
+- Image generation stays in `providers/meta.ts` (reused). Perception numbers are observations, never engine values.
 
 ## Files touched this session
 
-- Engine: `schemas/{common,input,index,hardware}.ts`, `patch.ts`, `index.ts`, `dispatch/`, `hardware/`, tests
-- Bridge: `apps/bridge/**` (new, `access.ts`) · `pnpm-lock.yaml`
-- Web: `features/microgrid-3d/{types,utils/*}`, `features/strategy-lab/{ui/strategy-rules-section.tsx,__tests__}`,
-  `features/hardware-link/**`, `features/simulation/ui/simulation-page.tsx`, `stores/simulation.store.ts`,
-  `lib/env.ts`, `messages/{en,fr,mg}.json`, `features/simulation/{hooks/use-smooth-scrub.ts,ui/*}`, `stores/selectors.ts`
-- Docs/tooling: `maquette-physique.md`, `contracts.md`, `engine-spec.md`, `architecture.md`, `design/{stitch-map,
-screens/strategy-lab,screens/live-simulation}.md`, `tasks/*`, `setup/env.md`, `README.md`, `.env.example`, `Makefile`
+- Web: `lib/env.ts`, `server/{perception,spend}/**`, `server/copilot/{adaptive-router,model-tools,loop,prompt,provider}.ts`,
+  `providers/{meta,mock,contributor}.ts`, `app/api/copilot/route.ts`, `features/copilot/ui/tool-activity.tsx`,
+  `messages/{en,fr,mg}.json`, tests
+- Docs: `copilot.md`, `contracts.md`, `architecture.md`, `setup/env.md`, `tasks/{README,PM-meta-models}.md`,
+  `ideas-meta-models.md`, `.env.example` · test-scenarios A30–A38 (local)

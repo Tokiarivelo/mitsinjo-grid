@@ -443,6 +443,9 @@
         "compare_strategies": "Running strategy comparison",
         "get_sector_metrics": "Reviewing {sector} sector data",
         "propose_change": "Preparing a proposal for your review",
+        "segment_image": "Detecting objects on the photo",
+        "generate_image": "Generating a picture",
+        "escalate_deep_reasoning": "Switching to deep reasoning",
         "default": "Reviewing computed results"
       },
       "unknownValue": "Unknown",

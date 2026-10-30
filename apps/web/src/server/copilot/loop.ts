@@ -5,7 +5,10 @@ import { type LlmProvider, type ChatMessage, type LlmImageResult } from './provi
 import { MockLlmProvider } from './providers/mock';
 import { TOOL_DEFINITIONS, executeTool, type ToolContext } from './tools';
 import { getSystemPrompt } from './prompt';
-import { detectAdaptiveRoute } from './adaptive-router';
+import { detectAdaptiveRoute, pickChatModel } from './adaptive-router';
+import { MODEL_TOOL_DEFINITIONS, MODEL_TOOL_NAMES, executeModelTool } from './model-tools';
+import { getPerceptionClient, type PerceptionClient } from '@/server/perception';
+import { spendGuard as sharedSpendGuard, estimateTokens, type SpendGuard } from '@/server/spend';
 
 export type SseEventName =
   | 'activity'
@@ -17,7 +20,8 @@ export type SseEventName =
   | 'image'
   | 'video'
   | 'chart'
-  | 'model';
+  | 'model'
+  | 'perception';
 
 export type SseEmitter = (event: SseEventName, data: Record<string, unknown>) => void;
 
@@ -35,10 +39,20 @@ export interface CopilotLoopOptions {
   locale?: 'en' | 'fr' | 'mg';
   requestedModel?: string;
   availableModels?: string[];
+  /** Spend cap key, usually the chat session id. */
+  budgetKey?: string;
+  /** Injectable for tests; defaults to the process-wide guard. */
+  spendGuard?: SpendGuard;
+  /** Injectable for tests; defaults to `getPerceptionClient(budgetKey)`. */
+  perception?: Pick<PerceptionClient, 'segmentImage'>;
 }
+
+const SPEND_CAP_MESSAGE = 'AI budget cap reached — showing deterministic explanation.';
 
 const MAX_TOOL_ROUNDS = 4;
 const TIMEOUT_MS = 20_000;
+/** Engine tools + model-switch tools (image, segmentation, deep reasoning). */
+const ALL_TOOL_DEFINITIONS = [...TOOL_DEFINITIONS, ...MODEL_TOOL_DEFINITIONS];
 
 function getToolActivityLabel(name: string, args: Record<string, unknown>): string {
   switch (name) {
@@ -67,14 +81,27 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
     locale = 'fr',
     requestedModel,
     availableModels = [],
+    budgetKey = 'global',
+    spendGuard = sharedSpendGuard,
   } = options;
   let activeProvider = options.provider || new MockLlmProvider();
+
+  // Paid provider over its session budget → deterministic mock for the whole turn.
+  const capReached = () => activeProvider.name !== 'mock' && !spendGuard.canSpend(budgetKey);
+  const switchToMockForCap = () => {
+    console.warn(`[copilot:loop] Spend cap reached for "${budgetKey}", using MockLlmProvider.`);
+    emit('error', { code: 'PROVIDER_FALLBACK', reason: 'spend_cap', message: SPEND_CAP_MESSAGE });
+    activeProvider = new MockLlmProvider();
+  };
 
   // Find user prompt for adaptive routing
   const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
   const userQuery = lastUserMsg?.content || '';
+  const attachedImage = lastUserMsg?.media?.find((m) => m.type === 'image')?.url;
 
-  const route = detectAdaptiveRoute(userQuery, requestedModel, availableModels);
+  const route = detectAdaptiveRoute(requestedModel, availableModels, {
+    hasImage: Boolean(attachedImage),
+  });
   console.info(
     `[copilot:loop] Adaptive route selected: model="${route.targetModel}", modality="${route.modality}" (${route.reason})`
   );
@@ -101,7 +128,7 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
     // ── IMAGE MODALITY BRANCH ─────────────────────────────
     if (route.modality === 'image') {
       emit('activity', {
-        tool: 'image_generation',
+        tool: 'generate_image',
         label:
           locale === 'fr'
             ? `Génération visuelle avec ${route.targetModel}...`
@@ -109,9 +136,13 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
       });
 
       let imgResult: LlmImageResult | null = null;
+      if (capReached()) switchToMockForCap();
       if (typeof activeProvider.generateImage === 'function') {
         try {
           imgResult = await activeProvider.generateImage(userQuery, timeoutController.signal);
+          if (activeProvider.name !== 'mock') {
+            spendGuard.record(budgetKey, route.targetModel, { images: 1 });
+          }
         } catch (err) {
           // Image model down → answer with the text copilot instead of failing the turn.
           console.warn('[copilot:loop] Image generation failed, falling back to chat:', err);
@@ -138,18 +169,16 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
       }
     }
 
-    // ── REASONING / CHAT MODALITY BRANCH ──────────────────
+    // ── REASONING / CHAT / VISION MODALITY BRANCH ──────────
     emit('activity', { tool: 'start', label: 'Reading microgrid simulation state...' });
 
     // Update active model on provider if supported
     // An image route that reached this point has no image result: chat with the default model.
-    const chatModel =
-      route.modality === 'image'
-        ? detectAdaptiveRoute('', 'auto', availableModels).targetModel
-        : route.targetModel;
+    let chatModel = route.modality === 'image' ? pickChatModel(availableModels) : route.targetModel;
     if ('setModel' in activeProvider && typeof activeProvider.setModel === 'function') {
       activeProvider.setModel(chatModel);
     }
+    const perception = options.perception ?? getPerceptionClient(budgetKey);
 
     // Build context
     const toolCtx: ToolContext = {
@@ -182,9 +211,27 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
         `[copilot:loop] Round ${rounds}/${MAX_TOOL_ROUNDS} — requesting turn from "${activeProvider.name}"...`
       );
 
+      if (capReached()) switchToMockForCap();
+
       let turn;
       try {
-        turn = await activeProvider.chat(chatHistory, TOOL_DEFINITIONS, timeoutController.signal);
+        turn = await activeProvider.chat(
+          chatHistory,
+          ALL_TOOL_DEFINITIONS,
+          timeoutController.signal
+        );
+        if (activeProvider.name !== 'mock') {
+          // No usage from the API → estimate from text length (prompt + answer).
+          const billed = activeProvider as LlmProvider & { getModel?: () => string };
+          spendGuard.record(
+            budgetKey,
+            typeof billed.getModel === 'function' ? billed.getModel() : chatModel,
+            turn.usage ?? {
+              inputTokens: estimateTokens(JSON.stringify(chatHistory)),
+              outputTokens: estimateTokens(JSON.stringify(turn)),
+            }
+          );
+        }
       } catch (err) {
         // Fall back to MockLlmProvider on provider failure/timeout
         if (activeProvider.name !== 'mock') {
@@ -196,7 +243,11 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
             message: 'AI provider unavailable — showing deterministic explanation.',
           });
           activeProvider = new MockLlmProvider();
-          turn = await activeProvider.chat(chatHistory, TOOL_DEFINITIONS, timeoutController.signal);
+          turn = await activeProvider.chat(
+            chatHistory,
+            ALL_TOOL_DEFINITIONS,
+            timeoutController.signal
+          );
         } else {
           console.error('[copilot:loop] Mock provider failed:', err);
           throw err;
@@ -223,6 +274,34 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
             sector: typeof tc.args.sector === 'string' ? tc.args.sector : undefined,
             label: getToolActivityLabel(tc.name, tc.args),
           });
+
+          if (MODEL_TOOL_NAMES.has(tc.name)) {
+            const content = await executeModelTool(tc.name, tc.args, {
+              provider: activeProvider,
+              perception,
+              attachedImage,
+              availableModels,
+              currentModel: chatModel,
+              emit,
+              signal: timeoutController.signal,
+              canSpend: () => spendGuard.canSpend(budgetKey),
+              recordSpend: (model, usage) => spendGuard.record(budgetKey, model, usage),
+              switchModel: (model) => {
+                const p = activeProvider as LlmProvider & { setModel?: (m: string) => void };
+                if (p.name === 'mock' || typeof p.setModel !== 'function') return false;
+                p.setModel(model);
+                chatModel = model;
+                return true;
+              },
+            });
+            chatHistory.push({
+              role: 'tool',
+              name: tc.name,
+              toolCallId: tc.id,
+              content: JSON.stringify(content),
+            });
+            continue;
+          }
 
           const toolResult = executeTool(tc.name, tc.args, toolCtx);
           console.info(

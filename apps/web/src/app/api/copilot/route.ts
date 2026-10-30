@@ -184,6 +184,7 @@ export async function POST(req: NextRequest) {
           locale: parsed.data.locale || 'fr',
           requestedModel: parsed.data.model,
           availableModels,
+          budgetKey: parsed.data.sessionId,
         });
       } catch (err) {
         emit('error', {

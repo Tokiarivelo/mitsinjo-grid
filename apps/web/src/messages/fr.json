@@ -443,6 +443,9 @@
         "compare_strategies": "Comparaison des stratégies",
         "get_sector_metrics": "Analyse des données du secteur {sector}",
         "propose_change": "Préparation d'une proposition à valider",
+        "segment_image": "Détection d'objets sur la photo",
+        "generate_image": "Génération d'une image",
+        "escalate_deep_reasoning": "Passage au raisonnement approfondi",
         "default": "Analyse des résultats calculés"
       },
       "unknownValue": "Inconnu",
