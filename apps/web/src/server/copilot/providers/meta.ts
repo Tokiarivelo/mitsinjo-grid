@@ -242,7 +242,9 @@ export class MetaLlmProvider implements LlmProvider {
       throw new Error(`Meta LLM API error (${res.status}): ${errorText}`);
     }
 
-    console.info(`[copilot:meta] Received 200 OK from Meta API in ${elapsedMs}ms`);
+    console.info(
+      `[copilot:meta] Received 200 OK from Meta API in ${elapsedMs}ms (answered by "${this.lastUsedModel}")`
+    );
 
     interface OpenAiResponse {
       choices: {

@@ -70,6 +70,48 @@ describe('generate_image', () => {
   });
 });
 
+describe('generate_image with the current village scene', () => {
+  const scene = {
+    hour: 20,
+    sky: 'night' as const,
+    battery: 'low' as const,
+    sectors: { health: 'lit' as const, market: 'dark' as const },
+    prompt: 'Village at night; the market stalls without power, completely dark. No numbers.',
+  };
+
+  it('uses the engine-built prompt and caption, and tells the model what is shown', async () => {
+    const { ctx, events } = makeCtx({ villageScene: () => scene, locale: 'fr' });
+    const out = await executeModelTool(
+      'generate_image',
+      { scene: 'current_village', prompt: 'ignored 40 kW' },
+      ctx
+    );
+    expect(ctx.provider.generateImage).toHaveBeenCalledWith(scene.prompt, undefined);
+    expect(out.shownState).toEqual({
+      hour: 20,
+      sky: 'night',
+      battery: 'low',
+      sectors: { health: 'lit', market: 'dark' },
+    });
+    expect(String(events[0]?.data.caption)).toContain('à 20 h');
+    expect(String(events[0]?.data.caption)).toContain('marché : coupé');
+  });
+
+  it('returns an error when the state is not available', async () => {
+    const { ctx } = makeCtx();
+    expect(
+      (await executeModelTool('generate_image', { scene: 'current_village' }, ctx)).error
+    ).toBeDefined();
+  });
+
+  it('requires a prompt for a custom scene', async () => {
+    const { ctx } = makeCtx();
+    expect((await executeModelTool('generate_image', { scene: 'custom' }, ctx)).error).toMatch(
+      /prompt/
+    );
+  });
+});
+
 describe('segment_image', () => {
   it('segments the attached photo and labels the result as AI perception', async () => {
     const { ctx, events } = makeCtx({ attachedImage: 'data:image/png;base64,AA' });

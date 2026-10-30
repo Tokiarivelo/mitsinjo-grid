@@ -394,7 +394,7 @@ interface InputPatch {
 
 ## Copilot HTTP
 
-`POST /api/copilot` body `{ messages: {role:'user'|'assistant', content:string}[], input: SimulationInput }`
+`POST /api/copilot` body `{ messages: {role:'user'|'assistant', content:string, media?}[], input: SimulationInput, strategy?, model?, locale?, sessionId?, hour? /*0–23, shown hour*/ }`
 → `text/event-stream` events:
 `activity {tool, sector?, label}` (UI translates `tool`; `label` is English, logs only) · `delta {text}` · `evidence {resultId, fields: Record<string, number|string>}` ·
 `proposal {proposalId, patch?, strategy?, reason}` · `error {code, reason?, message}` · `done {}` ·
@@ -403,7 +403,7 @@ interface InputPatch {
 `error.code = PROVIDER_FALLBACK` carries `reason: 'spend_cap' | 'provider_error'` when known.
 
 Model-switch tools (Zod in `server/copilot/model-tools.ts`, results go back to the model):
-`generate_image {prompt, caption?}` → `{ok, model, caption}` + `image` event · `segment_image {concept}` →
+`generate_image {scene:'current_village'|'custom', prompt? /*custom*/, caption?}` → `{ok, model, caption, shownState?:{hour, sky, battery, sectors}}` + `image` event · `segment_image {concept}` →
 `{concept, count, boxCoverage, model, source, note}` + `perception` event · `escalate_deep_reasoning {reason}` → `{ok, model}` + `model` event.
 Invalid args or failure → `{error}`.
 

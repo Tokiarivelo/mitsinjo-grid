@@ -5,6 +5,7 @@ import type { UsageSample } from '@/server/spend';
 import type { PerceptionClient } from '@/server/perception';
 import type { LlmProvider, ToolDefinition } from './provider';
 import { IMAGE_MODEL, WONDER_MODEL } from './adaptive-router';
+import { villageSceneCaption, type VillageScene } from './village-scene';
 
 /**
  * Tools that switch model instead of calling the engine. Spark reads the request and decides:
@@ -12,10 +13,17 @@ import { IMAGE_MODEL, WONDER_MODEL } from './adaptive-router';
  * deep audit → Wonder for the rest of the turn.
  */
 
-export const GenerateImageSchema = z.object({
-  prompt: z.string().trim().min(3).max(600),
-  caption: z.string().trim().max(200).optional(),
-});
+export const GenerateImageSchema = z
+  .object({
+    /** `current_village`: the server writes the prompt from the engine state at the shown hour. */
+    scene: z.enum(['current_village', 'custom']).default('custom'),
+    prompt: z.string().trim().min(3).max(600).optional(),
+    caption: z.string().trim().max(200).optional(),
+  })
+  .refine((a) => a.scene === 'current_village' || Boolean(a.prompt), {
+    message: 'prompt is required for a custom scene',
+    path: ['prompt'],
+  });
 
 export const SegmentImageSchema = z.object({
   concept: z.string().trim().min(2).max(40),
@@ -30,14 +38,27 @@ export const MODEL_TOOL_DEFINITIONS: ToolDefinition[] = [
     name: 'generate_image',
     description:
       'Draw a picture with the image model, only when the user asks for an image, drawing, illustration or poster. ' +
-      'Write the prompt in English, describe the scene; never put numbers or text with numbers in it.',
+      'To show the village as it is now in the simulation, use scene "current_village" (the server describes ' +
+      'the real state: hour, sky, each sector powered or cut, battery). Otherwise scene "custom" with an English ' +
+      'prompt; never put numbers in it.',
     parameters: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'English scene description, no numbers.' },
-        caption: { type: 'string', description: 'Short caption in the user language.' },
+        scene: {
+          type: 'string',
+          enum: ['current_village', 'custom'],
+          description: 'current_village = current simulated state; custom = your own prompt.',
+        },
+        prompt: {
+          type: 'string',
+          description: 'English scene description (custom only), no numbers.',
+        },
+        caption: {
+          type: 'string',
+          description: 'Short caption in the user language (custom only).',
+        },
       },
-      required: ['prompt'],
+      required: ['scene'],
       additionalProperties: false,
     },
   },
@@ -79,6 +100,9 @@ export interface ModelToolContext {
   perception: Pick<PerceptionClient, 'segmentImage'>;
   /** Image of the latest user message, if any. */
   attachedImage?: string;
+  /** Engine state of the village at the hour shown in the app (for `scene: current_village`). */
+  villageScene?: () => VillageScene;
+  locale?: 'en' | 'fr' | 'mg';
   availableModels: string[];
   currentModel: string;
   emit: (event: 'image' | 'perception' | 'model' | 'error', data: Record<string, unknown>) => void;
@@ -116,16 +140,34 @@ export async function executeModelTool(
       if (ctx.provider.name !== 'mock' && !ctx.canSpend()) {
         return { error: 'AI budget cap reached: no image generated.' };
       }
-      const prompt = stripNumbers(parsed.data.prompt);
+      const scene =
+        parsed.data.scene === 'current_village' && ctx.villageScene ? ctx.villageScene() : null;
+      if (parsed.data.scene === 'current_village' && !scene) {
+        return { error: 'The current village state is not available.' };
+      }
+      // The scene prompt holds engine states in words; a custom prompt loses its numbers.
+      const prompt = scene ? scene.prompt : stripNumbers(parsed.data.prompt ?? '');
       try {
         const img = await ctx.provider.generateImage(prompt, ctx.signal);
         if (ctx.provider.name !== 'mock') ctx.recordSpend(IMAGE_MODEL, { images: 1 });
-        const caption = parsed.data.caption || img.caption || prompt;
+        const caption = scene
+          ? villageSceneCaption(scene, ctx.locale ?? 'en')
+          : parsed.data.caption || img.caption || prompt;
         ctx.emit('image', { imageUrl: img.imageUrl, caption });
         return {
           ok: true,
           model: ctx.provider.name === 'mock' ? 'mock-image' : IMAGE_MODEL,
           caption,
+          ...(scene
+            ? {
+                shownState: {
+                  hour: scene.hour,
+                  sky: scene.sky,
+                  battery: scene.battery,
+                  sectors: scene.sectors,
+                },
+              }
+            : {}),
         };
       } catch (err) {
         console.warn('[copilot:model-tools] generate_image failed:', err);

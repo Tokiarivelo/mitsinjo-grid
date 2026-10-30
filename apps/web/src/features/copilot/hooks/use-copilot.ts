@@ -231,6 +231,7 @@ export function useCopilot() {
             messages: payloadMessages,
             input: store.input,
             strategy: store.activeStrategy,
+            hour: store.timeIndex,
             model: selectedModel || undefined,
             locale,
           }),

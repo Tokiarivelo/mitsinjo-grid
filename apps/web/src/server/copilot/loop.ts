@@ -1,12 +1,13 @@
 import 'server-only';
 
-import { type SimulationInput, type StrategyId } from '@mitsinjo/engine';
+import { simulate, type SimulationInput, type StrategyId } from '@mitsinjo/engine';
 import { type LlmProvider, type ChatMessage, type LlmImageResult } from './provider';
 import { MockLlmProvider } from './providers/mock';
 import { TOOL_DEFINITIONS, executeTool, type ToolContext } from './tools';
 import { getSystemPrompt } from './prompt';
 import { detectAdaptiveRoute, pickChatModel } from './adaptive-router';
 import { MODEL_TOOL_DEFINITIONS, MODEL_TOOL_NAMES, executeModelTool } from './model-tools';
+import { describeVillageScene } from './village-scene';
 import { getPerceptionClient, type PerceptionClient } from '@/server/perception';
 import { spendGuard as sharedSpendGuard, estimateTokens, type SpendGuard } from '@/server/spend';
 
@@ -45,12 +46,21 @@ export interface CopilotLoopOptions {
   spendGuard?: SpendGuard;
   /** Injectable for tests; defaults to `getPerceptionClient(budgetKey)`. */
   perception?: Pick<PerceptionClient, 'segmentImage'>;
+  /** Hour shown in the app (timeline / scale model), for "show the village now". Default 12. */
+  hour?: number;
+  /** Chat budget in ms (tests only); default 20 s. */
+  chatBudgetMs?: number;
 }
 
 const SPEND_CAP_MESSAGE = 'AI budget cap reached — showing deterministic explanation.';
 
 const MAX_TOOL_ROUNDS = 4;
+/** Budget for the chat model's own thinking. Slow tools (image, SAM) run outside it. */
 const TIMEOUT_MS = 20_000;
+/** Own limit of one slow model tool (image ≈ 12–23 s, SAM ≈ 5 s measured). */
+const MODEL_TOOL_TIMEOUT_MS = 45_000;
+/** Extra chat budget after a switch to Wonder (slower answers). */
+const WONDER_EXTRA_MS = 30_000;
 /** Engine tools + model-switch tools (image, segmentation, deep reasoning). */
 const ALL_TOOL_DEFINITIONS = [...TOOL_DEFINITIONS, ...MODEL_TOOL_DEFINITIONS];
 
@@ -83,6 +93,8 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
     availableModels = [],
     budgetKey = 'global',
     spendGuard = sharedSpendGuard,
+    hour = 12,
+    chatBudgetMs = TIMEOUT_MS,
   } = options;
   let activeProvider = options.provider || new MockLlmProvider();
 
@@ -112,11 +124,34 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
     reason: route.reason,
   });
 
-  // Create timeout controller for the 20s overall budget
+  // Chat budget: a deadline that slow tools pause and a Wonder switch extends.
   const timeoutController = new AbortController();
-  const timeoutId = setTimeout(() => {
-    timeoutController.abort(new Error('Copilot loop exceeded 20s budget'));
-  }, TIMEOUT_MS);
+  let deadline = Date.now() + chatBudgetMs;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const armBudget = () => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(
+      () => timeoutController.abort(new Error('Copilot loop exceeded its time budget')),
+      Math.max(0, deadline - Date.now())
+    );
+  };
+  armBudget();
+  /** Runs a slow tool with its own time limit; the chat budget is paused meanwhile. */
+  const outsideBudget = async <T>(run: (toolSignal: AbortSignal) => Promise<T>): Promise<T> => {
+    clearTimeout(timeoutId);
+    const started = Date.now();
+    const toolSignal = AbortSignal.any(
+      [AbortSignal.timeout(MODEL_TOOL_TIMEOUT_MS), signal].filter((sig): sig is AbortSignal =>
+        Boolean(sig)
+      )
+    );
+    try {
+      return await run(toolSignal);
+    } finally {
+      deadline += Date.now() - started;
+      armBudget();
+    }
+  };
 
   // Combine caller signal and timeout
   const abortListener = () => timeoutController.abort(signal?.reason);
@@ -139,7 +174,10 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
       if (capReached()) switchToMockForCap();
       if (typeof activeProvider.generateImage === 'function') {
         try {
-          imgResult = await activeProvider.generateImage(userQuery, timeoutController.signal);
+          const provider = activeProvider;
+          imgResult = await outsideBudget((toolSignal) =>
+            provider.generateImage!(userQuery, toolSignal)
+          );
           if (activeProvider.name !== 'mock') {
             spendGuard.record(budgetKey, route.targetModel, { images: 1 });
           }
@@ -276,24 +314,30 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
           });
 
           if (MODEL_TOOL_NAMES.has(tc.name)) {
-            const content = await executeModelTool(tc.name, tc.args, {
-              provider: activeProvider,
-              perception,
-              attachedImage,
-              availableModels,
-              currentModel: chatModel,
-              emit,
-              signal: timeoutController.signal,
-              canSpend: () => spendGuard.canSpend(budgetKey),
-              recordSpend: (model, usage) => spendGuard.record(budgetKey, model, usage),
-              switchModel: (model) => {
-                const p = activeProvider as LlmProvider & { setModel?: (m: string) => void };
-                if (p.name === 'mock' || typeof p.setModel !== 'function') return false;
-                p.setModel(model);
-                chatModel = model;
-                return true;
-              },
-            });
+            const provider = activeProvider;
+            const content = await outsideBudget((toolSignal) =>
+              executeModelTool(tc.name, tc.args, {
+                provider,
+                perception,
+                attachedImage,
+                villageScene: () => describeVillageScene(input, simulate(input, strategy), hour),
+                locale,
+                availableModels,
+                currentModel: chatModel,
+                emit,
+                signal: toolSignal,
+                canSpend: () => spendGuard.canSpend(budgetKey),
+                recordSpend: (model, usage) => spendGuard.record(budgetKey, model, usage),
+                switchModel: (model) => {
+                  const p = activeProvider as LlmProvider & { setModel?: (m: string) => void };
+                  if (p.name === 'mock' || typeof p.setModel !== 'function') return false;
+                  p.setModel(model);
+                  chatModel = model;
+                  deadline += WONDER_EXTRA_MS;
+                  return true;
+                },
+              })
+            );
             chatHistory.push({
               role: 'tool',
               name: tc.name,

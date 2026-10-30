@@ -14,14 +14,16 @@
   the choice with keywords (offline only). Prompt rule 6b in EN/FR/MG.
 - **Contributor preferred** (`providers/contributor.ts`, `META_PREFER_CONTRIBUTOR=true` default): chat + vision use
   `muse-spark-1.3-contributor`; 403/404/429 → resend on standard id, pause (60 s / 1 h). Spend guard bills the id that answered.
-- Checks: web 513 ✓ (simulation test once timed out under full-suite load, passes alone), typecheck ✓, lint ✓, i18n ✓,
-  prettier ✓. Engine `sweep.test.ts` perf budget fails on this machine (pre-existing).
-- **Not verified live:** tool choice by the real Spark + contributor access (dev server commands were not permitted).
-  Run test-scenarios A30–A38 with `make dev`.
+- Checks: web 525 ✓, typecheck/lint/i18n/prettier ✓. Engine `sweep.test.ts` perf budget fails here (pre-existing).
+- **Village now:** `generate_image {scene:'current_village'}` draws the engine state at the shown hour (`hour` in the
+  request = store `timeIndex`; `village-scene.ts`: sky, battery, sector lit/dim/dark/closed, no numbers). Chat budget
+  20 s is paused during slow tools (own 45 s limit) and +30 s after a Wonder switch; route `maxDuration = 120`.
+  Fixes the live "Copilot loop timed out" seen with image generation.
+- Live (user log): Spark does call `generate_image` itself. Village-state image and contributor not yet checked live.
 
 ## Next task
 
-- Live check A30–A38, then **M1** (chat control + approval with engine impact).
+- Live check A30–A40, commit, then **M1** (chat control + approval with engine impact).
 - M0-T1 human part: record FR + Malagasy WAV phrases, verdict "MG usable".
 
 ## Decisions taken

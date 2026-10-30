@@ -11,7 +11,7 @@ server/copilot/
 ├── providers/mock.ts  # deterministic: keyword → tool plan → templated answer from evidence
 ├── tools.ts           # tool defs (JSON schema from Zod) + handlers calling @mitsinjo/engine
 ├── prompt.ts          # system prompt (below), ≤ 400 tokens
-├── loop.ts            # max 4 tool rounds, 20 s budget, emits SSE events
+├── loop.ts            # max 4 tool rounds, 20 s chat budget (paused during slow tools, +30 s after a Wonder switch), SSE events
 └── __tests__/         # loop with fake provider, tool arg validation, evidence integrity
 app/api/copilot/route.ts   # parse body (Zod) → loop → stream
 app/api/copilot/upload/    # presigned URLs for Cloudflare R2 media upload
@@ -39,6 +39,11 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
 (UI shows "AI unavailable — showing deterministic explanation").
 Models: `muse-spark-*` (standard), `muse-wonder-1.0` (deep reasoning) and `muse-image-1.0` (image) are listed or accepted for explicit choice (`isCopilotModel`); voice and SAM ids are rejected there (they are reached through tools / `server/perception`).
 **Model choice is made by Spark through tool calls, never by keywords** (`model-tools.ts`): `generate_image` → Muse Image (`image` SSE event, numbers stripped from the prompt), `segment_image` → SAM on the latest attached photo (`perception` SSE event, result labelled AI perception), `escalate_deep_reasoning` → Wonder for the rest of the turn (new `model` event; never in an emergency). `adaptive-router.ts` only applies structural rules: explicit model choice, attached image → `vision` modality on the same Spark model. The mock provider imitates Spark's choice with a few keywords (offline only). An explicitly chosen image model that fails → `PROVIDER_FALLBACK`, answer from the Spark chat model.
+**Show the village now:** `generate_image {scene: 'current_village'}` → `village-scene.ts` builds the prompt from the engine
+result at the hour shown in the app (request field `hour` = store `timeIndex`): sky from computed solar vs clear-sky profile
+(night / sunny / partly cloudy / overcast), battery level in words, each connected sector lit / dim / dark / closed from the
+engine sector mode. No number reaches the image; the caption lists the hour and sector states. Slow tools (image, SAM) run
+with their own 45 s limit outside the 20 s chat budget (`maxDuration = 120` on the route).
 **Contributor preference** (`providers/contributor.ts`, `META_PREFER_CONTRIBUTOR`, default on): Spark 1.2 / 1.3 calls (chat and vision) use the `*-contributor` id (≈ 12× cheaper; Meta trains on inputs and outputs; rate-limited). A 403 / 404 / 429 resends once on the standard id and pauses the contributor id (60 s after a rate limit, 1 h otherwise). The spend guard bills the id that answered. Turn it off for real (non-simulated) user data.
 
 ## 2. System prompt (outline)

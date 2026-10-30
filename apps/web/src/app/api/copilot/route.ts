@@ -71,7 +71,12 @@ const RequestBodySchema = z.object({
     .optional(),
   locale: z.enum(['en', 'fr', 'mg']).optional(),
   sessionId: z.string().max(64).optional(),
+  /** Hour shown in the app (timeline or scale model), 0–23. */
+  hour: z.number().int().min(0).max(23).optional(),
 });
+
+/** Chat budget (20 s) + slow tools (image up to 45 s) + Wonder extra time. */
+export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
   const ip =
@@ -185,6 +190,7 @@ export async function POST(req: NextRequest) {
           requestedModel: parsed.data.model,
           availableModels,
           budgetKey: parsed.data.sessionId,
+          hour: parsed.data.hour,
         });
       } catch (err) {
         emit('error', {

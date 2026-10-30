@@ -12,6 +12,8 @@ export const MOCK_MODEL_ID = 'mock-deterministic-v1';
  */
 const MOCK_IMAGE_WORDS =
   /(génère une image|générer une image|crée une image|dessine|illustration|affiche|generate an? (image|picture)|draw|mamorona sary)/i;
+const MOCK_VILLAGE_NOW =
+  /(état du village|village actuel|village maintenant|montre(-moi)? le village|show (me )?the village|current village|village now)/i;
 const MOCK_COUNT_WORDS = /(combien|compte |compte-|count|how many|détecte|detect|ohatrinona)/i;
 const MOCK_SEGMENT_CONCEPTS: Array<{ match: RegExp; concept: string }> = [
   { match: /fumée|smoke|setroka/i, concept: 'smoke' },
@@ -91,6 +93,13 @@ export class MockLlmProvider implements LlmProvider {
             name: 'segment_image',
             args: { concept: mockSegmentConcept(query) },
           },
+        ],
+      };
+    }
+    if (!hasImage && MOCK_VILLAGE_NOW.test(query)) {
+      return {
+        toolCalls: [
+          { id: 'call_village', name: 'generate_image', args: { scene: 'current_village' } },
         ],
       };
     }

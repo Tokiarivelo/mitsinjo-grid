@@ -320,5 +320,55 @@ describe('Copilot Loop (P6-T3)', () => {
       expect(provider.setModel).toHaveBeenCalledWith('muse-spark-1.3');
       expect(provider.chat).toHaveBeenCalled();
     });
+
+    it('does not count a slow image tool against the chat budget, and draws the shown hour', async () => {
+      const provider: LlmProvider = {
+        name: 'meta',
+        chat: vi
+          .fn()
+          .mockResolvedValueOnce({
+            toolCalls: [{ id: 't1', name: 'generate_image', args: { scene: 'current_village' } }],
+          })
+          .mockResolvedValueOnce({ content: 'Voici le village.' }),
+        generateImage: vi.fn(
+          (prompt: string) =>
+            new Promise<{ imageUrl: string }>((resolve) =>
+              setTimeout(
+                () => resolve({ imageUrl: `data:image/webp;base64,${prompt.length}` }),
+                120
+              )
+            )
+        ),
+      };
+      const { events, emit } = collect();
+      await runCopilotLoop({
+        messages: [{ role: 'user', content: 'Montre-moi le village maintenant' }],
+        input: baseInput,
+        provider,
+        emit,
+        locale: 'fr',
+        hour: 2,
+        chatBudgetMs: 60,
+        spendGuard: new SpendGuard(1),
+      });
+      expect(events.some((e) => e.name === 'image')).toBe(true);
+      expect(events.find((e) => e.name === 'error')).toBeUndefined();
+      expect(String(events.find((e) => e.name === 'image')?.data.caption)).toContain('à 2 h');
+      const prompt = (provider.generateImage as ReturnType<typeof vi.fn>).mock.calls[0]![0];
+      expect(prompt).toContain('starry sky');
+      expect(events.at(-1)?.name).toBe('done');
+    });
+
+    it('offline mock: "montre-moi le village" → picture of the current state', async () => {
+      const { events, emit } = collect();
+      await runCopilotLoop({
+        messages: [{ role: 'user', content: "Montre-moi l'état du village" }],
+        input: baseInput,
+        emit,
+        locale: 'fr',
+        hour: 20,
+      });
+      expect(String(events.find((e) => e.name === 'image')?.data.caption)).toContain('à 20 h');
+    });
   });
 });
