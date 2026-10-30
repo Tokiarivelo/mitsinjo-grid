@@ -56,6 +56,14 @@ build: ## Production build (all packages)
 start: build ## Build then serve the production app
 	$(PNPM) --filter $(WEB) start
 
+bridge: ## Scale-model bridge: MQTT broker + engine + WebSocket (BRIDGE_MODE=replay|twin; shell > .env)
+	$(need_ws)
+	$(PNPM) --filter bridge start
+
+bridge-sim: ## Fake ESP32 for the bridge, no hardware needed (keys: c = cloud, q = quit)
+	$(need_ws)
+	$(PNPM) --filter bridge sim
+
 ##@ Quality
 test: ## Run all unit tests
 	$(need_ws)
@@ -64,6 +72,10 @@ test: ## Run all unit tests
 test-engine: ## Run engine tests only
 	$(need_ws)
 	$(PNPM) --filter $(ENGINE) test
+
+test-bridge: ## Run scale-model bridge tests only
+	$(need_ws)
+	$(PNPM) --filter bridge test
 
 test-web: ## Run web unit tests only
 	$(need_ws)
@@ -179,4 +191,4 @@ clean-all: clean ## Also remove node_modules
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
 
 .PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-watch coverage e2e \
-        typecheck lint format format-check format-changed git-hooks check ci shots mockups analyze scene-audit scene-audit-gpu lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all
+        typecheck lint bridge bridge-sim test-bridge format format-check format-changed git-hooks check ci shots mockups analyze scene-audit scene-audit-gpu lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all

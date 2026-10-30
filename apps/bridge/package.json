@@ -1,0 +1,27 @@
+{
+  "name": "bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local bridge between the physical scale model (MQTT) and Mitsinjo Grid (engine + WebSocket).",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "sim": "tsx src/sim-device.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mitsinjo/engine": "workspace:*",
+    "aedes": "^1.2.0",
+    "mqtt": "^5.16.1",
+    "ws": "^8.22.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/ws": "^8.18.2",
+    "tsx": "^4.23.15",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.7"
+  }
+}
