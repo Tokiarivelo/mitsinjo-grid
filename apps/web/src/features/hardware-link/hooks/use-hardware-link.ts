@@ -59,7 +59,8 @@ export function useHardwareLink(url: string | undefined): HardwareLink {
         else if (msg?.type === 'access') setControl(msg.control);
       };
       ws.onclose = () => {
-        socket.current = null;
+        // A socket closed late (React dev remount, reconnect) must not drop the live one.
+        if (socket.current === ws) socket.current = null;
         if (disposed) return;
         setStatus('disconnected');
         retry = setTimeout(connect, RECONNECT_MS);

@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -262,6 +263,27 @@ describe('HardwareLinkSection (PH-H4)', () => {
       'true'
     );
     expect(screen.getByText('1 W = 4 kW · 1 h = 5 s')).toBeInTheDocument();
+  });
+
+  it('regression: a late close of the first socket (dev double mount) does not break commands', () => {
+    const close = vi.spyOn(FakeSocket.prototype, 'close').mockImplementation(function (
+      this: FakeSocket
+    ) {
+      this.readyState = 3; // real sockets fire onclose later, not during the effect cleanup
+    });
+    render(
+      <StrictMode>
+        <HardwareLinkSection url="ws://bridge.test" />
+      </StrictMode>
+    );
+    close.mockRestore();
+    const [first, live] = [FakeSocket.instances[0]!, FakeSocket.instances.at(-1)!];
+    expect(live).not.toBe(first);
+    act(() => live.open());
+    act(() => live.receive(message(bridgeState())));
+    act(() => first.onclose?.());
+    fireEvent.click(screen.getByRole('button', { name: '1 simulated hour = 5 s' }));
+    expect(live.sent.map((d) => JSON.parse(d))).toEqual([{ type: 'speed', timeScale: 5 }]);
   });
 
   it('read-only bridge: commands disabled with a note, nothing sent', () => {
