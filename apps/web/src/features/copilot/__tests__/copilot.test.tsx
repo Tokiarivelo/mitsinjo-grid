@@ -223,7 +223,9 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
     );
 
     expect(screen.getByText('Guarantee lighting floor for households')).toBeInTheDocument();
-    expect(screen.getByText('0.5 kW')).toBeInTheDocument();
+    // Current floor is the engine default for households (0.40 kW), not 0
+    expect(screen.getByText('0.40 kW')).toBeInTheDocument();
+    expect(screen.getByText('0.50 kW')).toBeInTheDocument();
   });
 
   it('renders ContextPanel with active baseline, specs, and runs simulation', () => {

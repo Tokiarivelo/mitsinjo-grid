@@ -5,7 +5,8 @@ import { useTranslations } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { useSimulationStore } from '@/stores';
 import { cn } from '@/lib/utils';
-import type { SectorId } from '@mitsinjo/engine';
+import { resolveLifelineKw, type SectorId } from '@mitsinjo/engine';
+import { fmtKw } from '@/lib/format';
 import type { CopilotProposal } from '../types';
 
 export interface ConfirmProposalDialogProps {
@@ -128,12 +129,16 @@ export function ConfirmProposalDialog({
     if (patch.lifeline.kw !== undefined) {
       for (const [secId, kw] of Object.entries(patch.lifeline.kw)) {
         if (kw !== undefined) {
-          const currentSec = currentInput.sectors.find((s) => s.id === secId);
-          const currentKw = currentSec?.lifelineKw ?? 0;
+          const sector = secId as SectorId;
+          // Unset floors use the engine default, never 0.
+          const currentKw = resolveLifelineKw(
+            sector,
+            currentInput.sectors.find((s) => s.id === sector)?.lifelineKw
+          );
           diffItems.push({
-            label: `${tSectors(secId as SectorId)} ${tCopilot('diffLifelineFloor')}`,
-            current: `${currentKw} kW`,
-            proposed: `${kw} kW`,
+            label: `${tSectors(sector)} ${tCopilot('diffLifelineFloor')}`,
+            current: fmtKw(currentKw, 2),
+            proposed: fmtKw(kw, 2),
           });
         }
       }

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Radar } from 'lucide-react';
 import { scenarios, type ScenarioId } from '@mitsinjo/engine';
 import {
@@ -20,7 +19,6 @@ import { AssumptionsInspector } from './assumptions-inspector';
 import { ReproducibilitySummary } from './reproducibility-summary';
 
 export function ScenariosPage() {
-  const router = useRouter();
   const tCommon = useTranslations('common');
   const tScenarios = useTranslations('features.scenarios');
   const tScenariosCatalog = useTranslations('scenarios');
@@ -56,11 +54,11 @@ export function ScenariosPage() {
     }
   };
 
+  // The card's link navigates to /simulation; this only loads the scenario first.
   const handleOpenScenario = (id: ScenarioId) => {
     if (id !== currentStoreScenarioId) {
       loadScenario(id);
     }
-    router.push('/simulation');
   };
 
   const isInspectedActive = inspectedScenarioId === currentStoreScenarioId;

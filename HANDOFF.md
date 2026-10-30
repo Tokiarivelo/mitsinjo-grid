@@ -12,7 +12,7 @@
   - Mock provider routes household lifeline query to `propose_change` without auto-applying.
   - `ConfirmProposalDialog` renders diffs for lifeline status and floors in EN/FR/MG.
 - **PL-T15 (Tests & E2E)**:
-  - E2E spec `e2e/lifeline-dispatch.spec.ts` verifies survival dispatch, Rationing mode & diagrams.
+  - E2E `PL-T15` block in `e2e/demo-path.spec.ts` verifies survival dispatch, Rationing mode & diagrams.
   - `scenario-card.tsx` CTA uses Next.js `Link` with `buttonVariants` for robust routing.
   - Unit, eval (cases & tools), copilot UI, and 100% i18n key parity tests verified.
 - **PL-T16 (Docs)**:
@@ -33,5 +33,5 @@
 - Copilot UI: `features/copilot/ui/confirm-proposal-dialog.tsx`, `features/copilot/__tests__/copilot.test.tsx`
 - Scenarios: `features/scenarios/ui/scenario-card.tsx`
 - Messages: `messages/{en,fr,mg}.json`
-- E2E: `e2e/{lifeline-dispatch.spec.ts,demo-path.spec.ts}`
+- E2E: `e2e/demo-path.spec.ts` (demo path, viewports, PL-T15 lifeline)
 - Docs: `contracts.md`, `copilot.md`, `docs/design/screens/copilot.md`, `README.md`, `docs/tasks/{README.md,PL-lifeline-dispatch.md}`

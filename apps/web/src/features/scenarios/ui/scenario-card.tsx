@@ -160,7 +160,6 @@ export function ScenarioCard({
 
         <Link
           href="/simulation"
-          role="button"
           onClick={(e) => {
             e.stopPropagation();
             onOpen(id);
