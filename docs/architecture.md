@@ -34,6 +34,8 @@ mitsinjo-grid/
 │           ├── index.ts                # public API — the only import path
 │           └── __tests__/
 └── apps/
+    ├── bridge/                         # local-only Node service for the physical scale model (PH):
+    │                                   #   MQTT (embedded aedes broker) ⇄ engine ⇄ WebSocket :8787; never deployed
     └── web/                            # Next.js 15 App Router
         ├── e2e/                        # Playwright: demo-path.spec.ts
         └── src/
@@ -50,6 +52,7 @@ mitsinjo-grid/
             │   ├── strategy-lab/
             │   ├── scenarios/          # cards, assumptions, export summary
             │   ├── copilot/            # chat UI, useCopilot, proposal dialog
+            │   ├── hardware-link/      # scale-model bridge link (WebSocket hook + panel), local only
             │   └── design-system/      # /design UI kit catalog
             ├── components/{ui,layout,charts}/
             ├── stores/simulation.store.ts   # single source of UI state
@@ -79,6 +82,14 @@ Create folders when first needed, not up front.
  Proposal ─► ConfirmProposalDialog ─► user approves ─► store.setInput() ─► run()
 ```
 
+Scale model (local, `docs/maquette-physique.md`):
+
+```text
+ ESP32 ─MQTT telemetry─► apps/bridge: BridgeSession → scaleTelemetry → simulate → toHardwareCommand
+       ◄─MQTT command──┘          └─ WebSocket {type:'state', state: BridgeState} ─► web features/hardware-link
+ web: useHardwareLink (reconnect 3 s) ─► store.applyDeviceRun ─► engine.compareWorkflow (numbers re-computed in the app)
+```
+
 ## 4. Ownership boundaries
 
 | Layer              | May                                       | May not                                   |
@@ -89,6 +100,7 @@ Create folders when first needed, not up front.
 | `features/*/hooks` | read store, call engine via store actions | fetch LLM except `copilot/hooks`          |
 | `server/copilot`   | call LLM + engine, validate tool args     | be imported by client code                |
 | 3D scene           | map result fields → visuals               | derive or interpolate energy values       |
+| `apps/bridge`      | place frames on the sim clock, I/O        | compute energy values (calls the engine)  |
 
 ## 5. Store shape (summary; types in contracts.md)
 

@@ -58,6 +58,7 @@ import { SectorLoadPanel } from './sector-load-panel';
 import { VillageViewport } from './village-viewport';
 import { PlaybackActions } from './playback-actions';
 import { WeatherWorkflowPanel } from './weather-workflow-panel';
+import { HardwareLinkSection } from '@/features/hardware-link';
 import { DayStrip } from './day-strip';
 import { usePlaybackTicker } from '../hooks/use-playback-ticker';
 import { simStatusBadgeVariant } from '../utils/playback';
@@ -534,6 +535,7 @@ export function SimulationPage() {
                   onSetWeather={setDayWeather}
                   onSelectDay={handleSelectDay}
                 />
+                <HardwareLinkSection />
               </div>
 
               {/* TAB 3: BUILDING INSPECTOR */}

@@ -36,7 +36,10 @@ describe('feederTone', () => {
   it('follows the sector status when the breaker is closed', () => {
     expect(feederTone(feeder(), building())).toBe('battery-green');
     expect(
-      feederTone(feeder(), building({ status: 'partial', statusColor: 'warning-amber' }))
+      feederTone(
+        feeder(),
+        building({ servedKw: 1, status: 'partial', statusColor: 'warning-amber' })
+      )
     ).toBe('warning-amber');
   });
 
@@ -45,7 +48,7 @@ describe('feederTone', () => {
     expect(
       feederTone(
         feeder({ breaker: 'open', servedKw: 0 }),
-        building({ status: 'unserved', statusColor: 'critical-red' })
+        building({ servedKw: 0, status: 'unserved', statusColor: 'critical-red' })
       )
     ).toBe('critical-red');
   });

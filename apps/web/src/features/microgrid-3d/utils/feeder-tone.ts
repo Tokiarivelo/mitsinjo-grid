@@ -1,21 +1,35 @@
-import { SECTOR_IDS, type SectorId } from '@mitsinjo/engine';
+import {
+  ACTIVE_FEEDER_KW,
+  feederTone as engineFeederTone,
+  SECTOR_IDS,
+  type FeederTone,
+  type SectorId,
+} from '@mitsinjo/engine';
 import type { BuildingSceneModel, FeederSceneModel, SceneModel, StatusColor } from '../types';
 
 /** Below this demand a feeder has nothing to carry (same threshold as the diagram's "No load"). */
-export const NO_LOAD_KW = 0.05;
+export const NO_LOAD_KW = ACTIVE_FEEDER_KW;
+
+const TONE_STATUS: Record<FeederTone, StatusColor> = {
+  ok: 'battery-green',
+  warning: 'warning-amber',
+  critical: 'critical-red',
+  idle: 'idle',
+};
 
 /**
- * Display tone of one controller feeder, shared by the 3D unit, its cable tags and
- * both 2D diagrams: limiter → amber, open on a connected sector with demand → red,
- * open with nothing to serve (or not connected) → neutral, closed with no demand this
- * hour → neutral, closed → the sector's status.
+ * Display tone of one controller feeder, shared by the 3D unit, its cable tags, both 2D
+ * diagrams and the scale-model LEDs. Rule owned by the engine (`feederTone`), mapped to tokens here.
  */
 export function feederTone(feeder: FeederSceneModel, building: BuildingSceneModel): StatusColor {
-  if (!building.connected) return 'idle';
-  if (feeder.breaker === 'closed' && building.demandKw <= NO_LOAD_KW) return 'idle';
-  if (feeder.breaker === 'limited') return 'warning-amber';
-  if (feeder.breaker === 'open') return building.status === 'unserved' ? 'critical-red' : 'idle';
-  return building.statusColor;
+  return TONE_STATUS[
+    engineFeederTone({
+      connected: building.connected,
+      demandKw: building.demandKw,
+      servedKw: building.servedKw,
+      breaker: feeder.breaker,
+    })
+  ];
 }
 
 /** `feederTone` for every sector of a scene. */

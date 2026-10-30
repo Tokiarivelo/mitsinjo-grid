@@ -1,4 +1,6 @@
 import {
+  breakerFromMode,
+  controllerModeAt,
   SECTOR_IDS,
   type SectorId,
   type SimulationInput,
@@ -199,8 +201,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     const maxKw = maxServedBySector[sectorId] ?? 0;
     const intensity = maxKw > 0 ? Math.min(1, Math.max(0, servedKw / maxKw)) : 0;
     const mode = !connected ? 'off' : (sectorStep?.mode ?? 'off');
-    const breaker: BreakerState =
-      mode === 'lifeline' ? 'limited' : mode === 'full' || mode === 'limited' ? 'closed' : 'open';
+    const breaker: BreakerState = breakerFromMode(mode);
 
     buildings[sectorId] = {
       id: sectorId,
@@ -241,34 +242,9 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     };
   }
 
-  // Controller mode derived from engine SectorStep.mode & warnings (PL-T5)
-  let controllerMode: ControllerMode = 'normal';
-  if (result && step) {
-    const activeFeeders = SECTOR_IDS.map((id) => ({
-      id,
-      feeder: feeders[id]!,
-      demandKw: step.sectors[id]?.demandKw ?? 0,
-      connected: buildings[id].connected,
-    })).filter((f) => f.connected && f.demandKw > 0.05);
-
-    const hasLifelineShortfall = result.warnings.some(
-      (w) => w.code === 'LIFELINE_SHORTFALL' && validTime >= w.fromHour && validTime <= w.toHour
-    );
-
-    const allFull =
-      activeFeeders.length === 0 || activeFeeders.every((f) => f.feeder.mode === 'full');
-    const allLifelineOrOff =
-      activeFeeders.length > 0 &&
-      activeFeeders.every((f) => f.feeder.mode === 'lifeline' || f.feeder.mode === 'off');
-
-    if (allFull) {
-      controllerMode = 'normal';
-    } else if (hasLifelineShortfall || allLifelineOrOff) {
-      controllerMode = 'lifeline_only';
-    } else {
-      controllerMode = 'rationing';
-    }
-  }
+  // Controller mode derived from engine SectorStep.mode & warnings (PL-T5, shared with hardware)
+  const controllerMode: ControllerMode =
+    result && step ? controllerModeAt(input, result, validTime) : 'normal';
 
   const controller: ControllerSceneModel = {
     mode: controllerMode,

@@ -197,6 +197,12 @@ make build
 # 3D budgets per quality tier (server running; -gpu = real GPU fps)
 make scene-audit
 make scene-audit-gpu
+
+# Physical scale model (docs/maquette-physique.md, settings: docs/bridge.md): bridge + fake ESP32
+make bridge                     # BRIDGE_MODE=twin make bridge → sensors feed the engine
+make bridge-sim                 # c = cloud over the sun lamp, q = quit
+# Deployed site: open /simulation?bridge=ws://localhost:8787 (add &bridgeToken=… if BRIDGE_TOKEN is set)
+NEXT_PUBLIC_BRIDGE_URL=ws://localhost:8787 make dev-mock   # /simulation → Controls → Physical scale model
 ```
 
 ---

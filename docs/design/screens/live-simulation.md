@@ -83,6 +83,14 @@ The collapsible side deck contains four structured tabs:
   (hidden when one day) and, after a run, `SoC end · unserved` per day. `Add day` copies the last day's weather.
   Multi-day totals (solar, unserved, battery min → end) under the list. Changing a day's weather after a run
   re-runs the engine at once (solar output, metrics and 3D update); before a run it only marks the scenario modified.
+- **Physical scale model** (below Weather Workflow, only when a bridge is known: `?bridge=` link kept for the tab, or
+  `NEXT_PUBLIC_BRIDGE_URL` → hidden for normal visitors). Read-only bridge (no token): cloud + speed disabled and an
+  amber lock note; follow still allowed.
+  `HardwareLinkPanel` — bridge status badge (connected / connecting / offline), label–value rows (model online,
+  mode replay/twin, scale `1 W = x kW · 1 h = y s`, model clock), "Speed" group of 4 buttons 60 / 20 / 10 / 5 s
+  (`aria-pressed` = speed confirmed by the bridge, 4 columns at every width), `SCALE MODEL DATA` badge while following,
+  buttons "Follow the model" / "Stop following" and "Cloud over the lamp" (`aria-pressed`, ≥ 44 px). No bridge
+  state yet → hint `make bridge`. Following loads the bridge scenario + measured patch and moves the hour cursor.
 - **3D weather**: the viewport HUD shows the current day's weather (icon + name) and the scene renders it (see `3d-scene.md`).
 - **Day strip** (multi-day only, above the 24h Time Cursor): one pill per day, current day pressed, red dot when that
   day has a critical deficit. Clicking a day pauses playback and shows that day's results; playback rolls over days.

@@ -119,6 +119,43 @@ describe('StrategyLabPage (P4-T5, P4-T7)', () => {
       expect(screen.queryByText('MAX')).not.toBeInTheDocument();
     });
 
+    it('raises the household survival floor: input patched and households get more in a deficit', () => {
+      useSimulationStore.getState().loadScenario('essential_stress');
+      useSimulationStore.getState().run();
+      const before = useSimulationStore.getState().results;
+      render(<StrategyLabPage />);
+
+      const slider = screen.getByLabelText('Village Households survival floor');
+      expect(slider).toHaveValue('0.4');
+      fireEvent.change(slider, { target: { value: '1.5' } });
+      act(() => vi.advanceTimersByTime(AUTO_COMPARE_DELAY_MS));
+
+      const state = useSimulationStore.getState();
+      expect(state.input.sectors.find((s) => s.id === 'households')?.lifelineKw).toBe(1.5);
+      expect(state.status).toBe('complete');
+      expect(
+        state.results.essential_first!.metrics.perSector.households!.servedKwh
+      ).toBeGreaterThan(before.essential_first!.metrics.perSector.households!.servedKwh);
+    });
+
+    it('turns survival floors off and on, hiding the floor sliders while off', () => {
+      render(<StrategyLabPage />);
+      const floors = screen.getByTestId('lifeline-floors');
+      const toggle = within(floors).getByRole('button', { name: 'Survival floors on' });
+      expect(toggle).toHaveAttribute('aria-pressed', 'true');
+      // Factory is not connected by default: no floor slider for it
+      expect(within(floors).queryByLabelText('Small Factory survival floor')).toBeNull();
+
+      fireEvent.click(toggle);
+      expect(useSimulationStore.getState().input.strategyParams?.lifeline?.enabled).toBe(false);
+      expect(within(floors).queryByLabelText('Health Clinic survival floor')).toBeNull();
+      expect(within(floors).getByText(/can drop to 0 kW/i)).toBeInTheDocument();
+
+      fireEvent.click(within(floors).getByRole('button', { name: 'Survival floors off' }));
+      expect(useSimulationStore.getState().input.strategyParams?.lifeline?.enabled).toBe(true);
+      expect(within(floors).getByLabelText('Health Clinic survival floor')).toBeInTheDocument();
+    });
+
     it('collapses and expands the panel', () => {
       render(<StrategyLabPage />);
       const toggle = screen.getByRole('button', { name: /comparison parameters/i });
@@ -191,7 +228,7 @@ describe('StrategyLabPage (P4-T5, P4-T7)', () => {
       expect(useSimulationStore.getState().input.strategyParams?.balancedWeights?.critical).toBe(8);
 
       // Find Health Clinic critical share slider
-      const healthShareSlider = screen.getByLabelText(/health clinic/i, {
+      const healthShareSlider = screen.getByLabelText(/^health clinic$/i, {
         selector: 'input[type="range"]',
       });
       fireEvent.change(healthShareSlider, { target: { value: '95' } });

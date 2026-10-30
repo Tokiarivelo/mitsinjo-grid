@@ -73,14 +73,8 @@ export function glowFromIntensity(intensity: number): number {
   return Math.min(1, Math.max(0, 0.18 + 0.82 * Math.pow(clamped, 0.85)));
 }
 
-/** Line flow (kW) at which cable visuals (electron density, speed, glow) saturate. */
-export const FLOW_SATURATION_KW = 3;
-
-/** Line flow kW → 0..1 visual factor for electrons and wire strokes (PL-T11). */
-export function flowFactor(flowKw: number): number {
-  if (!Number.isFinite(flowKw)) return 0;
-  return Math.min(1, Math.max(0, flowKw / FLOW_SATURATION_KW));
-}
+/** Line flow kW → 0..1 visual factor for electrons and wire strokes (PL-T11). Engine-owned so the scale model shares it. */
+export { FLOW_SATURATION_KW, flowLevel as flowFactor } from '@mitsinjo/engine';
 
 /** Warm street-lamp bulb and the dark bulb of an unpowered string light (3D materials). */
 export const STREET_LAMP_HEX = '#ffc078';

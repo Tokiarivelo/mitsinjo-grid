@@ -501,6 +501,36 @@
       },
       "zoomControls": "Fanalehibiazana ny kisary",
       "zoomHint": "Ctrl + kodiarana na tsongoy mba hanalehibe · sintony mba hanetsika"
+    },
+    "hardwareLink": {
+      "title": "Modely ara-batana",
+      "status": {
+        "connected": "Mifandray ny bridge",
+        "connecting": "Mampifandray…",
+        "disconnected": "Tsy mifandray ny bridge"
+      },
+      "device": "Modely",
+      "deviceOnline": "Mifandray — voaray ny mpandrefy",
+      "deviceOffline": "Tsy misy fandrefesana (famerenana ihany)",
+      "mode": "Fomba",
+      "modes": {
+        "replay": "Famerenana: ny motera no mitarika ny modely",
+        "twin": "Kambana: ny mpandrefy no manome angona ny motera"
+      },
+      "scale": "Refy",
+      "scaleValue": "1 W = {kw} kW · 1 ora = {seconds} s",
+      "clock": "Famantaranandron'ny modely",
+      "clockValue": "Andro {day} · {hour}",
+      "speed": "Hafainganana (segondra isaky ny ora nobanjinina)",
+      "speedOption": "{seconds} s",
+      "speedOptionLabel": "Ora nobanjinina 1 = {seconds} s",
+      "readOnly": "Famakiana ihany: mila tokena ity bridge ity hitantanana ny maquette (rahona, hafainganana). Sokafy amin'ny bridgeToken ny rohy.",
+      "hint": "Alefaso amin'ny make bridge ny bridge eo an-toerana (sy make bridge-sim raha tsy misy fitaovana).",
+      "deviceData": "ANGON'NY MODELY",
+      "follow": "Arahina ny modely",
+      "stopFollowing": "Atsahatra ny fanarahana",
+      "cloudOn": "Rahona eo amin'ny jiro",
+      "cloudOff": "Esorina ny rahona"
     }
   },
   "copilot": {
@@ -785,7 +815,13 @@
         "outOfRange": "Tsy ao anatin'ny fetra azo ekena ny sanda (0–500 kW, ora 0–24).",
         "capHoursOrder": "Tsy maintsy aorian'ny ora fanombohana ny ora fiafarana.",
         "allWeightsZero": "Tsy maintsy misy lanja iray farafahakeliny mihoatra ny 0."
-      }
+      },
+      "lifelineFloors": "Fetra ambany ho fiveloman'ny tambajotra (0–2 kW)",
+      "lifelineFloorsDesc": "Herinaratra kely indrindra tazonin'ny sehatra mifandray tsirairay rehefa tsy ampy ny angovo (jiro, famahanana finday, radio) fa tsy tapahina. Raha latsaky ny totaliny, ny rano sy ny fahasalamana ihany no omena.",
+      "lifelineFloorFor": "Fetra ambany ho fiveloman'ny {sector}",
+      "lifelineOn": "Mandeha ny fetra ambany",
+      "lifelineOff": "Tsy mandeha ny fetra ambany",
+      "lifelineOffNote": "Tsy mandeha ny fetra ambany: rehefa tsy ampy ny angovo, mety hidina ho 0 kW ny sehatra iray."
     },
     "sensitivity": {
       "title": "Fandinihana ny fahatsapana (Sensitivity)",

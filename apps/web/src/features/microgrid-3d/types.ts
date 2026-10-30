@@ -6,8 +6,8 @@ export type BuildingStatus = 'full' | 'partial' | 'unserved' | 'unknown' | 'disc
 export type StatusColor = 'battery-green' | 'warning-amber' | 'critical-red' | 'idle';
 export type BatteryStatusColor = 'healthy' | 'warning' | 'critical';
 
-export type ControllerMode = 'normal' | 'rationing' | 'lifeline_only';
-export type BreakerState = 'closed' | 'limited' | 'open';
+import type { BreakerState, ControllerMode } from '@mitsinjo/engine';
+export type { BreakerState, ControllerMode };
 
 export interface FeederSceneModel {
   mode: SectorMode;

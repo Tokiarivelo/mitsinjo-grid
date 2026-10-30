@@ -53,3 +53,8 @@ Status values: `not generated` · `generated` · `exported` · `implemented` · 
 - PR #28 follow-ups 2026-10-30: 3D EMS badge re-anchored (centered on the shelter front at breaker height, same scale as the other building labels) instead of hanging below the pad. 2D Topology/Circuit: zoom/pan + full screen; HUD clearance fixed (`sm:p-4` used to override the top/bottom padding, so the legend overlapped the hint). Checked 1440×900 and 390×844.
 - Weather workflow 2026-10-28: built without mockup (no Stitch screen). `WeatherWorkflowPanel` in Controls tab + `DayStrip` above the timeline, reusing strategy-button selected style as rounded pills. Checked 1440×900 and 390×844, dark and light, no horizontal overflow.
 - EMS Dispatch Controller 2026-10-29 (PL phase 2): built with design system tokens and canonical 3D low-poly technical shelter at BUS_POSITION [0, 0, 1]. Controller card in 2D topology and circuit diagram with breaker + current limiter symbol; camera preset 'controller'; 100% i18n key parity across EN, FR, MG; checked 1440×900, 390×844 and 320 px, dark and light, no horizontal overflow.
+- Strategy Lab survival floors 2026-10-30 (PL-T17): built without mockup, same pattern as the critical-shares block
+  (sector caption + `SimControl` per sector). Checked 1440×900 and 390×844, dark and light, no horizontal overflow.
+- Live Simulation scale-model panel 2026-10-30 (PH-H4): built without mockup, same card pattern as Weather Workflow;
+  label–value rows (2 columns were too tight in the side panel). Checked with a live bridge at 1440×900 and 390×844,
+  dark and light, no horizontal overflow.
