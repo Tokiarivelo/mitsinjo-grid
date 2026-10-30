@@ -158,6 +158,7 @@ describe('store applyDeviceRun / releaseDevice (PH-H4)', () => {
     expect(s.scenarioId).toBe('baseline');
     expect(s.activeStrategy).toBe('essential_first');
     expect(s.timeIndex).toBe(9);
+    expect(s.deviceHourMs).toBe(DEFAULT_HARDWARE_SCALE.timeScale * 1000);
     expect(s.status).toBe('complete');
     expect(s.input.solar.profile).toEqual(patch.solarProfile);
     expect(s.results.essential_first!.metrics.solarKwh).toBeCloseTo(

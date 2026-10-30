@@ -24,6 +24,8 @@ export interface SimControlsPanelProps {
   onReset: () => void;
   onStop: () => void;
   onRestart: () => void;
+  /** Scale model drives the run: playback buttons hidden. */
+  followsDevice?: boolean;
   className?: string;
 }
 
@@ -39,6 +41,7 @@ export function SimControlsPanel({
   onReset,
   onStop,
   onRestart,
+  followsDevice = false,
   className,
 }: SimControlsPanelProps) {
   const tSim = useTranslations('features.simulation');
@@ -90,15 +93,17 @@ export function SimControlsPanel({
             {tSim('resetScenario')}
           </Button>
 
-          <PlaybackActions
-            status={status}
-            isPlaying={isPlaying}
-            hasResults={hasResults}
-            disabled={hasErrors}
-            onTogglePlay={onRun}
-            onStop={onStop}
-            onRestart={onRestart}
-          />
+          {!followsDevice && (
+            <PlaybackActions
+              status={status}
+              isPlaying={isPlaying}
+              hasResults={hasResults}
+              disabled={hasErrors}
+              onTogglePlay={onRun}
+              onStop={onStop}
+              onRestart={onRestart}
+            />
+          )}
         </div>
       </div>
 

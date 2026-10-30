@@ -22,7 +22,8 @@ export type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'stopped';
 export type InputSource = 'scenario' | 'device';
 
 /** What the scale-model bridge sends that the store needs to re-run the same engine call. */
-export type DeviceRun = Pick<BridgeState, 'scenarioId' | 'patch' | 'strategy' | 'simHour'>;
+export type DeviceRun = Pick<BridgeState, 'scenarioId' | 'patch' | 'strategy' | 'simHour'> &
+  Partial<Pick<BridgeState, 'scale'>>;
 
 export interface SimulationState {
   scenarioId: ScenarioId;
@@ -41,6 +42,8 @@ export interface SimulationState {
   timeIndex: number;
   error: string | null;
   source: InputSource;
+  /** Real length of one simulated hour on the scale model (ms), from its `timeScale`; null = unknown. */
+  deviceHourMs: number | null;
 
   // Actions
   loadScenario: (scenarioId: ScenarioId) => void;
@@ -117,6 +120,7 @@ export const initialSimulationData = {
   timeIndex: 12,
   error: null as string | null,
   source: 'scenario' as InputSource,
+  deviceHourMs: null as number | null,
 };
 
 export function resetSimulationStore() {
@@ -289,13 +293,14 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     }
   },
 
-  applyDeviceRun: ({ scenarioId, patch, strategy, simHour }: DeviceRun) => {
+  applyDeviceRun: ({ scenarioId, patch, strategy, simHour, scale }: DeviceRun) => {
     try {
       const base = cloneInput(scenarios[scenarioId].input);
       const input = Object.keys(patch).length > 0 ? applyPatch(base, patch) : base;
       set({
         scenarioId,
         source: 'device',
+        deviceHourMs: scale ? scale.timeScale * 1000 : null,
         input,
         activeStrategy: strategy,
         // The model runs one day at a time: plain 24 h comparison, cursor on the model's hour.

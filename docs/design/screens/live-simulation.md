@@ -44,6 +44,7 @@ The 3D visualization is the dominant centerpiece of the screen. To maximize 3D v
   - Transport buttons: Step Backward `[|<]`, Play / Pause toggle `[ > / || ]`, Step Forward `[>|]`, Stop `[■]` (pause + back to 00:00), Restart `[↺]` (from 00:00). Stepping or dragging the track pauses playback.
   - Playback state lives in the store (`play`/`pause`/`stop`/`restart`/`togglePlay`): one hour per 750 ms, looping over 24h. Editing inputs, loading or resetting a scenario stops it.
   - 24h interactive scrubber track with colored step markers (daylight solar hours in amber, night battery discharge in cyan).
+  - Thumb moves continuously (follows the pointer, glides on playback and ◀ ▶; runs as a live clock while following the scale model); the store still gets whole hours. While following the scale model, every playback control (header, Controls tab, scrubber) is hidden.
   - Key milestone ticks: 00h (Midnight), 06h (Sunrise), 12h (Solar Zenith peak), 18h (Sunset), 24h (Night end).
   - Time badge readout: `14:00 • Daytime Solar Peak` with dynamic sun/battery icon.
 

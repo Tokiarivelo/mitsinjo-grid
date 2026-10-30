@@ -19,6 +19,11 @@ export const selectScenarioId = (s: SimulationState): ScenarioId => s.scenarioId
 export const selectInput = (s: SimulationState): SimulationInput => s.input;
 export const selectStatus = (s: SimulationState): SimStatus => s.status;
 export const selectIsPlaying = (s: SimulationState): boolean => s.isPlaying;
+/** The scale model drives input and hour: app playback controls are hidden. */
+export const selectFollowsDevice = (s: SimulationState): boolean => s.source === 'device';
+/** Hour length on the scale model while following it, else null. */
+export const selectDeviceHourMs = (s: SimulationState): number | null =>
+  s.source === 'device' ? s.deviceHourMs : null;
 export const selectPlaybackStatus = (s: SimulationState): PlaybackStatus => s.playbackStatus;
 export const selectIsModified = (s: SimulationState): boolean => s.status === 'modified';
 export const selectIsRunning = (s: SimulationState): boolean => s.status === 'running';
