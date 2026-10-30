@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-30 · **By:** Claude Code · **Branch:** `feat/hardware-twin` (not committed yet) · **PR:** —
+**Updated:** 2026-10-30 · **By:** Claude Code · **Branch:** `feat/hardware-twin` · **PR:** #30
 
 ## State
 
@@ -21,7 +21,7 @@
 
 ## Next task
 
-- Commit (engine+bridge, strategy-lab floors, web hardware link) + PR. Then H5 (hardware, firmware), H4-T2.
+- PR #30 merged. Then H5 (hardware build + ESP32 firmware), H4-T2 (calibration panel).
 
 ## Decisions taken
 
