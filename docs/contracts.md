@@ -400,7 +400,7 @@ interface InputPatch {
 
 ## Copilot HTTP
 
-`POST /api/copilot` body `{ messages: {role:'user'|'assistant', content:string, media?}[], input: SimulationInput, strategy?, model?, locale?, sessionId?, hour? /*0–23, shown hour*/ }`
+`POST /api/copilot` body `{ messages: {role:'user'|'assistant', content:string, media?: {type, url, key?}[]}[] /*≤ 8 sent*/, input: SimulationInput, strategy?, model?, locale?, sessionId?, hour? /*0–23, shown hour*/ }`
 → `text/event-stream` events:
 `activity {tool, sector?, label}` (UI translates `tool`; `label` is English, logs only) · `delta {text}` · `evidence {resultId, fields: Record<string, number|string>}` ·
 `proposal {proposalId, patch?, strategy?, reason, impact?: ChangeImpact}` · `error {code, reason?, message}` · `done {}` ·

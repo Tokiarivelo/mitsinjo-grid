@@ -11,8 +11,14 @@ import {
   isCopilotModel,
   DEFAULT_META_MODEL,
 } from '@/server/copilot/providers/meta';
-import { saveMessage } from '@/server/db/neon';
-import type { CopilotEvidence, CopilotProposal, ChatChartData } from '@/features/copilot/types';
+import { saveMessage, isNeonConfigured } from '@/server/db/neon';
+import type {
+  CopilotEvidence,
+  CopilotProposal,
+  ChatChartData,
+  ChatMediaItem,
+} from '@/features/copilot/types';
+import { storeGeneratedImage } from '@/server/storage/media';
 
 // In-memory rate limiter: max 30 requests per minute per client
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -56,6 +62,8 @@ const RequestBodySchema = z.object({
             z.object({
               type: z.enum(['image', 'video']),
               url: z.string().min(1),
+              /** R2 key of an uploaded file (re-signed when the session is reopened). */
+              key: z.string().max(300).optional(),
             })
           )
           .optional(),
@@ -156,6 +164,9 @@ export async function POST(req: NextRequest) {
       let collectedProposal: CopilotProposal | undefined = undefined;
       const collectedEvidence: CopilotEvidence[] = [];
       let collectedChart: ChatChartData | undefined = undefined;
+      const sessionId = parsed.data.sessionId;
+      // Generated image → R2 in the background; awaited only when the session is saved.
+      let generatedImage: Promise<ChatMediaItem | null> | undefined;
 
       const emit = (event: string, data: Record<string, unknown>) => {
         if (event === 'delta') {
@@ -168,6 +179,12 @@ export async function POST(req: NextRequest) {
           collectedProposal = data as unknown as CopilotProposal;
         } else if (event === 'chart') {
           collectedChart = data as unknown as ChatChartData;
+        } else if (event === 'image' && sessionId && typeof data.imageUrl === 'string') {
+          generatedImage = storeGeneratedImage(data.imageUrl, {
+            sessionId,
+            caption: typeof data.caption === 'string' ? data.caption : undefined,
+            keepInline: !isNeonConfigured(),
+          });
         }
 
         const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -210,10 +227,12 @@ export async function POST(req: NextRequest) {
                 id: `m-${idx}`,
                 url: m.url,
                 type: m.type,
+                key: m.key,
               })),
             }).catch(() => {});
           }
-          if (streamedAssistantContent.trim()) {
+          const image = generatedImage ? await generatedImage : null;
+          if (streamedAssistantContent.trim() || image) {
             await saveMessage(parsed.data.sessionId, {
               id: `assistant-${Date.now()}`,
               role: 'assistant',
@@ -222,6 +241,7 @@ export async function POST(req: NextRequest) {
               evidence: collectedEvidence.length > 0 ? collectedEvidence : undefined,
               proposal: collectedProposal,
               chart: collectedChart,
+              media: image ? [image] : undefined,
             }).catch(() => {});
           }
         }

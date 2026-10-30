@@ -12,6 +12,7 @@ import type {
   CopilotProposal,
 } from '../types';
 import { parseMessageSections } from '../utils/parse-sections';
+import { COPILOT_HISTORY_LIMIT } from '../utils/history';
 
 class CopilotHttpError extends Error {
   constructor(readonly key: CopilotErrorKey) {
@@ -20,22 +21,28 @@ class CopilotHttpError extends Error {
 }
 
 /** Messages the API accepts: no error bubbles, no empty assistant turns. */
+/** Request history: the last `COPILOT_HISTORY_LIMIT` valid messages (the server sees no more). */
 export function toPayloadMessages(messages: ChatMessageData[]) {
   return messages
     .filter(
       (m) => m.role !== 'error' && (m.content.trim().length > 0 || (m.media && m.media.length > 0))
     )
+    .slice(-COPILOT_HISTORY_LIMIT)
     .map((m) => {
       const item: {
         role: 'user' | 'assistant';
         content: string;
-        media?: Array<{ type: 'image' | 'video'; url: string }>;
+        media?: Array<{ type: 'image' | 'video'; url: string; key?: string }>;
       } = {
         role: m.role as 'user' | 'assistant',
         content: m.content,
       };
       if (m.media && m.media.length > 0) {
-        item.media = m.media.map((med) => ({ type: med.type, url: med.url }));
+        item.media = m.media.map((med) => ({
+          type: med.type,
+          url: med.url,
+          ...(med.key ? { key: med.key } : {}),
+        }));
       }
       return item;
     });
@@ -132,12 +139,12 @@ export function useCopilot() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && Array.isArray(data.models)) {
-          setAvailableModels(data.models);
-          if (data.activeModel) {
-            setSelectedModel(data.activeModel);
-          } else if (data.models[0]) {
-            setSelectedModel(data.models[0]);
-          }
+          // Auto (adaptive routing) is always offered and always the default choice.
+          const models: string[] = data.models.includes('auto')
+            ? data.models
+            : ['auto', ...data.models];
+          setAvailableModels(models);
+          setSelectedModel('auto');
         }
       })
       .catch(() => {
@@ -171,7 +178,9 @@ export function useCopilot() {
                 if (upRes.ok) {
                   const upData = await upRes.json();
                   if (upData.publicUrl) {
-                    return { ...item, url: upData.publicUrl };
+                    // Key kept only when stored in R2, so a reopened session re-signs the link.
+                    const key = upData.configured ? upData.fileKey : undefined;
+                    return { ...item, url: upData.publicUrl, ...(key ? { key } : {}) };
                   }
                 }
               }

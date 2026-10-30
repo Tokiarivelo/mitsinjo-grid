@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { toPayloadMessages } from '../use-copilot';
+import { COPILOT_HISTORY_LIMIT } from '../../utils/history';
 
 describe('toPayloadMessages', () => {
   it('drops error bubbles and empty assistant turns so the next request stays valid', () => {
@@ -41,6 +42,27 @@ describe('toPayloadMessages', () => {
         content: 'Check this diagram',
         media: [{ type: 'video', url: 'https://example.com/video.mp4' }],
       },
+    ]);
+  });
+
+  it('sends only the last COPILOT_HISTORY_LIMIT messages and keeps R2 keys', () => {
+    const many = Array.from({ length: 15 }, (_, i) => ({
+      id: `${i}`,
+      role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: `m${i}`,
+    }));
+    const payload = toPayloadMessages([
+      ...many,
+      {
+        id: 'k',
+        role: 'user',
+        content: 'photo',
+        media: [{ id: 'm', type: 'image', url: 'https://r2/x', key: 'copilot/1-x.png' }],
+      },
+    ]);
+    expect(payload).toHaveLength(COPILOT_HISTORY_LIMIT);
+    expect(payload.at(-1)?.media).toEqual([
+      { type: 'image', url: 'https://r2/x', key: 'copilot/1-x.png' },
     ]);
   });
 });

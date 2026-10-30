@@ -59,6 +59,7 @@ mitsinjo-grid/
             ├── server/copilot/         # server-only: provider, tools, prompts, loop, adaptive model router
             ├── server/perception/      # server-only: voice / vision / SAM clients (Meta + deterministic mock)
             ├── server/spend/           # server-only: estimated Meta spend per session, cap → mock
+            ├── server/storage/         # server-only: R2 media (uploads, generated images), re-signed on session reopen
             ├── messages/{en,fr,mg}.json     # i18n copy (key parity enforced)
             └── lib/{env.ts,format.ts,utils.ts,i18n.tsx}
 ```

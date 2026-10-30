@@ -3,6 +3,7 @@ import 'server-only';
 import { type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getSession, saveMessage, deleteSession } from '@/server/db/neon';
+import { hydrateMessageMedia } from '@/server/storage/media';
 
 const SaveMessageSchema = z.object({
   id: z.string(),
@@ -32,7 +33,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       });
     }
 
-    return new Response(JSON.stringify({ session }), {
+    // Fresh R2 links + generated images back in their AI block.
+    const messages = await hydrateMessageMedia(session.messages);
+    return new Response(JSON.stringify({ session: { ...session, messages } }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

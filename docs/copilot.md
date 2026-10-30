@@ -34,6 +34,7 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
 
 - **Media Storage (R2)**: S3-compatible presigned upload/download URLs for images, sketches and videos. Accepts raster images (png/jpeg/webp/gif/avif) and mp4/webm/mov only (no SVG/HTML), data URLs ≤ 12 M chars; downloads are signed only for keys the route generated (`<folder>/<ts>-<name>`). Setup guide (in French): [`docs/setup/cloudflare-r2.md`](setup/cloudflare-r2.md). Automatic local data-URL fallback when unset.
 - **Chat Persistence (Neon DB)**: Serverless PostgreSQL storing `copilot_sessions` and `copilot_messages` with automatic schema creation. In-memory map fallback when `DATABASE_URL` is unset.
+- **Generated images** (`server/storage/media.ts`): the route uploads each `image` event to R2 (`copilot/generated/<session>/<ts>.<ext>`) while the answer streams, and saves it in the assistant message `media` (`generated: true`, `key`). R2 off: kept inline only for in-memory sessions (never base64 in Postgres). Reopening a session (`GET /api/copilot/sessions/[id]`) re-signs every media `key` (`resolveMediaUrl`) and moves the generated image back to `imageUrl` / `imageCaption`. Uploaded attachments keep their R2 `key` too.
 
 `LLM_PROVIDER=mock` is the default in dev/tests and the automatic fallback when the Meta call fails or when `META_API_KEY` is unset
 (UI shows "AI unavailable — showing deterministic explanation").
@@ -61,7 +62,10 @@ with their own 45 s limit outside the 20 s chat budget (`maxDuration = 120` on t
 
 - Tool results are **compact**: metrics only, rounded to 2 decimals, no `steps` arrays unless asked
   (`get_sector_metrics` returns hourly for one sector only).
-- Send current `input` summary, not full profiles. Keep last 8 messages; drop older tool payloads.
+- Send current `input` summary, not full profiles. Drop older tool payloads.
+- History (`server/copilot/history.ts` `compactHistory`, limit `COPILOT_HISTORY_LIMIT = 8`, the client sends no more):
+  media only on the latest user message (older images are not re-billed; only that message routes to vision), older
+  assistant answers cut to 600 chars, latest answer whole. Generated images are never sent back to the model.
 - Cache by `inputHash+strategy` on the server (Map, TTL 10 min).
 
 ## 4. Evidence integrity

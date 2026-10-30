@@ -1,41 +1,40 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-30 · **By:** Claude Code · **Branch:** `feat/meta-models` (from `main` after PR #30) · **PR:** none yet
+**Updated:** 2026-10-30 · **By:** Claude Code · **Branch:** `feat/meta-models` · **PR:** none yet · **Uncommitted work below**
 
 ## State
 
-- Plan `docs/tasks/PM-meta-models.md` (voice, vision, SAM, image, chat control, fire alarm), ideas in
-  `docs/ideas-meta-models.md`. **PM-M0 done** except the human part of M0-T1 (Malagasy speech test).
-- `server/perception/`: Meta + deterministic mock for `transcribe`, `analyzeImage`, `segmentImage`; never throws
-  (`fallback` field). `server/spend/`: per-session cap `META_SPEND_CAP_USD` → mock + `PROVIDER_FALLBACK reason: spend_cap`.
-- **Model choice by Spark tool calls** (`server/copilot/model-tools.ts`): `generate_image` (Muse Image, numbers stripped),
-  `segment_image` (SAM on the attached photo, `perception` SSE event), `escalate_deep_reasoning` (Wonder for the rest of
-  the turn). `adaptive-router.ts` keeps only structural rules (explicit model, attached image → vision). Mock imitates
-  the choice with keywords (offline only). Prompt rule 6b in EN/FR/MG.
-- **Contributor preferred** (`providers/contributor.ts`, `META_PREFER_CONTRIBUTOR=true` default): chat + vision use
-  `muse-spark-1.3-contributor`; 403/404/429 → resend on standard id, pause (60 s / 1 h). Spend guard bills the id that answered.
-- Checks: web 525 ✓, typecheck/lint/i18n/prettier ✓. Engine `sweep.test.ts` perf budget fails here (pre-existing).
-- **Village now:** `generate_image {scene:'current_village'}` draws the engine state at the shown hour (`hour` in the
-  request = store `timeIndex`; `village-scene.ts`: sky, battery, sector lit/dim/dark/closed, no numbers). Chat budget
-  20 s is paused during slow tools (own 45 s limit) and +30 s after a Wonder switch; route `maxDuration = 120`.
-  Fixes the live "Copilot loop timed out" seen with image generation.
-- Live (user log): Spark does call `generate_image` itself. Village-state image and contributor not yet checked live.
+- Plan `docs/tasks/PM-meta-models.md`. PM-M0 done (except human M0-T1 Malagasy speech test). **M1-T1 done.**
+- **M1-T1 (K1):** engine `changeImpact(before, after)` + `ChangeImpactSchema` (`metrics/impact.ts`, `schemas/impact.ts`):
+  served kWh before/after/delta + off hours per sector, SoC min, unserved kWh. `propose_change` simulates current vs
+  patched input (active vs proposed strategy), rounds, keeps changed sectors, sends `proposal.impact` + same numbers as
+  evidence. Dialog block "Engine calculation" (`proposal-impact.tsx`, grid table, label on own line < sm).
+- **Generated images persist:** route uploads each `image` event to R2 (`server/storage/media.ts`
+  `storeGeneratedImage`) and saves it in assistant `media` (`generated`, `key`). Session GET re-signs every media key
+  (`hydrateMessageMedia`) and puts the image back in `imageUrl`. R2 off + Neon → not saved (no base64 in Postgres).
+- **History tokens:** `compactHistory` (`server/copilot/history.ts`): last 8 msgs, media only on latest user msg,
+  older answers cut to 600 chars. Client sends ≤ 8 (`COPILOT_HISTORY_LIMIT`). Log line `History sent: …`.
+- **Model picker** always defaults to Auto (models route `activeModel: 'auto'`, hook forces `auto`).
+- Checks: `make check` ✓ (engine 205, web 544), i18n ✓, prettier ✓. Dialog screenshots 1440/390 dark/light ✓.
+- Note: mock prompt "coupe le marché ce soir" (18–21 h) → "no change" in baseline (market has no evening demand).
 
 ## Next task
 
-- Live check A30–A40, commit, then **M1** (chat control + approval with engine impact).
-- M0-T1 human part: record FR + Malagasy WAV phrases, verdict "MG usable".
+- Commit (not done: user didn't ask yet). Live check A39–A49 with Meta key + R2 + Neon.
+- Then **M1-T2** (K6 clinic guard: cut / floor 0 on `health` → red warning + second confirmation).
+- Ideas not done for tokens: server-side history from Neon (client sends only last msg), summary of old turns.
 
 ## Decisions taken
 
-- No keyword routing with Meta: Spark decides through tools; code keeps only structural rules and safety (spend cap).
-- Contributor on by default per user (cost); data is simulated. Turn off for real user data (Meta trains on it).
-- Image generation stays in `providers/meta.ts` (reused). Perception numbers are observations, never engine values.
+- Impact numbers come from the engine (`changeImpact`), rounded in the tool only; UI just formats.
+- Generated images are never sent back to the model; older photos neither (only the latest user message routes to vision).
+- No keyword routing with Meta; contributor on by default (simulated data only).
 
 ## Files touched this session
 
-- Web: `lib/env.ts`, `server/{perception,spend}/**`, `server/copilot/{adaptive-router,model-tools,loop,prompt,provider}.ts`,
-  `providers/{meta,mock,contributor}.ts`, `app/api/copilot/route.ts`, `features/copilot/ui/tool-activity.tsx`,
-  `messages/{en,fr,mg}.json`, tests
-- Docs: `copilot.md`, `contracts.md`, `architecture.md`, `setup/env.md`, `tasks/{README,PM-meta-models}.md`,
-  `ideas-meta-models.md`, `.env.example` · test-scenarios A30–A38 (local)
+- Engine: `metrics/impact.ts`, `schemas/impact.ts`, barrels, `__tests__/impact.test.ts`
+- Web: `server/copilot/{tools,loop,history}.ts`, `server/storage/{r2,media}.ts`, `app/api/copilot/{route,models/route,
+upload/route,sessions/[id]/route}.ts`, `features/copilot/{types.ts,ui/{confirm-proposal-dialog,proposal-impact}.tsx,
+hooks/use-copilot.ts,utils/{history,format-telemetry-channel}.ts}`, `lib/format.ts`, `messages/{en,fr,mg}.json`, tests
+- Docs: `contracts.md`, `engine-spec.md`, `copilot.md`, `architecture.md`, `design/stitch-map.md`, `tasks/PM-meta-models.md`
+- test-scenarios (local): A41–A49

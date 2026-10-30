@@ -135,10 +135,16 @@ export async function uploadBufferToR2(
   });
 
   await client.send(command);
+  return resolveMediaUrl(fileKey);
+}
 
+/**
+ * Readable URL for a stored object: public bucket URL when set, else a fresh presigned GET (1 day).
+ * Call it again when a saved session is reopened, so links never expire for the user.
+ */
+export async function resolveMediaUrl(fileKey: string): Promise<string> {
   if (env.R2_PUBLIC_URL) {
     return `${env.R2_PUBLIC_URL.replace(/\/$/, '')}/${fileKey}`;
   }
-
   return getPresignedDownloadUrl(fileKey);
 }

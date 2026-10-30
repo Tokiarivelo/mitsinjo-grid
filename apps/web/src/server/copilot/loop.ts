@@ -10,6 +10,7 @@ import { MODEL_TOOL_DEFINITIONS, MODEL_TOOL_NAMES, executeModelTool } from './mo
 import { describeVillageScene } from './village-scene';
 import { getPerceptionClient, type PerceptionClient } from '@/server/perception';
 import { spendGuard as sharedSpendGuard, estimateTokens, type SpendGuard } from '@/server/spend';
+import { compactHistory } from './history';
 
 export type SseEventName =
   | 'activity'
@@ -224,9 +225,9 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
       activeStrategy: strategy,
     };
 
-    // Prepare message history: localized SYSTEM_PROMPT + last 8 messages
+    // Localized system prompt + compacted history (last messages, media once, old answers cut)
     const systemPromptContent = getSystemPrompt(locale);
-    const trimmedInputMessages = messages.slice(-8);
+    const trimmedInputMessages = compactHistory(messages);
     const chatHistory: ChatMessage[] = [
       { role: 'system', content: systemPromptContent },
       ...trimmedInputMessages.map((m) => ({
@@ -235,6 +236,12 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
         media: m.media,
       })),
     ];
+
+    console.info(
+      `[copilot:loop] History sent: ${trimmedInputMessages.length}/${messages.length} messages, ` +
+        `${trimmedInputMessages.reduce((n, m) => n + (m.media?.length ?? 0), 0)} media, ` +
+        `~${estimateTokens(JSON.stringify(trimmedInputMessages))} tokens (text)`
+    );
 
     let rounds = 0;
     let completed = false;

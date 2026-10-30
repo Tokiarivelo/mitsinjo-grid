@@ -37,6 +37,10 @@ export interface ChatMediaItem {
   name?: string;
   caption?: string;
   size?: number;
+  /** R2 object key: the URL is re-signed from it when a saved session is reopened. */
+  key?: string;
+  /** Image drawn by the copilot (shown in the AI image block, not as an attachment). */
+  generated?: boolean;
 }
 
 export interface ChatChartSeries {
