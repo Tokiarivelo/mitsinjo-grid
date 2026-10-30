@@ -11,11 +11,13 @@ server/copilot/
 ├── providers/mock.ts  # deterministic: keyword → tool plan → templated answer from evidence
 ├── tools.ts           # tool defs (JSON schema from Zod) + handlers calling @mitsinjo/engine
 ├── prompt.ts          # system prompt (below), ≤ 400 tokens
-├── loop.ts            # max 4 tool rounds, 20 s chat budget (paused during slow tools, +30 s after a Wonder switch), SSE events
+├── loop.ts            # max 4 tool rounds, 40 s chat budget (paused during slow tools, +30 s after a Wonder switch), SSE events
+├── compaction.ts      # auto-compaction: fold old turns into a number-free summary
 └── __tests__/         # loop with fake provider, tool arg validation, evidence integrity
 app/api/copilot/route.ts   # parse body (Zod) → loop → stream
 app/api/copilot/upload/    # presigned URLs for Cloudflare R2 media upload
-app/api/copilot/sessions/  # Neon DB session and message persistence
+app/api/copilot/sessions/  # Neon DB session and message persistence (+ decisions, summary)
+app/api/voice/route.ts     # chat microphone: WAV → transcribe() → text
 features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmProposalDialog, useCopilot, Canvas, Lightbox
 ```
 
@@ -44,7 +46,10 @@ Models: `muse-spark-*` (standard), `muse-wonder-1.0` (deep reasoning) and `muse-
 result at the hour shown in the app (request field `hour` = store `timeIndex`): sky from computed solar vs clear-sky profile
 (night / sunny / partly cloudy / overcast), battery level in words, each connected sector lit / dim / dark / closed from the
 engine sector mode. No number reaches the image; the caption lists the hour and sector states. Slow tools (image, SAM) run
-with their own 45 s limit outside the 20 s chat budget (`maxDuration = 120` on the route).
+with their own 45 s limit outside the 40 s chat budget (`maxDuration = 120` on the route).
+**Provider failures:** a 429 / 5xx / network error is retried once; then the mock finishes the turn and the loop emits
+`PROVIDER_FALLBACK` with `reason` (`timeout` when the chat budget ran out, `provider_error`, `spend_cap`). Budget spent
+between rounds → mock finishes (no `LOOP_ERROR`). The UI shows an amber note on that answer, not a red alert.
 **Contributor preference** (`providers/contributor.ts`, `META_PREFER_CONTRIBUTOR`, default on): Spark 1.2 / 1.3 calls (chat and vision) use the `*-contributor` id (≈ 12× cheaper; Meta trains on inputs and outputs; rate-limited). A 403 / 404 / 429 resends once on the standard id and pauses the contributor id (60 s after a rate limit, 1 h otherwise). The spend guard bills the id that answered. Turn it off for real (non-simulated) user data.
 
 ## 2. System prompt (outline)
@@ -63,9 +68,16 @@ with their own 45 s limit outside the 20 s chat budget (`maxDuration = 120` on t
 - Tool results are **compact**: metrics only, rounded to 2 decimals, no `steps` arrays unless asked
   (`get_sector_metrics` returns hourly for one sector only).
 - Send current `input` summary, not full profiles. Drop older tool payloads.
-- History (`server/copilot/history.ts` `compactHistory`, limit `COPILOT_HISTORY_LIMIT = 8`, the client sends no more):
-  media only on the latest user message (older images are not re-billed; only that message routes to vision), older
-  assistant answers cut to 600 chars, latest answer whole. Generated images are never sent back to the model.
+- History (`server/copilot/history.ts` `compactHistory`): media only on the latest user message (older images are not
+  re-billed; only that message routes to vision), older assistant answers cut to 600 chars, latest answer whole.
+  Generated images are never sent back to the model.
+- **Auto-compaction** (`compaction.ts`): the client sends the messages not yet summarized (≤ `COPILOT_PAYLOAD_MAX = 40`)
+  plus `summary`. Over ≈ 6 000 tokens or 24 messages, all but the last 6 are folded into the summary by the chat model (no
+  tools; mock → one line per operator turn), energy figures (`kW`, `kWh`, `%`) scrubbed in code, ≤ 1 500 chars. Sent as a
+  system note ("numbers are not evidence"), emitted as `summary`, stored on the session. Summary fails → hard cut to the
+  last `COPILOT_HISTORY_LIMIT = 8`, previous summary kept.
+- **Operator decisions**: Approve / Reject applies that message's own proposal once, locks its card (badge, no buttons,
+  values as decided) and posts a decision message (saved with the session, sent to the model as a user turn).
 - Cache by `inputHash+strategy` on the server (Map, TTL 10 min).
 
 ## 4. Evidence integrity
@@ -74,6 +86,9 @@ with their own 45 s limit outside the 20 s chat budget (`maxDuration = 120` on t
 in a distinct "Computed evidence" block (not LLM text). Test: numbers in a mock answer ⊆ evidence values.
 `propose_change` runs the engine before/after (`changeImpact`) and sends it with the proposal; the approval dialog
 shows it as an "Engine calculation" block. Test (`tools.test.ts`): every impact number ⊆ that tool's evidence.
+Clinic guard (K6): the dialog runs engine `clinicGuard(patch)` itself, so the model cannot skip it. A patch that cuts
+`health`, sets its floor to 0 or disables floors → red warning (`role="alert"`) and Approve needs two clicks; the tool
+result also carries `clinicGuard` so the model can say it.
 
 ## 5. Eval set (P6-T7) — `server/copilot/__tests__/eval.cases.ts`
 

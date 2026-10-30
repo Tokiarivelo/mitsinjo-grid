@@ -14,6 +14,7 @@ import {
   applyPatch,
   scenarios,
   changeImpact,
+  clinicGuard,
   type ChangeImpact,
 } from '@mitsinjo/engine';
 import type { ToolDefinition } from './provider';
@@ -573,6 +574,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       const before = simulate(ctx.input, currentStrategy);
       const after = simulate(patchedInput, parsed.data.strategy ?? currentStrategy);
       const impact = compactImpact(changeImpact(before, after));
+      const clinicReasons = clinicGuard(parsed.data.patch);
 
       const proposal = {
         proposalId,
@@ -593,6 +595,8 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
           strategy: parsed.data.strategy,
           reason: parsed.data.reason,
           impact,
+          // K6: coded safety rule; the UI shows a red warning and asks a second confirmation.
+          ...(clinicReasons.length > 0 && { clinicGuard: clinicReasons }),
         },
         evidence: impactEvidence(impact),
       };

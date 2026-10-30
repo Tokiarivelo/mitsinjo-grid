@@ -371,4 +371,114 @@ describe('Copilot Loop (P6-T3)', () => {
       expect(String(events.find((e) => e.name === 'image')?.data.caption)).toContain('à 20 h');
     });
   });
+
+  describe('fallback reasons, retry and auto-compaction', () => {
+    const collect = () => {
+      const events: { name: SseEventName; data: Record<string, unknown> }[] = [];
+      return {
+        events,
+        emit: (name: SseEventName, data: Record<string, unknown>) => events.push({ name, data }),
+      };
+    };
+
+    it('retries once on a transient error (5xx) without falling back', async () => {
+      const chat = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('Meta LLM API error (503): busy'))
+        .mockResolvedValueOnce({ content: 'Answer from Meta.' });
+      const { events, emit } = collect();
+      await runCopilotLoop({
+        messages: [{ role: 'user', content: 'Hello' }],
+        input: baseInput,
+        provider: { name: 'meta', chat },
+        emit,
+        spendGuard: new SpendGuard(100),
+      });
+      expect(chat).toHaveBeenCalledTimes(2);
+      expect(events.some((e) => e.name === 'error')).toBe(false);
+      expect(events.find((e) => e.name === 'delta')?.data.text).toBe('Answer from Meta.');
+    });
+
+    it('a provider error falls back with reason provider_error (no retry on 4xx)', async () => {
+      const chat = vi.fn().mockRejectedValue(new Error('Meta LLM API error (400): bad'));
+      const { events, emit } = collect();
+      await runCopilotLoop({
+        messages: [{ role: 'user', content: 'Compare the strategies.' }],
+        input: baseInput,
+        provider: { name: 'meta', chat },
+        emit,
+        spendGuard: new SpendGuard(100),
+      });
+      expect(chat).toHaveBeenCalledTimes(1);
+      expect(events.find((e) => e.name === 'error')?.data).toMatchObject({
+        code: 'PROVIDER_FALLBACK',
+        reason: 'provider_error',
+      });
+      expect(events.at(-1)?.name).toBe('done');
+    });
+
+    it('a slow model past the chat budget falls back with reason timeout and still answers', async () => {
+      const chat = vi.fn(
+        (_m: unknown, _t: unknown, signal?: AbortSignal) =>
+          new Promise((_resolve, reject) => {
+            signal?.addEventListener('abort', () => reject(new Error('aborted')));
+          })
+      );
+      const { events, emit } = collect();
+      await runCopilotLoop({
+        messages: [{ role: 'user', content: 'Compare the strategies.' }],
+        input: baseInput,
+        provider: { name: 'meta', chat } as LlmProvider,
+        emit,
+        chatBudgetMs: 30,
+        spendGuard: new SpendGuard(100),
+      });
+      expect(events.find((e) => e.name === 'error')?.data.reason).toBe('timeout');
+      expect(events.some((e) => e.name === 'delta')).toBe(true);
+      expect(events.some((e) => e.data.code === 'LOOP_ERROR')).toBe(false);
+    });
+
+    it('folds a long history into a summary and sends it as a system note', async () => {
+      // Long operator messages (answers are already cut to 600 chars) → over the token limit.
+      const messages = Array.from({ length: 12 }, (_, i) => ({
+        role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
+        content: i % 2 === 0 ? `question ${i} ${'x'.repeat(4500)}` : 'short answer',
+      }));
+      messages.push({ role: 'user', content: 'Compare the strategies.' });
+      const { events, emit } = collect();
+      await runCopilotLoop({ messages, input: baseInput, emit, summarizedCount: 3 });
+      const summary = events.find((e) => e.name === 'summary')?.data;
+      expect(summary?.summarizedCount).toBe(3 + messages.length - 6);
+      expect(String(summary?.text)).toContain('- Operator: question 0');
+      expect(events.some((e) => e.name === 'activity' && e.data.tool === 'compact_history')).toBe(
+        true
+      );
+    });
+
+    it('a failed summary keeps the hard cut and still answers', async () => {
+      const messages = Array.from({ length: 13 }, (_, i) => ({
+        role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
+        content: i % 2 === 0 ? `Compare the strategies. ${'x'.repeat(3900)}` : 'short answer',
+      }));
+      const chat = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('Meta LLM API error (400): summary failed'))
+        .mockImplementation((history: { role: string }[]) => {
+          // Hard cut: system prompt + last 8 messages, no summary note.
+          expect(history.filter((m) => m.role === 'system')).toHaveLength(1);
+          expect(history).toHaveLength(1 + 8);
+          return Promise.resolve({ content: 'ok' });
+        });
+      const { events, emit } = collect();
+      await runCopilotLoop({
+        messages,
+        input: baseInput,
+        provider: { name: 'meta', chat },
+        emit,
+        spendGuard: new SpendGuard(100),
+      });
+      expect(events.some((e) => e.name === 'summary')).toBe(false);
+      expect(events.find((e) => e.name === 'delta')?.data.text).toBe('ok');
+    });
+  });
 });

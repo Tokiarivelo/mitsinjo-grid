@@ -11,7 +11,8 @@ import {
   isCopilotModel,
   DEFAULT_META_MODEL,
 } from '@/server/copilot/providers/meta';
-import { saveMessage, isNeonConfigured } from '@/server/db/neon';
+import { saveMessage, saveSessionSummary, isNeonConfigured } from '@/server/db/neon';
+import { COPILOT_PAYLOAD_MAX } from '@/features/copilot/utils/history';
 import type {
   CopilotEvidence,
   CopilotProposal,
@@ -69,8 +70,12 @@ const RequestBodySchema = z.object({
           .optional(),
       })
     )
-    .min(1),
+    .min(1)
+    .max(COPILOT_PAYLOAD_MAX),
   input: SimulationInputSchema,
+  /** Summary of the turns before `messages` (auto-compaction), and how many messages it covers. */
+  summary: z.string().max(4000).optional(),
+  summarizedCount: z.number().int().min(0).optional(),
   strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
   model: z
     .string()
@@ -83,7 +88,7 @@ const RequestBodySchema = z.object({
   hour: z.number().int().min(0).max(23).optional(),
 });
 
-/** Chat budget (20 s) + slow tools (image up to 45 s) + Wonder extra time. */
+/** Chat budget (40 s) + slow tools (image up to 45 s) + Wonder extra time. */
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
@@ -177,6 +182,11 @@ export async function POST(req: NextRequest) {
           collectedEvidence.push(data as unknown as CopilotEvidence);
         } else if (event === 'proposal') {
           collectedProposal = data as unknown as CopilotProposal;
+        } else if (event === 'summary' && sessionId && typeof data.text === 'string') {
+          void saveSessionSummary(sessionId, {
+            summary: data.text,
+            summarizedCount: Number(data.summarizedCount) || 0,
+          }).catch(() => {});
         } else if (event === 'chart') {
           collectedChart = data as unknown as ChatChartData;
         } else if (event === 'image' && sessionId && typeof data.imageUrl === 'string') {
@@ -208,6 +218,8 @@ export async function POST(req: NextRequest) {
           availableModels,
           budgetKey: parsed.data.sessionId,
           hour: parsed.data.hour,
+          summary: parsed.data.summary,
+          summarizedCount: parsed.data.summarizedCount,
         });
       } catch (err) {
         emit('error', {

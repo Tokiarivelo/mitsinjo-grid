@@ -66,6 +66,13 @@ if (typeof https?.request === 'function') {
 // In-memory fallback stores when DATABASE_URL is not configured
 const inMemorySessions = new Map<string, ChatSessionSummary>();
 const inMemoryMessages = new Map<string, ChatMessageData[]>();
+const inMemorySummaries = new Map<string, SessionSummaryNote>();
+
+/** Conversation summary of a session: text + how many payload messages it covers. */
+export interface SessionSummaryNote {
+  summary: string;
+  summarizedCount: number;
+}
 
 let isMigrated = false;
 
@@ -100,6 +107,10 @@ async function ensureNeonTables(sql: ReturnType<typeof neon<false, false>>) {
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
     `;
+    // Later columns: operator decisions (M1) and the conversation summary (auto-compaction).
+    await sql`ALTER TABLE copilot_messages ADD COLUMN IF NOT EXISTS decision JSONB;`;
+    await sql`ALTER TABLE copilot_sessions ADD COLUMN IF NOT EXISTS summary TEXT;`;
+    await sql`ALTER TABLE copilot_sessions ADD COLUMN IF NOT EXISTS summarized_count INT DEFAULT 0;`;
     isMigrated = true;
     console.info('[db:neon] Tables initialized successfully');
   } catch (err) {
@@ -140,21 +151,30 @@ export async function getSession(id: string): Promise<ChatSessionDetail | null> 
     const summary = inMemorySessions.get(id);
     if (!summary) return null;
     const msgs = inMemoryMessages.get(id) || [];
-    return { ...summary, messages: msgs };
+    return { ...summary, ...inMemorySummaries.get(id), messages: msgs };
   }
 
   const sql = neon(env.DATABASE_URL!);
   await ensureNeonTables(sql);
 
   const sessionRows = await sql`
-    SELECT id, title, locale, created_at as "createdAt", updated_at as "updatedAt"
+    SELECT id, title, locale, created_at as "createdAt", updated_at as "updatedAt",
+      summary, summarized_count as "summarizedCount"
     FROM copilot_sessions
     WHERE id = ${id}
     LIMIT 1;
   `;
 
   if (sessionRows.length === 0) return null;
-  const session = sessionRows[0] as unknown as ChatSessionSummary;
+  const row = sessionRows[0] as unknown as ChatSessionSummary & {
+    summary: string | null;
+    summarizedCount: number | null;
+  };
+  const session = {
+    ...row,
+    summary: row.summary ?? undefined,
+    summarizedCount: row.summarizedCount ?? 0,
+  };
 
   const msgRows = await sql`
     SELECT 
@@ -166,6 +186,7 @@ export async function getSession(id: string): Promise<ChatSessionDetail | null> 
       sections,
       evidence,
       proposal,
+      decision,
       detected_model as "detectedModel",
       created_at as "timestamp"
     FROM copilot_messages
@@ -253,6 +274,7 @@ export async function saveMessage(sessionId: string, message: ChatMessageData): 
       sections,
       evidence,
       proposal,
+      decision,
       detected_model,
       created_at
     ) VALUES (
@@ -265,6 +287,7 @@ export async function saveMessage(sessionId: string, message: ChatMessageData): 
       ${message.sections ? JSON.stringify(message.sections) : null},
       ${message.evidence ? JSON.stringify(message.evidence) : null},
       ${message.proposal ? JSON.stringify(message.proposal) : null},
+      ${message.decision ? JSON.stringify(message.decision) : null},
       ${message.detectedModel || null},
       ${now}
     )
@@ -277,9 +300,25 @@ export async function saveMessage(sessionId: string, message: ChatMessageData): 
   `;
 }
 
+/** Stores the session's conversation summary (auto-compaction); the session must exist. */
+export async function saveSessionSummary(sessionId: string, note: SessionSummaryNote) {
+  if (!isNeonConfigured()) {
+    inMemorySummaries.set(sessionId, note);
+    return;
+  }
+  const sql = neon(env.DATABASE_URL!);
+  await ensureNeonTables(sql);
+  await sql`
+    INSERT INTO copilot_sessions (id, title, summary, summarized_count)
+    VALUES (${sessionId}, 'Simulation session', ${note.summary}, ${note.summarizedCount})
+    ON CONFLICT (id) DO UPDATE SET summary = ${note.summary}, summarized_count = ${note.summarizedCount};
+  `;
+}
+
 export async function deleteSession(id: string): Promise<boolean> {
   if (!isNeonConfigured()) {
     inMemoryMessages.delete(id);
+    inMemorySummaries.delete(id);
     return inMemorySessions.delete(id);
   }
 

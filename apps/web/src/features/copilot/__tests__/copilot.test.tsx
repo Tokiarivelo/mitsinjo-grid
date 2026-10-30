@@ -142,6 +142,54 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
     expect(onReject).toHaveBeenCalledTimes(1);
   });
 
+  it('asks a second confirmation with a red warning when the clinic is cut (M1-T2)', () => {
+    const onApprove = vi.fn();
+    render(
+      <ConfirmProposalDialog
+        proposal={{
+          proposalId: 'PROP-K6',
+          patch: {
+            sectorCaps: [{ sector: 'health', maxKw: 0, fromHour: 18, toHour: 22 }],
+            lifeline: { kw: { health: 0 } },
+          },
+          reason: 'Cut the clinic tonight',
+        }}
+        onApprove={onApprove}
+        onReject={vi.fn()}
+      />
+    );
+
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Danger: this change cuts the clinic');
+    expect(alert).toHaveTextContent('Clinic capped at 0 kW');
+    expect(alert).toHaveTextContent('Clinic survival floor set to 0 kW.');
+
+    fireEvent.click(screen.getByRole('button', { name: /Approve & Apply Scenario/i }));
+    expect(onApprove).not.toHaveBeenCalled();
+    expect(alert).toHaveTextContent('Click again to confirm.');
+
+    fireEvent.click(screen.getByRole('button', { name: /Confirm: cut the clinic/i }));
+    expect(onApprove).toHaveBeenCalledTimes(1);
+  });
+
+  it('approves a safe change in one click, without the clinic warning (M1-T2)', () => {
+    const onApprove = vi.fn();
+    render(
+      <ConfirmProposalDialog
+        proposal={{
+          proposalId: 'PROP-SAFE',
+          patch: { sectorCaps: [{ sector: 'market', maxKw: 0, fromHour: 18, toHour: 22 }] },
+          reason: 'Cut the market tonight',
+        }}
+        onApprove={onApprove}
+        onReject={vi.fn()}
+      />
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Approve & Apply Scenario/i }));
+    expect(onApprove).toHaveBeenCalledTimes(1);
+  });
+
   it('shows the engine before/after block with only the impact values (M1-T1)', () => {
     render(
       <ConfirmProposalDialog
@@ -236,7 +284,7 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
     );
 
     expect(screen.getByText('Dispatch Strategy')).toBeInTheDocument();
-    expect(screen.getByText('essential_first')).toBeInTheDocument();
+    expect(screen.getByText('Essential-First Priority')).toBeInTheDocument();
 
     const approveBtn = screen.getByRole('button', {
       name: /Approve & Apply Scenario/i,

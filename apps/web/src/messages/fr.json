@@ -406,7 +406,6 @@
       "modelAuto": "✦ Auto (Adaptatif)",
       "voiceInput": "Saisie vocale",
       "voiceListening": "Écoute en cours...",
-      "voiceNotSupported": "Reconnaissance vocale non supportée par ce navigateur",
       "readAloud": "Écouter la réponse",
       "stopAudio": "Arrêter la lecture",
       "imageGeneratedBadge": "Visuel Généré",
@@ -455,7 +454,8 @@
         "segment_image": "Détection d'objets sur la photo",
         "generate_image": "Génération d'une image",
         "escalate_deep_reasoning": "Passage au raisonnement approfondi",
-        "default": "Analyse des résultats calculés"
+        "default": "Analyse des résultats calculés",
+        "compact_history": "Résumé de la conversation précédente"
       },
       "unknownValue": "Inconnu",
       "chartType": "graphique {type}",
@@ -469,7 +469,55 @@
       "impactSocMin": "Charge minimale de la batterie",
       "impactUnserved": "Énergie non servie (village)",
       "impactHours": "{count} h",
-      "impactNoChange": "Le moteur ne voit aucun changement d'énergie servie ni d'heures sans courant pour cette proposition."
+      "impactNoChange": "Le moteur ne voit aucun changement d'énergie servie ni d'heures sans courant pour cette proposition.",
+      "clinicGuard": {
+        "title": "Danger : ce changement coupe la clinique",
+        "reasons": {
+          "cap_zero": "Clinique plafonnée à 0 kW : vaccins et soins privés de courant.",
+          "disconnected": "Clinique déconnectée du réseau.",
+          "floor_zero": "Plancher de survie de la clinique mis à 0 kW.",
+          "lifeline_off": "Planchers de survie désactivés pour tous les secteurs, clinique comprise."
+        },
+        "secondConfirm": "L'approbation demande une seconde confirmation.",
+        "armed": "Cliquez encore pour confirmer. Refusez pour garder la clinique alimentée.",
+        "confirmAgain": "Confirmer : couper la clinique"
+      },
+      "decision": {
+        "approvedBadge": "Approuvé",
+        "rejectedBadge": "Refusé",
+        "approvedTitle": "Changement approuvé et appliqué à la simulation",
+        "approvedBody": "Indicateurs, graphiques et village 3D utilisent maintenant ces réglages.",
+        "rejectedTitle": "Proposition refusée",
+        "rejectedBody": "Rien n'a changé dans la simulation."
+      },
+      "fallback": {
+        "spend_cap": "Le budget IA de cette session est épuisé : cette réponse vient du copilote hors ligne. Les chiffres du moteur restent valables.",
+        "provider_error": "Le modèle Meta a renvoyé une erreur : cette réponse vient du copilote hors ligne. Les chiffres du moteur restent valables.",
+        "timeout": "Le modèle Meta a mis trop de temps : cette réponse vient du copilote hors ligne. Les chiffres du moteur restent valables.",
+        "unknown": "Une partie de cette réponse vient du copilote hors ligne. Les chiffres du moteur restent valables."
+      },
+      "generatedImageAlt": "Image générée du micro-réseau",
+      "generatedVideoTitle": "Vidéo de simulation",
+      "attachmentAlt": "Pièce jointe",
+      "mediaVideo": "Vidéo",
+      "mediaImage": "Image",
+      "modelRoleChat": "copilote + outils",
+      "modelRoleReasoning": "raisonnement",
+      "modelRoleImage": "images",
+      "closeSessions": "Fermer les conversations enregistrées",
+      "noValue": "Aucun",
+      "dropWindowValue": "{from}:00–{to}:00 ({hours} h)",
+      "loadDisconnected": "Non connecté",
+      "diffSectorLoad": "Charge",
+      "voice": {
+        "stop": "Arrêter l'enregistrement",
+        "transcribing": "Transcription de votre voix…",
+        "unsupported": "Ce navigateur ne peut pas enregistrer l'audio. Tapez votre message.",
+        "denied": "Accès au micro refusé. Autorisez-le dans le navigateur, ou tapez votre message.",
+        "failed": "Impossible de transcrire l'enregistrement. Réessayez ou tapez votre message.",
+        "empty": "Aucune voix entendue. Réessayez plus près du micro.",
+        "dismiss": "Fermer"
+      }
     },
     "gridDiagram": {
       "topologyLabel": "Plan du village : flux d'énergie du hub solaire vers chaque secteur",

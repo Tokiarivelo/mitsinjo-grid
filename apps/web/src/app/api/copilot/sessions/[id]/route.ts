@@ -7,11 +7,23 @@ import { hydrateMessageMedia } from '@/server/storage/media';
 
 const SaveMessageSchema = z.object({
   id: z.string(),
-  role: z.enum(['user', 'assistant', 'error']),
+  role: z.enum(['user', 'assistant', 'error', 'decision']),
   content: z.string(),
   sections: z.record(z.string()).optional(),
   evidence: z.array(z.any()).optional(),
   proposal: z.any().optional(),
+  /** Operator decision on a proposal (role `decision`). */
+  decision: z
+    .object({
+      proposalId: z.string().max(64),
+      status: z.enum(['approved', 'rejected']),
+      items: z
+        .array(z.object({ label: z.string(), current: z.string(), proposed: z.string() }))
+        .max(40),
+      patch: z.record(z.unknown()).optional(),
+      strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
+    })
+    .optional(),
   imageUrl: z.string().optional(),
   imageCaption: z.string().optional(),
   videoUrl: z.string().optional(),

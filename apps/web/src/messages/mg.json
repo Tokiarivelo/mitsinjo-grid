@@ -406,7 +406,6 @@
       "modelAuto": "✦ Auto (Mampifanaraka)",
       "voiceInput": "Fampidirana feo",
       "voiceListening": "Mihaino...",
-      "voiceNotSupported": "Tsy tohanan'ity navigateur ity ny feo",
       "readAloud": "Henoy ny valiny",
       "stopAudio": "Atsaharo ny feo",
       "imageGeneratedBadge": "Sary Namboarina",
@@ -455,7 +454,8 @@
         "segment_image": "Fitadiavana zavatra eo amin'ny sary",
         "generate_image": "Famoronana sary",
         "escalate_deep_reasoning": "Mifindra amin'ny fandinihana lalina",
-        "default": "Fandinihana ny valiny voakajy"
+        "default": "Fandinihana ny valiny voakajy",
+        "compact_history": "Famintinana ny resaka teo aloha"
       },
       "unknownValue": "Tsy fantatra",
       "chartType": "sary {type}",
@@ -469,7 +469,55 @@
       "impactSocMin": "Fiampangan'ny bateria kely indrindra",
       "impactUnserved": "Angovo tsy nomena (tanàna)",
       "impactHours": "{count} ora",
-      "impactNoChange": "Tsy mahita fiovana amin'ny angovo nomena na ora tsy misy jiro ny motera amin'ity tolo-kevitra ity."
+      "impactNoChange": "Tsy mahita fiovana amin'ny angovo nomena na ora tsy misy jiro ny motera amin'ity tolo-kevitra ity.",
+      "clinicGuard": {
+        "title": "Loza : manapaka ny toeram-pitsaboana ity fanovana ity",
+        "reasons": {
+          "cap_zero": "Voafetra ho 0 kW ny toeram-pitsaboana: tsy misy herinaratra ny vakisiny sy ny fitsaboana.",
+          "disconnected": "Tapaka amin'ny tambajotra ny toeram-pitsaboana.",
+          "floor_zero": "Natao 0 kW ny herinaratra vonjy ain'ny toeram-pitsaboana.",
+          "lifeline_off": "Novonoina ho an'ny sehatra rehetra ny herinaratra vonjy aina, anisan'izany ny toeram-pitsaboana."
+        },
+        "secondConfirm": "Mila fanamafisana faharoa ny fankatoavana.",
+        "armed": "Tsindrio indray hanamafisana. Laviso raha tianao hijanona misy herinaratra ny toeram-pitsaboana.",
+        "confirmAgain": "Hamafisina: tapahina ny toeram-pitsaboana"
+      },
+      "decision": {
+        "approvedBadge": "Nekena",
+        "rejectedBadge": "Nolavina",
+        "approvedTitle": "Nekena sy nampiharina tamin'ny simulation ny fanovana",
+        "approvedBody": "Mampiasa ireo fandrindrana ireo ankehitriny ny tarehimarika, ny sary ary ny tanàna 3D.",
+        "rejectedTitle": "Nolavina ny tolo-kevitra",
+        "rejectedBody": "Tsy nisy niova tao amin'ny simulation."
+      },
+      "fallback": {
+        "spend_cap": "Lany ny teti-bola IA amin'ity fivoriana ity: avy amin'ny mpanampy tsy an-tserasera ity valiny ity. Mbola marina ny tarehimarika avy amin'ny motera.",
+        "provider_error": "Nanome hadisoana ny modely Meta: avy amin'ny mpanampy tsy an-tserasera ity valiny ity. Mbola marina ny tarehimarika avy amin'ny motera.",
+        "timeout": "Naharitra loatra ny modely Meta: avy amin'ny mpanampy tsy an-tserasera ity valiny ity. Mbola marina ny tarehimarika avy amin'ny motera.",
+        "unknown": "Avy amin'ny mpanampy tsy an-tserasera ny ampahany amin'ity valiny ity. Mbola marina ny tarehimarika avy amin'ny motera."
+      },
+      "generatedImageAlt": "Sary noforonina an'ny tambajotra kely",
+      "generatedVideoTitle": "Horonan-tsarin'ny simulation",
+      "attachmentAlt": "Rakitra miaraka",
+      "mediaVideo": "Horonan-tsary",
+      "mediaImage": "Sary",
+      "modelRoleChat": "mpanampy + fitaovana",
+      "modelRoleReasoning": "fisainana lalina",
+      "modelRoleImage": "sary",
+      "closeSessions": "Hidio ireo resaka voatahiry",
+      "noValue": "Tsy misy",
+      "dropWindowValue": "{from}:00–{to}:00 ({hours} ora)",
+      "loadDisconnected": "Tsy mifandray",
+      "diffSectorLoad": "Enta-mavesatra",
+      "voice": {
+        "stop": "Ajanony ny fandraketana",
+        "transcribing": "Mandika ny feonao…",
+        "unsupported": "Tsy afaka mandrakitra feo ity navigateur ity. Soraty ny hafatrao.",
+        "denied": "Nolavina ny fidirana amin'ny mikrô. Avelao ao amin'ny navigateur, na soraty ny hafatrao.",
+        "failed": "Tsy voadika ny feo voarakitra. Andramo indray na soraty ny hafatrao.",
+        "empty": "Tsy nisy feo re. Andramo indray akaiky kokoa ny mikrô.",
+        "dismiss": "Hidio"
+      }
     },
     "gridDiagram": {
       "topologyLabel": "Drafitry ny tanàna: fikorianan'ny herinaratra avy amin'ny ivon-masoandro mankany amin'ny sehatra tsirairay",

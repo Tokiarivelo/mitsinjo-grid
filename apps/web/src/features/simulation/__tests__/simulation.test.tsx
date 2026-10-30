@@ -1,7 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetSimulationStore, useSimulationStore } from '@/stores';
 import { SimulationPage } from '../index';
+
+// Full page renders (3D fallback, panels, copilot): slow under a parallel full-suite run.
+vi.setConfig({ testTimeout: 15_000 });
 
 describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
   beforeEach(() => {

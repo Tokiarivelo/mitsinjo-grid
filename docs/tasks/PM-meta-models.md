@@ -80,7 +80,7 @@ puissance, branchement (`sectorLoads`), plancher de survie, priorités, stratég
       avant / après (`compare` sur l'entrée actuelle et l'entrée patchée) : énergie servie par secteur,
       SoC min, heures coupées. Le dialogue l'affiche en bloc « Calcul moteur ».
       **Done when** test : chiffres du dialogue ⊆ evidence ; dark/light, 390 px.
-- [ ] **M1-T2** (K6) Garde clinique **par du code** : patch qui coupe `health` ou met son plancher à 0 →
+- [x] **M1-T2** (K6) Garde clinique **par du code** : patch qui coupe `health` ou met son plancher à 0 →
       avertissement rouge + seconde confirmation. **Done when** test unitaire de la règle + test UI.
 - [ ] **M1-T3** (K2) « Maintenant » : le contexte du chat envoie l'heure courante (lecture ou maquette) ;
       le prompt l'utilise pour `fromHour` ; le dialogue affiche la plage retenue. **Done when** éval
@@ -120,10 +120,10 @@ puissance, branchement (`sectorLoads`), plancher de survie, priorités, stratég
 
 ## Phase M3 — Voix (J3) · `V1, V3, F5, V2` · Voice Transcribe
 
-- [ ] **M3-T1** Route `app/api/voice/route.ts` : audio (webm/ogg ≤ 60 s, upload R2 existant ou data URL) →
+- [x] **M3-T1** Route `app/api/voice/route.ts` : audio (webm/ogg ≤ 60 s, upload R2 existant ou data URL) →
       `transcribe()` → `{ text, segments[], speakers[] }`. Zod en entrée et sortie, `server-only`, pas de stockage
       de l'audio par défaut. **Done when** tests route (mock) + taille max refusée.
-- [ ] **M3-T2** (V1) Bouton micro dans le chat (`MediaRecorder`), appui long ou bascule, ≥ 44 px ; le texte transcrit
+- [x] **M3-T2** (V1) Bouton micro dans le chat (`MediaRecorder`), appui long ou bascule, ≥ 44 px ; le texte transcrit
       s'affiche dans le champ, **modifiable avant envoi**. Permission refusée → message + clavier.
       **Done when** test hook `useVoiceInput` + UI mobile 390 px.
 - [ ] **M3-T3** (V3, F5) Commandes vocales → mêmes outils que le texte. Urgence détectée (« au feu », « incendie »,

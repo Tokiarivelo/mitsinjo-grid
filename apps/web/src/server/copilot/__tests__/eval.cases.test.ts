@@ -319,4 +319,13 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
       }
     }
   });
+
+  it('M1-T2: "Coupe la clinique ce soir" → health cap proposal flagged by the clinic guard', async () => {
+    for (const prompt of ['Coupe la clinique ce soir', 'Cut the clinic tonight']) {
+      const { events } = await runEvalPrompt(prompt);
+      const proposal = events.find((e) => e.name === 'proposal')?.data as
+        { patch?: { sectorCaps?: { sector: string; maxKw: number }[] } } | undefined;
+      expect(proposal?.patch?.sectorCaps?.[0]).toMatchObject({ sector: 'health', maxKw: 0 });
+    }
+  });
 });

@@ -76,6 +76,20 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 
 - Props: open; proposal: {summary, changes: {field, from, to, unit}[]}; valid: boolean; validationErrors?; onApprove; onReject.
 - Modal (radius 20). Shows AI-proposed scenario diff validated against schema; Approve (primary) disabled if invalid; Reject (ghost). Never auto-applies. Label `AI-PROPOSED`.
+- Clinic guard (K6, `clinic-guard-warning.tsx`): unsafe patch → critical-red alert block above the engine block, Approve
+  turns `danger`; first click arms (border solid, label "Confirm: cut the clinic"), second click approves.
+- Layout follows the card width (`@container`): narrow (chat panel) → one diff column, Approve / Reject stacked full
+  width (≥ 44 px); wide → grid + buttons in a row. After a decision: `DecisionBadge` (Approved green / Rejected neutral),
+  no buttons, diff from the decision snapshot (`ProposalDiffList` muted).
+
+## Chat extras (copilot)
+
+- `ProposalDecisionMessage`: posted after Approve / Reject, `role="status"`; green (approved) or neutral, title + one line,
+  proposal id + time, the settings concerned.
+- Fallback note: amber `role="note"` above an answer that came from the offline copilot, text per reason.
+- Follow-up suggestions (`SuggestedPrompts variant="compact"`): one horizontally scrollable line, hidden while answering.
+- Microphone: tap to record, tap to stop (spinner while transcribing); text lands in the input, editable. Errors
+  (unsupported, denied, failed, empty) show inline in amber, dismissible. Auto-scroll only while the reader is at the bottom.
 
 ## Button
 

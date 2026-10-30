@@ -44,7 +44,8 @@ mitsinjo-grid/
             │   ├── (lab)/layout.tsx    # AppShell
             │   ├── (lab)/{overview,simulation,strategies,scenarios,copilot}/page.tsx
             │   ├── design/page.tsx     # UI kit catalog (renders features/design-system)
-            │   └── api/copilot/route.ts
+            │   ├── api/copilot/route.ts
+            │   └── api/voice/route.ts  # chat microphone → transcribe (Meta Voice / mock)
             ├── features/
             │   ├── overview/           # ui/ hooks/ utils/ __tests__/ index.ts
             │   ├── simulation/         # controls, run/reset, timeline

@@ -11,6 +11,8 @@ import { describeVillageScene } from './village-scene';
 import { getPerceptionClient, type PerceptionClient } from '@/server/perception';
 import { spendGuard as sharedSpendGuard, estimateTokens, type SpendGuard } from '@/server/spend';
 import { compactHistory } from './history';
+import { planCompaction, summarizeTurns, summaryNote } from './compaction';
+import { COPILOT_HISTORY_LIMIT } from '@/features/copilot/utils/history';
 
 export type SseEventName =
   | 'activity'
@@ -23,7 +25,8 @@ export type SseEventName =
   | 'video'
   | 'chart'
   | 'model'
-  | 'perception';
+  | 'perception'
+  | 'summary';
 
 export type SseEmitter = (event: SseEventName, data: Record<string, unknown>) => void;
 
@@ -49,21 +52,31 @@ export interface CopilotLoopOptions {
   perception?: Pick<PerceptionClient, 'segmentImage'>;
   /** Hour shown in the app (timeline / scale model), for "show the village now". Default 12. */
   hour?: number;
-  /** Chat budget in ms (tests only); default 20 s. */
+  /** Chat budget in ms (tests only); default 40 s. */
   chatBudgetMs?: number;
+  /** Summary of the turns before `messages` (auto-compaction). */
+  summary?: string;
+  /** How many payload messages come before `messages` (covered by `summary` or dropped). */
+  summarizedCount?: number;
 }
 
 const SPEND_CAP_MESSAGE = 'AI budget cap reached — showing deterministic explanation.';
 
 const MAX_TOOL_ROUNDS = 4;
-/** Budget for the chat model's own thinking. Slow tools (image, SAM) run outside it. */
-const TIMEOUT_MS = 20_000;
+/** Budget for the chat model's own thinking (all rounds). Slow tools (image, SAM) run outside it. */
+const TIMEOUT_MS = 40_000;
 /** Own limit of one slow model tool (image ≈ 12–23 s, SAM ≈ 5 s measured). */
 const MODEL_TOOL_TIMEOUT_MS = 45_000;
 /** Extra chat budget after a switch to Wonder (slower answers). */
 const WONDER_EXTRA_MS = 30_000;
 /** Engine tools + model-switch tools (image, segmentation, deep reasoning). */
 const ALL_TOOL_DEFINITIONS = [...TOOL_DEFINITIONS, ...MODEL_TOOL_DEFINITIONS];
+
+/** Errors worth one retry before falling back: rate limit, server error, network failure. */
+export function isTransientProviderError(err: unknown): boolean {
+  if (!(err instanceof Error) || err.name === 'AbortError') return false;
+  return err.name === 'TypeError' || /\((429|5\d\d)\)/.test(err.message);
+}
 
 function getToolActivityLabel(name: string, args: Record<string, unknown>): string {
   switch (name) {
@@ -96,7 +109,9 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
     spendGuard = sharedSpendGuard,
     hour = 12,
     chatBudgetMs = TIMEOUT_MS,
+    summarizedCount = 0,
   } = options;
+  let summary = options.summary;
   let activeProvider = options.provider || new MockLlmProvider();
 
   // Paid provider over its session budget → deterministic mock for the whole turn.
@@ -187,6 +202,7 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
           console.warn('[copilot:loop] Image generation failed, falling back to chat:', err);
           emit('error', {
             code: 'PROVIDER_FALLBACK',
+            reason: 'provider_error',
             message: 'AI provider unavailable — showing deterministic explanation.',
           });
         }
@@ -225,11 +241,37 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
       activeStrategy: strategy,
     };
 
-    // Localized system prompt + compacted history (last messages, media once, old answers cut)
+    // Auto-compaction: history over the token limit → fold older turns into the summary.
+    let history = messages;
+    const plan = planCompaction(messages);
+    if (plan) {
+      emit('activity', { tool: 'compact_history', label: 'Summarizing earlier conversation...' });
+      try {
+        if (capReached()) throw new Error('spend cap reached');
+        const provider = activeProvider;
+        summary = await outsideBudget((sig) => summarizeTurns(provider, summary, plan.fold, sig));
+        if (provider.name !== 'mock') {
+          spendGuard.record(budgetKey, chatModel, {
+            inputTokens: estimateTokens(JSON.stringify(plan.fold)),
+            outputTokens: estimateTokens(summary),
+          });
+        }
+        history = plan.keep;
+        emit('summary', { text: summary, summarizedCount: summarizedCount + plan.fold.length });
+        console.info(`[copilot:loop] Compacted ${plan.fold.length} messages into the summary.`);
+      } catch (err) {
+        // Summary failed → hard cut, previous summary kept.
+        console.warn('[copilot:loop] Summary failed, keeping the last messages only:', err);
+        history = messages.slice(-COPILOT_HISTORY_LIMIT);
+      }
+    }
+
+    // Localized system prompt + summary + history (media once, old answers cut)
     const systemPromptContent = getSystemPrompt(locale);
-    const trimmedInputMessages = compactHistory(messages);
+    const trimmedInputMessages = compactHistory(history, Infinity);
     const chatHistory: ChatMessage[] = [
       { role: 'system', content: systemPromptContent },
+      ...(summary ? [{ role: 'system' as const, content: summaryNote(summary) }] : []),
       ...trimmedInputMessages.map((m) => ({
         role: m.role,
         content: m.content,
@@ -247,9 +289,16 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
     let completed = false;
 
     while (rounds < MAX_TOOL_ROUNDS && !completed) {
-      if (timeoutController.signal.aborted) {
-        console.error(`[copilot:loop] Loop timed out after ${TIMEOUT_MS}ms budget`);
-        throw new Error('Copilot loop timed out');
+      if (signal?.aborted) throw new Error('Copilot request aborted by the client');
+      // Chat budget spent between rounds → the offline copilot (instant) finishes the turn.
+      if (timeoutController.signal.aborted && activeProvider.name !== 'mock') {
+        console.warn(`[copilot:loop] Chat budget (${chatBudgetMs}ms) spent, finishing offline.`);
+        emit('error', {
+          code: 'PROVIDER_FALLBACK',
+          reason: 'timeout',
+          message: 'AI provider unavailable — showing deterministic explanation.',
+        });
+        activeProvider = new MockLlmProvider();
       }
       rounds++;
       console.info(
@@ -260,11 +309,27 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
 
       let turn;
       try {
-        turn = await activeProvider.chat(
-          chatHistory,
-          ALL_TOOL_DEFINITIONS,
-          timeoutController.signal
-        );
+        try {
+          turn = await activeProvider.chat(
+            chatHistory,
+            ALL_TOOL_DEFINITIONS,
+            timeoutController.signal
+          );
+        } catch (firstErr) {
+          if (
+            activeProvider.name === 'mock' ||
+            timeoutController.signal.aborted ||
+            !isTransientProviderError(firstErr)
+          ) {
+            throw firstErr;
+          }
+          console.warn('[copilot:loop] Transient provider error, retrying once:', firstErr);
+          turn = await activeProvider.chat(
+            chatHistory,
+            ALL_TOOL_DEFINITIONS,
+            timeoutController.signal
+          );
+        }
         if (activeProvider.name !== 'mock') {
           // No usage from the API → estimate from text length (prompt + answer).
           const billed = activeProvider as LlmProvider & { getModel?: () => string };
@@ -283,16 +348,15 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
           console.warn(
             `[copilot:loop] Provider "${activeProvider.name}" failed: ${err instanceof Error ? err.message : err}. Falling back to MockLlmProvider.`
           );
+          const timedOut = timeoutController.signal.aborted && !signal?.aborted;
           emit('error', {
             code: 'PROVIDER_FALLBACK',
+            reason: timedOut ? 'timeout' : 'provider_error',
             message: 'AI provider unavailable — showing deterministic explanation.',
           });
           activeProvider = new MockLlmProvider();
-          turn = await activeProvider.chat(
-            chatHistory,
-            ALL_TOOL_DEFINITIONS,
-            timeoutController.signal
-          );
+          // The chat budget may be spent: the offline copilot only follows the caller's signal.
+          turn = await activeProvider.chat(chatHistory, ALL_TOOL_DEFINITIONS, signal);
         } else {
           console.error('[copilot:loop] Mock provider failed:', err);
           throw err;

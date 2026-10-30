@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useSimulationStore } from '@/stores';
 import { useAppLocale } from '@/lib/i18n';
 import type {
@@ -10,9 +10,13 @@ import type {
   CopilotErrorKey,
   CopilotEvidence,
   CopilotProposal,
+  FallbackReason,
+  ProposalDecisionStatus,
+  ProposalDiffItem,
 } from '../types';
 import { parseMessageSections } from '../utils/parse-sections';
-import { COPILOT_HISTORY_LIMIT } from '../utils/history';
+import { COPILOT_PAYLOAD_MAX } from '../utils/history';
+import { decisionToModelText, proposalDecisions } from '../utils/decisions';
 
 class CopilotHttpError extends Error {
   constructor(readonly key: CopilotErrorKey) {
@@ -20,15 +24,37 @@ class CopilotHttpError extends Error {
   }
 }
 
-/** Messages the API accepts: no error bubbles, no empty assistant turns. */
-/** Request history: the last `COPILOT_HISTORY_LIMIT` valid messages (the server sees no more). */
-export function toPayloadMessages(messages: ChatMessageData[]) {
+const FALLBACK_REASONS: readonly FallbackReason[] = ['spend_cap', 'provider_error', 'timeout'];
+
+/** Messages that count in the conversation sent to the model (no error bubbles, no empty turns). */
+export function isPayloadMessage(m: ChatMessageData): boolean {
+  if (m.role === 'error') return false;
+  if (m.role === 'decision') return Boolean(m.decision);
+  return m.content.trim().length > 0 || Boolean(m.media && m.media.length > 0);
+}
+
+/**
+ * Request history: the valid messages not yet folded into the summary (`summarizedCount` of them
+ * are), at most `COPILOT_PAYLOAD_MAX`. Operator decisions go as user turns the model can read.
+ */
+/**
+ * Payload messages before the first one sent: those in the summary plus any beyond
+ * `COPILOT_PAYLOAD_MAX` (sent to the server, which reports the new total after a compaction).
+ */
+export function payloadBaseCount(messages: ChatMessageData[], summarizedCount = 0): number {
+  const unsent = messages.filter(isPayloadMessage).length - summarizedCount;
+  return summarizedCount + Math.max(0, unsent - COPILOT_PAYLOAD_MAX);
+}
+
+export function toPayloadMessages(messages: ChatMessageData[], summarizedCount = 0) {
   return messages
-    .filter(
-      (m) => m.role !== 'error' && (m.content.trim().length > 0 || (m.media && m.media.length > 0))
-    )
-    .slice(-COPILOT_HISTORY_LIMIT)
+    .filter(isPayloadMessage)
+    .slice(summarizedCount)
+    .slice(-COPILOT_PAYLOAD_MAX)
     .map((m) => {
+      if (m.role === 'decision' && m.decision) {
+        return { role: 'user' as const, content: decisionToModelText(m.decision) };
+      }
       const item: {
         role: 'user' | 'assistant';
         content: string;
@@ -56,7 +82,9 @@ export function useCopilot() {
   const [pending, setPending] = useState(false);
   const [toolActivity, setToolActivity] = useState<CopilotActivity | null>(null);
   const [error, setError] = useState<CopilotErrorKey | null>(null);
-  const [pendingProposal, setPendingProposal] = useState<CopilotProposal | null>(null);
+  // Conversation summary (auto-compaction): text + how many payload messages it covers.
+  const [summary, setSummary] = useState<string | undefined>(undefined);
+  const [summarizedCount, setSummarizedCount] = useState(0);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('auto');
 
@@ -84,6 +112,8 @@ export function useCopilot() {
         if (data.session) {
           setSessionId(data.session.id);
           setMessages(data.session.messages || []);
+          setSummary(data.session.summary || undefined);
+          setSummarizedCount(data.session.summarizedCount ?? 0);
         }
       }
     } catch {
@@ -96,6 +126,8 @@ export function useCopilot() {
     setSessionId(newId);
     setMessages([]);
     setError(null);
+    setSummary(undefined);
+    setSummarizedCount(0);
   }, []);
 
   const removeSession = useCallback(
@@ -230,7 +262,8 @@ export function useCopilot() {
       abortRef.current = abortController;
 
       try {
-        const payloadMessages = toPayloadMessages(updatedHistory);
+        const payloadMessages = toPayloadMessages(updatedHistory, summarizedCount);
+        const baseCount = payloadBaseCount(updatedHistory, summarizedCount);
 
         const res = await fetch('/api/copilot', {
           method: 'POST',
@@ -241,6 +274,8 @@ export function useCopilot() {
             input: store.input,
             strategy: store.activeStrategy,
             hour: store.timeIndex,
+            ...(summary && { summary }),
+            ...(baseCount > 0 && { summarizedCount: baseCount }),
             model: selectedModel || undefined,
             locale,
           }),
@@ -397,7 +432,6 @@ export function useCopilot() {
               }
               case 'proposal': {
                 collectedProposal = dataObj as unknown as CopilotProposal;
-                setPendingProposal(collectedProposal);
                 setMessages((prev) =>
                   prev.map((msg) =>
                     msg.id === assistantMsgId ? { ...msg, proposal: collectedProposal } : msg
@@ -405,10 +439,29 @@ export function useCopilot() {
                 );
                 break;
               }
+              case 'summary': {
+                // Older turns were folded into the summary: send only the newer ones next time.
+                if (
+                  typeof dataObj.text === 'string' &&
+                  typeof dataObj.summarizedCount === 'number'
+                ) {
+                  setSummary(dataObj.text);
+                  setSummarizedCount(dataObj.summarizedCount);
+                }
+                break;
+              }
               case 'error': {
-                setError(
-                  dataObj.code === 'PROVIDER_FALLBACK' ? 'errorProviderFallback' : 'errorGeneric'
-                );
+                if (dataObj.code === 'PROVIDER_FALLBACK') {
+                  // The answer still arrives (offline copilot): a note on it, not a red alert.
+                  const reason = FALLBACK_REASONS.find((r) => r === dataObj.reason) ?? 'unknown';
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMsgId ? { ...msg, fallbackReason: reason } : msg
+                    )
+                  );
+                } else {
+                  setError('errorGeneric');
+                }
                 break;
               }
               case 'done': {
@@ -445,25 +498,61 @@ export function useCopilot() {
         setToolActivity(null);
       }
     },
-    [messages, pending, selectedModel, sessionId, locale, fetchSessions]
+    [messages, pending, selectedModel, sessionId, locale, fetchSessions, summary, summarizedCount]
   );
 
-  const approveProposal = useCallback(() => {
-    if (!pendingProposal) return;
-    const store = useSimulationStore.getState();
-    store.applyProposal(pendingProposal.patch, pendingProposal.strategy);
-    setPendingProposal(null);
-  }, [pendingProposal]);
+  const decisions = useMemo(() => proposalDecisions(messages), [messages]);
 
-  const rejectProposal = useCallback(() => {
-    setPendingProposal(null);
-  }, []);
+  /** Applies (or not) this message's own proposal, once, and posts the decision in the chat. */
+  const decideProposal = useCallback(
+    (status: ProposalDecisionStatus, message: ChatMessageData, items: ProposalDiffItem[]) => {
+      const proposal = message.proposal;
+      if (!proposal || decisions[proposal.proposalId]) return;
+      if (status === 'approved') {
+        useSimulationStore.getState().applyProposal(proposal.patch, proposal.strategy);
+      }
+      const decisionMessage: ChatMessageData = {
+        id: `decision-${proposal.proposalId}-${Date.now()}`,
+        role: 'decision',
+        content: '',
+        decision: {
+          proposalId: proposal.proposalId,
+          status,
+          items,
+          ...(proposal.patch && { patch: proposal.patch }),
+          ...(proposal.strategy && { strategy: proposal.strategy }),
+        },
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, decisionMessage]);
+      // Saved with the session so a reopened chat keeps the card locked.
+      void fetch(`/api/copilot/sessions/${sessionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(decisionMessage),
+      }).catch(() => {});
+    },
+    [decisions, sessionId]
+  );
+
+  const approveProposal = useCallback(
+    (message: ChatMessageData, items: ProposalDiffItem[]) =>
+      decideProposal('approved', message, items),
+    [decideProposal]
+  );
+
+  const rejectProposal = useCallback(
+    (message: ChatMessageData, items: ProposalDiffItem[]) =>
+      decideProposal('rejected', message, items),
+    [decideProposal]
+  );
 
   const clearMessages = useCallback(() => {
     setMessages([]);
     setError(null);
     setToolActivity(null);
-    setPendingProposal(null);
+    setSummary(undefined);
+    setSummarizedCount(0);
   }, []);
 
   return {
@@ -477,7 +566,7 @@ export function useCopilot() {
     pending,
     toolActivity,
     error,
-    pendingProposal,
+    decisions,
     availableModels,
     selectedModel,
     setSelectedModel,

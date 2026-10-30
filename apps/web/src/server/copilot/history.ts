@@ -15,13 +15,17 @@ export interface HistoryMessage {
 
 /**
  * Shrinks the chat history sent to the model each turn:
- * - keeps the last `COPILOT_HISTORY_LIMIT` messages;
+ * - keeps the last `limit` messages (default `COPILOT_HISTORY_LIMIT`; `Infinity` = all, used after
+ *   auto-compaction, which already bounds the size);
  * - media only on the latest user message (older images would be re-billed every turn,
  *   and only that message routes to the vision model);
  * - older assistant answers cut to `OLD_ANSWER_MAX_CHARS`; the latest answer stays whole.
  */
-export function compactHistory<T extends HistoryMessage>(messages: readonly T[]): T[] {
-  const recent = messages.slice(-COPILOT_HISTORY_LIMIT);
+export function compactHistory<T extends HistoryMessage>(
+  messages: readonly T[],
+  limit = COPILOT_HISTORY_LIMIT
+): T[] {
+  const recent = Number.isFinite(limit) ? messages.slice(-limit) : [...messages];
   let lastUser = -1;
   let lastAssistant = -1;
   recent.forEach((m, i) => {

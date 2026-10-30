@@ -16,6 +16,14 @@ describe('compactHistory', () => {
     expect(out.at(-1)?.content).toBe('m19');
   });
 
+  it('keeps every message with an Infinity limit (after auto-compaction)', () => {
+    const msgs: HistoryMessage[] = Array.from({ length: 20 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: `m${i}`,
+    }));
+    expect(compactHistory(msgs, Infinity)).toHaveLength(20);
+  });
+
   it('sends media only with the latest user message', () => {
     const out = compactHistory([
       { role: 'user', content: 'Sky photo', media: img('https://a') },

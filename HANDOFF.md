@@ -1,40 +1,44 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-30 · **By:** Claude Code · **Branch:** `feat/meta-models` · **PR:** none yet · **Uncommitted work below**
+**Updated:** 2026-10-30 · **By:** Claude Code · **Branch:** `feat/meta-models` · **PR:** none yet · **All uncommitted**
 
 ## State
 
-- Plan `docs/tasks/PM-meta-models.md`. PM-M0 done (except human M0-T1 Malagasy speech test). **M1-T1 done.**
-- **M1-T1 (K1):** engine `changeImpact(before, after)` + `ChangeImpactSchema` (`metrics/impact.ts`, `schemas/impact.ts`):
-  served kWh before/after/delta + off hours per sector, SoC min, unserved kWh. `propose_change` simulates current vs
-  patched input (active vs proposed strategy), rounds, keeps changed sectors, sends `proposal.impact` + same numbers as
-  evidence. Dialog block "Engine calculation" (`proposal-impact.tsx`, grid table, label on own line < sm).
-- **Generated images persist:** route uploads each `image` event to R2 (`server/storage/media.ts`
-  `storeGeneratedImage`) and saves it in assistant `media` (`generated`, `key`). Session GET re-signs every media key
-  (`hydrateMessageMedia`) and puts the image back in `imageUrl`. R2 off + Neon → not saved (no base64 in Postgres).
-- **History tokens:** `compactHistory` (`server/copilot/history.ts`): last 8 msgs, media only on latest user msg,
-  older answers cut to 600 chars. Client sends ≤ 8 (`COPILOT_HISTORY_LIMIT`). Log line `History sent: …`.
-- **Model picker** always defaults to Auto (models route `activeModel: 'auto'`, hook forces `auto`).
-- Checks: `make check` ✓ (engine 205, web 544), i18n ✓, prettier ✓. Dialog screenshots 1440/390 dark/light ✓.
-- Note: mock prompt "coupe le marché ce soir" (18–21 h) → "no change" in baseline (market has no evening demand).
+- Plan `docs/tasks/PM-meta-models.md`. Done this session: **M1-T2** (clinic guard), **M3-T1/T2** (voice), chat UX pass.
+- M1-T2: engine `clinicGuard(patch)` (`safety.ts`) → red alert + 2-click Approve in the dialog; tool data `clinicGuard`.
+- Decisions: Approve/Reject apply **that message's** proposal once (old bug: applied the latest one), lock the card
+  (badge, no buttons, snapshot values), post a `role:'decision'` message (saved via sessions POST, sent to the model as
+  `[Operator decision] …`). Neon: `copilot_messages.decision`, `copilot_sessions.summary/summarized_count` (ALTER IF NOT EXISTS).
+- Fallback: chat budget 20 → 40 s, one retry on 429/5xx/network, `reason: timeout|provider_error|spend_cap`, budget spent
+  between rounds → mock finishes (no LOOP_ERROR). UI: amber note on the answer (`fallbackReason`), no red banner.
+- Auto-compaction (`server/copilot/compaction.ts`): > 6k tokens or > 24 msgs → fold all but last 6 into a summary
+  (numbers with kW/kWh/% scrubbed), SSE `summary`, client sends only newer msgs (≤ 40) + summary. Fail → hard cut 8.
+- UI: proposal card uses container queries (stacked buttons in the panel), one-line suggestions hidden while answering,
+  stick-to-bottom scroll, panel header wraps, `parseMessageSections` rewritten (missing section no longer duplicates
+  the next; FR "Et ensuite" + MG headings), i18n for model labels/alts, touch targets ≥ 40 px.
+- Voice: `useVoiceInput` (MediaRecorder → 16 kHz WAV → `POST /api/voice` → text in the input). Replaces Web Speech API
+  (failed on Firefox/Linux Chromium with "Reconnaissance vocale non supportée").
+- Checks: typecheck ✓ lint ✓ i18n ✓ prettier ✓; engine 209, web 585 all pass. `make test` exits 1 only on a Vitest
+  worker RPC timeout (machine thermally throttled, load ≈ 24). `simulation.test.tsx` timeout raised to 15 s.
+- Screenshots /simulation copilot tab 1440/390 dark/light ✓ (stubbed SSE), no overflow.
 
 ## Next task
 
-- Commit (not done: user didn't ask yet). Live check A39–A49 with Meta key + R2 + Neon.
-- Then **M1-T2** (K6 clinic guard: cut / floor 0 on `health` → red warning + second confirmation).
-- Ideas not done for tokens: server-side history from Neon (client sends only last msg), summary of old turns.
+- Commit (not asked yet). Live check A53–A65 with Meta key (fallback reasons, voice with Meta, compaction).
+- Then **M1-T3** (K2 "now" → `fromHour`). Known issue: mock chart answer hardcodes "42 kW / 52 %" (`providers/mock.ts`,
+  chart branch) — breaks "numbers only from engine"; fix by building it from engine output.
 
 ## Decisions taken
 
-- Impact numbers come from the engine (`changeImpact`), rounded in the tool only; UI just formats.
-- Generated images are never sent back to the model; older photos neither (only the latest user message routes to vision).
-- No keyword routing with Meta; contributor on by default (simulated data only).
+- Clinic guard + decision lock are code (UI recomputes from patch); the model only gets informed.
+- Summary never carries energy numbers; sent as a system note saying numbers are not evidence.
+- Audio is not stored; route accepts WAV only (Meta Voice requirement), conversion is client-side.
 
 ## Files touched this session
 
-- Engine: `metrics/impact.ts`, `schemas/impact.ts`, barrels, `__tests__/impact.test.ts`
-- Web: `server/copilot/{tools,loop,history}.ts`, `server/storage/{r2,media}.ts`, `app/api/copilot/{route,models/route,
-upload/route,sessions/[id]/route}.ts`, `features/copilot/{types.ts,ui/{confirm-proposal-dialog,proposal-impact}.tsx,
-hooks/use-copilot.ts,utils/{history,format-telemetry-channel}.ts}`, `lib/format.ts`, `messages/{en,fr,mg}.json`, tests
-- Docs: `contracts.md`, `engine-spec.md`, `copilot.md`, `architecture.md`, `design/stitch-map.md`, `tasks/PM-meta-models.md`
-- test-scenarios (local): A41–A49
+- Engine: `safety.ts`, `schemas/impact.ts`, `index.ts`, tests. Server: `copilot/{loop,compaction,history,tools}.ts`,
+  `providers/mock.ts`, `db/neon.ts`, `app/api/{copilot/route,copilot/sessions/[id]/route,voice/route}.ts`
+- Web copilot: `types.ts`, hooks `use-copilot`, `use-proposal-diff`, `use-voice-input`; ui `confirm-proposal-dialog`,
+  `clinic-guard-warning`, `proposal-diff-list`, `proposal-decision-message`, `chat-message-item`, `copilot-workspace`,
+  `suggested-prompts`, `proposal-impact`, `tool-activity`; utils `decisions`, `history`, `parse-sections`, `wav`; messages ×3
+- Docs: contracts, copilot, architecture, engine-spec, design/{components,stitch-map}, tasks/PM, README. Scenarios A50–A65, A36.

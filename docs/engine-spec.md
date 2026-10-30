@@ -81,6 +81,9 @@ Warnings: merge consecutive hours into ranges. `CRITICAL_UNMET` (any critical sh
 Change impact (`changeImpact(before, after)`): per sector `servedKwh` before/after/delta and `offHours` (steps with
 demand > ε and `mode = 'off'`; a sector without load is never off), plus `socMinPct` and `unservedKwh` before/after.
 Used by the approval dialog ("Engine calculation").
+Clinic guard (`clinicGuard(patch)`, K6): lists why a patch endangers `health` — `cap_zero` (cap < 0.05 kW),
+`disconnected` (`sectorLoads.health = 0`), `floor_zero` (lifeline floor < 0.05 kW), `lifeline_off` (floors disabled).
+Empty = safe. The dialog then shows a red warning and needs a second click.
 
 ## 5. Default parameters
 

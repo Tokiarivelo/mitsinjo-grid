@@ -24,3 +24,12 @@ export const ChangeImpactSchema = z.object({
   sectors: z.record(SectorIdSchema, SectorImpactSchema),
 });
 export type ChangeImpact = z.infer<typeof ChangeImpactSchema>;
+
+/** Why a patch endangers the clinic (K6 safety rule, see `clinicGuard`). */
+export const ClinicGuardReasonSchema = z.enum([
+  'cap_zero',
+  'disconnected',
+  'floor_zero',
+  'lifeline_off',
+]);
+export type ClinicGuardReason = z.infer<typeof ClinicGuardReasonSchema>;

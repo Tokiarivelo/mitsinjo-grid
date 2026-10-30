@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  useCallback,
   useState,
   useRef,
   useEffect,
@@ -15,6 +16,7 @@ import {
   AlertTriangle,
   Mic,
   MicOff,
+  Loader2,
   Paperclip,
   Edit3,
   X,
@@ -23,11 +25,12 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
-import { useTranslations } from '@/lib/i18n';
+import { useAppLocale, useTranslations } from '@/lib/i18n';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useCopilot } from '../hooks/use-copilot';
+import { useVoiceInput } from '../hooks/use-voice-input';
 import { useSimulationStore } from '@/stores/simulation.store';
 import type { ChatMediaItem } from '../types';
 import { ChatMessageItem } from './chat-message-item';
@@ -36,6 +39,13 @@ import { SuggestedPrompts } from './suggested-prompts';
 import { ContextPanel } from './context-panel';
 import { MediaLightboxModal, type ActiveMedia } from './media-lightbox-modal';
 import { CanvasSketchDialog } from './canvas-sketch-dialog';
+
+/** i18n key describing each Meta model's job in the picker. */
+const MODEL_ROLE_KEYS: Record<string, 'modelRoleChat' | 'modelRoleReasoning' | 'modelRoleImage'> = {
+  'muse-spark-1.3': 'modelRoleChat',
+  'muse-wonder-1.0': 'modelRoleReasoning',
+  'muse-image-1.0': 'modelRoleImage',
+};
 
 export interface CopilotWorkspaceProps {
   mode?: 'full' | 'panel';
@@ -59,6 +69,7 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
     pending,
     toolActivity,
     error,
+    decisions,
     availableModels,
     selectedModel,
     setSelectedModel,
@@ -68,21 +79,39 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
   } = useCopilot();
 
   const [input, setInput] = useState('');
-  const [isListening, setIsListening] = useState(false);
   const [attachedMedia, setAttachedMedia] = useState<ChatMediaItem[]>([]);
   const [activeLightboxMedia, setActiveLightboxMedia] = useState<ActiveMedia | null>(null);
   const [isSketchOpen, setIsSketchOpen] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showSessionsDrawer, setShowSessionsDrawer] = useState(false);
 
+  const { locale } = useAppLocale();
+  // Transcribed speech goes into the input, editable before sending.
+  const appendTranscript = useCallback(
+    (text: string) => setInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text)),
+    []
+  );
+  const voice = useVoiceInput({ locale, sessionId, onText: appendTranscript });
+  const isListening = voice.status === 'recording';
+  const isTranscribing = voice.status === 'transcribing';
+
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Follow new text only while the reader is at the bottom; scrolling up to read stops it.
+  const stickToBottomRef = useRef(true);
+  const lastMessage = messages.at(-1);
+  const answerStarted = lastMessage?.role === 'assistant' && lastMessage.content.length > 0;
 
   useEffect(() => {
-    if (chatScrollRef.current) {
-      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-    }
+    const el = chatScrollRef.current;
+    if (el && stickToBottomRef.current) el.scrollTop = el.scrollHeight;
   }, [messages, toolActivity, pending]);
+
+  const handleChatScroll = () => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
 
   const handleAddFiles = (files: FileList | File[]) => {
     Array.from(files).forEach((file) => {
@@ -136,9 +165,14 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
     setAttachedMedia((prev) => prev.filter((item) => item.id !== id));
   };
 
+  const send = (prompt: string, media?: ChatMediaItem[]) => {
+    stickToBottomRef.current = true;
+    sendMessage(prompt, media);
+  };
+
   const handleSend = () => {
     if ((!input.trim() && attachedMedia.length === 0) || pending) return;
-    sendMessage(input, attachedMedia);
+    send(input, attachedMedia);
     setInput('');
     setAttachedMedia([]);
   };
@@ -150,50 +184,12 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
     }
   };
 
-  const handleToggleVoice = () => {
-    if (typeof window === 'undefined') return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRec) {
-      alert(tCopilot('voiceNotSupported'));
-      return;
-    }
-
-    if (isListening) {
-      setIsListening(false);
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRec();
-      recognition.lang = document.documentElement.lang || 'fr-FR';
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
-      recognition.onerror = () => setIsListening(false);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0]?.[0]?.transcript;
-        if (transcript) {
-          setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
-        }
-      };
-      recognition.start();
-    } catch {
-      setIsListening(false);
-    }
-  };
-
   const isFull = mode === 'full';
 
   const formatModelLabel = (m: string) => {
     if (m === 'auto') return tCopilot('modelAuto');
-    if (m === 'muse-spark-1.3') return 'muse-spark-1.3 (Copilot + Outils)';
-    if (m === 'muse-wonder-1.0') return 'muse-wonder-1.0 (Raisonnement)';
-    if (m === 'muse-image-1.0') return 'muse-image-1.0 (Image)';
-    return m;
+    const role = MODEL_ROLE_KEYS[m];
+    return role ? `${m} (${tCopilot(role)})` : m;
   };
 
   return (
@@ -276,7 +272,7 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
         </div>
       ) : (
         /* Header Area (Panel Mode on Simulation Page) */
-        <div className="px-3 py-2.5 border-b border-border/60 bg-surface/70 rounded-t-lg flex items-center justify-between gap-2">
+        <div className="px-3 py-2.5 border-b border-border/60 bg-surface/70 rounded-t-lg flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <div className="p-1 rounded bg-ai-violet/10 text-ai-violet shrink-0">
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
@@ -286,9 +282,9 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
             </span>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
             {/* Panel Mode Selector */}
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-elevated border border-border text-[11px] font-mono">
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-elevated border border-border text-[11px] font-mono min-w-0 max-w-full">
               <span className="text-[9px] text-text-muted uppercase font-semibold">
                 {tCopilot('modelSelectorLabel')}
               </span>
@@ -297,17 +293,17 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
                   aria-label={tCopilot('modelSelectorLabel')}
-                  className="bg-transparent text-energy-cyan font-medium border-none focus:outline-none cursor-pointer text-[11px]"
+                  className="min-w-0 max-w-full truncate bg-transparent text-energy-cyan font-medium border-none focus:outline-none cursor-pointer text-[11px]"
                 >
                   {availableModels.map((m) => (
                     <option key={m} value={m} className="bg-surface text-text-primary">
-                      {m === 'auto' ? tCopilot('modelAuto') : m}
+                      {formatModelLabel(m)}
                     </option>
                   ))}
                 </select>
               ) : (
                 <span className="text-energy-cyan font-medium text-[11px]">
-                  {selectedModel || 'auto'}
+                  {formatModelLabel(selectedModel || 'auto')}
                 </span>
               )}
             </div>
@@ -331,9 +327,10 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
               <button
                 type="button"
                 onClick={() => setShowSessionsDrawer(false)}
-                className="p-1 rounded text-text-muted hover:text-text-primary cursor-pointer"
+                aria-label={tCopilot('closeSessions')}
+                className="min-h-10 min-w-10 flex items-center justify-center rounded text-text-muted hover:text-text-primary cursor-pointer"
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             </div>
 
@@ -373,9 +370,9 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
                         removeSession(s.id);
                       }}
                       aria-label={tCopilot('deleteSession')}
-                      className="p-1 rounded opacity-0 group-hover:opacity-100 text-text-muted hover:text-critical-red transition-opacity cursor-pointer shrink-0"
+                      className="min-h-10 min-w-10 flex items-center justify-center rounded md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 text-text-muted hover:text-critical-red transition-opacity cursor-pointer shrink-0"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </div>
                 ))}
@@ -395,7 +392,7 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
         {/* Left / Conversation Canvas */}
         <section
           aria-label={tCopilot('chatRegionAria')}
-          className="flex-1 flex flex-col gap-4 min-w-0 min-h-0"
+          className="@container flex-1 flex flex-col gap-4 min-w-0 min-h-0"
         >
           {/* Tool Activity Status Bar if executing */}
           {toolActivity && <ToolActivity activity={toolActivity} />}
@@ -403,13 +400,14 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
           {/* Chat Stream Canvas */}
           <div
             ref={chatScrollRef}
+            onScroll={handleChatScroll}
             role="log"
             aria-live="polite"
-            className="flex-1 overflow-y-auto space-y-5 pr-1.5 min-h-[300px]"
+            className="flex-1 overflow-y-auto overscroll-contain space-y-5 pr-1.5 min-h-[300px]"
           >
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-12 text-center max-w-lg mx-auto">
-                <div className="w-12 h-12 rounded-2xl bg-ai-violet/15 border border-ai-violet/40 flex items-center justify-center text-ai-violet mb-4 shadow-[0_0_20px_rgba(182,160,255,0.2)]">
+                <div className="w-12 h-12 rounded-2xl bg-ai-violet/15 border border-ai-violet/40 flex items-center justify-center text-ai-violet mb-4 shadow-lg shadow-ai-violet/20">
                   <Bot className="h-6 w-6" aria-hidden="true" />
                 </div>
                 <h2 className="font-display text-base font-semibold text-text-primary">
@@ -421,7 +419,7 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
 
                 <div className="w-full mt-6">
                   <SuggestedPrompts
-                    onSelectPrompt={(p) => sendMessage(p)}
+                    onSelectPrompt={(p) => send(p)}
                     disabled={pending}
                     result={result}
                     activeStrategy={activeStrategy}
@@ -433,6 +431,7 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
                 <ChatMessageItem
                   key={m.id}
                   message={m}
+                  proposalDecision={m.proposal ? decisions[m.proposal.proposalId] : undefined}
                   onApproveProposal={approveProposal}
                   onRejectProposal={rejectProposal}
                   onMediaClick={(media) => setActiveLightboxMedia(media)}
@@ -441,7 +440,7 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
             )}
 
             {/* In-stream Pending Indicator if no text yet and tool completed */}
-            {pending && !toolActivity && (
+            {pending && !toolActivity && !answerStarted && (
               <div className="flex items-center gap-2 text-xs font-mono text-ai-violet p-3 rounded-card bg-surface-elevated/70 border border-ai-violet/30 max-w-md">
                 <Sparkles className="h-4 w-4 animate-spin text-ai-violet" aria-hidden="true" />
                 <span>{tCopilot('analyzing')}</span>
@@ -463,11 +462,11 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
             )}
           </div>
 
-          {/* Suggested Prompts if chat has messages */}
-          {messages.length > 0 && (
+          {/* Follow-up suggestions: one scrollable line, hidden while the copilot answers */}
+          {messages.length > 0 && !pending && (
             <SuggestedPrompts
-              onSelectPrompt={(p) => sendMessage(p)}
-              disabled={pending}
+              variant="compact"
+              onSelectPrompt={(p) => send(p)}
               result={result}
               activeStrategy={activeStrategy}
             />
@@ -522,7 +521,8 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
                     )}
                     <div className="min-w-0 max-w-[120px]">
                       <span className="block truncate text-[11px] font-medium text-text-primary">
-                        {med.name || (med.type === 'video' ? 'Video' : 'Image')}
+                        {med.name ||
+                          (med.type === 'video' ? tCopilot('mediaVideo') : tCopilot('mediaImage'))}
                       </span>
                       <span className="block text-[9px] font-mono text-text-muted uppercase">
                         {med.type}
@@ -541,6 +541,32 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
               </div>
             )}
 
+            {(voice.error || isTranscribing) && (
+              <p
+                role={voice.error ? 'alert' : 'status'}
+                className={cn(
+                  'mb-2 flex items-start justify-between gap-2 px-2.5 py-1.5 rounded-md text-[11px] border',
+                  voice.error
+                    ? 'bg-warning-amber/10 border-warning-amber/40 text-text-primary'
+                    : 'bg-surface border-border text-text-secondary'
+                )}
+              >
+                <span>
+                  {voice.error ? tCopilot(`voice.${voice.error}`) : tCopilot('voice.transcribing')}
+                </span>
+                {voice.error && (
+                  <button
+                    type="button"
+                    onClick={voice.clearError}
+                    aria-label={tCopilot('voice.dismiss')}
+                    className="shrink-0 text-text-muted hover:text-text-primary cursor-pointer"
+                  >
+                    <X className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                )}
+              </p>
+            )}
+
             <div className="relative flex flex-col gap-2">
               <textarea
                 rows={2}
@@ -555,9 +581,9 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
                 aria-label={tCopilot('inputAria')}
                 className="w-full resize-none p-2.5 text-xs font-sans text-text-primary bg-surface border border-border rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-violet focus-visible:ring-offset-1 focus-visible:ring-offset-canvas placeholder:text-text-muted disabled:opacity-50"
               />
-              <div className="flex items-center justify-between text-[11px] text-text-muted">
-                <span>{tCopilot('shiftEnterHint')}</span>
-                <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center justify-between gap-2 text-[11px] text-text-muted">
+                <span className="hidden sm:inline">{tCopilot('shiftEnterHint')}</span>
+                <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
                   {/* File upload button */}
                   <button
                     type="button"
@@ -565,7 +591,7 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
                     disabled={pending}
                     aria-label={tCopilot('attachMedia')}
                     title={tCopilot('attachMedia')}
-                    className="p-2 rounded-lg border border-border bg-surface text-text-muted hover:text-text-primary hover:border-border/80 transition-colors cursor-pointer"
+                    className="min-h-10 min-w-10 flex items-center justify-center rounded-lg border border-border bg-surface text-text-muted hover:text-text-primary hover:border-border/80 transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
@@ -577,7 +603,7 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
                     disabled={pending}
                     aria-label={tCopilot('sketchCanvas')}
                     title={tCopilot('sketchCanvas')}
-                    className="p-2 rounded-lg border border-border bg-surface text-text-muted hover:text-energy-cyan hover:border-energy-cyan/60 transition-colors cursor-pointer"
+                    className="min-h-10 min-w-10 flex items-center justify-center rounded-lg border border-border bg-surface text-text-muted hover:text-energy-cyan hover:border-energy-cyan/60 transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
@@ -585,12 +611,19 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
                   {/* Voice input button */}
                   <button
                     type="button"
-                    onClick={handleToggleVoice}
-                    disabled={pending}
-                    aria-label={isListening ? tCopilot('voiceListening') : tCopilot('voiceInput')}
-                    title={isListening ? tCopilot('voiceListening') : tCopilot('voiceInput')}
+                    onClick={voice.toggle}
+                    disabled={pending || isTranscribing}
+                    aria-pressed={isListening}
+                    aria-label={
+                      isListening
+                        ? tCopilot('voice.stop')
+                        : isTranscribing
+                          ? tCopilot('voice.transcribing')
+                          : tCopilot('voiceInput')
+                    }
+                    title={isListening ? tCopilot('voice.stop') : tCopilot('voiceInput')}
                     className={cn(
-                      'p-2 rounded-lg border text-xs transition-all cursor-pointer flex items-center gap-1.5',
+                      'min-h-10 min-w-10 px-2 justify-center rounded-lg border text-xs transition-all cursor-pointer flex items-center gap-1.5',
                       isListening
                         ? 'bg-critical-red/20 border-critical-red text-critical-red animate-pulse'
                         : 'bg-surface border-border text-text-muted hover:text-text-primary hover:border-border/80'
@@ -603,6 +636,8 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
                           {tCopilot('voiceListening')}
                         </span>
                       </>
+                    ) : isTranscribing ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                     ) : (
                       <Mic className="h-3.5 w-3.5" aria-hidden="true" />
                     )}
@@ -616,7 +651,7 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
                     disabled={(!input.trim() && attachedMedia.length === 0) || pending}
                     aria-label={tCopilot('sendButton')}
                     icon={<Send className="h-3 w-3" aria-hidden="true" />}
-                    className="bg-ai-violet hover:bg-ai-violet/90 text-surface font-semibold"
+                    className="min-h-10 bg-ai-violet hover:bg-ai-violet/90 text-surface font-semibold"
                   >
                     {tCopilot('sendButton')}
                   </Button>

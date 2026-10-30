@@ -10,9 +10,9 @@ export interface ProposalImpactProps {
   impact: ChangeImpact;
 }
 
-/** Mobile: 3 value columns (label spans them); sm+: label + 3 values on one line. */
+/** Narrow card: 3 value columns (label spans them); wide card (@lg): label + 3 values on one line. */
 const ROW_GRID =
-  'grid grid-cols-3 sm:grid-cols-[minmax(0,1fr)_6rem_6rem_6rem] gap-x-2 gap-y-1 px-3 py-2 items-center';
+  'grid grid-cols-3 @lg:grid-cols-[minmax(0,1fr)_6rem_6rem_6rem] gap-x-2 gap-y-1 px-3 py-2 items-center';
 
 interface ImpactRow {
   key: string;
@@ -96,7 +96,7 @@ export function ProposalImpact({ impact }: ProposalImpactProps) {
             'border-y border-border/40 bg-surface-elevated text-text-muted text-[10px] font-semibold'
           )}
         >
-          <span role="columnheader" className="hidden sm:block">
+          <span role="columnheader" className="hidden @lg:block">
             <span className="sr-only">{t('impactTitle')}</span>
           </span>
           <span role="columnheader">{t('impactColBefore')}</span>
@@ -111,7 +111,7 @@ export function ProposalImpact({ impact }: ProposalImpactProps) {
           >
             <span
               role="rowheader"
-              className="col-span-3 sm:col-span-1 font-sans font-medium text-xs text-text-primary"
+              className="col-span-3 @lg:col-span-1 font-sans font-medium text-xs text-text-primary"
             >
               {r.label}
             </span>

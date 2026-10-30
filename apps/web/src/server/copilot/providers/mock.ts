@@ -279,6 +279,29 @@ Run one of the preset scenarios (Baseline or Monsoon Cloud Cover) to inspect sim
       };
     }
 
+    // Cut the clinic tonight -> unsafe proposal, the dialog's clinic guard asks twice (M1-T2, K6)
+    if (
+      (query.includes('clinic') || query.includes('clinique')) &&
+      (query.includes('cut') || query.includes('coupe')) &&
+      (query.includes('tonight') || query.includes('ce soir'))
+    ) {
+      return {
+        content: '',
+        toolCalls: [
+          {
+            id: 'call_cap_clinic_tonight',
+            name: 'propose_change',
+            args: {
+              patch: { sectorCaps: [{ sector: 'health', maxKw: 0, fromHour: 18, toHour: 24 }] },
+              reason: fr
+                ? 'Proposition simulée : clinique à 0 kW ce soir (18h-24h). Attention, cela coupe les soins ; à confirmer deux fois.'
+                : 'Simulated proposal: clinic at 0 kW tonight (18:00-24:00). Warning, this cuts care; needs two confirmations.',
+            },
+          },
+        ],
+      };
+    }
+
     // Cut the market tonight -> Simulated cap proposal via propose_change (PY-T3)
     if (
       (query.includes('cut the market') ||

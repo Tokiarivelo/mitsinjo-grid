@@ -16,6 +16,7 @@ const KNOWN_TOOLS = new Set([
   'segment_image',
   'generate_image',
   'escalate_deep_reasoning',
+  'compact_history',
 ]);
 
 export interface ToolActivityProps {

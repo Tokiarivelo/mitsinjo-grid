@@ -406,7 +406,6 @@
       "modelAuto": "✦ Auto (Adaptive)",
       "voiceInput": "Voice input",
       "voiceListening": "Listening...",
-      "voiceNotSupported": "Voice recognition not supported in this browser",
       "readAloud": "Read response aloud",
       "stopAudio": "Stop audio",
       "imageGeneratedBadge": "Generated Visual",
@@ -455,7 +454,8 @@
         "segment_image": "Detecting objects on the photo",
         "generate_image": "Generating a picture",
         "escalate_deep_reasoning": "Switching to deep reasoning",
-        "default": "Reviewing computed results"
+        "default": "Reviewing computed results",
+        "compact_history": "Summarizing the earlier conversation"
       },
       "unknownValue": "Unknown",
       "chartType": "{type} chart",
@@ -469,7 +469,55 @@
       "impactSocMin": "Minimum battery charge",
       "impactUnserved": "Unserved energy (village)",
       "impactHours": "{count} h",
-      "impactNoChange": "The engine sees no change in served energy or hours without power for this proposal."
+      "impactNoChange": "The engine sees no change in served energy or hours without power for this proposal.",
+      "clinicGuard": {
+        "title": "Danger: this change cuts the clinic",
+        "reasons": {
+          "cap_zero": "Clinic capped at 0 kW: vaccines and care lose power.",
+          "disconnected": "Clinic disconnected from the grid.",
+          "floor_zero": "Clinic survival floor set to 0 kW.",
+          "lifeline_off": "Survival floors turned off for every sector, the clinic included."
+        },
+        "secondConfirm": "Approving needs a second confirmation.",
+        "armed": "Click again to confirm. Reject to keep the clinic powered.",
+        "confirmAgain": "Confirm: cut the clinic"
+      },
+      "decision": {
+        "approvedBadge": "Approved",
+        "rejectedBadge": "Rejected",
+        "approvedTitle": "Change approved and applied to the simulation",
+        "approvedBody": "Metrics, charts and the 3D village now use these settings.",
+        "rejectedTitle": "Proposal rejected",
+        "rejectedBody": "Nothing changed in the simulation."
+      },
+      "fallback": {
+        "spend_cap": "AI budget for this session is used up: this answer comes from the offline copilot. Engine numbers stay valid.",
+        "provider_error": "The Meta model returned an error: this answer comes from the offline copilot. Engine numbers stay valid.",
+        "timeout": "The Meta model took too long: this answer comes from the offline copilot. Engine numbers stay valid.",
+        "unknown": "Part of this answer comes from the offline copilot. Engine numbers stay valid."
+      },
+      "generatedImageAlt": "Generated microgrid picture",
+      "generatedVideoTitle": "Simulation video",
+      "attachmentAlt": "Attachment",
+      "mediaVideo": "Video",
+      "mediaImage": "Image",
+      "modelRoleChat": "copilot + tools",
+      "modelRoleReasoning": "deep reasoning",
+      "modelRoleImage": "images",
+      "closeSessions": "Close saved conversations",
+      "noValue": "None",
+      "dropWindowValue": "{from}:00–{to}:00 ({hours} h)",
+      "loadDisconnected": "Not connected",
+      "diffSectorLoad": "Load",
+      "voice": {
+        "stop": "Stop recording",
+        "transcribing": "Transcribing your voice…",
+        "unsupported": "This browser cannot record audio. Type your message instead.",
+        "denied": "Microphone access was refused. Allow it in the browser, or type your message.",
+        "failed": "Could not transcribe the recording. Try again or type your message.",
+        "empty": "Nothing was heard. Try again closer to the microphone.",
+        "dismiss": "Dismiss"
+      }
     },
     "gridDiagram": {
       "topologyLabel": "Village plan: power flow from the solar hub to each sector",

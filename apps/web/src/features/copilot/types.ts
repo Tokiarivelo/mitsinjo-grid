@@ -23,6 +23,28 @@ export interface CopilotActivity {
 /** i18n keys under `features.copilot` for copilot errors (raw server text is never shown). */
 export type CopilotErrorKey = 'errorProviderFallback' | 'errorRateLimited' | 'errorGeneric';
 
+/** Why an answer came from the offline (deterministic) copilot; `unknown` when the server gave no reason. */
+export type FallbackReason = 'spend_cap' | 'provider_error' | 'timeout' | 'unknown';
+
+/** One changed setting of a proposal: label, value before, value proposed (already translated). */
+export interface ProposalDiffItem {
+  label: string;
+  current: string;
+  proposed: string;
+}
+
+export type ProposalDecisionStatus = 'approved' | 'rejected';
+
+/** Operator decision on a proposal, posted in the chat and sent to the model as context. */
+export interface ProposalDecision {
+  proposalId: string;
+  status: ProposalDecisionStatus;
+  /** Settings as shown when the operator decided (snapshot: the simulation changes after approval). */
+  items: ProposalDiffItem[];
+  patch?: InputPatch;
+  strategy?: StrategyId;
+}
+
 export interface MessageSections {
   whatHappened?: string;
   computedEvidence?: string;
@@ -69,11 +91,14 @@ export interface ChatSessionSummary {
 
 export interface ChatSessionDetail extends ChatSessionSummary {
   messages: ChatMessageData[];
+  /** Conversation summary (auto-compaction) and how many payload messages it covers. */
+  summary?: string;
+  summarizedCount?: number;
 }
 
 export interface ChatMessageData {
   id: string;
-  role: 'user' | 'assistant' | 'error';
+  role: 'user' | 'assistant' | 'error' | 'decision';
   content: string;
   sections?: MessageSections;
   evidence?: CopilotEvidence[]; // one entry per tool result, in call order
@@ -86,5 +111,9 @@ export interface ChatMessageData {
   chart?: ChatChartData;
   detectedModel?: string;
   errorKey?: CopilotErrorKey;
+  /** Set when this answer fell back to the offline copilot. */
+  fallbackReason?: FallbackReason;
+  /** Only on `role: 'decision'`. */
+  decision?: ProposalDecision;
   timestamp?: string;
 }

@@ -157,6 +157,24 @@ describe('Copilot Tools (P6-T2)', () => {
       expect(ctx.input.solar.peakKw).toBe(baseInput.solar.peakKw);
     });
 
+    it('propose_change flags a clinic cut for the model, not a safe change (M1-T2)', () => {
+      const unsafe = executeTool(
+        'propose_change',
+        {
+          patch: { sectorCaps: [{ sector: 'health', maxKw: 0, fromHour: 18, toHour: 22 }] },
+          reason: 'Cut the clinic tonight',
+        },
+        ctx
+      );
+      expect(unsafe.data?.clinicGuard).toEqual(['cap_zero']);
+      const safe = executeTool(
+        'propose_change',
+        { patch: { solarDropPct: 30 }, reason: 'Safe change' },
+        ctx
+      );
+      expect(safe.data?.clinicGuard).toBeUndefined();
+    });
+
     it('propose_change attaches the engine before/after impact, all of it in evidence (M1-T1)', () => {
       const res = executeTool(
         'propose_change',

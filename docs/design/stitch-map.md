@@ -58,4 +58,9 @@ Status values: `not generated` · `generated` · `exported` · `implemented` · 
 - Live Simulation scale-model panel 2026-10-30 (PH-H4): built without mockup, same card pattern as Weather Workflow;
   label–value rows (2 columns were too tight in the side panel). Checked with a live bridge at 1440×900 and 390×844,
   dark and light, no horizontal overflow.
+- Chat UX 2026-10-30: no mockup. Proposal card container-based (stacked buttons in the panel), decision lock + decision
+  message (battery-green), amber fallback note, one-line suggestions, mic inline errors. Panel header wraps.
+  Gate-out: /simulation copilot tab 1440 + 390, dark + light, no horizontal overflow.
+- M1-T2 2026-10-30: no mockup. Clinic guard block in ConfirmProposalDialog: critical-red/10 bg, critical-red border
+  (50 % → solid when armed), ShieldAlert icon, reason list; Approve button `danger`. Existing tokens only.
 - M1-T1 2026-10-30: no mockup. ConfirmProposalDialog gains an "Engine calculation" block (`proposal-impact.tsx`): energy-cyan border like Computed evidence, grid table Before / After / Change; on < sm the label takes its own line above the 3 values. Negative change `critical-red`, positive `battery-green`. Gate-out: dialog screenshots 1440 + 390, dark + light, no horizontal overflow.

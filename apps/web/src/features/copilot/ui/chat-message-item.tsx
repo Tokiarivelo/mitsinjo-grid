@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, User, AlertCircle, Volume2, VolumeX, Play } from 'lucide-react';
+import { Sparkles, User, AlertCircle, AlertTriangle, Volume2, VolumeX, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations } from '@/lib/i18n';
-import type { ChatMessageData } from '../types';
+import type { ChatMessageData, ProposalDecision, ProposalDiffItem } from '../types';
 import { ConfirmProposalDialog } from './confirm-proposal-dialog';
+import { ProposalDecisionMessage } from './proposal-decision-message';
 import { MarkdownRenderer } from './markdown-renderer';
 import { ChatChart } from './chat-chart';
 import type { ActiveMedia } from './media-lightbox-modal';
@@ -13,8 +14,10 @@ import { formatTelemetryChannel } from '../utils/format-telemetry-channel';
 
 export interface ChatMessageItemProps {
   message: ChatMessageData;
-  onApproveProposal?: () => void;
-  onRejectProposal?: () => void;
+  onApproveProposal?: (message: ChatMessageData, items: ProposalDiffItem[]) => void;
+  onRejectProposal?: (message: ChatMessageData, items: ProposalDiffItem[]) => void;
+  /** Decision already taken on this message's proposal (locks the card). */
+  proposalDecision?: ProposalDecision;
   onMediaClick?: (media: ActiveMedia) => void;
   className?: string;
 }
@@ -23,6 +26,7 @@ export function ChatMessageItem({
   message,
   onApproveProposal,
   onRejectProposal,
+  proposalDecision,
   onMediaClick,
   className,
 }: ChatMessageItemProps) {
@@ -98,7 +102,7 @@ export function ChatMessageItem({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={med.url}
-                      alt={med.name || 'User attachment'}
+                      alt={med.name || tCopilot('attachmentAlt')}
                       className="w-36 h-24 object-cover group-hover:scale-105 transition-transform duration-200"
                     />
                   )}
@@ -118,17 +122,27 @@ export function ChatMessageItem({
             </div>
           )}
         </div>
-        <div className="w-8 h-8 rounded-full bg-surface-elevated border border-border flex items-center justify-center text-xs font-mono text-energy-cyan shrink-0 mt-3">
+        <div className="hidden @md:flex w-8 h-8 rounded-full bg-surface-elevated border border-border items-center justify-center text-xs font-mono text-energy-cyan shrink-0 mt-3">
           <User className="h-4 w-4" aria-hidden="true" />
         </div>
       </div>
     );
   }
 
+  if (message.role === 'decision' && message.decision) {
+    return (
+      <ProposalDecisionMessage
+        decision={message.decision}
+        timestamp={message.timestamp}
+        className={className}
+      />
+    );
+  }
+
   if (message.role === 'error') {
     return (
       <div className={cn('flex items-start gap-3.5 max-w-3xl mr-auto', className)}>
-        <div className="w-8 h-8 rounded-full bg-critical-red/15 border border-critical-red/40 flex items-center justify-center text-critical-red shrink-0 mt-1">
+        <div className="hidden @md:flex w-8 h-8 rounded-full bg-critical-red/15 border border-critical-red/40 items-center justify-center text-critical-red shrink-0 mt-1">
           <AlertCircle className="h-4 w-4" aria-hidden="true" />
         </div>
         <div className="flex-1 p-4 rounded-xl bg-critical-red/10 border border-critical-red/30 text-xs text-critical-red leading-relaxed">
@@ -151,7 +165,7 @@ export function ChatMessageItem({
 
   return (
     <div className={cn('flex items-start gap-3.5 max-w-4xl mr-auto w-full', className)}>
-      <div className="w-8 h-8 rounded-full bg-ai-violet/15 border border-ai-violet/50 flex items-center justify-center text-ai-violet shrink-0 mt-1 shadow-[0_0_12px_rgba(182,160,255,0.3)]">
+      <div className="hidden @md:flex w-8 h-8 rounded-full bg-ai-violet/15 border border-ai-violet/50 items-center justify-center text-ai-violet shrink-0 mt-1 shadow-md shadow-ai-violet/30">
         <Sparkles className="h-4 w-4" aria-hidden="true" />
       </div>
 
@@ -192,8 +206,22 @@ export function ChatMessageItem({
           </button>
         </div>
 
+        {/* Offline answer: say why, quietly (computed numbers stay valid) */}
+        {message.fallbackReason && (
+          <div
+            role="note"
+            className="flex items-start gap-2 px-3 py-2 rounded-lg bg-warning-amber/10 border border-warning-amber/40 text-xs text-text-primary"
+          >
+            <AlertTriangle
+              className="h-3.5 w-3.5 mt-0.5 shrink-0 text-warning-amber"
+              aria-hidden="true"
+            />
+            <span>{tCopilot(`fallback.${message.fallbackReason}`)}</span>
+          </div>
+        )}
+
         {/* Structured diagnostic card */}
-        <div className="bg-surface-elevated/70 border border-border/70 rounded-xl p-5 flex flex-col gap-4 shadow-sm text-xs leading-relaxed">
+        <div className="bg-surface-elevated/70 border border-border/70 rounded-xl p-3 @md:p-5 flex flex-col gap-4 shadow-sm text-xs leading-relaxed">
           {/* Generated Image Card */}
           {message.imageUrl && (
             <div
@@ -201,7 +229,7 @@ export function ChatMessageItem({
                 onMediaClick?.({
                   url: message.imageUrl!,
                   type: 'image',
-                  title: message.imageCaption || 'Generated microgrid visualization',
+                  title: message.imageCaption || tCopilot('generatedImageAlt'),
                   caption: message.imageCaption,
                 })
               }
@@ -212,7 +240,7 @@ export function ChatMessageItem({
                   onMediaClick?.({
                     url: message.imageUrl!,
                     type: 'image',
-                    title: message.imageCaption || 'Generated microgrid visualization',
+                    title: message.imageCaption || tCopilot('generatedImageAlt'),
                     caption: message.imageCaption,
                   });
                 }
@@ -223,7 +251,7 @@ export function ChatMessageItem({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={message.imageUrl}
-                  alt={message.imageCaption || 'Generated microgrid visualization'}
+                  alt={message.imageCaption || tCopilot('generatedImageAlt')}
                   className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-200"
                   loading="lazy"
                 />
@@ -248,7 +276,7 @@ export function ChatMessageItem({
                 onMediaClick?.({
                   url: message.videoUrl!,
                   type: 'video',
-                  title: message.videoCaption || 'Simulation Video',
+                  title: message.videoCaption || tCopilot('generatedVideoTitle'),
                   caption: message.videoCaption,
                 })
               }
@@ -259,7 +287,7 @@ export function ChatMessageItem({
                   onMediaClick?.({
                     url: message.videoUrl!,
                     type: 'video',
-                    title: message.videoCaption || 'Simulation Video',
+                    title: message.videoCaption || tCopilot('generatedVideoTitle'),
                     caption: message.videoCaption,
                   });
                 }
@@ -314,7 +342,7 @@ export function ChatMessageItem({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={med.url}
-                      alt={med.name || 'Assistant media'}
+                      alt={med.name || tCopilot('attachmentAlt')}
                       className="w-40 h-28 object-cover group-hover:scale-105 transition-transform duration-200"
                     />
                   )}
@@ -436,8 +464,9 @@ export function ChatMessageItem({
         {proposal && onApproveProposal && onRejectProposal && (
           <ConfirmProposalDialog
             proposal={proposal}
-            onApprove={onApproveProposal}
-            onReject={onRejectProposal}
+            decision={proposalDecision}
+            onApprove={(items) => onApproveProposal(message, items)}
+            onReject={(items) => onRejectProposal(message, items)}
           />
         )}
       </div>

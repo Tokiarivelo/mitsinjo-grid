@@ -376,6 +376,8 @@ strategyBefore, strategyAfter, socMinPctBefore/After, unservedKwhBefore/After, s
 { servedKwhBefore, servedKwhAfter, servedKwhDelta, offHoursBefore, offHoursAfter }>> }`. `propose_change` computes it
 on the current input + active strategy vs the patched input + proposed strategy, rounds to 2 decimals, keeps only
 sectors that change, and emits the same numbers as `evidence` (`socMinPctBefore`, `<sector>_servedKwhDelta`, …).
+Unsafe patch → tool data also has `clinicGuard: ClinicGuardReason[]` (engine `clinicGuard(patch)`, schema
+`ClinicGuardReasonSchema` = `cap_zero | disconnected | floor_zero | lifeline_off`); the dialog recomputes it from the patch.
 
 ```ts
 interface InputPatch {
@@ -400,13 +402,21 @@ interface InputPatch {
 
 ## Copilot HTTP
 
-`POST /api/copilot` body `{ messages: {role:'user'|'assistant', content:string, media?: {type, url, key?}[]}[] /*≤ 8 sent*/, input: SimulationInput, strategy?, model?, locale?, sessionId?, hour? /*0–23, shown hour*/ }`
+`POST /api/copilot` body `{ messages: {role:'user'|'assistant', content:string, media?: {type, url, key?}[]}[] /*≤ 40: those not in the summary*/, input: SimulationInput, strategy?, model?, locale?, sessionId?, hour? /*0–23, shown hour*/, summary?: string /*≤ 4000*/, summarizedCount?: int /*payload messages before `messages`*/ }`
 → `text/event-stream` events:
 `activity {tool, sector?, label}` (UI translates `tool`; `label` is English, logs only) · `delta {text}` · `evidence {resultId, fields: Record<string, number|string>}` ·
 `proposal {proposalId, patch?, strategy?, reason, impact?: ChangeImpact}` · `error {code, reason?, message}` · `done {}` ·
 `model {model, modality, reason}` (modality `chat|reasoning|vision|image`; a second `model` event announces a switch to Wonder) · `image {imageUrl, caption}` ·
-`perception {kind:'segment', concept, count, boxCoverage, instances[], imageWidth, imageHeight, source, model, fallback?}`.
-`error.code = PROVIDER_FALLBACK` carries `reason: 'spend_cap' | 'provider_error'` when known.
+`perception {kind:'segment', concept, count, boxCoverage, instances[], imageWidth, imageHeight, source, model, fallback?}` ·
+`summary {text, summarizedCount}` (history folded into the summary; client sends only later messages, session stores both).
+`error.code = PROVIDER_FALLBACK` carries `reason: 'spend_cap' | 'provider_error' | 'timeout'` (UI: amber note on that answer).
+
+Operator decision (chat message `role: 'decision'`, saved via `POST /api/copilot/sessions/:id`): `ProposalDecision
+{ proposalId, status: 'approved'|'rejected', items: {label, current, proposed}[] /*snapshot as shown*/, patch?, strategy? }`.
+Sent to the model as a user turn `[Operator decision] APPROVED|REJECTED proposal <id>…`. Session GET adds `summary?, summarizedCount?`.
+
+`POST /api/voice` multipart `{ audio: WAV ≤ 2 MB (≈ 60 s 16 kHz mono), locale?, sessionId? }` → `{ text, durationMs, source:
+'meta'|'mock', fallback? }`; 400 missing, 413 too big, 415 not WAV. Audio is not stored.
 
 Model-switch tools (Zod in `server/copilot/model-tools.ts`, results go back to the model):
 `generate_image {scene:'current_village'|'custom', prompt? /*custom*/, caption?}` → `{ok, model, caption, shownState?:{hour, sky, battery, sectors}}` + `image` event · `segment_image {concept}` →
