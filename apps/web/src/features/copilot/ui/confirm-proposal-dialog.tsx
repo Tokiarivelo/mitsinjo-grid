@@ -116,6 +116,29 @@ export function ConfirmProposalDialog({
       proposed: `${patch.minSocPct}%`,
     });
   }
+  if (patch?.lifeline !== undefined) {
+    if (patch.lifeline.enabled !== undefined) {
+      const currentEnabled = currentInput.strategyParams?.lifeline?.enabled !== false;
+      diffItems.push({
+        label: tCopilot('diffLifelineStatus'),
+        current: currentEnabled ? tCommon('enabled') : tCommon('disabled'),
+        proposed: patch.lifeline.enabled ? tCommon('enabled') : tCommon('disabled'),
+      });
+    }
+    if (patch.lifeline.kw !== undefined) {
+      for (const [secId, kw] of Object.entries(patch.lifeline.kw)) {
+        if (kw !== undefined) {
+          const currentSec = currentInput.sectors.find((s) => s.id === secId);
+          const currentKw = currentSec?.lifelineKw ?? 0;
+          diffItems.push({
+            label: `${tSectors(secId as SectorId)} ${tCopilot('diffLifelineFloor')}`,
+            current: `${currentKw} kW`,
+            proposed: `${kw} kW`,
+          });
+        }
+      }
+    }
+  }
 
   return (
     <div

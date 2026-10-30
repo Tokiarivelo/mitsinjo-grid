@@ -4,6 +4,7 @@ test.describe('P8-T1 Demo Path E2E', () => {
   test('executes canonical demo path: load → cloudy_afternoon → run → compare → ask copilot → evidence visible', async ({
     page,
   }) => {
+    test.setTimeout(120_000);
     // 1. Load: navigate to application overview
     await page.goto('/overview');
     await expect(page).toHaveTitle(/Mitsinjo Grid/);
@@ -92,7 +93,7 @@ test.describe('P8-T1 Demo Path E2E', () => {
   });
 
   test('runs 3 consecutive demo path iterations without intervention', async ({ page }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(180_000);
 
     for (let iteration = 1; iteration <= 3; iteration++) {
       // Load

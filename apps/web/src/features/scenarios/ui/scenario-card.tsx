@@ -1,10 +1,11 @@
 'use client';
 
 import { ArrowRight, Check } from 'lucide-react';
+import Link from 'next/link';
 import type { ScenarioId, SimulationInput } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtHour, fmtKw, fmtKwh, fmtPct } from '@/lib/format';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { StatusBadge, type StatusBadgeVariant } from '@/components/ui/status-badge';
 import { useTranslations } from '@/lib/i18n';
 
@@ -157,18 +158,22 @@ export function ScenarioCard({
       <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-border/60">
         <span className="text-[11px] font-mono text-text-muted">{tCommon('idLabel', { id })}</span>
 
-        <Button
-          variant={isActive ? 'primary' : 'secondary'}
-          size="sm"
+        <Link
+          href="/simulation"
+          role="button"
           onClick={(e) => {
             e.stopPropagation();
             onOpen(id);
           }}
-          icon={<ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />}
+          className={buttonVariants({
+            variant: isActive ? 'primary' : 'secondary',
+            size: 'sm',
+          })}
           aria-label={tScenarios('openScenario', { name })}
         >
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           {tScenarios('openSimulation')}
-        </Button>
+        </Link>
       </div>
     </div>
   );

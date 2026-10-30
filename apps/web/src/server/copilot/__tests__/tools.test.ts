@@ -180,6 +180,40 @@ describe('Copilot Tools (P6-T2)', () => {
       });
     });
 
+    it('executes propose_change with lifeline floor (PL-T14)', () => {
+      const res = executeTool(
+        'propose_change',
+        {
+          patch: {
+            lifeline: {
+              enabled: true,
+              kw: { households: 0.4, school: 0.2 },
+            },
+          },
+          reason: 'Keep essential lighting active without cutting the neighborhood',
+        },
+        ctx
+      );
+      expect(res.error).toBeUndefined();
+      expect(res.proposal).toBeDefined();
+      expect(res.proposal?.patch?.lifeline).toEqual({
+        enabled: true,
+        kw: { households: 0.4, school: 0.2 },
+      });
+      expect(res.proposal?.proposalId).toMatch(/^PROP-/);
+      // Verify ctx input is untouched
+      expect(ctx.input.sectors.find((s) => s.id === 'households')?.lifelineKw).toBe(
+        baseInput.sectors.find((s) => s.id === 'households')?.lifelineKw
+      );
+    });
+
+    it('compactMetrics and compare_strategies include lifelineCoveragePct (PL-T14)', () => {
+      const res = executeTool('compare_strategies', {}, ctx);
+      expect(res.error).toBeUndefined();
+      expect(res.evidence?.proportional_lifelineCoveragePct).toBeDefined();
+      expect(res.evidence?.essential_first_lifelineCoveragePct).toBeDefined();
+    });
+
     it('returns structured error for invalid args without throwing', () => {
       const res = executeTool('run_scenario', { patch: { solarDropPct: 150 } }, ctx);
       expect(res.error).toBeDefined();

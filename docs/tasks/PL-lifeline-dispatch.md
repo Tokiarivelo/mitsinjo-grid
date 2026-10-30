@@ -100,14 +100,14 @@ lifeline / off`).
 
 ## Phase 4 — Copilot, tests, doc
 
-- [ ] **PL-T14** Copilot (`/copilot-tool`) : `propose_change` accepte `lifeline` ; règle de prompt « la survie est un
+- [x] **PL-T14** Copilot (`/copilot-tool`) : `propose_change` accepte `lifeline` ; règle de prompt « la survie est un
       choix social : montrer le coût (énergie retirée aux autres secteurs) via `compare_strategies` ». Cas d'éval :
       « Le soir, ne coupez pas le quartier, laissez au moins la lumière » → proposition de plancher, jamais appliquée seule.
-- [ ] **PL-T15** E2E Playwright : chute solaire + nuit → aucun secteur en `off` tant que `Σ planchers ≤ dispo` ;
+- [x] **PL-T15** E2E Playwright : chute solaire + nuit → aucun secteur en `off` tant que `Σ planchers ≤ dispo` ;
       batterie au minimum et `dispo < Σ planchers` → seules eau et santé restent éclairées, avec la même intensité ;
       attentes e2e et chiffres de la démo mis à jour (la survie, activée par défaut, change les résultats) ;
       le contrôleur affiche `rationing` ; capture `make shots` (dark/light, mobile/desktop) comparée à la maquette.
-- [ ] **PL-T16** Docs : `contracts.md`, `engine-spec.md`, `copilot.md`, `docs/design/*`, `README.md` (fonctionnalité),
+- [x] **PL-T16** Docs : `contracts.md`, `engine-spec.md`, `copilot.md`, `docs/design/*`, `README.md` (fonctionnalité),
       ligne PL dans `docs/tasks/README.md`, `HANDOFF.md`.
 
 ## Ordre conseillé et découpage PR
