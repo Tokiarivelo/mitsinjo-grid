@@ -73,6 +73,19 @@ export function glowFromIntensity(intensity: number): number {
   return Math.min(1, Math.max(0, 0.18 + 0.82 * Math.pow(clamped, 0.85)));
 }
 
+/** Line flow (kW) at which cable visuals (electron density, speed, glow) saturate. */
+export const FLOW_SATURATION_KW = 3;
+
+/** Line flow kW → 0..1 visual factor for electrons and wire strokes (PL-T11). */
+export function flowFactor(flowKw: number): number {
+  if (!Number.isFinite(flowKw)) return 0;
+  return Math.min(1, Math.max(0, flowKw / FLOW_SATURATION_KW));
+}
+
+/** Warm street-lamp bulb and the dark bulb of an unpowered string light (3D materials). */
+export const STREET_LAMP_HEX = '#ffc078';
+export const UNLIT_BULB_HEX = '#1a1a1a';
+
 /** Tailwind text class per status, for 2D diagram wires (SVG uses `currentColor`). */
 export const STATUS_TEXT_CLASS: Record<StatusColor, string> = {
   'battery-green': 'text-battery-green',

@@ -15,7 +15,12 @@ import { ANCHOR_HEIGHT, POLE_HEIGHT, pointAlongCable, routeCable } from '../cabl
 import { createHipRoofGeometry } from '../hip-roof';
 import { skyPalette } from '../sky-palette';
 import { GROUND_HEX, terrainColor } from '../terrain-colors';
-import { WINDOW_GLOW_BY_STATUS, glowFromIntensity } from '../scene-palette';
+import {
+  FLOW_SATURATION_KW,
+  WINDOW_GLOW_BY_STATUS,
+  flowFactor,
+  glowFromIntensity,
+} from '../scene-palette';
 import { SECTOR_POSITIONS } from '../to-scene-model';
 import { mergeParts } from '../merge-parts';
 import { CANOPY_VARIANTS, createCanopyTree } from '../canopy-tree';
@@ -193,6 +198,16 @@ describe('glowFromIntensity (PL-T9)', () => {
     expect(gLow).toBeLessThan(gMid);
     expect(gMid).toBeLessThan(gHigh);
     expect(gHigh).toBeLessThan(gFull);
+  });
+});
+
+describe('flowFactor (PL-T11)', () => {
+  it('maps line kW to 0..1, saturating at FLOW_SATURATION_KW', () => {
+    expect(flowFactor(0)).toBe(0);
+    expect(flowFactor(-1)).toBe(0);
+    expect(flowFactor(Number.NaN)).toBe(0);
+    expect(flowFactor(FLOW_SATURATION_KW / 2)).toBeCloseTo(0.5);
+    expect(flowFactor(FLOW_SATURATION_KW * 4)).toBe(1);
   });
 });
 

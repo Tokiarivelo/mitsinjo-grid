@@ -8,6 +8,7 @@ import {
   sampleArcPath,
   toSvgPath,
 } from '../utils/flow-path';
+import { flowFactor } from '../utils/scene-palette';
 
 export type WireState = 'flow' | 'lifeline' | 'cut' | 'idle';
 
@@ -49,10 +50,7 @@ export function FlowWire({
   // Intensity 0..1 for visual scaling
   const effectiveIntensity = Math.min(
     1,
-    Math.max(
-      0.1,
-      intensity ?? (line.flowKw > 0 ? Math.min(1, Math.max(0.2, line.flowKw / 3)) : 0.5)
-    )
+    Math.max(0.1, intensity ?? (line.flowKw > 0 ? Math.max(0.2, flowFactor(line.flowKw)) : 0.5))
   );
 
   // Density ∝ kW / intensity: lifeline has 1-2 dots, full has more
@@ -187,7 +185,7 @@ export function FlowWire({
         </>
       ) : isLifeline ? (
         <>
-          {/* État survie en ambre pointillé avec halo discret (PL-T12) */}
+          {/* Survival mode: amber dashes with a faint halo (PL-T12) */}
           <path
             d={d}
             fill="none"
@@ -207,7 +205,7 @@ export function FlowWire({
           />
         </>
       ) : (
-        /* Fil coupé gris pointillé ou fil inactif (PL-T11 / PL-T12) */
+        /* Cut (grey dashes) or idle wire (PL-T11 / PL-T12) */
         <path
           d={d}
           fill="none"
@@ -220,7 +218,7 @@ export function FlowWire({
       )}
 
       {state === 'cut' && (
-        // Break mark discret en fil coupé gris (PL-T11)
+        // Small break mark on a cut wire (PL-T11)
         <g transform={`translate(${mid[0]} ${mid[1]})`} stroke="currentColor" strokeWidth={1.4}>
           <circle r={4} className="fill-canvas" strokeWidth={0.8} />
           <line x1={-2} y1={-2} x2={2} y2={2} />

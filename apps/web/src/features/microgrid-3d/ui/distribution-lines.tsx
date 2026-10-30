@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import type { FeederSceneModel, LineFlowSceneModel } from '../types';
 import type { SectorId } from '@mitsinjo/engine';
 import { POLE_HEIGHT, mapPolesToSectors, routeCable } from '../utils/cable-route';
-import { glowFromIntensity } from '../utils/scene-palette';
+import { STREET_LAMP_HEX, glowFromIntensity } from '../utils/scene-palette';
 import { ElectronFlow } from './electron-flow';
 
 export interface DistributionLinesProps {
@@ -95,21 +95,23 @@ export function DistributionLines({
   // Utility poles mapped to the sector feeder that powers them (PL-T10)
   const mappedPoles = useMemo(() => mapPolesToSectors(lines), [lines]);
 
-  // Instanced lamp colors: lights follow feeder intensity (faint glow in survival, 0 when cut)
+  // Instanced lamp colors: lights follow feeder intensity (faint glow in survival, 0 when cut).
+  // Trunk poles (no feeder) stay lit while the bus is energized.
   const poleLampColors = useMemo(() => {
+    const trunkIntensity = lines.batteryToBus.active ? 1 : 0;
     return mappedPoles.map((p) => {
       const intensity =
         p.sectorId != null
           ? (feeders?.[p.sectorId]?.intensity ?? (lines.busToSectors[p.sectorId]?.active ? 1 : 0))
-          : 0;
+          : trunkIntensity;
 
       if (intensity <= 0) {
         return new THREE.Color(0, 0, 0);
       }
       const glow = glowFromIntensity(intensity);
-      return new THREE.Color('#ffc078').multiplyScalar((0.4 + lampGlow * 2.2) * glow);
+      return new THREE.Color(STREET_LAMP_HEX).multiplyScalar((0.4 + lampGlow * 2.2) * glow);
     });
-  }, [mappedPoles, feeders, lines.busToSectors, lampGlow]);
+  }, [mappedPoles, feeders, lines.busToSectors, lines.batteryToBus.active, lampGlow]);
 
   return (
     <group name="distribution-lines">

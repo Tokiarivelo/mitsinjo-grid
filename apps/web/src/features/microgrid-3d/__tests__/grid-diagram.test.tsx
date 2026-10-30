@@ -140,8 +140,30 @@ describe('GridDiagram', () => {
 
     for (const g of container.querySelectorAll('[data-wire-state]')) {
       const hasElectrons = g.querySelector('[data-electrons]') !== null;
-      expect(hasElectrons).toBe(g.getAttribute('data-wire-state') === 'flow');
+      const state = g.getAttribute('data-wire-state');
+      expect(hasElectrons).toBe(state === 'flow' || state === 'lifeline');
     }
+  });
+
+  it('draws lifeline feeders as amber wires that still carry electrons (PL-T12)', () => {
+    const result = simulate(stress, 'essential_first');
+    const hour = result.steps.findIndex((s) =>
+      Object.values(s.sectors).some((sec) => sec.mode === 'lifeline' && sec.servedKw > 0)
+    );
+    expect(hour).toBeGreaterThanOrEqual(0);
+    const model = toSceneModel({ input: stress, result, timeIndex: hour });
+    const { container } = render(
+      <I18nProvider>
+        <GridDiagram model={model} variant="topology" />
+      </I18nProvider>
+    );
+    const lifeline = container.querySelectorAll('[data-wire-state="lifeline"]');
+    expect(lifeline.length).toBeGreaterThanOrEqual(1);
+    for (const g of lifeline) {
+      expect(g.getAttribute('class')).toContain('text-warning-amber');
+      expect(g.querySelector('[data-electrons]')).not.toBeNull();
+    }
+    expect(screen.getAllByText('Lifeline').length).toBeGreaterThanOrEqual(1);
   });
 
   it('draws breakers in the circuit view and reports sector clicks', () => {

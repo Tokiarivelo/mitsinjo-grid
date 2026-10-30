@@ -21,6 +21,7 @@ import {
 } from '../utils/diagram-layout';
 import { toSvgPath } from '../utils/flow-path';
 import { STATUS_BG_CLASS, STATUS_TEXT_CLASS } from '../utils/scene-palette';
+import { NO_LOAD_KW } from '../utils/feeder-tone';
 import { useFeederLabels } from '../hooks/use-feeder-labels';
 import { FlowWire, type WireState } from './flow-wire';
 import { DispatchShareBar, FeederChip, type DispatchSegment } from './dispatch-share-bar';
@@ -37,7 +38,7 @@ function sectorWireState(b: BuildingSceneModel, active: boolean): WireState {
   if (active) {
     return b.mode === 'lifeline' ? 'lifeline' : 'flow';
   }
-  return b.status === 'unserved' || (b.demandKw > 0.05 && b.mode === 'off') ? 'cut' : 'idle';
+  return b.status === 'unserved' || (b.demandKw > NO_LOAD_KW && b.mode === 'off') ? 'cut' : 'idle';
 }
 
 /**
@@ -172,13 +173,7 @@ export function GridDiagram({
                   line={line}
                   state={state}
                   intensity={b.intensity}
-                  colorClass={
-                    state === 'lifeline'
-                      ? 'text-warning-amber'
-                      : state === 'cut'
-                        ? 'text-text-muted'
-                        : STATUS_TEXT_CLASS[b.statusColor]
-                  }
+                  colorClass={STATUS_TEXT_CLASS[b.statusColor]}
                   animate={animate}
                   glow={glow}
                 />

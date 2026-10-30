@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import type { LineFlowSceneModel } from '../types';
 import { useAmbientFrame } from '../hooks/use-ambient-frame';
 import { routeCable } from '../utils/cable-route';
+import { NO_LOAD_KW } from '../utils/feeder-tone';
+import { flowFactor } from '../utils/scene-palette';
 import {
   buildArcPath,
   electronCount,
@@ -50,16 +52,16 @@ export function ElectronFlow({ lines, animate = true }: ElectronFlowProps) {
     const cols: THREE.Color[] = [];
     let n = 0;
     for (const line of lines) {
-      // Fil coupé ou inactif : aucune particule (PL-T11)
-      if (!line.active || line.direction === 'idle' || line.flowKw <= 0.05) continue;
+      // Cut or idle cable: no particles (PL-T11)
+      if (!line.active || line.direction === 'idle' || line.flowKw <= NO_LOAD_KW) continue;
       const path = buildArcPath(routeCable(line.from, line.to).points);
 
-      // Densité ∝ kW du départ : espacement plus large (moins de points) à faible puissance
-      const kwFactor = Math.min(1, Math.max(0, line.flowKw / 3.0));
-      const lineSpacing = 2.2 - 1.1 * kwFactor; // 2.2 à 1.1 unités monde
+      // Density ∝ feeder kW: wider spacing (fewer dots) at low power, 2.2 → 1.1 world units
+      const kwFactor = flowFactor(line.flowKw);
+      const lineSpacing = 2.2 - 1.1 * kwFactor;
       const count = electronCount(path.total, lineSpacing);
 
-      // Vitesse ∝ kW du départ
+      // Speed ∝ feeder kW
       const speed = Math.max(0.4, Math.min(3.0, line.speed * (0.6 + 1.2 * kwFactor)));
       const period = electronPeriodS(path.total, speed * SPEED_SCALE);
       const key = `${line.from.join(',')}-${line.to.join(',')}`;
@@ -72,7 +74,7 @@ export function ElectronFlow({ lines, animate = true }: ElectronFlowProps) {
         firstInstance: n,
       });
 
-      // Émissivité ∝ kW : lueur discrète en survie (1.3), éclat plein à forte puissance (3.2)
+      // Emissive ∝ kW: faint glow in survival (1.3), full bloom at high power (3.2)
       const c = new THREE.Color(line.color).lerp(new THREE.Color('#ffffff'), 0.35);
       const emissiveMultiplier = 1.3 + 1.9 * kwFactor;
       c.multiplyScalar(emissiveMultiplier);

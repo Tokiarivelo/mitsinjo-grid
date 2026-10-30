@@ -9,6 +9,7 @@ import { mergeParts, type Part } from '../utils/merge-parts';
 import { HouseCluster, VillageHouse, windowColor } from './village-house';
 import type { HouseSpec } from '../utils/house-geometry';
 import { solarCellTexture, stripeTexture } from './procedural-textures';
+import { UNLIT_BULB_HEX } from '../utils/scene-palette';
 
 /**
  * Building meshes per sector (look only). Each body gets `glow` (0..1), the window/lamp
@@ -337,7 +338,7 @@ function MarketBody({ glow }: BodyProps) {
     return mergeParts(parts);
   }, []);
   const bulbColor = useMemo(
-    () => (glow <= 0 ? new THREE.Color('#1a1a1a') : windowColor(glow).multiplyScalar(1.3)),
+    () => (glow <= 0 ? new THREE.Color(UNLIT_BULB_HEX) : windowColor(glow).multiplyScalar(1.3)),
     [glow]
   );
 
