@@ -100,6 +100,14 @@ describe('useFullscreen', () => {
     current = null;
   });
 
+  it('reports support only after mount (hydration-safe)', () => {
+    document.documentElement.requestFullscreen = vi.fn();
+    const ref = { current: el };
+    const { result } = renderHook(() => useFullscreen(ref));
+    // renderHook flushes effects: support is known once mounted, never during SSR.
+    expect(result.current.supported).toBe(true);
+  });
+
   it('enters and exits fullscreen for the element', async () => {
     const ref = { current: el };
     const { result } = renderHook(() => useFullscreen(ref));

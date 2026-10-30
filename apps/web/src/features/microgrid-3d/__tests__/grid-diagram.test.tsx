@@ -193,6 +193,19 @@ describe('GridDiagram', () => {
     expect(within(waterCard).getAllByText(/kW/i).length).toBeGreaterThanOrEqual(1);
   });
 
+  it('zooms with the zoom buttons and resets (diagram zoom)', () => {
+    const { container } = renderDiagram('circuit', 12);
+    const controls = screen.getByRole('group', { name: 'Diagram zoom' });
+    const zoomOut = within(controls).getByRole('button', { name: 'Zoom out' });
+    const reset = within(controls).getByRole('button', { name: 'Reset zoom' });
+    expect(zoomOut).toBeDisabled();
+    fireEvent.click(within(controls).getByRole('button', { name: 'Zoom in' }));
+    expect(container.querySelector('[data-zoom]')!.getAttribute('data-zoom')).toBe('1.25');
+    expect(zoomOut).toBeEnabled();
+    fireEvent.click(reset);
+    expect(container.querySelector('[data-zoom]')!.getAttribute('data-zoom')).toBe('1.00');
+  });
+
   it.each(['topology', 'circuit'] as const)(
     '%s shows the kW sent on each connected feeder',
     (v) => {

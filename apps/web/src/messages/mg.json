@@ -25,7 +25,10 @@
     "theme": "Lohahevitra",
     "toggleTheme": "Hanova loko lohahevitra",
     "darkTheme": "Maizina",
-    "lightTheme": "Mazava"
+    "lightTheme": "Mazava",
+    "zoomIn": "Hanalehibe",
+    "zoomOut": "Hanamainty",
+    "resetZoom": "Averina amin'ny habeny"
   },
   "nav": {
     "overview": "Topimaso",
@@ -399,9 +402,6 @@
       "canvasTitle": "Fitaovana solaitra ifandrimbonana",
       "canvasMode": "Mpanara-maso solaitra",
       "mediaMode": "Fijerena haino aman-jery",
-      "zoomIn": "Hanalehibe",
-      "zoomOut": "Hanamainty",
-      "resetZoom": "Averina amin'ny habeny",
       "gridOverlay": "Tari-dalana efamira",
       "clearCanvas": "Fafao ny solaitra",
       "attachDrawing": "Ampidiro amin'ny hafatra ny sary",
@@ -494,7 +494,9 @@
         "closed": "{sector}: Mikatona ({kw})",
         "limited": "{sector}: Famerana mandeha ({kw})",
         "open": "{sector}: Misokatra / Tapaka (0 kW)"
-      }
+      },
+      "zoomControls": "Fanalehibiazana ny kisary",
+      "zoomHint": "Ctrl + kodiarana na tsongoy mba hanalehibe · sintony mba hanetsika"
     }
   },
   "copilot": {

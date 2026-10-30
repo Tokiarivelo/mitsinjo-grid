@@ -120,6 +120,9 @@ function buildRiser() {
   ]);
 }
 
+/** EMS badge anchor (shelter-local): front of the pad, at breaker height. */
+const CONTROLLER_LABEL_POSITION: [number, number, number] = [0, 0.55, 1.05];
+
 const DEFAULT_TONES: Record<SectorId, StatusColor> = {
   health: 'battery-green',
   water: 'battery-green',
@@ -229,11 +232,12 @@ export function DispatchControllerUnit({
         );
       })}
 
-      {/* 4. HUD badge in front of the shelter, below roof level: it never covers the
-          battery behind. Anchored by its top edge (not centered). */}
+      {/* 4. HUD badge centered on the shelter's front edge, below roof level: it stays
+          attached to the unit and never covers the battery behind. */}
       <Html
-        position={[0, 0.05, 1.05]}
-        distanceFactor={22}
+        position={CONTROLLER_LABEL_POSITION}
+        center
+        distanceFactor={18}
         portal={htmlPortal as RefObject<HTMLElement>}
         zIndexRange={[10, 0]}
       >
@@ -245,7 +249,7 @@ export function DispatchControllerUnit({
           }}
           aria-label={`${nameLabel} · ${modeLabel} · ${fmtKw(hasResult ? totalServedKw : null)}`}
           className={cn(
-            'pointer-events-auto flex w-36 -translate-x-1/2 cursor-pointer flex-col gap-1 rounded-control-sm border bg-surface/90 px-2 py-1 text-left shadow-lg backdrop-blur-sm transition-transform hover:scale-105',
+            'pointer-events-auto flex w-36 cursor-pointer flex-col gap-1 rounded-control-sm border bg-surface/90 px-2 py-1 text-left shadow-lg backdrop-blur-sm transition-transform hover:scale-105',
             isEmergency
               ? 'border-warning-amber/70 ring-1 ring-warning-amber/40'
               : 'border-border/80 hover:border-energy-cyan/70'

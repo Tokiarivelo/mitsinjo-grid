@@ -31,6 +31,7 @@ export interface MediaLightboxModalProps {
 
 export function MediaLightboxModal({ isOpen, media, onClose }: MediaLightboxModalProps) {
   const tCopilot = useTranslations('features.copilot');
+  const tCommon = useTranslations('common');
 
   const [mode, setMode] = useState<'media' | 'canvas'>('media');
   const [scale, setScale] = useState(1);
@@ -294,8 +295,8 @@ export function MediaLightboxModal({ isOpen, media, onClose }: MediaLightboxModa
               <button
                 type="button"
                 onClick={handleZoomOut}
-                aria-label={tCopilot('zoomOut')}
-                title={tCopilot('zoomOut')}
+                aria-label={tCommon('zoomOut')}
+                title={tCommon('zoomOut')}
                 className="p-1.5 rounded text-white/70 hover:text-white hover:bg-white/10 cursor-pointer"
               >
                 <ZoomOut className="h-3.5 w-3.5" />
@@ -306,8 +307,8 @@ export function MediaLightboxModal({ isOpen, media, onClose }: MediaLightboxModa
               <button
                 type="button"
                 onClick={handleZoomIn}
-                aria-label={tCopilot('zoomIn')}
-                title={tCopilot('zoomIn')}
+                aria-label={tCommon('zoomIn')}
+                title={tCommon('zoomIn')}
                 className="p-1.5 rounded text-white/70 hover:text-white hover:bg-white/10 cursor-pointer"
               >
                 <ZoomIn className="h-3.5 w-3.5" />
@@ -315,8 +316,8 @@ export function MediaLightboxModal({ isOpen, media, onClose }: MediaLightboxModa
               <button
                 type="button"
                 onClick={handleResetZoom}
-                aria-label={tCopilot('resetZoom')}
-                title={tCopilot('resetZoom')}
+                aria-label={tCommon('resetZoom')}
+                title={tCommon('resetZoom')}
                 className="p-1.5 rounded text-white/70 hover:text-white hover:bg-white/10 cursor-pointer"
               >
                 <RotateCcw className="h-3.5 w-3.5" />

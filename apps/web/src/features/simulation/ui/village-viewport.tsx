@@ -215,21 +215,23 @@ export function VillageViewport({
               </button>
             ))}
             {fullscreenSupported && (
-              <button
-                type="button"
-                onClick={toggleFullscreen}
-                aria-pressed={isFullscreen}
-                aria-label={isFullscreen ? tSim('fullscreenExit') : tSim('fullscreenEnter')}
-                title={isFullscreen ? tSim('fullscreenExit') : tSim('fullscreenEnter')}
-                className="p-1 rounded-control-sm text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer ml-1 border-l border-border pl-1.5"
-              >
-                {isFullscreen ? (
-                  <Minimize2 className="h-3 w-3" aria-hidden="true" />
-                ) : (
-                  <Maximize2 className="h-3 w-3" aria-hidden="true" />
-                )}
-              </button>
+              <FullscreenButton
+                isFullscreen={isFullscreen}
+                onToggle={toggleFullscreen}
+                className="ml-1 border-l border-border pl-1.5"
+              />
             )}
+          </div>
+        )}
+
+        {/* 2D views: full screen gives the narrow diagrams the whole display */}
+        {viewMode !== '3d' && fullscreenSupported && (
+          <div className="flex items-center p-0.5 rounded-control bg-surface-elevated/90 backdrop-blur border border-border pointer-events-auto shadow-xs">
+            <FullscreenButton
+              isFullscreen={isFullscreen}
+              onToggle={toggleFullscreen}
+              className="flex h-10 w-10 md:h-7 md:w-7 items-center justify-center"
+            />
           </div>
         )}
 
@@ -340,7 +342,13 @@ export function VillageViewport({
         </div>
       ) : (
         /* 2D village plan / single-line circuit: same model as the 3D twin */
-        <div className="flex-1 flex flex-col gap-2 p-3 sm:p-4 pt-14 pb-12 min-h-[360px] sm:min-h-[460px]">
+        <div
+          className={cn(
+            // Top padding clears the floating HUD (two rows in the card, one in full screen).
+            'flex-1 flex flex-col gap-2 px-3 sm:px-4 pt-24 sm:pt-20 pb-16 min-h-[360px] sm:min-h-[460px]',
+            isFullscreen && 'sm:pt-14'
+          )}
+        >
           {!hasWebGL && (
             <div className="max-w-2xl mx-auto w-full p-2 rounded-control bg-surface-elevated/80 border border-border text-[11px] font-sans text-text-muted flex items-center gap-2">
               <Box className="h-3.5 w-3.5 text-solar-amber shrink-0" aria-hidden="true" />
@@ -352,6 +360,7 @@ export function VillageViewport({
             variant={viewMode === 'circuit' ? 'circuit' : 'topology'}
             selectedSector={selectedSector}
             onSelectSector={onSelectSector}
+            wheelZoom={isFullscreen}
             className={cn('flex-1', isModified && 'opacity-60')}
           />
         </div>
@@ -363,5 +372,37 @@ export function VillageViewport({
         <span className="font-mono text-[10px] text-energy-cyan">{tCommon('simulatedData')}</span>
       </div>
     </div>
+  );
+}
+
+function FullscreenButton({
+  isFullscreen,
+  onToggle,
+  className,
+}: {
+  isFullscreen: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
+  const tSim = useTranslations('features.simulation');
+  const label = isFullscreen ? tSim('fullscreenExit') : tSim('fullscreenEnter');
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={isFullscreen}
+      aria-label={label}
+      title={label}
+      className={cn(
+        'p-1 rounded-control-sm text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer',
+        className
+      )}
+    >
+      {isFullscreen ? (
+        <Minimize2 className="h-3 w-3" aria-hidden="true" />
+      ) : (
+        <Maximize2 className="h-3 w-3" aria-hidden="true" />
+      )}
+    </button>
   );
 }
