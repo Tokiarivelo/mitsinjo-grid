@@ -488,7 +488,7 @@ drops later slider edits (it restores the whole input). Session GET adds `summar
 `POST /api/voice` multipart `{ audio: WAV ≤ 2 MB (≈ 60 s 16 kHz mono), locale?, sessionId? }` → `{ text, durationMs, source:
 'meta'|'mock', fallback? }`; 400 missing, 413 too big, 415 not WAV. Audio is not stored.
 
-`POST /api/vision` multipart `{ image: JPEG|PNG|WebP ≤ 4 MB (client resizes to ≤ 1280 px), sessionId? }` → `text/event-stream`:
+`POST /api/vision` multipart `{ image: JPEG|PNG|WebP ≤ 4 MB (client resizes to ≤ 1280 px only when larger and the canvas reads back; else original bytes), sessionId? }` → `text/event-stream`:
 `vision_detections { phase: 'boxes'|'outlines', detections: ApplianceDetection[], refined? /*outlines only*/, source, model, fallback? }`
 (boxes as soon as Muse answers; outlines after SAM, Meta only) · `vision_error { code: 'VISION_FAILED', message }` · `done {}`.
 400 missing, 413 too big, 415 not an image. Meta + R2: the photo is uploaded once to `vision/<ts>-<rand>.<ext>`
