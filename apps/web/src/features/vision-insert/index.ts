@@ -8,14 +8,11 @@ export {
   type VisionStatus,
 } from './hooks/use-vision-detection';
 export { useVisionSession, MAX_MANUAL_BOXES } from './hooks/use-vision-session';
-export { useBoxDrawing } from './hooks/use-box-drawing';
-export { ManualBoxForm, type ManualBoxFormProps } from './ui/manual-box-form';
-export {
-  boxFromPoints,
-  manualDetection,
-  toNormPoint,
-  DEFAULT_MANUAL_BOX,
-  MIN_BOX_SIDE,
-} from './utils/manual-box';
+export { useShapeEditor, KEY_STEP } from './hooks/use-shape-editor';
+export { useEdgeMap, type EdgeMapState } from './hooks/use-edge-map';
+export { DrawOverlay } from './ui/draw-overlay';
+export { DrawPanel, type DrawPanelProps } from './ui/draw-panel';
+export * from './utils/shapes';
+export { buildEdgeMap, snapToEdge, type EdgeMap } from './utils/edge-map';
 export { prepareVisionImage } from './utils/prepare-image';
 export { categoryHint } from './utils/labels';

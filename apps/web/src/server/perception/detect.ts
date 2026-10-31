@@ -62,6 +62,32 @@ const normKey = (raw: string) =>
 /** Words a model may print instead of the enum value. */
 const CATEGORY_ALIASES: Record<string, ApplianceCategory> = {
   refrigerator: 'fridge',
+  // French / Malagasy words an operator may type as a hint (PV-T8).
+  frigo: 'fridge',
+  réfrigérateur: 'fridge',
+  refrigerateur: 'fridge',
+  congélateur: 'freezer',
+  congelateur: 'freezer',
+  télé: 'tv',
+  tele: 'tv',
+  télévision: 'tv',
+  television_set: 'tv',
+  lampe: 'lamp',
+  ampoule: 'lamp',
+  jiro: 'lamp',
+  ventilateur: 'fan',
+  ordinateur: 'computer',
+  ordinateur_portable: 'laptop',
+  chargeur: 'phone_charger',
+  pompe: 'water_pump',
+  pompe_à_eau: 'water_pump',
+  pompe_a_eau: 'water_pump',
+  décortiqueuse: 'rice_mill',
+  decortiqueuse: 'rice_mill',
+  machine_à_coudre: 'sewing_machine',
+  machine_a_coudre: 'sewing_machine',
+  poste_à_souder: 'welder',
+  poste_a_souder: 'welder',
   vaccine_fridge: 'fridge_vaccine',
   television: 'tv',
   light: 'lamp',
@@ -199,6 +225,11 @@ function classify(
     return { kind: 'scenery', scenery: scenery ?? 'other' };
   }
   return { kind: 'appliance', category };
+}
+
+/** Appliance or scenery for a free label (operator hint, PV-T8): same rules as a model object. */
+export function classifyLabel(label: string) {
+  return classify({ label });
 }
 
 /**

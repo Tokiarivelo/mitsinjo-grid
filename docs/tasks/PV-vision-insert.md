@@ -84,10 +84,11 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
 - [x] **PV-T7b** Own menu entry: `/village` « Village editor » (sidebar + MobileNav) with photo picker, sample room,
       detection canvas and selected-appliance aside; the chat image chip keeps the dialog as a shortcut. V4 builds on this page.
       _(Also: live village preview on the page; detection outlines scenery — houses, cars, trees — as « no load ».)_
-- [x] **PV-T8** Missing object: the user draws a box and picks a category (no AI call).
-      **Done when** a manual box becomes a `VisionDetection` like the others.
-      _(`manual: true` on the detection; drag on the photo or, from the keyboard, a centred box; works when the AI failed;
-      remove button; ≤ 30 per photo. In `/village` and the chat dialog.)_
+- [x] **PV-T8** Missing object: the user draws around it and says what it is.
+      **Done when** a drawn shape becomes a `VisionDetection` like the others.
+      _(User change 2026-10-31: free text instead of a fixed category list, and the drawn part is sent to Muse (crop) + SAM
+      to name, sort and outline it. Rectangle / free hand / magnetic lasso, several shapes editable (move, resize) before
+      « Send the objects », `manual: true`; works when the AI failed; ≤ 30 per photo. In `/village` and the chat dialog.)_
 
 ### V4 — Web: 3D object editor
 

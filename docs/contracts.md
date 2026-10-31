@@ -497,9 +497,12 @@ R2 off or mock mode: base64 only, nothing stored. Mock: `MOCK_DETECTIONS`, drawn
 Shared Zod (client + server): `@/lib/vision` (`NormBoxSchema`, `ApplianceDetectionSchema`, `VisionDetectionsEventSchema`).
 `ApplianceDetection` adds `kind?: 'appliance'|'scenery'` (absent = appliance) and `scenery?: 'building'|'vehicle'|'tree'|'plant'|'person'|'animal'|'water'|'other'`;
 scenery is outlined and selectable but has no load (`category: 'other'`, never inserted). Appliances come first in the list.
-`manual?: true` = box drawn by the operator (PV-T8, client only, never sent by the server): `kind: 'appliance'`, the picked
-category, no outline; built by `manualDetection` (`features/vision-insert/utils/manual-box.ts`), listed after the AI ones,
-≤ 30 per photo (`useVisionSession.addManual / removeManual`).
+`manual?: true` = object the operator drew (PV-T8), listed after the AI ones, ≤ 30 per photo. Multipart field `regions?` =
+JSON `VisionRegion[]` (1–10, `{ id, points: [x,y][] (3–400, 0–1, closed polygon), hint? ≤ 40 }`) → identify only those shapes:
+`vision_regions { phase: 'boxes'|'outlines', results: { regionId, detection? /*id = regionId, manual: true*/ }[], source, model,
+fallback? }` (no `vision_detections`). Client: `useVisionSession.sendShapes(shapes, fallbackLabel)` shows each shape at once
+(`shapeToDetection`: operator text or fallback label, `category: 'other'`, the drawn outline), then takes the model's label /
+kind / category / box; drawn outline kept until SAM sends one. Failure → `identifyFailed`, the shape keeps the operator text.
 SSE parsing for every client stream: `@/lib/sse` (`parseSseChunk`, `readSseStream`).
 
 Model-switch tools (Zod in `server/copilot/model-tools.ts`, results go back to the model):

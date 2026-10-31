@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import type { ApplianceCategory } from '@mitsinjo/engine';
 import {
   AlertTriangle,
   Loader2,
@@ -13,13 +12,15 @@ import {
 } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { boxPath, isAppliance, type ApplianceDetection, type NormBox } from '@/lib/vision';
+import { boxPath, isAppliance, MAX_REGIONS, type ApplianceDetection } from '@/lib/vision';
 import type { VisionStatus } from '../hooks/use-vision-detection';
 import { categoryHint } from '../utils/labels';
 import { useObjectName } from '../hooks/use-object-name';
-import { useBoxDrawing } from '../hooks/use-box-drawing';
-import { DEFAULT_MANUAL_BOX } from '../utils/manual-box';
-import { ManualBoxForm } from './manual-box-form';
+import { useEdgeMap } from '../hooks/use-edge-map';
+import { useShapeEditor } from '../hooks/use-shape-editor';
+import type { DrawnShape, DrawTool } from '../utils/shapes';
+import { DrawOverlay } from './draw-overlay';
+import { DrawPanel } from './draw-panel';
 
 export interface DetectionCanvasProps {
   imageUrl: string;
@@ -30,11 +31,18 @@ export interface DetectionCanvasProps {
   onRetry?: () => void;
   /** The mock answered instead of the vision model (offline or fallback). */
   isDemo?: boolean;
-  /** Draw a missing object (PV-T8). Absent = no « Draw » button. */
-  onAddManual?: (box: NormBox, category: ApplianceCategory, label: string) => void;
+  /**
+   * Send shapes drawn around missing objects to the vision model (PV-T8); `fallbackLabel` names an
+   * object the operator left unnamed. Absent = no « Draw » button.
+   */
+  onSendShapes?: (shapes: DrawnShape[], fallbackLabel: string) => boolean;
   onRemoveManual?: (id: string) => void;
-  /** False when the photo already has the max number of drawn boxes. */
-  canAddManual?: boolean;
+  /** How many more objects can be drawn on this photo. */
+  manualRoom?: number;
+  /** Drawn objects the model is still identifying. */
+  identifyingIds?: readonly string[];
+  /** The last identification failed: drawn objects keep the operator's text. */
+  identifyFailed?: boolean;
 }
 
 /**
@@ -49,9 +57,11 @@ export function DetectionCanvas({
   onSelect,
   onRetry,
   isDemo,
-  onAddManual,
+  onSendShapes,
   onRemoveManual,
-  canAddManual = true,
+  manualRoom = MAX_REGIONS,
+  identifyingIds = [],
+  identifyFailed,
 }: DetectionCanvasProps) {
   const t = useTranslations('features.visionInsert');
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -61,11 +71,21 @@ export function DetectionCanvas({
   const showList =
     status === 'refining' || status === 'ready' || (status === 'error' && detections.length > 0);
   const [drawing, setDrawing] = useState(false);
-  const draw = useBoxDrawing();
-  const canDraw = !!onAddManual && status !== 'idle' && status !== 'loading';
+  const [tool, setTool] = useState<DrawTool>('box');
+  // Edges are computed only once the lasso is picked.
+  const edges = useEdgeMap(imageUrl, drawing && tool === 'lasso');
+  const editor = useShapeEditor({
+    maxShapes: Math.max(0, Math.min(MAX_REGIONS, manualRoom)),
+    edgeMap: edges.status === 'ready' ? edges.map : null,
+    tool,
+  });
+  const canDraw = !!onSendShapes && status !== 'idle' && status !== 'loading';
   const stopDrawing = () => {
-    draw.clear();
+    editor.clear();
     setDrawing(false);
+  };
+  const send = () => {
+    if (onSendShapes?.(editor.shapes, t('drawnObject'))) stopDrawing();
   };
   const objectName = useObjectName();
   const hint = (d: ApplianceDetection) => categoryHint(d.label, objectName(d));
@@ -143,26 +163,7 @@ export function DetectionCanvas({
             {hint(active) ? `${active.label} · ${hint(active)}` : active.label}
           </span>
         )}
-        {drawing && (
-          <div
-            role="application"
-            aria-label={t('drawArea')}
-            className="absolute inset-0 cursor-crosshair touch-none bg-canvas/20"
-            {...draw.handlers}
-          >
-            {draw.shown && (
-              <div
-                className="pointer-events-none absolute rounded-sm border-2 border-dashed border-solar-amber bg-solar-amber/15"
-                style={{
-                  left: `${draw.shown.x * 100}%`,
-                  top: `${draw.shown.y * 100}%`,
-                  width: `${draw.shown.w * 100}%`,
-                  height: `${draw.shown.h * 100}%`,
-                }}
-              />
-            )}
-          </div>
-        )}
+        {drawing && <DrawOverlay editor={editor} tool={tool} />}
         {busy && (
           <div
             role="status"
@@ -174,13 +175,13 @@ export function DetectionCanvas({
         )}
       </div>
 
-      {drawing && onAddManual ? (
-        <ManualBoxForm
-          hasBox={!!draw.box}
-          onAdd={(category, label) => {
-            onAddManual(draw.box ?? DEFAULT_MANUAL_BOX, category, label);
-            stopDrawing();
-          }}
+      {drawing && onSendShapes ? (
+        <DrawPanel
+          editor={editor}
+          tool={tool}
+          onToolChange={setTool}
+          edges={edges}
+          onSend={send}
           onCancel={stopDrawing}
         />
       ) : (
@@ -188,16 +189,21 @@ export function DetectionCanvas({
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              disabled={!canAddManual}
+              disabled={manualRoom <= 0}
               onClick={() => setDrawing(true)}
               className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-3 text-sm font-medium text-text-primary hover:bg-surface-hover cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
               <SquareDashedMousePointer className="h-4 w-4" aria-hidden="true" />
               {t('drawButton')}
             </button>
-            {!canAddManual && <span className="text-xs text-text-muted">{t('manualLimit')}</span>}
+            {manualRoom <= 0 && <span className="text-xs text-text-muted">{t('manualLimit')}</span>}
           </div>
         )
+      )}
+      {identifyFailed && (
+        <p role="status" className="text-xs text-text-secondary">
+          {t('identifyError')}
+        </p>
       )}
 
       {status === 'error' && (
@@ -261,6 +267,12 @@ export function DetectionCanvas({
                     <span className="min-w-0 truncate font-medium">{d.label}</span>
                     <span className="flex shrink-0 items-center gap-1.5 text-xs text-text-secondary">
                       {hint(d)}
+                      {identifyingIds.includes(d.id) && (
+                        <span className="inline-flex items-center gap-1 text-text-secondary">
+                          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                          {t('identifying')}
+                        </span>
+                      )}
                       {d.manual && (
                         <span className="rounded border border-solar-amber/50 px-1 py-px text-[10px] uppercase tracking-wide text-text-secondary">
                           {t('manualBadge')}

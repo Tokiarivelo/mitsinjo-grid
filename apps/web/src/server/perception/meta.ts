@@ -13,6 +13,7 @@ import {
   parseDetections,
 } from './detect';
 import { maskToOutline } from './mask-outline';
+import { REGION_SYSTEM_PROMPT, regionQuestion } from './region-prompt';
 import { boxUnionCoverage, parseSamOutput } from './parse-sam';
 import {
   ObservationSchema,
@@ -251,6 +252,21 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       console.info(`[vision] ${model} listed no object: ${content.slice(0, 300)}`);
     }
     return { model, usage, result: { detections } };
+  }
+
+  async identifyRegion(
+    imageUrl: string,
+    hint: string | undefined,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<DetectionResult>> {
+    const { content, model, usage } = await this.visionJson(
+      REGION_SYSTEM_PROMPT,
+      regionQuestion(hint),
+      imageUrl,
+      DETECT_JSON_SCHEMA,
+      signal
+    );
+    return { model, usage, result: { detections: parseDetections(content) } };
   }
 
   async segmentImage(

@@ -1,9 +1,12 @@
 import 'server-only';
 
 import { type NextRequest } from 'next/server';
+import sharp from 'sharp';
 import { z } from 'zod';
+import { VisionRegionsSchema, type VisionRegion } from '@/lib/vision';
 import { getPerceptionClient } from '@/server/perception';
 import { runVisionPipeline } from '@/server/perception/vision-pipeline';
+import { runRegionPipeline, type PhotoForRegions } from '@/server/perception/region';
 import { prepareVisionImage } from '@/server/perception/prepare-image';
 import { hostVisionImage } from '@/server/storage/media';
 
@@ -16,9 +19,21 @@ const FieldsSchema = z.object({ sessionId: z.string().max(64).optional() });
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
+/** Pixel size for cropping drawn shapes; null when the bytes cannot be decoded (whole photo sent). */
+async function photoSize(buffer: Buffer): Promise<PhotoForRegions | null> {
+  try {
+    const { width, height } = await sharp(buffer, { failOn: 'none' }).metadata();
+    return width && height ? { buffer, width, height } : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Appliance detection on a photo (PV). Multipart: `image` (JPEG/PNG/WebP ≤ MAX_VISION_BYTES), `sessionId`.
- * → `text/event-stream`: `vision_detections` (boxes, then outlines on Meta) · `vision_error` · `done`.
+ * Appliance detection on a photo (PV). Multipart: `image` (JPEG/PNG/WebP ≤ MAX_VISION_BYTES), `sessionId`,
+ * `regions?` (JSON `VisionRegion[]`, PV-T8: identify only the drawn shapes).
+ * → `text/event-stream`: `vision_detections` (boxes, then outlines on Meta) or, with regions,
+ * `vision_regions` (same two phases) · `vision_error` · `done`.
  * Meta + R2: the photo is kept under `vision/` and sent by link. Mock: not stored, sample-room fixture.
  */
 export async function POST(req: NextRequest) {
@@ -34,6 +49,20 @@ export async function POST(req: NextRequest) {
   if (!IMAGE_TYPES.test(image.type)) return json({ error: 'Image must be JPEG, PNG or WebP' }, 415);
   const fields = FieldsSchema.safeParse({ sessionId: form.get('sessionId') ?? undefined });
   if (!fields.success) return json({ error: 'Invalid fields' }, 400);
+  // Optional (PV-T8): shapes drawn by the operator → identify only those, not the whole photo.
+  let regions: VisionRegion[] | null = null;
+  const rawRegions = form.get('regions');
+  if (typeof rawRegions === 'string') {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawRegions);
+    } catch {
+      return json({ error: 'Invalid regions' }, 400);
+    }
+    const ok = VisionRegionsSchema.safeParse(parsed);
+    if (!ok.success) return json({ error: 'Invalid regions' }, 400);
+    regions = ok.data;
+  }
 
   const perception = getPerceptionClient(fields.data.sessionId);
   // Upright, ≤ 1280 px JPEG: the picture Muse and SAM see matches the one the page shows, in every browser.
@@ -48,7 +77,18 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       const send = (event: string, data: Record<string, unknown>) =>
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
-      await runVisionPipeline(perception, visionImage, send, req.signal);
+      if (regions) {
+        await runRegionPipeline(
+          perception,
+          await photoSize(photo.buffer),
+          visionImage.url,
+          regions,
+          send,
+          req.signal
+        );
+      } else {
+        await runVisionPipeline(perception, visionImage, send, req.signal);
+      }
       send('done', {});
       controller.close();
     },

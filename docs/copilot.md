@@ -30,6 +30,10 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
   engine; `detect.ts` clamps the 0–1000 grid to 0–1 fractions, maps unknown categories to `other`, throws on a non-JSON reply). The prompt asks for every visible object: catalog
   appliances (`kind:'appliance'`, street lamp → `lamp`) and scenery (houses, cars, trees… `kind:'scenery'`, no load), so an outdoor
   photo is never empty; the user turn (`DETECT_QUESTION`) asks for the same, since Muse follows it over the system prompt; boxes as array or `{x_min,…}` object are both read).
+  `identifyRegion` (PV-T8, `region.ts` + `region-prompt.ts`): one Spark call per operator-drawn shape on a crop of it (sharp, 15 %
+  margin, outside of the shape whitened 65 %), same JSON schema, `REGION_SYSTEM_PROMPT` asks for exactly one object, the operator's
+  text is passed quoted as a hint. The model box (crop grid) is mapped back to the photo and kept only if it overlaps the shape
+  (IoU ≥ 0.05); then SAM on the whole photo (Meta only). Mock: the hint classified by keywords (EN + FR/MG aliases), no hint → none.
   `refineDetections` (`outline.ts`, PV-T5): one SAM call per distinct label (≤ 8, parallel, 8 s timeout each), greedy best-IoU
   (≥ 0.3) match → the detection takes the pixel-precise SAM box. Timeout, error, spend cap or a mock answer → Muse box kept.
   `parseSamOutput` also returns each mask still encoded (`{encoding, height, width, payload}`, raster over the box);

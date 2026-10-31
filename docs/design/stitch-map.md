@@ -81,5 +81,7 @@ Status values: `not generated` · `generated` · `exported` · `implemented` · 
 - Village editor 2026-10-31: built without mockup, new menu entry (sidebar + 6th MobileNav item, scan icon). Intro card +
   SIMULATED badge, dashed drop zone (Choose a photo / Use the sample room), then photo canvas + « Selected appliance » aside
   (320 px, stacks under on < lg). Gate-out 1440 + 390, dark + light, empty and with detections, no horizontal overflow.
-- Draw a missing object 2026-10-31 (PV-T8): built without mockup. Secondary button under the photo, amber dashed draft box,
-  form card in cyan tint (category + name, Add / Cancel), dashed outline + « Added by you » chip + trash on drawn items.
+- Draw missing objects 2026-10-31 (PV-T8): built without mockup. Secondary button under the photo; amber dashed shapes with
+  4 square corner handles on the selected one; panel in cyan tint (3-tool segmented control, one row per shape with free text
+  and trash, Add a box / Clear all / Cancel / Send). Gate-out 1440 dark + 390 light, `/api/vision` stubbed, no horizontal overflow.
+- Sidebar fold 2026-10-31: no mockup; 64 px icon rail on xl+ (shell.md « Fold »).

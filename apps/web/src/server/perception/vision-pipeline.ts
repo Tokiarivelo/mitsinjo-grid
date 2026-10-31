@@ -3,7 +3,7 @@ import type { PerceptionClient } from './client';
 import { refineDetections } from './outline';
 
 export type VisionEmit = (
-  event: 'vision_detections' | 'vision_error',
+  event: 'vision_detections' | 'vision_regions' | 'vision_error',
   data: Record<string, unknown>
 ) => void;
 

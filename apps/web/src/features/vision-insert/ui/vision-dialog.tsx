@@ -68,9 +68,11 @@ export function VisionDialog({ imageUrl, onClose }: VisionDialogProps) {
             onSelect={vision.select}
             onRetry={vision.retry}
             isDemo={vision.source === 'mock'}
-            onAddManual={vision.addManual}
+            onSendShapes={vision.sendShapes}
             onRemoveManual={vision.removeManual}
-            canAddManual={vision.canAddManual}
+            manualRoom={vision.manualRoom}
+            identifyingIds={vision.identifyingIds}
+            identifyFailed={vision.identifyFailed}
           />
         </div>
 

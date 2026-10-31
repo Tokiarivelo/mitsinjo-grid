@@ -1,5 +1,6 @@
 import type { PerceptionBackend, PerceptionCall } from './backend';
 import { boxUnionCoverage } from './parse-sam';
+import { classifyLabel } from './detect';
 import type {
   ApplianceDetection,
   DetectionResult,
@@ -161,6 +162,22 @@ export class MockPerceptionBackend implements PerceptionBackend {
         ),
       },
     };
+  }
+
+  /** The operator's hint, classified by keywords; no hint → not identified. Box = the whole crop. */
+  async identifyRegion(
+    _imageUrl: string,
+    hint: string | undefined
+  ): Promise<PerceptionCall<DetectionResult>> {
+    const label = hint?.trim().slice(0, 40);
+    if (!label) return { model: MOCK_PERCEPTION_MODEL, usage: {}, result: { detections: [] } };
+    const c = classifyLabel(label);
+    const box = { x: 0, y: 0, w: 1, h: 1 };
+    const detection: ApplianceDetection =
+      c.kind === 'appliance'
+        ? { id: 'region', label, category: c.category, box }
+        : { id: 'region', label, kind: 'scenery', category: 'other', scenery: c.scenery, box };
+    return { model: MOCK_PERCEPTION_MODEL, usage: {}, result: { detections: [detection] } };
   }
 
   async detectAppliances(): Promise<PerceptionCall<DetectionResult>> {

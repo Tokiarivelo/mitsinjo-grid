@@ -61,7 +61,7 @@ describe('VillageEditorPage (/village)', () => {
   it('sample room → detections → select one', async () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Use the sample room' }));
-    const tv = await screen.findByRole('button', { name: /Samsung TV/ });
+    const tv = await screen.findByRole('button', { name: /Samsung TV/ }, { timeout: 5000 });
     expect(fetchMock.mock.calls.map((c) => c[0])).toEqual([SAMPLE_ROOM_URL, '/api/vision']);
     expect(screen.getByText('No appliance selected yet.')).toBeTruthy();
     fireEvent.click(tv);

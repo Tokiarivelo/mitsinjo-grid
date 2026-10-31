@@ -42,4 +42,10 @@ export interface PerceptionBackend {
     imageUrl: string,
     signal?: AbortSignal
   ): Promise<PerceptionCall<DetectionResult>>;
+  /** The one object inside an operator-drawn shape (PV-T8): `imageUrl` is the crop, `hint` what they typed. */
+  identifyRegion(
+    imageUrl: string,
+    hint: string | undefined,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<DetectionResult>>;
 }

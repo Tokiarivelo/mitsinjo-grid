@@ -80,6 +80,14 @@ export class PerceptionClient {
   detectAppliances(imageUrl: string, signal?: AbortSignal): Promise<DetectionResult> {
     return this.run('detectAppliances', (b) => b.detectAppliances(imageUrl, signal));
   }
+
+  identifyRegion(
+    imageUrl: string,
+    hint: string | undefined,
+    signal?: AbortSignal
+  ): Promise<DetectionResult> {
+    return this.run('identifyRegion', (b) => b.identifyRegion(imageUrl, hint, signal));
+  }
 }
 
 /** Client for one chat session (`budgetKey` = session id): Meta when configured, else mock. */

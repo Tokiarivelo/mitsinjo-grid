@@ -110,10 +110,13 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
   photo; keyboard + screen readers: the « Appliances found (n) » list below (buttons ≥ 44 px, focus = same highlight).
   States: loading (dimmed photo + status), refining (outlines coming), ready, empty, error + retry. Violet « AI perception ·
   to verify » tag; demo note when the mock answered. Category shown only when it differs from the label.
-  PV-T8 (`onAddManual`, optional): « Draw a missing object » → drag a box on the photo (pointer capture, touch-none;
-  amber dashed draft), `ManualBoxForm` below (category select, required · name optional, ≤ 40 · Add / Cancel). No box
-  drawn (keyboard) → centred box. Drawn items: dashed outline, « Added by you » chip, trash button (≥ 44 px). Also shown
-  in the error state; ≤ 30 per photo (button disabled + note).
+  PV-T8 (`onSendShapes`, optional): « Draw missing objects » → `DrawOverlay` on the photo (role application, touch-none,
+  pointer capture) + `DrawPanel` below. Tools: Rectangle · Free hand · Magnetic lasso (snaps to the strongest edge within
+  3 % of the photo, Sobel on a ≤ 320 px copy, `useEdgeMap`; canvas blocked → draws freely + note). Several shapes before
+  sending (≤ 10 per send); each stays editable: drag = move, 4 corner handles (44 px hit area) = resize, keyboard arrows /
+  Shift + arrows / Delete, « Add a box » (centred). Per shape: « What is it? (optional) » free text, trash. « Send the
+  object / objects (n) » → objects listed at once (dashed, « Added by you », « Identifying… »), then named by the model.
+  Also in the error state; ≤ 30 per photo (button disabled + note).
 - `VisionDialog`: portal to `body` (glass panels trap fixed overlays), bottom sheet on mobile / centred card ≥ sm,
   runs detection on open, Esc closes, footer shows the selected appliance (insert comes in V4).
   (`❯` prompt, short placeholder). `ModelPicker` `{models, value, onChange, size: md|sm|terminal}`: one select for both.
