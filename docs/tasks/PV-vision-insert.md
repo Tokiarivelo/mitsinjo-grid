@@ -27,7 +27,7 @@ Status: **plan**, nothing implemented. Research done on 2026-10-31 (sources at t
 | ----------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | Detect + classify | `muse-spark-1.3` (Meta Model API, already used)                      | image + JSON schema → `[{label, category, bbox:[x_min,y_min,x_max,y_max]}]`, grid 0–1000, top-left origin; missing objects omitted            | tokens for 1 image + short JSON; values may exceed 1000 → clamp; counting imperfect                 |
 | Precise outlines  | `sam-3.1` (Meta Model API, `POST /v1/responses`)                     | image + one noun phrase (`input_text`) → special-token text `<Nf>id<\|box;x1;y1;x2;y2;w;h[;c]\|><\|mask;…data=H,W,~payload\|>`, source pixels | ≈ $2.50 / 1k images; text prompts only on the API (no box/point prompt); one phrase per request     |
-| Mask decode       | `@meta-sam/parser` (npm, 0.1.0, Meta)                                | SAM output → typed records, raster / COCO RLE / **SVG path**                                                                                  | check licence (`SEE LICENSE IN LICENSE`) before adding                                              |
+| Mask decode       | `@meta-sam/parser` (npm, 0.1.0, Meta)                                | SAM output → typed records, raster / COCO RLE / **SVG path**                                                                                  | SAM License (copy in `licenses/`), added 2026-10-31                                                 |
 | Photo → 3D        | **SAM 3D Objects** via fal.ai (`fal-ai/sam-3/3d-objects`) or Runware | cropped image (+ mask) → GLB (single mesh, optional baked texture) + PLY splat                                                                | **not on Meta Model API** → extra key; ≈ 5–30 s+, ≈ $0.02/object (unverified); hidden side invented |
 
 Open checks before coding (the session network blocked `dev.meta.ai`): exact `sam-3.1` request metadata
@@ -65,12 +65,10 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
       `chat/completions` JSON schema, already recorded from real calls, instead of the Responses API): Muse Spark 1.3, Responses API, image as data URL, structured
       output (JSON schema with the category enum), clamp 0–1000 → 0–1, drop unknown categories to `other`.
       **Done when** unit tests cover parsing, clamping, out-of-enum labels and a malformed reply.
-- [ ] **PV-T5** `server/perception/outline.ts`: one `sam-3.1` call per distinct label (parallel, timeout 8 s),
-      decode the mask → SVG path; match SAM instances to Muse boxes by IoU.
-      _Partial (2026-10-31): calls, IoU match, SAM box refinement, timeout fallback and mask metadata parsing done._
-      _Open: mask decoding. The payload is Meta's adaptive range coder (base85); porting it or adding_
-      _`@meta-sam/parser` both fall under the SAM License (redistribution terms, no reverse engineering). Owner decision._
-      **Done when** tests run on a recorded SAM response fixture; on timeout the box outline is kept.
+- [x] **PV-T5** `server/perception/outline.ts` + `mask-outline.ts`: one `sam-3.1` call per distinct label (parallel,
+      timeout 8 s), match SAM instances to Muse boxes by IoU, decode the mask with `@meta-sam/parser` (SAM License,
+      `THIRD_PARTY_NOTICES.md`) → simplified SVG path. **Done when** tests run on recorded SAM responses (README masks);
+      on timeout the box outline is kept.
 - [ ] **PV-T6** Route `app/api/vision/route.ts` (POST image ≤ 4 MB, resized client-side to ≤ 1280 px)
       streaming `vision_detections`; mock provider returns the fixture for `public/samples/vision-room.jpg`.
       **Done when** `make dev-mock` shows detections offline.

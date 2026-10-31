@@ -69,6 +69,8 @@ export type Box = z.infer<typeof BoxSchema>;
 export const SegmentInstanceSchema = z.object({
   box: BoxSchema,
   confidence: z.number().min(0).max(1).optional(),
+  /** Mask outline: SVG path in image fractions (0–1), simplified. Absent when the mask is missing or unreadable. */
+  outline: z.string().optional(),
 });
 export type SegmentInstance = z.infer<typeof SegmentInstanceSchema>;
 

@@ -173,6 +173,26 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
     expect(out.usage).toEqual({ images: 1 });
   });
 
+  it('segment: decodes full masks into outlines on each instance', async () => {
+    respond({
+      output: [
+        {
+          type: 'message',
+          content: [
+            {
+              type: 'output_text',
+              text:
+                '<0f>0<|box;x1=211;y1=228;x2=270;y2=254;w=320;h=334|>' +
+                "<|mask;x=0;y=0;data=27,60,~!!!!M!0c[0o91w?q1!pIH4pPRVp2B3'7`e.ioeAf6-k/#Xd8%dX9x(|>",
+            },
+          ],
+        },
+      ],
+    });
+    const out = await backend.segmentImage('https://x/p.png', 'button');
+    expect(out.result.instances[0]!.outline).toMatch(/^M.*Z$/);
+  });
+
   it('throws on an HTTP error so the client can fall back', async () => {
     respond({ error: { code: 'media_url_origin_error' } }, false, 400);
     await expect(backend.analyzeImage('https://x', 'q')).rejects.toThrow(/400/);

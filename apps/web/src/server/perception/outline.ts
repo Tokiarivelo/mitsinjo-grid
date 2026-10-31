@@ -60,7 +60,7 @@ function matchInstances(
   detections: ApplianceDetection[],
   indices: number[],
   seg: SegmentResult
-): Map<number, { box: NormBox; confidence?: number }> {
+): Map<number, { box: NormBox; confidence?: number; outline?: string }> {
   const candidates: { det: number; inst: number; score: number; box: NormBox }[] = [];
   seg.instances.forEach((inst, i) => {
     const box = samBoxToNorm(inst.box, seg.imageWidth, seg.imageHeight);
@@ -72,13 +72,17 @@ function matchInstances(
   });
   candidates.sort((a, b) => b.score - a.score || a.det - b.det || a.inst - b.inst);
 
-  const out = new Map<number, { box: NormBox; confidence?: number }>();
+  const out = new Map<number, { box: NormBox; confidence?: number; outline?: string }>();
   const usedInst = new Set<number>();
   for (const c of candidates) {
     if (out.has(c.det) || usedInst.has(c.inst)) continue;
     usedInst.add(c.inst);
-    const confidence = seg.instances[c.inst]!.confidence;
-    out.set(c.det, { box: c.box, ...(confidence !== undefined ? { confidence } : {}) });
+    const { confidence, outline } = seg.instances[c.inst]!;
+    out.set(c.det, {
+      box: c.box,
+      ...(confidence !== undefined ? { confidence } : {}),
+      ...(outline ? { outline } : {}),
+    });
   }
   return out;
 }
@@ -93,8 +97,8 @@ export interface RefineResult {
 
 /**
  * Refines Muse boxes with SAM (PV-T5): one call per distinct label, in parallel, each bounded by
- * `timeoutMs`. A matched detection takes the SAM box (pixel-precise). Failure, timeout, spend cap
- * or a mock answer → the Muse box is kept. Never throws. Masks are not decoded yet: no `outline`.
+ * `timeoutMs`. A matched detection takes the SAM box (pixel-precise) and its mask outline. Failure, timeout, spend cap
+ * or a mock answer → the Muse box is kept. Never throws. The SAM mask outline comes along when decoded.
  */
 export async function refineDetections(
   perception: Pick<PerceptionClient, 'segmentImage'>,
@@ -132,6 +136,7 @@ export async function refineDetections(
       out[det] = {
         ...d,
         box: match.box,
+        ...(match.outline ? { outline: match.outline } : {}),
         ...(d.confidence === undefined && match.confidence !== undefined
           ? { confidence: match.confidence }
           : {}),

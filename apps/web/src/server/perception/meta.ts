@@ -7,6 +7,7 @@ import { fetchPreferringContributor } from '@/server/copilot/providers/contribut
 import type { UsageSample } from '@/server/spend';
 import type { PerceptionBackend, PerceptionCall } from './backend';
 import { DETECT_JSON_SCHEMA, DETECT_SYSTEM_PROMPT, parseDetections } from './detect';
+import { maskToOutline } from './mask-outline';
 import { boxUnionCoverage, parseSamOutput } from './parse-sam';
 import {
   ObservationSchema,
@@ -274,7 +275,13 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       .filter((c) => c.type === 'output_text')
       .map((c) => c.text ?? '')
       .join('');
-    const { imageWidth, imageHeight, instances } = parseSamOutput(text);
+    const parsed = parseSamOutput(text);
+    const { imageWidth, imageHeight } = parsed;
+    const instances = parsed.instances.map((inst, i) => {
+      const mask = parsed.masks[i];
+      const outline = mask ? maskToOutline(mask, inst.box, imageWidth, imageHeight) : null;
+      return outline ? { ...inst, outline } : inst;
+    });
 
     return {
       model,

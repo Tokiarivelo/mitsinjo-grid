@@ -82,6 +82,14 @@ describe('refineDetections (PV-T5)', () => {
     expect(out.detections.every((d) => d.outline === undefined)).toBe(true);
   });
 
+  it('a matched detection takes the SAM mask outline', async () => {
+    const seg = samResult('fridge');
+    seg.instances[1] = { ...seg.instances[1]!, outline: 'M0.01 0.46L0.39 0.46L0.39 0.85Z' };
+    const out = await refineDetections({ segmentImage: async () => seg }, 'data:x', [left, right]);
+    expect(out.detections[0]!.outline).toBe('M0.01 0.46L0.39 0.46L0.39 0.85Z');
+    expect(out.detections[1]!.outline).toBeUndefined(); // its instance has no readable mask
+  });
+
   it('keeps the Muse box when SAM times out', async () => {
     vi.useFakeTimers();
     try {

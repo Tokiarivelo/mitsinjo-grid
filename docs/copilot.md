@@ -30,7 +30,9 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
   engine; `detect.ts` clamps the 0–1000 grid to 0–1 fractions, maps unknown categories to `other`, throws on a non-JSON reply).
   `refineDetections` (`outline.ts`, PV-T5): one SAM call per distinct label (≤ 8, parallel, 8 s timeout each), greedy best-IoU
   (≥ 0.3) match → the detection takes the pixel-precise SAM box. Timeout, error, spend cap or a mock answer → Muse box kept.
-  `parseSamOutput` also returns each mask still encoded (`{encoding, height, width, payload}`, raster over the box); not decoded yet. Never throws: missing key, spend cap or API error → deterministic mock with `fallback` set.
+  `parseSamOutput` also returns each mask still encoded (`{encoding, height, width, payload}`, raster over the box);
+  `mask-outline.ts` decodes it with `@meta-sam/parser` (SAM License, `THIRD_PARTY_NOTICES.md`) into a simplified SVG path in
+  image fractions (≤ 160 points) set on each SAM instance and carried to the matched detection. Unreadable mask → no outline. Never throws: missing key, spend cap or API error → deterministic mock with `fallback` set.
   Image generation stays in `providers/meta.ts` (`/responses`, model `META_IMAGE_MODEL`).
 - `server/spend/`: `SpendGuard` estimates cost from catalogue prices (API `usage` when given, else ≈ 4 chars/token) per session
   (`sessionId`, else `global`). Over `META_SPEND_CAP_USD` → mock + `PROVIDER_FALLBACK` `reason: 'spend_cap'`. In memory: resets on restart.
