@@ -106,7 +106,7 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
       recipe parts merged (reuse `merge-parts` / scene palette) with the photo on the `frontPartIndex` part's front face
       (texture offset/repeat = detection box), or the `silhouetteRings` extrusion (depth per category) with the photo on the front.
       _(Done: UVs point into the whole photo instead of offset/repeat; one merged vertex-coloured mesh + one photo mesh (2 draw
-      calls, < 15 k triangles); `ObjectShapePanel` in the /village aside, appliances only, one Spark call per object per photo.
+      calls, < 15 k triangles); `ObjectShapePanel` in the /village aside, every object (scenery too, user request), one Spark call per object per photo.
       Chat dialog keeps detection only. Screens 1440 + 390, dark + light checked.)_
       **Done when** both modes render in dark/light, 1440 and 390 px, within `docs/performance.md` budgets.
 - [ ] **PV-T11** Edit panel: name, category, sector, watts (catalog bounds), quantity, usage hours preview

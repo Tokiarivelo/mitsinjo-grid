@@ -7,11 +7,11 @@ import * as THREE from 'three';
 import { TOKEN_HEX } from '@/features/microgrid-3d/utils/scene-palette';
 import { silhouetteRings, type ObjectShape } from '@/lib/object-shape';
 import type { ApplianceDetection } from '@/lib/vision';
-import { recipeMesh, silhouetteMesh } from '../utils/object-geometry';
+import { recipeMesh, silhouetteDepth, silhouetteMesh } from '../utils/object-geometry';
 
 export interface ObjectEditor3dProps {
   shape: ObjectShape;
-  detection: Pick<ApplianceDetection, 'box' | 'outline' | 'category'>;
+  detection: Pick<ApplianceDetection, 'box' | 'outline' | 'category' | 'scenery'>;
   /** The photo the object was found on (its texture). */
   imageUrl: string;
 }
@@ -43,7 +43,7 @@ function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
             silhouetteRings(detection),
             detection.box,
             photoAspect,
-            detection.category
+            silhouetteDepth(detection)
           ),
     [shape, detection, photoAspect]
   );

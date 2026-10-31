@@ -47,7 +47,8 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
   20 s timeout. `parseRecipe` is lenient (clamps, drops bad parts, grey for bad colours); `recipeIssue` (shared) rejects a recipe
   with no body part (≥ 8 % volume), parts > 0.3 outside the box, or w/h more than 2.5× off the photo box. Meta failure, spend cap,
   timeout, unreadable or poor recipe → `silhouette` mode (the browser extrudes the SAM outline, else the box; no extra call).
-  Mock: fixed recipes (fridge, TV, fan, lamp; else a box), not checked.
+  Every object is modelled, scenery too (`scenery` sent with the target; silhouette depth per scenery type).
+  Mock: fixed recipes (fridge, TV, fan, lamp; house, tree, plant, car, person, animal, water; else a box), not checked.
   Image generation stays in `providers/meta.ts` (`/responses`, model `META_IMAGE_MODEL`).
 - `server/spend/`: `SpendGuard` estimates cost from catalogue prices (API `usage` when given, else ≈ 4 chars/token) per session
   (`sessionId`, else `global`). Over `META_SPEND_CAP_USD` → mock + `PROVIDER_FALLBACK` `reason: 'spend_cap'`. In memory: resets on restart.

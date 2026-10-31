@@ -1,4 +1,5 @@
 import { APPLIANCE_CATEGORIES } from '@mitsinjo/engine';
+import { SCENERY_TYPES } from '@/lib/vision';
 import { describe, expect, it } from 'vitest';
 import { ObjectRecipeSchema, recipeIssue } from '@/lib/object-shape';
 import { mockRecipe, parseRecipe, shapeQuestion } from '../shape';
@@ -65,5 +66,15 @@ describe('mockRecipe', () => {
       expect(ObjectRecipeSchema.safeParse(r).success).toBe(true);
       expect(recipeIssue(r, 0)).toBeNull();
     }
+  });
+
+  it('models scenery too: a valid recipe per type, a house is not the plain box', () => {
+    for (const s of SCENERY_TYPES) {
+      const r = mockRecipe('other', s);
+      expect(ObjectRecipeSchema.safeParse(r).success).toBe(true);
+      expect(recipeIssue(r, 0)).toBeNull();
+    }
+    expect(mockRecipe('other', 'building').parts.length).toBeGreaterThan(1);
+    expect(mockRecipe('other', 'building')).not.toEqual(mockRecipe('other'));
   });
 });

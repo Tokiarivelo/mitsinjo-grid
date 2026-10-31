@@ -46,7 +46,11 @@ export async function runObjectShape(
     const timeout = AbortSignal.timeout(timeoutMs);
     const found = await perception.describeShape(
       imageUrl,
-      { label: target.label, category: target.category },
+      {
+        label: target.label,
+        category: target.category,
+        ...(target.scenery ? { scenery: target.scenery } : {}),
+      },
       signal ? AbortSignal.any([signal, timeout]) : timeout
     );
     const source = {

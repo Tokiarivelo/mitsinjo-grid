@@ -2,7 +2,7 @@ import type { ApplianceCategory } from '@mitsinjo/engine';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { frontPartIndex, type ObjectRecipe, type RecipePart } from '@/lib/object-shape';
-import type { NormBox } from '@/lib/vision';
+import type { ApplianceDetection, NormBox, SceneryType } from '@/lib/vision';
 
 /**
  * Geometry of the 3D object editor (PV-T10). Pure (three.js only, no React): a Spark recipe → one merged,
@@ -29,6 +29,23 @@ export const SILHOUETTE_DEPTH: Record<ApplianceCategory, number> = {
   computer: 0.4,
   other: 0.3,
 };
+
+/** Same for scenery (no load). */
+export const SCENERY_DEPTH: Record<SceneryType, number> = {
+  building: 0.8,
+  vehicle: 0.45,
+  tree: 0.7,
+  plant: 0.6,
+  person: 0.3,
+  animal: 0.4,
+  water: 0.1,
+  other: 0.3,
+};
+
+/** Extrusion depth share for an object: its scenery type first (category is `other`), else its category. */
+export function silhouetteDepth(d: Pick<ApplianceDetection, 'category' | 'scenery'>): number {
+  return d.scenery ? SCENERY_DEPTH[d.scenery] : SILHOUETTE_DEPTH[d.category];
+}
 
 /** Curve segments of round parts (≤ 12 parts × ~1 k triangles: far under the scene budget). */
 export const ROUND_SEGMENTS = 24;
@@ -129,10 +146,11 @@ export function silhouetteMesh(
   rings: ReadonlyArray<ReadonlyArray<readonly [number, number]>>,
   box: NormBox,
   photoAspect: number,
-  category: ApplianceCategory
+  /** Depth as a share of the largest side (`silhouetteDepth`). */
+  depthShare: number
 ): PhotoMesh {
   const [w, h] = silhouetteSize(box, photoAspect);
-  const depth = SILHOUETTE_DEPTH[category] * Math.max(w, h);
+  const depth = depthShare * Math.max(w, h);
   const shapes = rings
     .filter((r) => r.length >= 3)
     .map(

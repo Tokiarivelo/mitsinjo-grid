@@ -8,7 +8,6 @@ import { selectActiveResult, selectInput, selectTimeIndex, useSimulationStore } 
 import { readAsDataUrl } from '@/lib/files';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { isAppliance } from '@/lib/vision';
 import { useDetectionLabel } from '../hooks/use-object-name';
 import { shapeKey, useObjectShape } from '../hooks/use-object-shape';
 import { useVisionSession } from '../hooks/use-vision-session';
@@ -40,11 +39,8 @@ export function VillageEditorPage() {
   const nameOf = useDetectionLabel();
   const { requestShape, reset: resetShape, clear: clearShapes, ...objectShape } = useObjectShape();
   const selected = vision.selected;
-  // Appliances only (scenery is never inserted), once the vision model has named a drawn shape.
-  const shapeTarget =
-    selected && isAppliance(selected) && !vision.identifyingIds.includes(selected.id)
-      ? selected
-      : null;
+  // Every object (appliances and scenery), once the vision model has named a drawn shape.
+  const shapeTarget = selected && !vision.identifyingIds.includes(selected.id) ? selected : null;
   const targetKey = shapeTarget ? shapeKey(shapeTarget) : null;
 
   // New photo: object ids start again, so kept shapes no longer apply.
@@ -54,8 +50,8 @@ export function VillageEditorPage() {
       resetShape();
       return;
     }
-    const { id, label, category, box } = shapeTarget;
-    void requestShape(imageUrl, { id, label, category, box });
+    const { id, label, category, scenery, box } = shapeTarget;
+    void requestShape(imageUrl, { id, label, category, ...(scenery ? { scenery } : {}), box });
     // Keyed on the object (id, name, category): a SAM box refinement does not pay for a new recipe.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageUrl, targetKey, requestShape, resetShape]);

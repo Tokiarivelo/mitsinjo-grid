@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@/lib/i18n';
 
@@ -89,7 +89,7 @@ describe('VillageEditorPage (/village)', () => {
     expect(screen.getByRole('button', { name: 'Change photo' })).toBeTruthy();
   });
 
-  it('builds the 3D model of a selected appliance once, never for scenery (PV-T10)', async () => {
+  it('builds the 3D model of any selected object once, scenery included (PV-T10)', async () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Use the sample room' }));
     const tv = await screen.findByRole('button', { name: /Samsung TV/ }, { timeout: 5000 });
@@ -112,11 +112,17 @@ describe('VillageEditorPage (/village)', () => {
       box: detections[1]!.box,
     });
 
+    // Scenery is modelled too: the scenery type goes with the request.
     fireEvent.click(screen.getByRole('button', { name: /Stone house/ }));
-    expect(screen.queryByText('3D model')).toBeNull();
+    expect(screen.getByText('3D model')).toBeTruthy();
+    await waitFor(() => expect(shapeCalls()).toHaveLength(2));
+    const house = JSON.parse(
+      (shapeCalls()[1]![1] as RequestInit & { body: FormData }).body.get('target') as string
+    );
+    expect(house).toMatchObject({ id: 'det-3', category: 'other', scenery: 'building' });
     // Back to the TV: kept shape, no new Spark call.
     fireEvent.click(screen.getByRole('button', { name: /Samsung TV/ }));
     expect(await screen.findByText('AI shape')).toBeTruthy();
-    expect(shapeCalls()).toHaveLength(1);
+    expect(shapeCalls()).toHaveLength(2);
   });
 });

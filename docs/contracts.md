@@ -507,7 +507,7 @@ fallback? }` (no `vision_detections`). Client: `useVisionSession.sendShapes(shap
 (`shapeToDetection`: operator text or fallback label, `category: 'other'`, the drawn outline), then takes the model's label /
 kind / category / box; drawn outline kept until SAM sends one. Failure → `identifyFailed`, the shape keeps the operator text.
 `POST /api/vision/shape` (PV-T9) multipart `{ image (same rules and normalization as /api/vision, shared
-`server/perception/vision-request.ts`), target: JSON ShapeTarget { id, label, category, box }, sessionId? }` → JSON
+`server/perception/vision-request.ts`), target: JSON ShapeTarget { id, label, category, scenery?, box }, sessionId? }` → JSON
 `ObjectShape { detectionId, mode: 'recipe'|'silhouette', recipe? /*recipe only*/, reason? /*silhouette only: 'provider_error'|
 'spend_cap'|'malformed'|'no_body'|'out_of_bounds'|'proportions'*/, source, model, fallback? }`; 400 missing / invalid target.
 `ObjectRecipe { proportions: {w,h,d} (largest = 1), parts: { shape: 'box'|'cylinder'|'sphere'|'cone', at: [x,y,z] (−0.6…0.6),

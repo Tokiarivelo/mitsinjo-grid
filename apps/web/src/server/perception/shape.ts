@@ -1,4 +1,5 @@
 import type { ApplianceCategory } from '@mitsinjo/engine';
+import type { SceneryType } from '@/lib/vision';
 import { z } from 'zod';
 import {
   MAX_RECIPE_PARTS,
@@ -20,7 +21,7 @@ export const SHAPE_SYSTEM_PROMPT = [
   '(at between -0.5 and 0.5, size between 0.01 and 1); axis of a cylinder or cone (x, y or z, default y);',
   'color = the colour seen, #rrggbb. Put the main body first and mark it front = true: the photo goes on its front face.',
   'Add only the details that make the object recognisable (doors, handles, screen, legs, blades, stand).',
-  'Never give watts, kW or any energy value.',
+  'Buildings, trees, vehicles and other scenery follow the same rules. Never give watts, kW or any energy value.',
 ].join(' ');
 
 /** User turn; the label is the detection name (from a model or typed by the operator), quoted. */
@@ -166,6 +167,75 @@ const MOCK_RECIPES: Partial<Record<ApplianceCategory, ObjectRecipe>> = {
   },
 };
 
-export function mockRecipe(category: ApplianceCategory): ObjectRecipe {
-  return MOCK_RECIPES[category] ?? { proportions: { w: 1, h: 1, d: 0.6 }, parts: [body(NEUTRAL)] };
+const part = (
+  shape: RecipePart['shape'],
+  at: RecipePart['at'],
+  size: RecipePart['size'],
+  color: string,
+  axis?: RecipePart['axis']
+): RecipePart => ({ shape, at, size, color, ...(axis ? { axis } : {}) });
+
+/** Offline recipes for scenery (no load), so houses, trees or cars also show in 3D. */
+const MOCK_SCENERY: Partial<Record<SceneryType, ObjectRecipe>> = {
+  building: {
+    proportions: { w: 1, h: 0.75, d: 0.8 },
+    parts: [
+      { ...body('#c9b79c'), at: [0, -0.15, 0], size: [1, 0.7, 1] },
+      part('box', [0, 0.32, 0], [1, 0.25, 1], '#8a5a44'),
+      part('box', [-0.2, -0.3, 0.5], [0.16, 0.38, 0.02], '#5b3b2a'),
+      part('box', [0.22, -0.12, 0.5], [0.18, 0.16, 0.02], '#9cc3d5'),
+    ],
+  },
+  tree: {
+    proportions: { w: 0.7, h: 1, d: 0.7 },
+    parts: [
+      { ...body('#4f8a4b'), shape: 'sphere', at: [0, 0.18, 0], size: [1, 0.64, 1] },
+      part('cylinder', [0, -0.3, 0], [0.14, 0.4, 0.14], '#6b4a32'),
+    ],
+  },
+  plant: {
+    proportions: { w: 0.6, h: 1, d: 0.6 },
+    parts: [
+      { ...body('#5c9b55'), shape: 'sphere', at: [0, 0.15, 0], size: [1, 0.7, 1] },
+      part('cylinder', [0, -0.35, 0], [0.6, 0.3, 0.6], '#a0603d'),
+    ],
+  },
+  vehicle: {
+    proportions: { w: 1, h: 0.45, d: 0.45 },
+    parts: [
+      { ...body('#3f6fa8'), at: [0, -0.05, 0], size: [1, 0.5, 1] },
+      part('box', [-0.05, 0.32, 0], [0.55, 0.36, 0.9], '#2f5585'),
+      part('cylinder', [-0.3, -0.38, 0], [0.18, 0.36, 1], '#222831', 'z'),
+      part('cylinder', [0.3, -0.38, 0], [0.18, 0.36, 1], '#222831', 'z'),
+    ],
+  },
+  person: {
+    proportions: { w: 0.35, h: 1, d: 0.25 },
+    parts: [
+      { ...body('#4f6d8f'), shape: 'cylinder', at: [0, -0.12, 0], size: [0.8, 0.75, 0.8] },
+      part('sphere', [0, 0.38, 0], [0.55, 0.22, 0.75], '#c99a73'),
+    ],
+  },
+  animal: {
+    proportions: { w: 1, h: 0.6, d: 0.4 },
+    parts: [
+      { ...body('#8b6b4a'), at: [0, 0.05, 0], size: [0.75, 0.45, 1] },
+      part('box', [0.42, 0.28, 0], [0.22, 0.3, 0.6], '#7a5c3f'),
+      part('cylinder', [-0.28, -0.32, 0], [0.1, 0.36, 0.2], '#6b4f36'),
+      part('cylinder', [0.25, -0.32, 0], [0.1, 0.36, 0.2], '#6b4f36'),
+    ],
+  },
+  water: {
+    proportions: { w: 1, h: 0.08, d: 0.7 },
+    parts: [{ ...body('#4c8fb8'), shape: 'cylinder' }],
+  },
+};
+
+export function mockRecipe(category: ApplianceCategory, scenery?: SceneryType): ObjectRecipe {
+  return (
+    (scenery ? MOCK_SCENERY[scenery] : MOCK_RECIPES[category]) ?? {
+      proportions: { w: 1, h: 1, d: 0.6 },
+      parts: [body(NEUTRAL)],
+    }
+  );
 }

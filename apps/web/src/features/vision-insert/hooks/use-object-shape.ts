@@ -22,8 +22,8 @@ const offlineSilhouette = (detectionId: string): ObjectShape => ({
 });
 
 /** Same object again (id, name, category) → same shape: a reselect costs no Spark call. */
-export const shapeKey = (t: Pick<ShapeTarget, 'id' | 'label' | 'category'>) =>
-  `${t.id}|${t.label}|${t.category}`;
+export const shapeKey = (t: Pick<ShapeTarget, 'id' | 'label' | 'category' | 'scenery'>) =>
+  `${t.id}|${t.label}|${t.category}|${t.scenery ?? ''}`;
 
 /**
  * 3D shape of the selected object (PV-T9): asks `/api/vision/shape` for a Spark recipe; any failure ends
@@ -60,6 +60,7 @@ export function useObjectShape() {
             id: target.id,
             label: target.label,
             category: target.category,
+            ...(target.scenery ? { scenery: target.scenery } : {}),
             box: target.box,
           })
         );

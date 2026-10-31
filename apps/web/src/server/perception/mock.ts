@@ -187,7 +187,7 @@ export class MockPerceptionBackend implements PerceptionBackend {
     return { model: MOCK_PERCEPTION_MODEL, usage: {}, result: { detections: [detection] } };
   }
 
-  /** Fixed recipe per category (fridge, TV, fan, lamp; else a box). */
+  /** Fixed recipe per category or scenery type (fridge, TV, house, tree…; else a box). */
   async describeShape(
     _imageUrl: string,
     target: ShapeSubject
@@ -195,7 +195,7 @@ export class MockPerceptionBackend implements PerceptionBackend {
     return {
       model: MOCK_PERCEPTION_MODEL,
       usage: {},
-      result: { recipe: mockRecipe(target.category) },
+      result: { recipe: mockRecipe(target.category, target.scenery) },
     };
   }
 

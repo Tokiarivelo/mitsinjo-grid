@@ -1,4 +1,5 @@
 import type { ApplianceCategory } from '@mitsinjo/engine';
+import type { SceneryType } from '@/lib/vision';
 import type { UsageSample } from '@/server/spend';
 import type {
   DetectionResult,
@@ -62,4 +63,6 @@ export interface PerceptionBackend {
 export interface ShapeSubject {
   label: string;
   category: ApplianceCategory;
+  /** Set for scenery (no load): building, tree, vehicle… */
+  scenery?: SceneryType;
 }

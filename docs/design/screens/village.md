@@ -7,7 +7,7 @@ the engine catalog gives power (never the AI). Sidebar + MobileNav entry « Vill
 - No photo: dashed drop zone (drag & drop), primary « Choose a photo » (JPEG/PNG/WebP), secondary « Use the sample room »
   (`/samples/vision-room.jpg`). Wrong type → inline red alert, no call.
 - Photo: `DetectionCanvas` (components.md) left; aside « Selected appliance » right (320 px, stacks under on < lg):
-  selected line, « 3D model » block (appliances only, PV-T10), AI note (« power from the engine catalog »), « Change photo ».
+  selected line, « 3D model » block (every object, scenery included, PV-T10), AI note (« power from the engine catalog »), « Change photo ».
   « 3D model »: title + badge (violet « AI shape » = Spark recipe; grey « Outline shape » = fallback + one-line why), viewer
   `h-60 sm:h-72` on `bg-canvas-sunken` (orbit + zoom, no pan), « Drag to turn · pinch or scroll to zoom ». Loading: spinner line +
   skeleton. No WebGL: note, photo stays the reference. One Spark call per object per photo (kept on reselect). V5 adds « Insert ».

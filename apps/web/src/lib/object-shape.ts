@@ -1,6 +1,12 @@
 import { ApplianceCategorySchema } from '@mitsinjo/engine';
 import { z } from 'zod';
-import { boxPath, NormBoxSchema, pathToRings, type ApplianceDetection } from './vision';
+import {
+  boxPath,
+  NormBoxSchema,
+  pathToRings,
+  SceneryTypeSchema,
+  type ApplianceDetection,
+} from './vision';
 
 /**
  * 3D shape of one detected object (PV-T9), Meta models only. Shared by `/api/vision/shape` and the 3D editor.
@@ -49,6 +55,8 @@ export const ShapeTargetSchema = z.object({
   id: z.string().min(1).max(64),
   label: z.string().min(1).max(40),
   category: ApplianceCategorySchema,
+  /** Scenery type (house, tree, car…): every object can be modelled, not only appliances. */
+  scenery: SceneryTypeSchema.optional(),
   box: NormBoxSchema,
 });
 export type ShapeTarget = z.infer<typeof ShapeTargetSchema>;

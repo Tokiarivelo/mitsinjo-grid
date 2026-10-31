@@ -4,6 +4,7 @@ import { silhouetteRings, type ObjectRecipe } from '@/lib/object-shape';
 import {
   recipeMesh,
   setPhotoUv,
+  silhouetteDepth,
   silhouetteMesh,
   silhouetteSize,
   triangleCount,
@@ -79,8 +80,8 @@ describe('silhouetteMesh (fallback)', () => {
 
   it('extrudes the outline by the category depth with the photo cap in front', () => {
     const rings = silhouetteRings({ box });
-    const tv = silhouetteMesh(rings, box, 1, 'tv');
-    const fr = silhouetteMesh(rings, box, 1, 'fridge');
+    const tv = silhouetteMesh(rings, box, 1, silhouetteDepth({ category: 'tv' }));
+    const fr = silhouetteMesh(rings, box, 1, silhouetteDepth({ category: 'fridge' }));
     const depth = (g: THREE.BufferGeometry) => bounds(g).max.z - bounds(g).min.z;
     expect(depth(tv.body)).toBeLessThan(depth(fr.body));
     expect(bounds(fr.front).min.z).toBeGreaterThan(bounds(fr.body).max.z - 0.001);
@@ -90,8 +91,14 @@ describe('silhouetteMesh (fallback)', () => {
     expect(Math.max(...us)).toBeCloseTo(0.6);
   });
 
+  it('scenery uses its own depth (a house is deep, water flat), not the `other` category', () => {
+    expect(silhouetteDepth({ category: 'other', scenery: 'building' })).toBe(0.8);
+    expect(silhouetteDepth({ category: 'other', scenery: 'water' })).toBe(0.1);
+    expect(silhouetteDepth({ category: 'other' })).toBe(0.3);
+  });
+
   it('builds nothing from no ring (no throw)', () => {
-    const empty = silhouetteMesh([], box, 1, 'other');
+    const empty = silhouetteMesh([], box, 1, 0.3);
     expect(triangleCount(empty.front)).toBe(0);
   });
 });
