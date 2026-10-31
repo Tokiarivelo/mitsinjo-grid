@@ -103,7 +103,15 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
   (unsupported, denied, failed, empty) show inline in amber, dismissible. Auto-scroll only while the reader is at the bottom.
 - Playback line: when the copilot ran `control_playback`, a cyan `role="status"` pill (clock icon) « Time cursor moved
   to 18:00 » / « Playback paused »… above the answer.
-- `ChatComposer` (`useChatComposer` state): input + attach / sketch / mic / send; `variant` `card` (tab) or `terminal`
+- `ChatComposer` (`useChatComposer` state): input + attach / sketch / mic / send; `variant` `card` (tab) or `terminal`;
+  an attached image chip has « Find appliances » (scan icon, ≥ 40 px) → `VisionDialog`.
+- `DetectionCanvas` (`features/vision-insert`, PV-T7): photo + SVG overlay (`viewBox 0 0 1`, one path per detection: SAM
+  outline or box). Cyan = found, brighter on hover/focus with a label chip, amber = selected. Pointer: hover/tap on the
+  photo; keyboard + screen readers: the « Appliances found (n) » list below (buttons ≥ 44 px, focus = same highlight).
+  States: loading (dimmed photo + status), refining (outlines coming), ready, empty, error + retry. Violet « AI perception ·
+  to verify » tag; demo note when the mock answered. Category shown only when it differs from the label.
+- `VisionDialog`: portal to `body` (glass panels trap fixed overlays), bottom sheet on mobile / centred card ≥ sm,
+  runs detection on open, Esc closes, footer shows the selected appliance (insert comes in V4).
   (`❯` prompt, short placeholder). `ModelPicker` `{models, value, onChange, size: md|sm|terminal}`: one select for both.
 - `CopilotTerminal`: full-screen glass chat (`GlassPanel`), same conversation as the tab via `CopilotProvider` /
   `useSharedCopilot`; title bar (dots, title, AI badge, new session, close), model line, log, terminal composer.

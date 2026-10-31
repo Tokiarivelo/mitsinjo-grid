@@ -73,3 +73,6 @@ Status values: `not generated` · `generated` · `exported` · `implemented` · 
   « Not applied (unchecked) » list on decided cards. Same tokens as the existing diff rows.
 - Fire alarm 2026-10-31 (M2-T2/T3): no mockup. Red alert banner (page + compact in the viewport), snackbars bottom right,
   « Report a fire » in the HUD and the deck, 2D « On fire » card, 3D flames + smoke. Critical-red tokens only. Not screenshotted yet.
+- Vision detection dialog 2026-10-31 (PV-T7): built without mockup. Bottom sheet (mobile) / card (≥ sm) over the copilot,
+  photo with cyan outlines, amber selection, list below. Gate-out: /copilot 1440 + 390, dark + light, `/api/vision` stubbed
+  with the mock fixture, no horizontal overflow. Category text hidden when it repeats the label.

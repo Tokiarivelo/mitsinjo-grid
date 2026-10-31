@@ -573,7 +573,8 @@
         "stop": "Lecture arrêtée (retour à 00:00)",
         "restart": "Lecture relancée depuis 00:00",
         "seek": "Curseur placé à {hour}"
-      }
+      },
+      "findAppliances": "Trouver les appareils sur cette photo"
     },
     "gridDiagram": {
       "topologyLabel": "Plan du village : flux d'énergie du hub solaire vers chaque secteur",
@@ -676,6 +677,42 @@
       "dismiss": "Fermer l'avis d'incendie",
       "notificationsLabel": "Notifications d'incendie",
       "onFireLabel": "En feu"
+    },
+    "visionInsert": {
+      "openButton": "Trouver les appareils",
+      "title": "Trouver les appareils",
+      "subtitle": "Touchez un appareil entouré pour le choisir.",
+      "aiLabel": "Perception IA · à vérifier",
+      "demoNote": "Détections de démo (exemple hors ligne), pas cette photo.",
+      "imageAlt": "Photo à analyser",
+      "loading": "Recherche des appareils…",
+      "refining": "Affinage des contours…",
+      "empty": "Aucun appareil trouvé sur cette photo.",
+      "emptyHint": "Essayez une photo plus proche et bien éclairée.",
+      "error": "La détection des appareils a échoué.",
+      "retry": "Réessayer",
+      "close": "Fermer",
+      "listTitle": "Appareils trouvés ({count})",
+      "selected": "Choisi : {label} ({category})",
+      "selectedPlain": "Choisi : {label}",
+      "noneSelected": "Aucun appareil choisi pour le moment.",
+      "categories": {
+        "fridge": "Réfrigérateur",
+        "freezer": "Congélateur",
+        "tv": "Téléviseur",
+        "lamp": "Lampe",
+        "fan": "Ventilateur",
+        "laptop": "Ordinateur portable",
+        "phone_charger": "Chargeur de téléphone",
+        "radio": "Radio",
+        "water_pump": "Pompe à eau",
+        "rice_mill": "Décortiqueuse à riz",
+        "sewing_machine": "Machine à coudre",
+        "welder": "Poste à souder",
+        "fridge_vaccine": "Réfrigérateur à vaccins",
+        "computer": "Ordinateur",
+        "other": "Autre appareil"
+      }
     }
   },
   "copilot": {

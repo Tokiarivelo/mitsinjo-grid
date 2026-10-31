@@ -18,7 +18,7 @@
 ## Next task
 
 - **First: PV vision insert** (`docs/tasks/PV-vision-insert.md`, branch `claude/object-detection-3d-editor-gxfzw1`).
-  V1 done: PV-T1 catalog, T2 `input.appliances` in sector demand (v0.5.0), T3 strategies/warnings test. PV-T4 ✓ `detectAppliances` in `server/perception`. PV-T5 ✓ (SAM boxes + mask outlines via `@meta-sam/parser`). PV-T6 ✓ `POST /api/vision` (SSE). Next V3: PV-T7 detection canvas (/design-check first). Other items wait.
+  V1 done: PV-T1 catalog, T2 `input.appliances` in sector demand (v0.5.0), T3 strategies/warnings test. PV-T4 ✓ `detectAppliances` in `server/perception`. PV-T5 ✓ (SAM boxes + mask outlines via `@meta-sam/parser`). PV-T6 ✓ `POST /api/vision` (SSE). PV-T7 ✓ detection canvas + dialog from the image chip. Next PV-T8 (draw a missing box). Other items wait.
 - `make e2e` when convenient.
 - Live check with a Meta key: does Spark call `control_playback` for "pause" / "go to 18:00"? Note it in docs/copilot.md.
 - Screenshots (design gate) not taken: M1-T5 card, fire banner/snackbar, 3D fire, 2D « On fire » (dark + light, 390 px);

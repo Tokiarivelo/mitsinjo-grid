@@ -76,9 +76,10 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
 
 ### V3 — Web: detection editor in the chat
 
-- [ ] **PV-T7** `features/vision-insert/ui/detection-canvas.tsx`: image + SVG overlay (outline per object,
+- [x] **PV-T7** `features/vision-insert/ui/detection-canvas.tsx`: image + SVG overlay (outline per object,
       hover/focus = highlight + label chip, click/Enter = select), keyboard and touch accessible,
       responsive (pinch-free, fits 320 px). Opened when an image is attached in the copilot.
+      _(Opened from the attached-image chip, « Find appliances », not automatically: each run is a paid vision call.)_
       **Done when** component tests cover hover, select, empty result, error state.
 - [ ] **PV-T8** Missing object: the user draws a box and picks a category (no AI call).
       **Done when** a manual box becomes a `VisionDetection` like the others.

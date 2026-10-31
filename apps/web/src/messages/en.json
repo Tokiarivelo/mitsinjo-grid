@@ -573,7 +573,8 @@
         "stop": "Playback stopped (back to 00:00)",
         "restart": "Playback restarted from 00:00",
         "seek": "Time cursor moved to {hour}"
-      }
+      },
+      "findAppliances": "Find appliances in this photo"
     },
     "gridDiagram": {
       "topologyLabel": "Village plan: power flow from the solar hub to each sector",
@@ -676,6 +677,42 @@
       "dismiss": "Dismiss the fire notice",
       "notificationsLabel": "Fire notifications",
       "onFireLabel": "On fire"
+    },
+    "visionInsert": {
+      "openButton": "Find appliances",
+      "title": "Find appliances",
+      "subtitle": "Tap an outlined appliance to select it.",
+      "aiLabel": "AI perception · to verify",
+      "demoNote": "Demo detections (offline sample), not this photo.",
+      "imageAlt": "Photo to analyse",
+      "loading": "Looking for appliances…",
+      "refining": "Refining outlines…",
+      "empty": "No appliance found on this photo.",
+      "emptyHint": "Try a closer, well-lit photo.",
+      "error": "Appliance detection failed.",
+      "retry": "Try again",
+      "close": "Close",
+      "listTitle": "Appliances found ({count})",
+      "selected": "Selected: {label} ({category})",
+      "selectedPlain": "Selected: {label}",
+      "noneSelected": "No appliance selected yet.",
+      "categories": {
+        "fridge": "Fridge",
+        "freezer": "Freezer",
+        "tv": "Television",
+        "lamp": "Lamp",
+        "fan": "Fan",
+        "laptop": "Laptop",
+        "phone_charger": "Phone charger",
+        "radio": "Radio",
+        "water_pump": "Water pump",
+        "rice_mill": "Rice mill",
+        "sewing_machine": "Sewing machine",
+        "welder": "Welder",
+        "fridge_vaccine": "Vaccine fridge",
+        "computer": "Computer",
+        "other": "Other appliance"
+      }
     }
   },
   "copilot": {

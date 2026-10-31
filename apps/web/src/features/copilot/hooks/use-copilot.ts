@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { readSseStream } from '@/lib/sse';
 import { useSimulationStore } from '@/stores';
 import { useAppLocale } from '@/lib/i18n';
 import type {
@@ -298,9 +299,6 @@ export function useCopilot() {
           throw new CopilotHttpError('errorGeneric');
         }
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
         let streamedContent = '';
         let collectedEvidence: CopilotEvidence[] = [];
         let collectedProposal: CopilotProposal | undefined;
@@ -311,186 +309,153 @@ export function useCopilot() {
         let collectedChart: ChatChartData | undefined;
         let detectedModelName: string | undefined;
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const parts = buffer.split('\n\n');
-          buffer = parts.pop() || '';
-
-          for (const part of parts) {
-            const lines = part.split('\n');
-            let event = '';
-            let dataStr = '';
-
-            for (const line of lines) {
-              if (line.startsWith('event: ')) {
-                event = line.replace('event: ', '').trim();
-              } else if (line.startsWith('data: ')) {
-                dataStr = line.replace('data: ', '').trim();
-              }
+        await readSseStream(res.body, (event, dataObj) => {
+          switch (event) {
+            case 'model': {
+              detectedModelName = (dataObj.model as string) || undefined;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId ? { ...msg, detectedModel: detectedModelName } : msg
+                )
+              );
+              break;
             }
-
-            if (!event || !dataStr) continue;
-
-            let dataObj: Record<string, unknown> = {};
-            try {
-              dataObj = JSON.parse(dataStr);
-            } catch {
-              dataObj = {};
+            case 'image': {
+              collectedImageUrl = (dataObj.imageUrl as string) || undefined;
+              collectedImageCaption = (dataObj.caption as string) || undefined;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId
+                    ? {
+                        ...msg,
+                        imageUrl: collectedImageUrl,
+                        imageCaption: collectedImageCaption,
+                      }
+                    : msg
+                )
+              );
+              break;
             }
+            case 'video': {
+              collectedVideoUrl = (dataObj.videoUrl as string) || undefined;
+              collectedVideoCaption = (dataObj.caption as string) || undefined;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId
+                    ? {
+                        ...msg,
+                        videoUrl: collectedVideoUrl,
+                        videoCaption: collectedVideoCaption,
+                      }
+                    : msg
+                )
+              );
+              break;
+            }
+            case 'chart': {
+              collectedChart = dataObj as unknown as ChatChartData;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId
+                    ? {
+                        ...msg,
+                        chart: collectedChart,
+                      }
+                    : msg
+                )
+              );
+              break;
+            }
+            case 'activity': {
+              const tool = typeof dataObj.tool === 'string' ? dataObj.tool : 'start';
+              const sector = typeof dataObj.sector === 'string' ? dataObj.sector : undefined;
+              setToolActivity({ tool, sector });
+              break;
+            }
+            case 'delta': {
+              const text = (dataObj.text as string) || '';
+              streamedContent += text;
+              const sections = parseMessageSections(streamedContent);
 
-            switch (event) {
-              case 'model': {
-                detectedModelName = (dataObj.model as string) || undefined;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId
+                    ? {
+                        ...msg,
+                        content: streamedContent,
+                        sections,
+                        evidence: collectedEvidence,
+                        proposal: collectedProposal,
+                        imageUrl: collectedImageUrl,
+                        imageCaption: collectedImageCaption,
+                        videoUrl: collectedVideoUrl,
+                        videoCaption: collectedVideoCaption,
+                        chart: collectedChart,
+                        detectedModel: detectedModelName,
+                      }
+                    : msg
+                )
+              );
+              break;
+            }
+            case 'evidence': {
+              collectedEvidence = [...collectedEvidence, dataObj as unknown as CopilotEvidence];
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId ? { ...msg, evidence: collectedEvidence } : msg
+                )
+              );
+              break;
+            }
+            case 'proposal': {
+              collectedProposal = dataObj as unknown as CopilotProposal;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId ? { ...msg, proposal: collectedProposal } : msg
+                )
+              );
+              break;
+            }
+            case 'control': {
+              // Playback only (no scenario change): applied at once, noted on the answer.
+              const control = parsePlaybackControl(dataObj);
+              if (control) {
+                applyPlaybackControl(useSimulationStore.getState(), control);
+                setMessages((prev) =>
+                  prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, control } : msg))
+                );
+              }
+              break;
+            }
+            case 'summary': {
+              // Older turns were folded into the summary: send only the newer ones next time.
+              if (typeof dataObj.text === 'string' && typeof dataObj.summarizedCount === 'number') {
+                setSummary(dataObj.text);
+                setSummarizedCount(dataObj.summarizedCount);
+              }
+              break;
+            }
+            case 'error': {
+              if (dataObj.code === 'PROVIDER_FALLBACK') {
+                // The answer still arrives (offline copilot): a note on it, not a red alert.
+                const reason = FALLBACK_REASONS.find((r) => r === dataObj.reason) ?? 'unknown';
                 setMessages((prev) =>
                   prev.map((msg) =>
-                    msg.id === assistantMsgId ? { ...msg, detectedModel: detectedModelName } : msg
+                    msg.id === assistantMsgId ? { ...msg, fallbackReason: reason } : msg
                   )
                 );
-                break;
+              } else {
+                setError('errorGeneric');
               }
-              case 'image': {
-                collectedImageUrl = (dataObj.imageUrl as string) || undefined;
-                collectedImageCaption = (dataObj.caption as string) || undefined;
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMsgId
-                      ? {
-                          ...msg,
-                          imageUrl: collectedImageUrl,
-                          imageCaption: collectedImageCaption,
-                        }
-                      : msg
-                  )
-                );
-                break;
-              }
-              case 'video': {
-                collectedVideoUrl = (dataObj.videoUrl as string) || undefined;
-                collectedVideoCaption = (dataObj.caption as string) || undefined;
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMsgId
-                      ? {
-                          ...msg,
-                          videoUrl: collectedVideoUrl,
-                          videoCaption: collectedVideoCaption,
-                        }
-                      : msg
-                  )
-                );
-                break;
-              }
-              case 'chart': {
-                collectedChart = dataObj as unknown as ChatChartData;
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMsgId
-                      ? {
-                          ...msg,
-                          chart: collectedChart,
-                        }
-                      : msg
-                  )
-                );
-                break;
-              }
-              case 'activity': {
-                const tool = typeof dataObj.tool === 'string' ? dataObj.tool : 'start';
-                const sector = typeof dataObj.sector === 'string' ? dataObj.sector : undefined;
-                setToolActivity({ tool, sector });
-                break;
-              }
-              case 'delta': {
-                const text = (dataObj.text as string) || '';
-                streamedContent += text;
-                const sections = parseMessageSections(streamedContent);
-
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMsgId
-                      ? {
-                          ...msg,
-                          content: streamedContent,
-                          sections,
-                          evidence: collectedEvidence,
-                          proposal: collectedProposal,
-                          imageUrl: collectedImageUrl,
-                          imageCaption: collectedImageCaption,
-                          videoUrl: collectedVideoUrl,
-                          videoCaption: collectedVideoCaption,
-                          chart: collectedChart,
-                          detectedModel: detectedModelName,
-                        }
-                      : msg
-                  )
-                );
-                break;
-              }
-              case 'evidence': {
-                collectedEvidence = [...collectedEvidence, dataObj as unknown as CopilotEvidence];
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMsgId ? { ...msg, evidence: collectedEvidence } : msg
-                  )
-                );
-                break;
-              }
-              case 'proposal': {
-                collectedProposal = dataObj as unknown as CopilotProposal;
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMsgId ? { ...msg, proposal: collectedProposal } : msg
-                  )
-                );
-                break;
-              }
-              case 'control': {
-                // Playback only (no scenario change): applied at once, noted on the answer.
-                const control = parsePlaybackControl(dataObj);
-                if (control) {
-                  applyPlaybackControl(useSimulationStore.getState(), control);
-                  setMessages((prev) =>
-                    prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, control } : msg))
-                  );
-                }
-                break;
-              }
-              case 'summary': {
-                // Older turns were folded into the summary: send only the newer ones next time.
-                if (
-                  typeof dataObj.text === 'string' &&
-                  typeof dataObj.summarizedCount === 'number'
-                ) {
-                  setSummary(dataObj.text);
-                  setSummarizedCount(dataObj.summarizedCount);
-                }
-                break;
-              }
-              case 'error': {
-                if (dataObj.code === 'PROVIDER_FALLBACK') {
-                  // The answer still arrives (offline copilot): a note on it, not a red alert.
-                  const reason = FALLBACK_REASONS.find((r) => r === dataObj.reason) ?? 'unknown';
-                  setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantMsgId ? { ...msg, fallbackReason: reason } : msg
-                    )
-                  );
-                } else {
-                  setError('errorGeneric');
-                }
-                break;
-              }
-              case 'done': {
-                setToolActivity(null);
-                fetchSessions();
-                break;
-              }
+              break;
+            }
+            case 'done': {
+              setToolActivity(null);
+              fetchSessions();
+              break;
             }
           }
-        }
+        });
       } catch (err: unknown) {
         if ((err as Error)?.name === 'AbortError') return;
         const errorKey: CopilotErrorKey =

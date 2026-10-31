@@ -492,6 +492,8 @@ drops later slider edits (it restores the whole input). Session GET adds `summar
 `vision_detections { phase: 'boxes'|'outlines', detections: ApplianceDetection[], refined? /*outlines only*/, source, model, fallback? }`
 (boxes as soon as Muse answers; outlines after SAM, Meta only) · `vision_error { code: 'VISION_FAILED', message }` · `done {}`.
 400 missing, 413 too big, 415 not an image. Image not stored. Mock: `MOCK_DETECTIONS`, drawn in `public/samples/vision-room.jpg`.
+Shared Zod (client + server): `@/lib/vision` (`NormBoxSchema`, `ApplianceDetectionSchema`, `VisionDetectionsEventSchema`).
+SSE parsing for every client stream: `@/lib/sse` (`parseSseChunk`, `readSseStream`).
 
 Model-switch tools (Zod in `server/copilot/model-tools.ts`, results go back to the model):
 `generate_image {scene:'current_village'|'custom', prompt? /*custom*/, caption?}` → `{ok, model, caption, shownState?:{hour, sky, battery, sectors}}` + `image` event · `segment_image {concept}` →

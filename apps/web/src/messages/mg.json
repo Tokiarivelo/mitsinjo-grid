@@ -573,7 +573,8 @@
         "stop": "Najanona ny famakiana (miverina 00:00)",
         "restart": "Naverina natomboka tamin'ny 00:00",
         "seek": "Nafindra tamin'ny {hour} ny famantarana ora"
-      }
+      },
+      "findAppliances": "Hitady fitaovana amin'ity sary ity"
     },
     "gridDiagram": {
       "topologyLabel": "Drafitry ny tanàna: fikorianan'ny herinaratra avy amin'ny ivon-masoandro mankany amin'ny sehatra tsirairay",
@@ -676,6 +677,42 @@
       "dismiss": "Hidio ny filazana afo",
       "notificationsLabel": "Filazana afo",
       "onFireLabel": "May"
+    },
+    "visionInsert": {
+      "openButton": "Hitady fitaovana",
+      "title": "Hitady fitaovana",
+      "subtitle": "Tsindrio ny fitaovana voafefy mba hifidianana azy.",
+      "aiLabel": "Fahitan'ny IA · hamarinina",
+      "demoNote": "Ohatra fanandramana (tsy misy aterineto), tsy ity sary ity.",
+      "imageAlt": "Sary hodinihina",
+      "loading": "Mitady fitaovana…",
+      "refining": "Manatsara ny sisiny…",
+      "empty": "Tsy nahitana fitaovana tamin'ity sary ity.",
+      "emptyHint": "Andramo sary akaiky kokoa sy mazava tsara.",
+      "error": "Tsy nahomby ny fitadiavana fitaovana.",
+      "retry": "Andramo indray",
+      "close": "Hidio",
+      "listTitle": "Fitaovana hita ({count})",
+      "selected": "Voafidy: {label} ({category})",
+      "selectedPlain": "Voafidy: {label}",
+      "noneSelected": "Mbola tsy misy fitaovana voafidy.",
+      "categories": {
+        "fridge": "Vata fampangatsiahana",
+        "freezer": "Vata fanamafisana hatsiaka",
+        "tv": "Fahitalavitra",
+        "lamp": "Jiro",
+        "fan": "Fivelezana",
+        "laptop": "Solosaina finday",
+        "phone_charger": "Fiampangana finday",
+        "radio": "Radio",
+        "water_pump": "Paompy rano",
+        "rice_mill": "Milina fikosoham-bary",
+        "sewing_machine": "Milina fanjairana",
+        "welder": "Milina fanaovana soldy",
+        "fridge_vaccine": "Vata fampangatsiahana vakisiny",
+        "computer": "Solosaina",
+        "other": "Fitaovana hafa"
+      }
     }
   },
   "copilot": {
