@@ -40,7 +40,9 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
   (`sessionId`, else `global`). Over `META_SPEND_CAP_USD` → mock + `PROVIDER_FALLBACK` `reason: 'spend_cap'`. In memory: resets on restart.
 - Measured 2026-10-30 (real calls): vision ≈ 10 s (≈ 1 200 reasoning tokens), SAM ≈ 5 s, image ≈ 12–23 s, voice ≈ 3 s.
   Image URLs from some hosts fail (`media_url_origin_error`): send base64 data URLs. Exception, `/api/vision`: R2 public links
-  work for Muse and SAM (checked 2026-10-31), so the photo is hosted once and sent by link, base64 retry on failure.
+  work for Muse and SAM (checked 2026-10-31), so the photo is hosted once and sent by link, base64 retry on failure. Before that the route normalizes it with sharp
+  (`prepare-image.ts`: EXIF rotation, ≤ 1280 px, JPEG q85): the browser sends the file as picked (a Firefox canvas came back
+  blank, and unrotated phone photos misplaced the boxes).
   Muse on a 1280 px street photo: ≈ 15 s (base) / ≈ 25 s (contributor), ≈ 2 900 output tokens; zero objects → `[vision] … listed no object` log. Malagasy speech: not tested yet (no WAV sample).
 
 ### Media Storage (Cloudflare R2) & Chat Sessions (Neon DB)
