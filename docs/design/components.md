@@ -110,6 +110,10 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
   photo; keyboard + screen readers: the « Appliances found (n) » list below (buttons ≥ 44 px, focus = same highlight).
   States: loading (dimmed photo + status), refining (outlines coming), ready, empty, error + retry. Violet « AI perception ·
   to verify » tag; demo note when the mock answered. Category shown only when it differs from the label.
+  PV-T8 (`onAddManual`, optional): « Draw a missing object » → drag a box on the photo (pointer capture, touch-none;
+  amber dashed draft), `ManualBoxForm` below (category select, required · name optional, ≤ 40 · Add / Cancel). No box
+  drawn (keyboard) → centred box. Drawn items: dashed outline, « Added by you » chip, trash button (≥ 44 px). Also shown
+  in the error state; ≤ 30 per photo (button disabled + note).
 - `VisionDialog`: portal to `body` (glass panels trap fixed overlays), bottom sheet on mobile / centred card ≥ sm,
   runs detection on open, Esc closes, footer shows the selected appliance (insert comes in V4).
   (`❯` prompt, short placeholder). `ModelPicker` `{models, value, onChange, size: md|sm|terminal}`: one select for both.

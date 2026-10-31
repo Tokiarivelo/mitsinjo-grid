@@ -11,4 +11,6 @@ the engine catalog gives power (never the AI). Sidebar + MobileNav entry « Vill
 - Right column (lg 380 px, under on mobile): the aside, then the live village preview (`GridSchematicPreview stacked`,
   3D / 2D toggle, store input + active result + hour), so the current village state stays visible while editing.
 - Scenery objects (house, car, tree…) are outlined grey (`text-secondary`) with a « No load » chip; appliances cyan; selected amber.
+- Missing object (PV-T8): « Draw a missing object » under the photo → drag a box, pick a category (+ optional name),
+  « Add object » → listed after the AI objects with « Added by you », selected, removable. No AI call.
 - States: loading / refining / ready / empty / error + retry (states-copy.md « vision »). Mobile: one column, `pb-20`.

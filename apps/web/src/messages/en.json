@@ -739,7 +739,19 @@
         "other": "Object"
       },
       "noLoad": "No load",
-      "sceneryNote": "Not an electrical appliance: no load in the simulation."
+      "sceneryNote": "Not an electrical appliance: no load in the simulation.",
+      "drawButton": "Draw a missing object",
+      "drawArea": "Photo: drag around the missing object to draw its box",
+      "drawHint": "Drag on the photo around the object, then pick its category. Without a box, it goes in the centre of the photo.",
+      "drawDone": "Box drawn. Pick its category (drag again to redraw).",
+      "categoryLabel": "Category",
+      "categoryPlaceholder": "Choose a category",
+      "nameLabel": "Name (optional)",
+      "addManual": "Add object",
+      "cancel": "Cancel",
+      "manualBadge": "Added by you",
+      "removeManual": "Remove {label}",
+      "manualLimit": "Limit reached: 30 objects drawn on this photo."
     }
   },
   "copilot": {

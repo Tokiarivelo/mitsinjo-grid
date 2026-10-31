@@ -739,7 +739,19 @@
         "other": "Objet"
       },
       "noLoad": "Sans charge",
-      "sceneryNote": "Pas un appareil électrique : aucune charge dans la simulation."
+      "sceneryNote": "Pas un appareil électrique : aucune charge dans la simulation.",
+      "drawButton": "Dessiner un objet manquant",
+      "drawArea": "Photo : glissez autour de l'objet manquant pour dessiner son cadre",
+      "drawHint": "Glissez sur la photo autour de l'objet, puis choisissez sa catégorie. Sans cadre, il est placé au centre de la photo.",
+      "drawDone": "Cadre dessiné. Choisissez sa catégorie (glissez à nouveau pour le refaire).",
+      "categoryLabel": "Catégorie",
+      "categoryPlaceholder": "Choisir une catégorie",
+      "nameLabel": "Nom (facultatif)",
+      "addManual": "Ajouter l'objet",
+      "cancel": "Annuler",
+      "manualBadge": "Ajouté par vous",
+      "removeManual": "Retirer {label}",
+      "manualLimit": "Limite atteinte : 30 objets dessinés sur cette photo."
     }
   },
   "copilot": {

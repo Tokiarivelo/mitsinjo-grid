@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-31 · **By:** Claude Code · **Branch:** `feat/meta-models` · **PR:** none yet · last commit ee7b654; fire alarm work below **uncommitted**
+**Updated:** 2026-10-31 · **By:** Claude Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` (PV) / `feat/meta-models` · **PR:** none yet · last commit ee7b654; fire alarm work below **uncommitted**
 
 ## State
 
@@ -12,13 +12,14 @@
   floor, `FIRE_ISOLATION`, v0.4.0, `src/fire.ts`); store `reportFire`; `features/fire-alert` (auto snackbar, big sticky banner
   in AppShell, compact banner in the viewport, « Report a fire » in every view HUD + the deck); 2D « On fire » card + cut wire;
   3D `fire-effects.tsx` (flames, instanced smoke, light on high). Scenarios S83–S88.
-- Checks: tsc ✓, eslint ✓, prettier ✓, i18n ✓, web 687/687, engine 230/231 (sweep < 50 ms bench fails on this machine
+- Checks (PV-T8): tsc ✓, eslint ✓, prettier ✓, i18n ✓, web 804/804 (vitest « Timeout calling onTaskUpdate » also on clean tree);
+  earlier: web 687/687, engine 230/231 (sweep < 50 ms bench fails on this machine
   with or without the change: 52–85 ms).
 
 ## Next task
 
 - **First: PV vision insert** (`docs/tasks/PV-vision-insert.md`, branch `claude/object-detection-3d-editor-gxfzw1`).
-  V1 done: PV-T1 catalog, T2 `input.appliances` in sector demand (v0.5.0), T3 strategies/warnings test. PV-T4 ✓ `detectAppliances` in `server/perception`. PV-T5 ✓ (SAM boxes + mask outlines via `@meta-sam/parser`). PV-T6 ✓ `POST /api/vision` (SSE). PV-T7 ✓ detection canvas; `/village` « Village editor » menu page (user request) + chat dialog shortcut + live village preview; detection also outlines scenery (no load) so outdoor photos are not empty; photo normalized server-side with sharp (EXIF, ≤ 1280 px; same picture in Firefox and Chrome), hosted on R2 and sent by link (base64 fallback). Next PV-T8 (draw a missing box) on /village. Other items wait.
+  V1 done: PV-T1 catalog, T2 `input.appliances` in sector demand (v0.5.0), T3 strategies/warnings test. PV-T4 ✓ `detectAppliances` in `server/perception`. PV-T5 ✓ (SAM boxes + mask outlines via `@meta-sam/parser`). PV-T6 ✓ `POST /api/vision` (SSE). PV-T7 ✓ detection canvas; `/village` « Village editor » menu page (user request) + chat dialog shortcut + live village preview; detection also outlines scenery (no load) so outdoor photos are not empty; photo normalized server-side with sharp (EXIF, ≤ 1280 px), hosted on R2 and sent by link (base64 fallback). PV-T8 ✓ draw a missing box (`manual: true` detection, `utils/manual-box.ts`, `use-box-drawing`, `ManualBoxForm`; /village + chat dialog; scenarios V15–V19). Next **PV-T9** (SAM 3D mesh via fal.ai, `VISION_3D_PROVIDER`). Other items wait.
 - `make e2e` when convenient.
 - Live check with a Meta key: does Spark call `control_playback` for "pause" / "go to 18:00"? Note it in docs/copilot.md.
 - Screenshots (design gate) not taken: M1-T5 card, fire banner/snackbar, 3D fire, 2D « On fire » (dark + light, 390 px);

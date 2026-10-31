@@ -739,7 +739,19 @@
         "other": "Zavatra"
       },
       "noLoad": "Tsy mandany",
-      "sceneryNote": "Tsy fitaovana elektrika: tsy misy herinaratra lanina ao amin'ny simulation."
+      "sceneryNote": "Tsy fitaovana elektrika: tsy misy herinaratra lanina ao amin'ny simulation.",
+      "drawButton": "Hanoritra zavatra tsy hita",
+      "drawArea": "Sary: tariho manodidina ilay zavatra tsy hita mba hanoritana ny efajorony",
+      "drawHint": "Tariho eo amin'ny sary manodidina ilay zavatra, dia safidio ny sokajiny. Raha tsy misy efajoro, apetraka eo afovoan'ny sary izy.",
+      "drawDone": "Voasoritra ny efajoro. Safidio ny sokajiny (tariho indray raha hanova azy).",
+      "categoryLabel": "Sokajy",
+      "categoryPlaceholder": "Misafidiana sokajy",
+      "nameLabel": "Anarana (tsy voatery)",
+      "addManual": "Ampidiro ilay zavatra",
+      "cancel": "Foano",
+      "manualBadge": "Nampidirinao",
+      "removeManual": "Esory {label}",
+      "manualLimit": "Tratra ny fetra: zavatra 30 voasoritra amin'ity sary ity."
     }
   },
   "copilot": {

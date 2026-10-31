@@ -497,6 +497,9 @@ R2 off or mock mode: base64 only, nothing stored. Mock: `MOCK_DETECTIONS`, drawn
 Shared Zod (client + server): `@/lib/vision` (`NormBoxSchema`, `ApplianceDetectionSchema`, `VisionDetectionsEventSchema`).
 `ApplianceDetection` adds `kind?: 'appliance'|'scenery'` (absent = appliance) and `scenery?: 'building'|'vehicle'|'tree'|'plant'|'person'|'animal'|'water'|'other'`;
 scenery is outlined and selectable but has no load (`category: 'other'`, never inserted). Appliances come first in the list.
+`manual?: true` = box drawn by the operator (PV-T8, client only, never sent by the server): `kind: 'appliance'`, the picked
+category, no outline; built by `manualDetection` (`features/vision-insert/utils/manual-box.ts`), listed after the AI ones,
+≤ 30 per photo (`useVisionSession.addManual / removeManual`).
 SSE parsing for every client stream: `@/lib/sse` (`parseSseChunk`, `readSseStream`).
 
 Model-switch tools (Zod in `server/copilot/model-tools.ts`, results go back to the model):

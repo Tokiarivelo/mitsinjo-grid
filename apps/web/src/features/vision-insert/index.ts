@@ -7,6 +7,15 @@ export {
   type VisionState,
   type VisionStatus,
 } from './hooks/use-vision-detection';
-export { useVisionSession } from './hooks/use-vision-session';
+export { useVisionSession, MAX_MANUAL_BOXES } from './hooks/use-vision-session';
+export { useBoxDrawing } from './hooks/use-box-drawing';
+export { ManualBoxForm, type ManualBoxFormProps } from './ui/manual-box-form';
+export {
+  boxFromPoints,
+  manualDetection,
+  toNormPoint,
+  DEFAULT_MANUAL_BOX,
+  MIN_BOX_SIDE,
+} from './utils/manual-box';
 export { prepareVisionImage } from './utils/prepare-image';
 export { categoryHint } from './utils/labels';

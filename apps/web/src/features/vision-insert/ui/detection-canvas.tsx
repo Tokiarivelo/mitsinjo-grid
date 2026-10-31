@@ -1,13 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, Loader2, RotateCcw, ScanSearch, Sparkles } from 'lucide-react';
+import type { ApplianceCategory } from '@mitsinjo/engine';
+import {
+  AlertTriangle,
+  Loader2,
+  RotateCcw,
+  ScanSearch,
+  Sparkles,
+  SquareDashedMousePointer,
+  Trash2,
+} from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { boxPath, isAppliance, type ApplianceDetection } from '@/lib/vision';
+import { boxPath, isAppliance, type ApplianceDetection, type NormBox } from '@/lib/vision';
 import type { VisionStatus } from '../hooks/use-vision-detection';
 import { categoryHint } from '../utils/labels';
 import { useObjectName } from '../hooks/use-object-name';
+import { useBoxDrawing } from '../hooks/use-box-drawing';
+import { DEFAULT_MANUAL_BOX } from '../utils/manual-box';
+import { ManualBoxForm } from './manual-box-form';
 
 export interface DetectionCanvasProps {
   imageUrl: string;
@@ -18,6 +30,11 @@ export interface DetectionCanvasProps {
   onRetry?: () => void;
   /** The mock answered instead of the vision model (offline or fallback). */
   isDemo?: boolean;
+  /** Draw a missing object (PV-T8). Absent = no « Draw » button. */
+  onAddManual?: (box: NormBox, category: ApplianceCategory, label: string) => void;
+  onRemoveManual?: (id: string) => void;
+  /** False when the photo already has the max number of drawn boxes. */
+  canAddManual?: boolean;
 }
 
 /**
@@ -32,12 +49,24 @@ export function DetectionCanvas({
   onSelect,
   onRetry,
   isDemo,
+  onAddManual,
+  onRemoveManual,
+  canAddManual = true,
 }: DetectionCanvasProps) {
   const t = useTranslations('features.visionInsert');
   const [activeId, setActiveId] = useState<string | null>(null);
   const active = detections.find((d) => d.id === activeId) ?? null;
   const busy = status === 'loading';
-  const showList = status === 'refining' || status === 'ready';
+  // Drawn boxes stay visible even when the AI failed.
+  const showList =
+    status === 'refining' || status === 'ready' || (status === 'error' && detections.length > 0);
+  const [drawing, setDrawing] = useState(false);
+  const draw = useBoxDrawing();
+  const canDraw = !!onAddManual && status !== 'idle' && status !== 'loading';
+  const stopDrawing = () => {
+    draw.clear();
+    setDrawing(false);
+  };
   const objectName = useObjectName();
   const hint = (d: ApplianceDetection) => categoryHint(d.label, objectName(d));
 
@@ -81,6 +110,7 @@ export function DetectionCanvas({
                   d={d.outline ?? boxPath(d.box)}
                   vectorEffect="non-scaling-stroke"
                   strokeWidth={selected || hot ? 3 : 2}
+                  strokeDasharray={d.manual ? '6 4' : undefined}
                   className={cn(
                     'cursor-pointer transition-colors',
                     selected
@@ -113,6 +143,26 @@ export function DetectionCanvas({
             {hint(active) ? `${active.label} · ${hint(active)}` : active.label}
           </span>
         )}
+        {drawing && (
+          <div
+            role="application"
+            aria-label={t('drawArea')}
+            className="absolute inset-0 cursor-crosshair touch-none bg-canvas/20"
+            {...draw.handlers}
+          >
+            {draw.shown && (
+              <div
+                className="pointer-events-none absolute rounded-sm border-2 border-dashed border-solar-amber bg-solar-amber/15"
+                style={{
+                  left: `${draw.shown.x * 100}%`,
+                  top: `${draw.shown.y * 100}%`,
+                  width: `${draw.shown.w * 100}%`,
+                  height: `${draw.shown.h * 100}%`,
+                }}
+              />
+            )}
+          </div>
+        )}
         {busy && (
           <div
             role="status"
@@ -123,6 +173,32 @@ export function DetectionCanvas({
           </div>
         )}
       </div>
+
+      {drawing && onAddManual ? (
+        <ManualBoxForm
+          hasBox={!!draw.box}
+          onAdd={(category, label) => {
+            onAddManual(draw.box ?? DEFAULT_MANUAL_BOX, category, label);
+            stopDrawing();
+          }}
+          onCancel={stopDrawing}
+        />
+      ) : (
+        canDraw && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={!canAddManual}
+              onClick={() => setDrawing(true)}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-3 text-sm font-medium text-text-primary hover:bg-surface-hover cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <SquareDashedMousePointer className="h-4 w-4" aria-hidden="true" />
+              {t('drawButton')}
+            </button>
+            {!canAddManual && <span className="text-xs text-text-muted">{t('manualLimit')}</span>}
+          </div>
+        )
+      )}
 
       {status === 'error' && (
         <div
@@ -146,7 +222,7 @@ export function DetectionCanvas({
         </div>
       )}
 
-      {showList && detections.length === 0 && (
+      {showList && detections.length === 0 && !drawing && (
         <div className="flex items-start gap-2 rounded-lg border border-border bg-surface p-3 text-sm">
           <ScanSearch className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
           <div>
@@ -165,7 +241,7 @@ export function DetectionCanvas({
             {detections.map((d) => {
               const selected = d.id === selectedId;
               return (
-                <li key={d.id}>
+                <li key={d.id} className="flex items-stretch gap-1.5">
                   <button
                     type="button"
                     aria-pressed={selected}
@@ -175,7 +251,7 @@ export function DetectionCanvas({
                     onFocus={() => setActiveId(d.id)}
                     onBlur={() => setActiveId((id) => (id === d.id ? null : id))}
                     className={cn(
-                      'flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors cursor-pointer',
+                      'flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors cursor-pointer',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan',
                       selected
                         ? 'border-solar-amber/60 bg-solar-amber/10 text-text-primary'
@@ -185,6 +261,11 @@ export function DetectionCanvas({
                     <span className="min-w-0 truncate font-medium">{d.label}</span>
                     <span className="flex shrink-0 items-center gap-1.5 text-xs text-text-secondary">
                       {hint(d)}
+                      {d.manual && (
+                        <span className="rounded border border-solar-amber/50 px-1 py-px text-[10px] uppercase tracking-wide text-text-secondary">
+                          {t('manualBadge')}
+                        </span>
+                      )}
                       {!isAppliance(d) && (
                         <span className="rounded border border-border px-1 py-px text-[10px] uppercase tracking-wide text-text-muted">
                           {t('noLoad')}
@@ -192,6 +273,16 @@ export function DetectionCanvas({
                       )}
                     </span>
                   </button>
+                  {d.manual && onRemoveManual && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveManual(d.id)}
+                      aria-label={t('removeManual', { label: d.label })}
+                      className="flex w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-muted hover:bg-surface-hover hover:text-critical-red cursor-pointer"
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  )}
                 </li>
               );
             })}

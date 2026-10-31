@@ -43,6 +43,8 @@ export const ApplianceDetectionSchema = z.object({
   box: NormBoxSchema,
   /** SVG path in image fractions (0–1), from SAM. Absent → draw the box. */
   outline: z.string().optional(),
+  /** Box drawn by the operator (PV-T8), not seen by the AI. Never set by the server. */
+  manual: z.literal(true).optional(),
 });
 export type ApplianceDetection = z.infer<typeof ApplianceDetectionSchema>;
 
