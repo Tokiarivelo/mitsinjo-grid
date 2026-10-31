@@ -491,7 +491,9 @@ drops later slider edits (it restores the whole input). Session GET adds `summar
 `POST /api/vision` multipart `{ image: JPEG|PNG|WebP ≤ 4 MB (client resizes to ≤ 1280 px), sessionId? }` → `text/event-stream`:
 `vision_detections { phase: 'boxes'|'outlines', detections: ApplianceDetection[], refined? /*outlines only*/, source, model, fallback? }`
 (boxes as soon as Muse answers; outlines after SAM, Meta only) · `vision_error { code: 'VISION_FAILED', message }` · `done {}`.
-400 missing, 413 too big, 415 not an image. Image not stored. Mock: `MOCK_DETECTIONS`, drawn in `public/samples/vision-room.jpg`.
+400 missing, 413 too big, 415 not an image. Meta + R2: the photo is uploaded once to `vision/<ts>-<rand>.<ext>`
+(`hostVisionImage`) and Muse + SAM get the link (`VisionImage {url, inlineUrl?}`); Meta failure → one retry inline (base64).
+R2 off or mock mode: base64 only, nothing stored. Mock: `MOCK_DETECTIONS`, drawn in `public/samples/vision-room.jpg`.
 Shared Zod (client + server): `@/lib/vision` (`NormBoxSchema`, `ApplianceDetectionSchema`, `VisionDetectionsEventSchema`).
 `ApplianceDetection` adds `kind?: 'appliance'|'scenery'` (absent = appliance) and `scenery?: 'building'|'vehicle'|'tree'|'plant'|'person'|'animal'|'water'|'other'`;
 scenery is outlined and selectable but has no load (`category: 'other'`, never inserted). Appliances come first in the list.

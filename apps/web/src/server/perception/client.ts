@@ -28,6 +28,11 @@ export class PerceptionClient {
     private readonly notConfigured = false
   ) {}
 
+  /** True when calls go to Meta (worth hosting the photo); false in mock mode. */
+  get callsMeta(): boolean {
+    return this.primary !== null;
+  }
+
   private async run<T>(
     kind: string,
     call: (b: PerceptionBackend) => Promise<PerceptionCall<T>>

@@ -245,7 +245,12 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       DETECT_JSON_SCHEMA,
       signal
     );
-    return { model, usage, result: { detections: parseDetections(content) } };
+    const detections = parseDetections(content);
+    if (detections.length === 0) {
+      // Helps tell « nothing seen » from a reply shape we do not read.
+      console.info(`[vision] ${model} listed no object: ${content.slice(0, 300)}`);
+    }
+    return { model, usage, result: { detections } };
   }
 
   async segmentImage(

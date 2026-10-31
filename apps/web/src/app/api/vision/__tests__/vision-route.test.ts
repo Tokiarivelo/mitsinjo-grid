@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { NextRequest } from 'next/server';
 
 vi.mock('server-only', () => ({}));
+const { hostVisionImage } = vi.hoisted(() => ({ hostVisionImage: vi.fn() }));
+vi.mock('@/server/storage/media', () => ({ hostVisionImage }));
 
 import { MOCK_DETECTIONS } from '@/server/perception';
 import { MAX_VISION_BYTES, POST } from '../route';
@@ -43,6 +45,8 @@ describe('POST /api/vision (PV-T6)', () => {
     expect(data.detections).toEqual(MOCK_DETECTIONS);
     // Labels and geometry only: no power value leaves the vision route.
     expect(JSON.stringify(data)).not.toMatch(/watt|kw/i);
+    // Mock mode: the photo is never uploaded.
+    expect(hostVisionImage).not.toHaveBeenCalled();
   });
 
   it('refuses a missing image, a too large one and a non-image', async () => {

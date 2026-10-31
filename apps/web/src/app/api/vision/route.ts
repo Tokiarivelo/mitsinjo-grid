@@ -4,6 +4,7 @@ import { type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getPerceptionClient } from '@/server/perception';
 import { runVisionPipeline } from '@/server/perception/vision-pipeline';
+import { hostVisionImage } from '@/server/storage/media';
 
 /** The client resizes to ≤ 1280 px before upload; 4 MB leaves room for an unresized phone photo. */
 export const MAX_VISION_BYTES = 4_000_000;
@@ -17,7 +18,7 @@ const json = (body: unknown, status = 200) =>
 /**
  * Appliance detection on a photo (PV). Multipart: `image` (JPEG/PNG/WebP ≤ MAX_VISION_BYTES), `sessionId`.
  * → `text/event-stream`: `vision_detections` (boxes, then outlines on Meta) · `vision_error` · `done`.
- * The image is not stored. Meta when configured, the sample-room fixture otherwise.
+ * Meta + R2: the photo is kept under `vision/` and sent by link. Mock: not stored, sample-room fixture.
  */
 export async function POST(req: NextRequest) {
   let form: FormData;
@@ -33,17 +34,19 @@ export async function POST(req: NextRequest) {
   const fields = FieldsSchema.safeParse({ sessionId: form.get('sessionId') ?? undefined });
   if (!fields.success) return json({ error: 'Invalid fields' }, 400);
 
-  // Base64 data URL: some hosts fail as URLs on the Meta API (media_url_origin_error).
   const bytes = Buffer.from(await image.arrayBuffer());
-  const imageUrl = `data:${image.type};base64,${bytes.toString('base64')}`;
   const perception = getPerceptionClient(fields.data.sessionId);
+  // Meta: one R2 upload, then a short link for Muse and every SAM call (base64 when R2 is off).
+  const visionImage = perception.callsMeta
+    ? await hostVisionImage(bytes, image.type)
+    : { url: `data:${image.type};base64,${bytes.toString('base64')}` };
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     async start(controller) {
       const send = (event: string, data: Record<string, unknown>) =>
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
-      await runVisionPipeline(perception, imageUrl, send, req.signal);
+      await runVisionPipeline(perception, visionImage, send, req.signal);
       send('done', {});
       controller.close();
     },

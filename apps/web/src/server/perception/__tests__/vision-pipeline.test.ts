@@ -89,4 +89,49 @@ describe('runVisionPipeline (PV-T6)', () => {
       ['vision_error', { code: 'VISION_FAILED', message: 'Appliance detection failed' }],
     ]);
   });
+
+  it('hosted link refused by Meta: retries once with the inline photo, SAM gets the inline photo too', async () => {
+    const emit = vi.fn();
+    const detectAppliances = vi.fn(async (url: string) =>
+      url.startsWith('https://')
+        ? { ...meta(), source: 'mock' as const, fallback: 'provider_error' as const }
+        : meta()
+    );
+    const segmentImage = vi.fn(async (_u: string, concept: string) => ({
+      ...fridgeSeg,
+      concept,
+      instances: [],
+      count: 0,
+    }));
+    await runVisionPipeline(
+      { detectAppliances, segmentImage },
+      { url: 'https://r2.example/vision/a.jpg', inlineUrl: 'data:image/jpeg;base64,AA' },
+      emit
+    );
+    expect(detectAppliances.mock.calls.map((c) => c[0])).toEqual([
+      'https://r2.example/vision/a.jpg',
+      'data:image/jpeg;base64,AA',
+    ]);
+    expect(emit.mock.calls[0]![1].source).toBe('meta');
+    expect(segmentImage.mock.calls.every((c) => c[0] === 'data:image/jpeg;base64,AA')).toBe(true);
+  });
+
+  it('hosted link that works: one detection call, SAM reads the same link', async () => {
+    const detectAppliances = vi.fn(async () => meta());
+    const segmentImage = vi.fn(async (_u: string, concept: string) => ({
+      ...fridgeSeg,
+      concept,
+      instances: [],
+      count: 0,
+    }));
+    await runVisionPipeline(
+      { detectAppliances, segmentImage },
+      { url: 'https://r2.example/vision/a.jpg', inlineUrl: 'data:x' },
+      vi.fn()
+    );
+    expect(detectAppliances).toHaveBeenCalledTimes(1);
+    expect(segmentImage.mock.calls.every((c) => c[0] === 'https://r2.example/vision/a.jpg')).toBe(
+      true
+    );
+  });
 });

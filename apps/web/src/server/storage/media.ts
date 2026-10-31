@@ -80,6 +80,39 @@ export async function storeGeneratedImage(
   }
 }
 
+/** What a vision model reads: an http(s) link to the hosted photo, plus the inline data URL as a fallback. */
+export interface VisionImage {
+  url: string;
+  /** Base64 data URL, set when `url` is a link (resent if Meta cannot download the link). */
+  inlineUrl?: string;
+}
+
+/**
+ * Photo for Muse / SAM: uploaded once to R2 under `vision/`, so every call sends a short link instead of
+ * the base64 bytes (one Muse call + up to 8 SAM calls per photo). R2 off, not an image, or upload error →
+ * the base64 data URL only. Never throws.
+ */
+export async function hostVisionImage(
+  buffer: Buffer,
+  contentType: string,
+  opts: { store?: MediaStore; now?: number } = {}
+): Promise<VisionImage> {
+  const inlineUrl = `data:${contentType};base64,${buffer.toString('base64')}`;
+  const store = opts.store ?? r2MediaStore;
+  const ext = EXTENSION[contentType.toLowerCase()];
+  if (!ext || !store.configured()) return { url: inlineUrl };
+  const now = opts.now ?? Date.now();
+  const key = `vision/${now}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+  try {
+    const url = await store.upload(key, buffer, contentType);
+    // A mock store path (`/mock-storage/…`) is not reachable from Meta.
+    return /^https?:\/\//i.test(url) ? { url, inlineUrl } : { url: inlineUrl };
+  } catch (err) {
+    console.warn('[storage:media] Vision photo upload failed, sending base64:', err);
+    return { url: inlineUrl };
+  }
+}
+
 /**
  * Prepares saved messages for display: stored media get a fresh URL from their key, and the generated
  * image of an assistant message goes back to `imageUrl` / `imageCaption` (the AI image block).
