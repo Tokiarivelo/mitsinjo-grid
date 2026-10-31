@@ -8,6 +8,7 @@ import {
   BarChart3,
   GitCompare,
   LayoutDashboard,
+  ScanSearch,
   Sliders,
   Sparkles,
   X,
@@ -19,7 +20,7 @@ import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { useTranslations } from '@/lib/i18n';
 
 export interface NavConfig {
-  key: 'overview' | 'simulation' | 'strategies' | 'scenarios' | 'copilot';
+  key: 'overview' | 'simulation' | 'strategies' | 'scenarios' | 'copilot' | 'village';
   href: string;
   icon: typeof LayoutDashboard;
 }
@@ -30,6 +31,7 @@ export const NAV_CONFIG: NavConfig[] = [
   { key: 'strategies', href: '/strategies', icon: GitCompare },
   { key: 'scenarios', href: '/scenarios', icon: Sliders },
   { key: 'copilot', href: '/copilot', icon: Sparkles },
+  { key: 'village', href: '/village', icon: ScanSearch },
 ];
 
 export interface SidebarProps {

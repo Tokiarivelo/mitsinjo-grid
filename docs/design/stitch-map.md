@@ -10,6 +10,7 @@ instead of calling the Stitch MCP every time. Use the MCP only to generate, refr
 | Strategy Lab    | /strategies           | screens/strategy-lab.md    | bfbfa25691fe45f2b5af82216ceb242c | `design/stitch/strategy-lab.png` (+ `.html`)    | checked                        |
 | AI Copilot      | /copilot + side panel | screens/copilot.md         | b5ff63b413004edca491b83aadfe9f08 | `design/stitch/copilot.png` (+ `.html`)         | checked                        |
 | Scenarios       | /scenarios            | screens/scenarios.md       | d0c1f73e58cb428989306f98803e2a11 | `design/stitch/scenarios.png` (+ `.html`)       | checked                        |
+| Village editor  | /village              | screens/village.md         | —                                | none                                            | checked (built without mockup) |
 | App shell       | sidebar/header/panel  | shell.md                   | (from any screen)                | crop of `live-simulation.png`                   | exported                       |
 | UI kit          | components/ui         | components.md              | —                                | none (derive from screens)                      | —                              |
 
@@ -76,3 +77,6 @@ Status values: `not generated` · `generated` · `exported` · `implemented` · 
 - Vision detection dialog 2026-10-31 (PV-T7): built without mockup. Bottom sheet (mobile) / card (≥ sm) over the copilot,
   photo with cyan outlines, amber selection, list below. Gate-out: /copilot 1440 + 390, dark + light, `/api/vision` stubbed
   with the mock fixture, no horizontal overflow. Category text hidden when it repeats the label.
+- Village editor 2026-10-31: built without mockup, new menu entry (sidebar + 6th MobileNav item, scan icon). Intro card +
+  SIMULATED badge, dashed drop zone (Choose a photo / Use the sample room), then photo canvas + « Selected appliance » aside
+  (320 px, stacks under on < lg). Gate-out 1440 + 390, dark + light, empty and with detections, no horizontal overflow.

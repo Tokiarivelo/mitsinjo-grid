@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ScanSearch, X } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
-import { useVisionDetection } from '../hooks/use-vision-detection';
-import { categoryHint } from '../utils/labels';
+import { useVisionSession } from '../hooks/use-vision-session';
 import { DetectionCanvas } from './detection-canvas';
+import { SelectedAppliance } from './selected-appliance';
 
 export interface VisionDialogProps {
   /** Attached image (data URL) to analyse; null = closed. */
@@ -17,17 +17,7 @@ export interface VisionDialogProps {
 /** Modal around the detection canvas: runs detection when opened, keeps the selected appliance. */
 export function VisionDialog({ imageUrl, onClose }: VisionDialogProps) {
   const t = useTranslations('features.visionInsert');
-  const vision = useVisionDetection();
-  const { detect, reset } = vision;
-  // Selection belongs to one image: opening another photo starts with nothing selected.
-  const [selection, setSelection] = useState<{ image: string; id: string } | null>(null);
-  const selectedId = selection && selection.image === imageUrl ? selection.id : null;
-
-  useEffect(() => {
-    if (!imageUrl) return;
-    void detect(imageUrl);
-    return reset;
-  }, [imageUrl, detect, reset]);
+  const vision = useVisionSession(imageUrl);
 
   useEffect(() => {
     if (!imageUrl) return;
@@ -37,7 +27,6 @@ export function VisionDialog({ imageUrl, onClose }: VisionDialogProps) {
   }, [imageUrl, onClose]);
 
   if (!imageUrl || typeof document === 'undefined') return null;
-  const selected = vision.detections.find((d) => d.id === selectedId) ?? null;
 
   // Portal: a glass panel (backdrop-filter) would trap a fixed overlay.
   return createPortal(
@@ -75,9 +64,9 @@ export function VisionDialog({ imageUrl, onClose }: VisionDialogProps) {
             imageUrl={imageUrl}
             status={vision.status}
             detections={vision.detections}
-            selectedId={selectedId}
-            onSelect={(id) => setSelection({ image: imageUrl, id })}
-            onRetry={() => void detect(imageUrl)}
+            selectedId={vision.selectedId}
+            onSelect={vision.select}
+            onRetry={vision.retry}
             isDemo={vision.source === 'mock'}
           />
         </div>
@@ -86,18 +75,7 @@ export function VisionDialog({ imageUrl, onClose }: VisionDialogProps) {
           className="border-t border-border bg-surface-elevated px-4 py-3 text-sm"
           aria-live="polite"
         >
-          {selected ? (
-            <span className="text-text-primary">
-              {(() => {
-                const hint = categoryHint(selected.label, t(`categories.${selected.category}`));
-                return hint
-                  ? t('selected', { label: selected.label, category: hint })
-                  : t('selectedPlain', { label: selected.label });
-              })()}
-            </span>
-          ) : (
-            <span className="text-text-muted">{t('noneSelected')}</span>
-          )}
+          <SelectedAppliance selected={vision.selected} />
         </div>
       </div>
     </div>,

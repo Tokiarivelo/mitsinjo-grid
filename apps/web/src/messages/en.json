@@ -37,7 +37,8 @@
     "simulation": "Live Simulation",
     "strategies": "Strategy Lab",
     "scenarios": "Scenarios",
-    "copilot": "AI Copilot"
+    "copilot": "AI Copilot",
+    "village": "Village editor"
   },
   "routes": {
     "overview": {
@@ -63,6 +64,10 @@
     "design": {
       "title": "Design System & UI Kit",
       "subtitle": "Component specifications, tokens, and variant showcase"
+    },
+    "village": {
+      "title": "Village editor",
+      "subtitle": "Add appliances to the simulated village from a photo"
     }
   },
   "status": {
@@ -712,7 +717,17 @@
         "fridge_vaccine": "Vaccine fridge",
         "computer": "Computer",
         "other": "Other appliance"
-      }
+      },
+      "pageHeading": "Add appliances from a photo",
+      "pageIntro": "Photograph a room or a workshop: the AI finds the appliances, you pick the ones to add to the village.",
+      "dropTitle": "Drop a photo here",
+      "dropHint": "JPEG, PNG or WebP. It is not stored.",
+      "choosePhoto": "Choose a photo",
+      "useSample": "Use the sample room",
+      "changePhoto": "Change photo",
+      "badType": "Use a JPEG, PNG or WebP photo.",
+      "selectedTitle": "Selected appliance",
+      "nextStepNote": "Next: edit it in 3D and insert it into the simulation. Its power will come from the engine catalog, never from the AI."
     }
   },
   "copilot": {

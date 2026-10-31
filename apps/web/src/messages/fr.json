@@ -37,7 +37,8 @@
     "simulation": "Simulation en direct",
     "strategies": "Labo Stratégies",
     "scenarios": "Scénarios",
-    "copilot": "Copilote IA"
+    "copilot": "Copilote IA",
+    "village": "Éditeur du village"
   },
   "routes": {
     "overview": {
@@ -63,6 +64,10 @@
     "design": {
       "title": "Système de Design & Kit UI",
       "subtitle": "Spécifications des composants, jetons et galerie des variantes"
+    },
+    "village": {
+      "title": "Éditeur du village",
+      "subtitle": "Ajouter des appareils au village simulé à partir d'une photo"
     }
   },
   "status": {
@@ -712,7 +717,17 @@
         "fridge_vaccine": "Réfrigérateur à vaccins",
         "computer": "Ordinateur",
         "other": "Autre appareil"
-      }
+      },
+      "pageHeading": "Ajouter des appareils depuis une photo",
+      "pageIntro": "Photographiez une pièce ou un atelier : l'IA trouve les appareils, vous choisissez ceux à ajouter au village.",
+      "dropTitle": "Déposez une photo ici",
+      "dropHint": "JPEG, PNG ou WebP. Elle n'est pas conservée.",
+      "choosePhoto": "Choisir une photo",
+      "useSample": "Utiliser la pièce d'exemple",
+      "changePhoto": "Changer de photo",
+      "badType": "Utilisez une photo JPEG, PNG ou WebP.",
+      "selectedTitle": "Appareil choisi",
+      "nextStepNote": "Ensuite : le modifier en 3D et l'insérer dans la simulation. Sa puissance viendra du catalogue du moteur, jamais de l'IA."
     }
   },
   "copilot": {

@@ -42,7 +42,7 @@ mitsinjo-grid/
             ├── app/
             │   ├── layout.tsx  globals.css (@theme tokens)  page.tsx → redirect /overview
             │   ├── (lab)/layout.tsx    # AppShell
-            │   ├── (lab)/{overview,simulation,strategies,scenarios,copilot}/page.tsx
+            │   ├── (lab)/{overview,simulation,strategies,scenarios,copilot,village}/page.tsx
             │   ├── design/page.tsx     # UI kit catalog (renders features/design-system)
             │   ├── api/copilot/route.ts
             │   ├── api/voice/route.ts  # chat microphone → transcribe (Meta Voice / mock)
@@ -55,7 +55,7 @@ mitsinjo-grid/
             │   ├── scenarios/          # cards, assumptions, export summary
             │   ├── copilot/            # chat UI, useCopilot, proposal dialog
             │   ├── hardware-link/      # scale-model bridge link (WebSocket hook + panel), local only
-            │   ├── vision-insert/      # photo → appliance detection canvas + dialog (PV), calls /api/vision
+            │   ├── vision-insert/      # /village editor + chat dialog: photo → appliance detection (PV), calls /api/vision
             │   └── design-system/      # /design UI kit catalog
             ├── components/{ui,layout,charts}/
             ├── stores/simulation.store.ts   # single source of UI state

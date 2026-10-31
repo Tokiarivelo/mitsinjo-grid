@@ -5,30 +5,24 @@ import {
   type DragEvent,
   type KeyboardEvent,
 } from 'react';
+import { readAsDataUrl } from '@/lib/files';
 import type { ChatMediaItem } from '../types';
 
 /** Reads image / video files as data URLs (uploaded to storage when sent). */
-function readMedia(file: File): Promise<ChatMediaItem | null> {
+async function readMedia(file: File): Promise<ChatMediaItem | null> {
   const isImage = file.type.startsWith('image/');
   const isVideo = file.type.startsWith('video/');
-  if (!isImage && !isVideo) return Promise.resolve(null);
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () =>
-      resolve(
-        typeof reader.result === 'string'
-          ? {
-              id: `media-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-              url: reader.result,
-              type: isVideo ? 'video' : 'image',
-              name: file.name,
-              size: file.size,
-            }
-          : null
-      );
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(file);
-  });
+  if (!isImage && !isVideo) return null;
+  const url = await readAsDataUrl(file);
+  return url
+    ? {
+        id: `media-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        url,
+        type: isVideo ? 'video' : 'image',
+        name: file.name,
+        size: file.size,
+      }
+    : null;
 }
 
 /**
