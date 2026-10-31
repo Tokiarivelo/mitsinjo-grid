@@ -352,7 +352,11 @@
         "socMinPctBefore": "Batterie minimale avant (SoC %)",
         "socMinPctAfter": "Batterie minimale après (SoC %)",
         "unservedKwhBefore": "Énergie non servie avant (kWh)",
-        "unservedKwhAfter": "Énergie non servie après (kWh)"
+        "unservedKwhAfter": "Énergie non servie après (kWh)",
+        "lifelineCoveragePct": "Couverture du courant de survie (%)",
+        "peakSolarKw": "Pointe de production solaire (kW)",
+        "peakDemandKw": "Pointe de demande (kW)",
+        "lowestSocPct": "Niveau de batterie le plus bas (SoC %)"
       },
       "errorTitle": "Avis consultatif de simulation",
       "errorFallbackNote": "Les résultats déterministes de la simulation restent pleinement consultables et actifs.",
@@ -489,7 +493,11 @@
         "approvedTitle": "Changement approuvé et appliqué à la simulation",
         "approvedBody": "Indicateurs, graphiques et village 3D utilisent maintenant ces réglages.",
         "rejectedTitle": "Proposition refusée",
-        "rejectedBody": "Rien n'a changé dans la simulation."
+        "rejectedBody": "Rien n'a changé dans la simulation.",
+        "undoneBadge": "Annulé",
+        "undoneTitle": "Changement annulé",
+        "undoneBody": "La simulation est revenue aux réglages d'avant ce changement.",
+        "undoLast": "Annuler le dernier changement"
       },
       "fallback": {
         "spend_cap": "Le budget IA de cette session est épuisé : cette réponse vient du copilote hors ligne. Les chiffres du moteur restent valables.",
@@ -525,6 +533,12 @@
         "pitchZone": "Hauteur de voix",
         "hz": "{value} Hz",
         "khz": "{value} kHz"
+      },
+      "evidenceShowAll": "Voir toutes les preuves ({count})",
+      "retry": {
+        "button": "Réessayer",
+        "hint": "Pas satisfait ? Reposez la même question pour une nouvelle réponse.",
+        "retriedNote": "Réponse refaite plus bas (Réessayer)."
       }
     },
     "gridDiagram": {

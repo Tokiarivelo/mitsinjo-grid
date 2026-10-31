@@ -107,6 +107,59 @@ describe('Copilot Loop (P6-T3)', () => {
     expect(events.map((e) => e.name)).toContain('done');
   });
 
+  it('a retry tells the model the previous answer did not help', async () => {
+    let seen: ChatMessage[] = [];
+    const provider: LlmProvider = {
+      name: 'meta',
+      chat: vi.fn().mockImplementation(async (msgs: ChatMessage[]) => {
+        seen = msgs;
+        return { content: 'New answer.' };
+      }),
+    };
+    await runCopilotLoop({
+      messages: [{ role: 'user', content: 'Cut the market' }],
+      input: baseInput,
+      provider,
+      retry: true,
+      emit: () => {},
+    });
+    expect(
+      seen.some((m) => m.role === 'system' && String(m.content).includes('pressed Retry'))
+    ).toBe(true);
+  });
+
+  it('an empty propose_change gets a fix hint, and the offline copilot answers when rounds run out', async () => {
+    const toolResults: string[] = [];
+    const provider: LlmProvider = {
+      name: 'meta',
+      chat: vi.fn().mockImplementation(async (msgs: ChatMessage[]) => {
+        const last = msgs.at(-1);
+        if (last?.role === 'tool') toolResults.push(String(last.content));
+        return { toolCalls: [{ id: `c${toolResults.length}`, name: 'propose_change', args: {} }] };
+      }),
+    };
+    const events: { name: SseEventName; data: Record<string, unknown> }[] = [];
+    await runCopilotLoop({
+      messages: [{ role: 'user', content: 'coupe Le courant du foyer du vilage' }],
+      input: baseInput,
+      provider,
+      locale: 'fr',
+      hour: 15,
+      emit: (name, data) => events.push({ name, data }),
+    });
+
+    // The model is told how to call again (no Zod JSON dump).
+    expect(toolResults[0]).toContain('Call propose_change again with a patch');
+    expect(toolResults[0]).not.toContain('"code"');
+    // No answer from the model → plain French answer, never the raw error.
+    const text = events
+      .filter((e) => e.name === 'delta')
+      .map((e) => e.data.text)
+      .join('');
+    expect(text).toContain("Je n'ai pas compris quel changement appliquer");
+    expect(text).not.toMatch(/Invalid args|"code"|solar drop|baisse solaire/i);
+  });
+
   it('falls back to a text answer when the explicitly chosen image model fails', async () => {
     const events: { name: SseEventName; data: Record<string, unknown> }[] = [];
     const chatModels: string[] = [];

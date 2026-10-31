@@ -33,7 +33,8 @@ export interface ProposalDiffItem {
   proposed: string;
 }
 
-export type ProposalDecisionStatus = 'approved' | 'rejected';
+/** `undone` = an approved change the operator later undid (K4); the input is back to before it. */
+export type ProposalDecisionStatus = 'approved' | 'rejected' | 'undone';
 
 /** Operator decision on a proposal, posted in the chat and sent to the model as context. */
 export interface ProposalDecision {
@@ -115,5 +116,7 @@ export interface ChatMessageData {
   fallbackReason?: FallbackReason;
   /** Only on `role: 'decision'`. */
   decision?: ProposalDecision;
+  /** Answer the operator asked to redo (Retry): kept on screen, no longer sent to the model. */
+  retried?: boolean;
   timestamp?: string;
 }

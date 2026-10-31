@@ -70,9 +70,9 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
   it('Eval 4: "Set solar drop to 150 %." → validation error explained, no fake result', async () => {
     const { fullText, evidenceList } = await runEvalPrompt('Set solar drop to 150 %.');
 
-    expect(fullText).toContain('validation constraints');
-    expect(fullText).toContain('less than or equal to 90');
-    expect(fullText).toContain('0% and 90%');
+    // Plain answer, no raw validation dump (the model still gets the exact error).
+    expect(fullText).toContain('outside what the simulator accepts');
+    expect(fullText).not.toMatch(/less than or equal|"code"|Invalid args/);
     // Must NOT have generated fake simulation metrics
     expect(evidenceList).toHaveLength(0);
   });
@@ -130,6 +130,37 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
     expect(fullText).not.toMatch(/c'est fait|appliqué avec succès/i);
   });
 
+  it('Regression: "coupe Le courant du foyer du vilage" (no time) → households cut from the app hour', async () => {
+    const { events, fullText } = await runEvalPrompt('coupe Le courant du foyer du vilage', 15);
+    const proposal = events.find((e) => e.name === 'proposal')?.data as {
+      patch?: { sectorCaps?: unknown[] };
+    };
+    expect(proposal?.patch?.sectorCaps).toEqual([
+      { sector: 'households', maxKw: 0, fromHour: 15, toHour: 24 },
+    ]);
+    expect(fullText).not.toMatch(/Invalid args|validation/i);
+  });
+
+  it('a cut with a time is not turned into "now"; "don\'t cut" is not a cut', async () => {
+    const tonight = await runEvalPrompt('Coupe la clinique ce soir', 15);
+    const caps = (
+      tonight.events.find((e) => e.name === 'proposal')?.data as {
+        patch?: { sectorCaps?: { fromHour: number }[] };
+      }
+    )?.patch?.sectorCaps;
+    expect(caps?.[0]?.fromHour).toBe(18);
+    const lifeline = await runEvalPrompt(
+      'Le soir, ne coupez pas le quartier, laissez au moins la lumière',
+      15
+    );
+    const patch = (
+      lifeline.events.find((e) => e.name === 'proposal')?.data as {
+        patch?: Record<string, unknown>;
+      }
+    )?.patch;
+    expect(patch?.sectorCaps).toBeUndefined();
+  });
+
   it('M1-T3 Eval: "Cut the school now" without an app hour → default hour 12', async () => {
     const { events } = await runEvalPrompt('Cut the school now');
     const proposal = events.find((e) => e.name === 'proposal')?.data as {
@@ -141,8 +172,8 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
   it('PY-T3 Eval: invalid cap → validation error explained, no fake result', async () => {
     const { fullText, evidenceList } = await runEvalPrompt('Limit the market to -5 kW');
 
-    expect(fullText).toContain('rejected');
-    expect(fullText).toContain('validation constraints');
+    expect(fullText).toContain('outside what the simulator accepts');
+    expect(fullText).toContain('nothing was proposed');
     expect(evidenceList).toHaveLength(0);
   });
 
@@ -151,7 +182,7 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
     // Calling run_scenario with invalid startHour
     const { fullText } = await runEvalPrompt('Set solar drop to 150 %');
     expect(fullText).not.toContain('Successfully modified');
-    expect(fullText).toContain('rejected');
+    expect(fullText).toContain('nothing was proposed');
   });
 
   // Case 8 (P6-T9)

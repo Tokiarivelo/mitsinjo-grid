@@ -85,7 +85,7 @@ puissance, branchement (`sectorLoads`), plancher de survie, priorités, stratég
 - [x] **M1-T3** (K2) « Maintenant » : le contexte du chat envoie l'heure courante (lecture ou maquette) ;
       le prompt l'utilise pour `fromHour` ; le dialogue affiche la plage retenue. **Done when** éval
       « Coupe le marché maintenant » → `fromHour` = heure courante.
-- [ ] **M1-T4** (K4) Historique des changements approuvés + « Annuler le dernier » (store).
+- [x] **M1-T4** (K4) Historique des changements approuvés + « Annuler le dernier » (store).
       **Done when** test du store : approuver puis annuler = entrée initiale.
 - [ ] **M1-T5** (K3, coupable) Plusieurs changements dans une proposition, cases à cocher par ligne.
       **Done when** approbation partielle n'applique que les lignes cochées (test).

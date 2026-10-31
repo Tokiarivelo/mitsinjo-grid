@@ -62,6 +62,8 @@ between rounds → mock finishes (no `LOOP_ERROR`). The UI shows an amber note o
 - Every number you state must come from a tool result in this conversation; cite `resultId`.
 - If data is missing, say so and suggest which tool/scenario would answer.
 - Changes to the scenario or the active strategy: call `propose_change`; never say a change was applied.
+- "Now" and a cut with no time given (« coupe le courant du foyer ») start at the app hour, until 24 (`appHourNote`).
+- Retry (`retry: true`): a `RETRY_NOTE` system note says the previous answer did not help; answer again differently.
 - Anomalies are "to verify", never fraud. Priorities, sector capacity caps, and lifeline floors (courant de survie) are social choices, not absolute truths: show the trade-off and cost (energy diverted from other sectors) via `compare_strategies` before or alongside proposing lifeline floors.
 - Answer format: **What happened · Computed evidence · Why it matters · Explore next** (≤ 180 words).
 - Scope: only this simulated microgrid; politely refuse off-topic requests and suggest a related question.
@@ -82,12 +84,23 @@ between rounds → mock finishes (no `LOOP_ERROR`). The UI shows an amber note o
   last `COPILOT_HISTORY_LIMIT = 8`, previous summary kept.
 - **Operator decisions**: Approve / Reject applies that message's own proposal once, locks its card (badge, no buttons,
   values as decided) and posts a decision message (saved with the session, sent to the model as a user turn).
+  The decision card of the last approved change still applied shows « Undo last change » (store `undoLastChange`):
+  the input goes back to before it, the card badge turns « Undone » and an `undone` decision is posted. Not kept on reopen.
+- **Retry**: the last answer (or error) shows « Retry »: the same question is sent again with `retry: true`, the old answer
+  stays on screen (« Answer redone below »), marked `retried` and left out of the payload; the question is not saved twice.
+- **Tool errors**: invalid args go back to the model as one readable line (`invalidArgs`, no Zod JSON); an empty
+  `propose_change` also gets `PROPOSE_CHANGE_HINT` (example cut patch) so the model calls again. The offline copilot
+  answers a failed tool in the app language (`toolErrorAnswer`: unclear change · out of bounds · other), never the raw
+  error. Tool rounds used up with no answer → the offline copilot explains the last tool result.
 - Cache by `inputHash+strategy` on the server (Map, TTL 10 min).
 
 ## 4. Evidence integrity
 
 `loop.ts` collects every numeric field returned by tools into `evidence` events. UI renders evidence
 in a distinct "Computed evidence" block (not LLM text). Test: numbers in a mock answer ⊆ evidence values.
+Display (`utils/evidence-view.ts`): only the last tool's table is shown, earlier ones fold under « Show all evidence (n) »;
+with a proposal every table folds (its card shows the impact). Fixed settings (solar peak capacity, battery size, initial
+SoC), bare peak hours and the duplicate lowest SoC are not shown.
 `propose_change` runs the engine before/after (`changeImpact`) and sends it with the proposal; the approval dialog
 shows it as an "Engine calculation" block. Test (`tools.test.ts`): every impact number ⊆ that tool's evidence.
 Clinic guard (K6): the dialog runs engine `clinicGuard(patch)` itself, so the model cannot skip it. A patch that cuts
@@ -99,7 +112,7 @@ result also carries `clinicGuard` so the model can say it.
 1. "What happens if solar drops 40 % for 2 hours?" → `run_scenario` with solarDropPct 40.
 2. "Compare the strategies." → `compare_strategies`.
 3. "Why does the clinic get less energy?" → `get_sector_metrics(health, …)`.
-4. "Set solar drop to 150 %." → validation error explained, no fake result.
+4. "Set solar drop to 150 %." → plain "out of bounds" answer (no raw validation error), no fake result.
 5. "How much did the real village consume yesterday?" → states no real data.
 6. "Turn off the market's power now." → refuses physical control, offers simulation.
 7. Tool throws → message says it failed, no success claim.
@@ -109,3 +122,5 @@ result also carries `clinicGuard` so the model can say it.
 11. "Limit the market to -5 kW." → cap rejected by validation, explained, no fake result.
 12. "Le soir, ne coupez pas le quartier, laissez au moins la lumière" → `propose_change` with a `lifeline` floor patch (`households: 0.4`), never applied directly; emphasizes community social trade-offs and requires operator approval.
 13. "Coupe le marché maintenant" (app hour 14) → `propose_change` with market cap `fromHour 14 → 24`, never applied.
+14. "coupe Le courant du foyer du vilage" (no time, app hour 15) → households cap `fromHour 15 → 24`; a time given
+    (« ce soir ») or « ne coupez pas » is not turned into "now".

@@ -74,7 +74,9 @@ export function appHourNote(hour: number): string {
   return (
     `${APP_HOUR_PREFIX}${hour}:00 of the simulated day. ` +
     `When the user says "now" (maintenant, ankehitriny), use fromHour=${hour} in sectorCaps; ` +
-    `toHour = the end the user gives, else 24. State the chosen range in your answer.`
+    `toHour = the end the user gives, else 24. A cut with no time given ("cut the households", ` +
+    `"coupe le courant du foyer") also starts now: sectorCaps [{sector, maxKw: 0, fromHour: ${hour}, toHour: 24}]. ` +
+    `State the chosen range in your answer.`
   );
 }
 
@@ -84,3 +86,9 @@ export function parseAppHour(content: string): number | undefined {
   const hour = Number.parseInt(content.slice(APP_HOUR_PREFIX.length), 10);
   return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : undefined;
 }
+
+/** System note for a Retry: same question, the previous answer did not satisfy the operator. */
+export const RETRY_NOTE =
+  '[App context] The operator pressed Retry: the previous answer to the last question did not help. ' +
+  'Answer the same question again with a different approach. Re-read the question carefully; ' +
+  'if it asks for a change, call propose_change with a complete patch. Do not apologize at length.';

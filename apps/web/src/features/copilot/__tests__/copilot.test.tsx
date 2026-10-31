@@ -63,10 +63,14 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Computed evidence')).toBeInTheDocument();
     expect(screen.getByText('SIM-123456')).toBeInTheDocument();
-    expect(screen.getByText('Solar Peak Capacity (kW)')).toBeInTheDocument();
-    // Every tool result keeps its own evidence table (not just the last one).
+    // Fixed settings (solar peak capacity) are not evidence rows.
+    expect(screen.queryByText('Solar Peak Capacity (kW)')).toBeNull();
+    // The last tool result is shown; earlier ones are folded under "Show all evidence".
     expect(screen.getByText('SIM-abcdef')).toBeInTheDocument();
     expect(screen.getByText('12.5')).toBeInTheDocument();
+    const fold = screen.getByText('Show all evidence (1)').closest('details');
+    expect(fold).not.toHaveAttribute('open');
+    expect(fold).toHaveTextContent('Critical Coverage (%)');
     expect(screen.getByText('Why it matters')).toBeInTheDocument();
     expect(screen.getByText('Explore next')).toBeInTheDocument();
     expect(screen.getByText('MITSINJO REASONING CORE')).toBeInTheDocument();
@@ -368,6 +372,30 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
 
     // Store updates to complete
     expect(useSimulationStore.getState().status).toBe('complete');
+  });
+
+  it('ContextPanel rounds engine metrics with their unit (no float noise)', () => {
+    useSimulationStore.getState().run();
+    const { activeStrategy, results } = useSimulationStore.getState();
+    const result = results[activeStrategy]!;
+    useSimulationStore.setState({
+      results: {
+        ...results,
+        [activeStrategy]: {
+          ...result,
+          metrics: {
+            ...result.metrics,
+            servedKwh: 125.89999999999999,
+            socMinPct: 46.350877192982445,
+          },
+        },
+      },
+    });
+    render(<ContextPanel />);
+
+    expect(screen.getByText('125.9 kWh')).toBeInTheDocument();
+    expect(screen.getByText('46.4%')).toBeInTheDocument();
+    expect(screen.queryByText(/\d\.\d{3,}/)).toBeNull();
   });
 
   it('renders error state while keeping computed results available (P6-T8)', () => {

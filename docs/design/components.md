@@ -84,9 +84,14 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 
 ## Chat extras (copilot)
 
-- `ProposalDecisionMessage`: posted after Approve / Reject, `role="status"`; green (approved) or neutral, title + one line,
-  proposal id + time, the settings concerned.
+- `ProposalDecisionMessage`: posted after Approve / Reject / Undo, `role="status"`; green (approved) or neutral
+  (rejected, undone), title + one line, proposal id + time, the settings concerned. `onUndo` → secondary « Undo last
+  change » button (≥ 44 px, full width when narrow), only on the last approved change still applied.
 - Fallback note: amber `role="note"` above an answer that came from the offline copilot, text per reason.
+- `EvidenceTable`: one engine result (channel / value). Last one shown; earlier ones in a `<details>` « Show all
+  evidence (n) » (summary ≥ 44 px, chevron rotates when open).
+- `RetryAnswer`: secondary « Retry » (≥ 44 px, full width when narrow) under the last answer or error; on a redone
+  answer a muted note « Answer redone below (Retry). »
 - Follow-up suggestions (`SuggestedPrompts variant="compact"`): one horizontally scrollable line, hidden while answering.
 - Microphone: tap to record, tap to stop (spinner while transcribing); text lands in the input, editable. Errors
   (unsupported, denied, failed, empty) show inline in amber, dismissible. Auto-scroll only while the reader is at the bottom.

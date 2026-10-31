@@ -4,7 +4,7 @@ import { simulate, type SimulationInput, type StrategyId } from '@mitsinjo/engin
 import { type LlmProvider, type ChatMessage, type LlmImageResult } from './provider';
 import { MockLlmProvider } from './providers/mock';
 import { TOOL_DEFINITIONS, executeTool, type ToolContext } from './tools';
-import { appHourNote, getSystemPrompt } from './prompt';
+import { appHourNote, RETRY_NOTE, getSystemPrompt } from './prompt';
 import { detectAdaptiveRoute, pickChatModel } from './adaptive-router';
 import { MODEL_TOOL_DEFINITIONS, MODEL_TOOL_NAMES, executeModelTool } from './model-tools';
 import { describeVillageScene } from './village-scene';
@@ -54,6 +54,8 @@ export interface CopilotLoopOptions {
   hour?: number;
   /** Chat budget in ms (tests only); default 40 s. */
   chatBudgetMs?: number;
+  /** The operator asked to redo the last answer (Retry): the model is told it did not help. */
+  retry?: boolean;
   /** Summary of the turns before `messages` (auto-compaction). */
   summary?: string;
   /** How many payload messages come before `messages` (covered by `summary` or dropped). */
@@ -112,14 +114,16 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
     summarizedCount = 0,
   } = options;
   let summary = options.summary;
-  let activeProvider = options.provider || new MockLlmProvider();
+  // Offline copilot answers in the app language (not guessed from the question).
+  const offline = () => new MockLlmProvider({ locale: options.locale });
+  let activeProvider = options.provider || offline();
 
   // Paid provider over its session budget → deterministic mock for the whole turn.
   const capReached = () => activeProvider.name !== 'mock' && !spendGuard.canSpend(budgetKey);
   const switchToMockForCap = () => {
     console.warn(`[copilot:loop] Spend cap reached for "${budgetKey}", using MockLlmProvider.`);
     emit('error', { code: 'PROVIDER_FALLBACK', reason: 'spend_cap', message: SPEND_CAP_MESSAGE });
-    activeProvider = new MockLlmProvider();
+    activeProvider = offline();
   };
 
   // Find user prompt for adaptive routing
@@ -276,6 +280,7 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
       ...(options.hour !== undefined
         ? [{ role: 'system' as const, content: appHourNote(options.hour) }]
         : []),
+      ...(options.retry ? [{ role: 'system' as const, content: RETRY_NOTE }] : []),
       ...trimmedInputMessages.map((m) => ({
         role: m.role,
         content: m.content,
@@ -302,7 +307,7 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
           reason: 'timeout',
           message: 'AI provider unavailable — showing deterministic explanation.',
         });
-        activeProvider = new MockLlmProvider();
+        activeProvider = offline();
       }
       rounds++;
       console.info(
@@ -358,7 +363,7 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
             reason: timedOut ? 'timeout' : 'provider_error',
             message: 'AI provider unavailable — showing deterministic explanation.',
           });
-          activeProvider = new MockLlmProvider();
+          activeProvider = offline();
           // The chat budget may be spent: the offline copilot only follows the caller's signal.
           turn = await activeProvider.chat(chatHistory, ALL_TOOL_DEFINITIONS, signal);
         } else {
@@ -471,6 +476,13 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
         console.warn(`[copilot:loop] Round ${rounds}: Turn returned with empty content.`);
         completed = true;
       }
+    }
+
+    // Tool rounds used up without an answer → the offline copilot explains the last tool result.
+    if (!completed && chatHistory.at(-1)?.role === 'tool') {
+      console.warn('[copilot:loop] No answer after the last tool round, finishing offline.');
+      const last = await offline().chat(chatHistory, ALL_TOOL_DEFINITIONS, signal);
+      if (last.content) emit('delta', { text: last.content });
     }
 
     console.info(`[copilot:loop] Loop finished successfully after ${rounds} round(s).`);

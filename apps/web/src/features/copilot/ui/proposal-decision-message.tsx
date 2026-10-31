@@ -1,24 +1,36 @@
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, Undo2, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import type { ProposalDecision } from '../types';
+import type { ProposalDecision, ProposalDecisionStatus } from '../types';
 import { ProposalDiffList } from './proposal-diff-list';
 
 export interface ProposalDecisionMessageProps {
   decision: ProposalDecision;
   timestamp?: string;
+  /** Only on the last approved change still applied: shows "Undo last change". */
+  onUndo?: () => void;
   className?: string;
 }
 
-/** Chat entry posted after the operator approves or rejects a proposal, with the settings concerned. */
+/** Icon per decision status (shared with the proposal card badge). */
+export const DECISION_ICON: Record<ProposalDecisionStatus, typeof CheckCircle2> = {
+  approved: CheckCircle2,
+  rejected: XCircle,
+  undone: Undo2,
+};
+
+/** Chat entry posted after the operator approves, rejects or undoes a proposal, with the settings concerned. */
 export function ProposalDecisionMessage({
   decision,
   timestamp,
+  onUndo,
   className,
 }: ProposalDecisionMessageProps) {
   const t = useTranslations('features.copilot.decision');
-  const approved = decision.status === 'approved';
-  const Icon = approved ? CheckCircle2 : XCircle;
+  const { status } = decision;
+  const approved = status === 'approved';
+  const Icon = DECISION_ICON[status];
 
   return (
     <div
@@ -38,12 +50,8 @@ export function ProposalDecisionMessage({
           aria-hidden="true"
         />
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-text-primary">
-            {approved ? t('approvedTitle') : t('rejectedTitle')}
-          </p>
-          <p className="text-text-secondary mt-0.5">
-            {approved ? t('approvedBody') : t('rejectedBody')}
-          </p>
+          <p className="font-semibold text-text-primary">{t(`${status}Title`)}</p>
+          <p className="text-text-secondary mt-0.5">{t(`${status}Body`)}</p>
         </div>
         <div className="flex flex-col items-end gap-0.5 shrink-0 font-mono text-[10px] text-text-muted">
           <span>{decision.proposalId}</span>
@@ -51,6 +59,19 @@ export function ProposalDecisionMessage({
         </div>
       </div>
       <ProposalDiffList items={decision.items} tone="muted" />
+      {onUndo && (
+        <div className="flex @md:justify-end pt-2 border-t border-border/40">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onUndo}
+            icon={<Undo2 className="h-3.5 w-3.5" aria-hidden="true" />}
+            className="w-full @md:w-auto min-h-11 justify-center"
+          >
+            {t('undoLast')}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

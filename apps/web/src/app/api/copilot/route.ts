@@ -86,6 +86,8 @@ const RequestBodySchema = z.object({
   sessionId: z.string().max(64).optional(),
   /** Hour shown in the app (timeline or scale model), 0–23. */
   hour: z.number().int().min(0).max(23).optional(),
+  /** Retry: the last question again because the operator was not satisfied with the answer. */
+  retry: z.boolean().optional(),
 });
 
 /** Chat budget (40 s) + slow tools (image up to 45 s) + Wonder extra time. */
@@ -218,6 +220,7 @@ export async function POST(req: NextRequest) {
           availableModels,
           budgetKey: parsed.data.sessionId,
           hour: parsed.data.hour,
+          retry: parsed.data.retry,
           summary: parsed.data.summary,
           summarizedCount: parsed.data.summarizedCount,
         });
@@ -230,7 +233,8 @@ export async function POST(req: NextRequest) {
       } finally {
         if (parsed.data.sessionId) {
           const lastUser = parsed.data.messages[parsed.data.messages.length - 1];
-          if (lastUser && lastUser.role === 'user') {
+          // A retry asks the same question again: it is already saved.
+          if (lastUser && lastUser.role === 'user' && !parsed.data.retry) {
             await saveMessage(parsed.data.sessionId, {
               id: `user-${Date.now()}`,
               role: 'user',

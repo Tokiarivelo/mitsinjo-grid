@@ -1,7 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, User, AlertCircle, AlertTriangle, Volume2, VolumeX, Play } from 'lucide-react';
+import {
+  Sparkles,
+  User,
+  AlertCircle,
+  AlertTriangle,
+  Volume2,
+  VolumeX,
+  Play,
+  ChevronRight,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations } from '@/lib/i18n';
 import type { ChatMessageData, ProposalDecision, ProposalDiffItem } from '../types';
@@ -10,7 +19,9 @@ import { ProposalDecisionMessage } from './proposal-decision-message';
 import { MarkdownRenderer } from './markdown-renderer';
 import { ChatChart } from './chat-chart';
 import type { ActiveMedia } from './media-lightbox-modal';
-import { formatTelemetryChannel } from '../utils/format-telemetry-channel';
+import { evidenceView } from '../utils/evidence-view';
+import { EvidenceTable } from './evidence-table';
+import { RetryAnswer } from './retry-answer';
 
 export interface ChatMessageItemProps {
   message: ChatMessageData;
@@ -19,6 +30,10 @@ export interface ChatMessageItemProps {
   /** Decision already taken on this message's proposal (locks the card). */
   proposalDecision?: ProposalDecision;
   onMediaClick?: (media: ActiveMedia) => void;
+  /** Set only on the decision card of the last approved change: shows "Undo last change". */
+  onUndo?: () => void;
+  /** Set only on the last answer or error: shows "Retry" (same question again). */
+  onRetry?: () => void;
   className?: string;
 }
 
@@ -28,12 +43,11 @@ export function ChatMessageItem({
   onRejectProposal,
   proposalDecision,
   onMediaClick,
+  onUndo,
+  onRetry,
   className,
 }: ChatMessageItemProps) {
   const tCopilot = useTranslations('features.copilot');
-  const tChannels = useTranslations('features.copilot.telemetryChannels');
-  const tSectors = useTranslations('sectors');
-  const tStrategies = useTranslations('strategies');
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   const handleToggleSpeech = () => {
@@ -134,6 +148,7 @@ export function ChatMessageItem({
       <ProposalDecisionMessage
         decision={message.decision}
         timestamp={message.timestamp}
+        onUndo={onUndo}
         className={className}
       />
     );
@@ -153,6 +168,9 @@ export function ChatMessageItem({
           <span className="block mt-2 text-[11px] text-text-secondary">
             {tCopilot('errorFallbackNote')}
           </span>
+          <div className="mt-3">
+            <RetryAnswer onRetry={onRetry} retried={message.retried} />
+          </div>
         </div>
       </div>
     );
@@ -160,8 +178,9 @@ export function ChatMessageItem({
 
   // Assistant Message
   const sections = message.sections;
-  const evidenceList = (message.evidence ?? []).filter((e) => Object.keys(e.fields).length > 0);
   const proposal = message.proposal;
+  const evidence = evidenceView(message.evidence, Boolean(proposal));
+  const hasEvidence = evidence.shown.length + evidence.folded.length > 0;
 
   return (
     <div className={cn('flex items-start gap-3.5 max-w-4xl mr-auto w-full', className)}>
@@ -372,7 +391,7 @@ export function ChatMessageItem({
           )}
 
           {/* Computed Evidence Section */}
-          {(sections?.computedEvidence || evidenceList.length > 0) && (
+          {(sections?.computedEvidence || hasEvidence) && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-mono text-energy-cyan uppercase font-semibold tracking-wider">
@@ -387,42 +406,26 @@ export function ChatMessageItem({
                 </div>
               )}
 
-              {evidenceList.map((evidence, idx) => (
-                <div
-                  key={`${evidence.resultId}-${idx}`}
-                  className="overflow-x-auto rounded-lg border border-border/60 bg-surface"
-                >
-                  <div className="px-3 pt-2 text-[10px] font-mono text-energy-cyan">
-                    {evidence.resultId}
-                  </div>
-                  <table className="w-full text-left font-mono text-[11px]">
-                    <thead>
-                      <tr className="border-b border-border/40 bg-surface-elevated text-text-muted text-[10px]">
-                        <th className="py-2 px-3 font-semibold">{tCopilot('tableChannel')}</th>
-                        <th className="py-2 px-3 font-semibold">{tCopilot('tableValue')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/30 text-text-primary">
-                      {Object.entries(evidence.fields).map(([k, v]) => (
-                        <tr key={k} className="hover:bg-surface-elevated/40 transition-colors">
-                          <td className="py-2.5 px-3 text-text-secondary" title={k}>
-                            <span className="font-sans font-medium text-text-primary text-xs">
-                              {formatTelemetryChannel(k, {
-                                tChannels,
-                                tSectors,
-                                tStrategies,
-                              })}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3 font-semibold text-energy-cyan whitespace-nowrap">
-                            {String(v)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              {evidence.shown.map((e, idx) => (
+                <EvidenceTable key={`${e.resultId}-${idx}`} evidence={e} />
               ))}
+
+              {evidence.folded.length > 0 && (
+                <details className="group rounded-lg border border-border/60 bg-surface/60">
+                  <summary className="min-h-11 px-3 flex items-center gap-2 cursor-pointer text-xs font-medium text-text-secondary hover:text-text-primary list-none [&::-webkit-details-marker]:hidden">
+                    <ChevronRight
+                      className="h-3.5 w-3.5 transition-transform group-open:rotate-90"
+                      aria-hidden="true"
+                    />
+                    {tCopilot('evidenceShowAll', { count: evidence.folded.length })}
+                  </summary>
+                  <div className="p-2 pt-0 space-y-2">
+                    {evidence.folded.map((e, idx) => (
+                      <EvidenceTable key={`${e.resultId}-folded-${idx}`} evidence={e} />
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           )}
 
@@ -469,6 +472,8 @@ export function ChatMessageItem({
             onReject={(items) => onRejectProposal(message, items)}
           />
         )}
+
+        <RetryAnswer onRetry={onRetry} retried={message.retried} />
       </div>
     </div>
   );

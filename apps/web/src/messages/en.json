@@ -352,7 +352,11 @@
         "socMinPctBefore": "Minimum battery SoC before (%)",
         "socMinPctAfter": "Minimum battery SoC after (%)",
         "unservedKwhBefore": "Unserved energy before (kWh)",
-        "unservedKwhAfter": "Unserved energy after (kWh)"
+        "unservedKwhAfter": "Unserved energy after (kWh)",
+        "lifelineCoveragePct": "Lifeline coverage (%)",
+        "peakSolarKw": "Solar output peak (kW)",
+        "peakDemandKw": "Demand peak (kW)",
+        "lowestSocPct": "Lowest battery SoC (%)"
       },
       "errorTitle": "Simulation Advisory Notice",
       "errorFallbackNote": "Deterministic simulation results remain fully available and active.",
@@ -489,7 +493,11 @@
         "approvedTitle": "Change approved and applied to the simulation",
         "approvedBody": "Metrics, charts and the 3D village now use these settings.",
         "rejectedTitle": "Proposal rejected",
-        "rejectedBody": "Nothing changed in the simulation."
+        "rejectedBody": "Nothing changed in the simulation.",
+        "undoneBadge": "Undone",
+        "undoneTitle": "Change undone",
+        "undoneBody": "The simulation is back to the settings it had before this change.",
+        "undoLast": "Undo last change"
       },
       "fallback": {
         "spend_cap": "AI budget for this session is used up: this answer comes from the offline copilot. Engine numbers stay valid.",
@@ -525,6 +533,12 @@
         "pitchZone": "Voice pitch",
         "hz": "{value} Hz",
         "khz": "{value} kHz"
+      },
+      "evidenceShowAll": "Show all evidence ({count})",
+      "retry": {
+        "button": "Retry",
+        "hint": "Not satisfied? Ask the same question again for a new answer.",
+        "retriedNote": "Answer redone below (Retry)."
       }
     },
     "gridDiagram": {

@@ -27,6 +27,11 @@ const MOCK_SEGMENT_CONCEPTS: Array<{ match: RegExp; concept: string }> = [
 /** "Cut <sector> now" (K2). Power-switch wording ("turn off", "éteindre") keeps the hardware refusal. */
 const MOCK_CUT_WORDS = /\b(cut|coupe|couper|coupez|délest\w*|tapaho)\b/i;
 const MOCK_NOW_WORDS = /\b(now|maintenant|ankehitriny)\b/i;
+/** A time given in the request ("tonight", "18 h", "de 8 à 12"…): a cut without one starts now. */
+const MOCK_TIME_WORDS =
+  /\b(tonight|this evening|morning|from|until|between|ce soir|soir|matin|nuit|demain|jusqu|entre|de \d|à \d|\d{1,2}\s?(h|:00|am|pm))\b|\d{1,2}\s?h\b/i;
+/** "Don't cut…" is not a cut order. */
+const MOCK_NEGATION_WORDS = /\b(don't|do not|ne coupe[sz]? pas|sans couper|aza)\b/i;
 const MOCK_SECTOR_WORDS: Array<{ match: RegExp; sector: SectorId }> = [
   { match: /market|marché|tsena/i, sector: 'market' },
   { match: /school|école|sekoly/i, sector: 'school' },
@@ -127,8 +132,113 @@ export function describeProfileChart(payload: Record<string, unknown>, fr: boole
         `### Explore next\nSimulate a solar drop to see the battery fall earlier.`;
 }
 
+type ToolErrorKind = 'unclear_change' | 'out_of_bounds' | 'other';
+
+/** What kind of tool failure this is, from the tool's error text (never shown to the user). */
+export function toolErrorKind(toolName: string, error: string): ToolErrorKind {
+  if (
+    error.startsWith('Failed to apply patch') ||
+    /must be (less|greater) than|too_(big|small)|out of range/i.test(error)
+  ) {
+    return 'out_of_bounds';
+  }
+  if (toolName === 'propose_change') return 'unclear_change';
+  return 'other';
+}
+
+const TOOL_ERROR_TEXT: Record<
+  'en' | 'fr' | 'mg',
+  Record<ToolErrorKind, [string, string, string, string]>
+> = {
+  en: {
+    unclear_change: [
+      'I did not understand which change to make, so nothing was proposed.',
+      'Name the sector and, if you want, the time. Without a time, a cut starts at the hour shown in the app.',
+      'Every change goes through an approval card with its engine impact; nothing is applied without your click.',
+      'Try "Cut the market now" or "Limit the school to 2 kW from 18:00 to 22:00".',
+    ],
+    out_of_bounds: [
+      'The change you asked for is outside what the simulator accepts, so nothing was proposed.',
+      'One of the values is out of its allowed range (for example a negative power or an hour past 24).',
+      'The simulator refuses values a real microgrid could not run, to keep every result meaningful.',
+      'Ask again with a smaller value or another time range.',
+    ],
+    other: [
+      'The simulator could not compute this request.',
+      'One of the parameters was not understood.',
+      'No number is shown when the engine could not compute it.',
+      'Rephrase the question, or press Retry for a new answer.',
+    ],
+  },
+  fr: {
+    unclear_change: [
+      "Je n'ai pas compris quel changement appliquer : aucune proposition n'a été faite.",
+      "Précisez le secteur et, si vous voulez, l'heure. Sans heure, une coupure commence à l'heure affichée dans l'app.",
+      "Chaque changement passe par une carte d'approbation avec son impact calculé ; rien ne s'applique sans votre clic.",
+      "Essayez « Coupe le marché maintenant » ou « Limite l'école à 2 kW de 18 h à 22 h ».",
+    ],
+    out_of_bounds: [
+      "Le changement demandé sort de ce que le simulateur accepte : aucune proposition n'a été faite.",
+      'Une des valeurs est hors de sa plage (par exemple une puissance négative ou une heure après 24 h).',
+      "Le simulateur refuse les valeurs qu'un vrai micro-réseau ne pourrait pas appliquer, pour garder des résultats fiables.",
+      'Redemandez avec une valeur plus petite ou une autre plage horaire.',
+    ],
+    other: [
+      "Le simulateur n'a pas pu calculer cette demande.",
+      "Un des paramètres n'a pas été compris.",
+      "Aucun chiffre n'est affiché quand le moteur n'a pas pu le calculer.",
+      'Reformulez la question, ou appuyez sur Réessayer pour une nouvelle réponse.',
+    ],
+  },
+  mg: {
+    unclear_change: [
+      'Tsy azoko hoe inona no fanovana tianao: tsy nisy tolo-kevitra natao.',
+      "Lazao ny sehatra ary, raha tianao, ny ora. Raha tsy misy ora dia manomboka amin'ny ora aseho ao amin'ny app ny fanapahana.",
+      "Mandalo amin'ny karatra fankatoavana misy ny vokany voakajy ny fanovana rehetra; tsy misy ampiharina raha tsy tsindrianao.",
+      'Andramo « Tapaho ny tsena ankehitriny ».',
+    ],
+    out_of_bounds: [
+      'Mihoatra ny ekena ny simulateur ny fanovana nangatahinao: tsy nisy tolo-kevitra natao.',
+      'Misy sanda iray mivoaka ny fetrany (ohatra hery ratsy na ora mihoatra ny 24).',
+      'Lavin’ny simulateur ny sanda tsy azo ampiharina amin’ny tambajotra tena izy.',
+      'Angataho indray amin’ny sanda kely kokoa na ora hafa.',
+    ],
+    other: [
+      'Tsy afaka nanao kajy ity fangatahana ity ny simulateur.',
+      'Misy masontsivana iray tsy azo.',
+      'Tsy misy tarehimarika aseho raha tsy afaka nanao kajy ny motera.',
+      'Avereno amin’ny fomba hafa ny fanontaniana, na tsindrio Andramo indray.',
+    ],
+  },
+};
+
+const ERROR_HEADINGS: Record<'en' | 'fr' | 'mg', [string, string, string, string]> = {
+  en: ['What happened', 'Computed evidence', 'Why it matters', 'Explore next'],
+  fr: ["Ce qui s'est passé", 'Preuves calculées', "Pourquoi c'est important", 'Et ensuite'],
+  mg: ['Inona no nitranga', 'Porofo voakajy', 'Nahoana no zava-dehibe', "Dingan'ny hoavy"],
+};
+
+/**
+ * Plain answer when a tool failed (offline copilot): in the app language, per kind of failure.
+ * The raw validation error stays in the logs and the model's tool result, never in the chat.
+ */
+export function toolErrorAnswer(toolName: string, error: string, lang: 'en' | 'fr' | 'mg'): string {
+  const text = TOOL_ERROR_TEXT[lang][toolErrorKind(toolName, error)];
+  return ERROR_HEADINGS[lang].map((h, i) => `### ${h}\n${text[i]}`).join('\n\n');
+}
+
 export class MockLlmProvider implements LlmProvider {
   readonly name = 'mock';
+  /** App language; without it the language is guessed from the question. */
+  private readonly locale?: 'en' | 'fr' | 'mg';
+
+  constructor(options?: { locale?: 'en' | 'fr' | 'mg' }) {
+    this.locale = options?.locale;
+  }
+
+  private isFrench(text: string): boolean {
+    return this.locale ? this.locale === 'fr' : isFrenchQuery(text);
+  }
 
   async chat(
     messages: ChatMessage[],
@@ -149,7 +259,7 @@ export class MockLlmProvider implements LlmProvider {
     // Find the last user message
     const userMsg = [...messages].reverse().find((m) => m.role === 'user');
     const query = (userMsg?.content || '').toLowerCase();
-    const fr = isFrenchQuery(query);
+    const fr = this.isFrench(query);
     console.info(
       `[copilot:mock] Generating synthetic response for user query: "${userMsg?.content?.slice(0, 50).replace(/\n/g, ' ') || ''}..." (french: ${fr})`
     );
@@ -363,9 +473,13 @@ Run one of the preset scenarios (Baseline or Monsoon Cloud Cover) to inspect sim
       };
     }
 
-    // Cut a sector now -> cap from the hour shown in the app to the end of the day (M1-T3, K2)
+    // Cut a sector now, or with no time given -> cap from the hour shown in the app to the end of the day (M1-T3, K2)
     const nowSector = MOCK_SECTOR_WORDS.find((s) => s.match.test(query))?.sector;
-    if (nowSector && MOCK_CUT_WORDS.test(query) && MOCK_NOW_WORDS.test(query)) {
+    const cutNow =
+      MOCK_CUT_WORDS.test(query) &&
+      !MOCK_NEGATION_WORDS.test(query) &&
+      (MOCK_NOW_WORDS.test(query) || !MOCK_TIME_WORDS.test(query));
+    if (nowSector && cutNow) {
       const fromHour = appHourFrom(messages) ?? MOCK_DEFAULT_HOUR;
       return {
         content: '',
@@ -644,7 +758,7 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
     }
 
     const lastUser = [...(allMessages || [])].reverse().find((m) => m.role === 'user');
-    const fr = isFrenchQuery(lastUser?.content || '');
+    const fr = this.isFrench((lastUser?.content || '').toLowerCase());
 
     const toolName = toolMsg.name || '';
     const err = payload.error as string | undefined;
@@ -674,35 +788,7 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
     }
 
     if (err) {
-      if (fr) {
-        return {
-          content: `### What happened
-La modification de paramètres demandée a été rejetée en raison de contraintes de validation.
-
-### Computed evidence
-Erreur de validation : ${err}
-
-### Why it matters
-Les invariants physiques de la simulation imposent des limites valides (ex. baisse solaire comprise entre 0% et 90%).
-
-### Explore next
-Essayez de configurer le pourcentage de baisse solaire avec une valeur valide entre 0% et 90%.`,
-        };
-      }
-
-      return {
-        content: `### What happened
-The requested parameter patch was rejected by validation constraints.
-
-### Computed evidence
-Validation Error: ${err}
-
-### Why it matters
-Physical simulation invariants require valid bounds (e.g. solar drop percentage between 0% and 90%).
-
-### Explore next
-Try setting the solar drop percentage to a valid value between 0% and 90%.`,
-      };
+      return { content: toolErrorAnswer(toolName, err, this.locale ?? (fr ? 'fr' : 'en')) };
     }
 
     const data = (payload.data as Record<string, unknown>) || payload;

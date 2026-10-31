@@ -408,6 +408,22 @@ export interface ToolResult {
   evidence?: Record<string, number | string>;
 }
 
+/** Short, readable validation error for the model (no Zod JSON dump), with a fix hint when there is one. */
+export function invalidArgs(toolName: string, error: z.ZodError): string {
+  const issues = error.issues
+    .map((i) => `${i.path.length > 0 ? i.path.join('.') : 'args'}: ${i.message}`)
+    .join('; ');
+  const hint = toolName === 'propose_change' ? ` ${PROPOSE_CHANGE_HINT}` : '';
+  return `Invalid args for ${toolName}: ${issues}.${hint}`;
+}
+
+/** Sent back to the model when propose_change has no change in it, so it can call again correctly. */
+export const PROPOSE_CHANGE_HINT =
+  'Call propose_change again with a patch (or a strategy) and a reason. ' +
+  'To cut a sector "now" or with no time given: ' +
+  '{"patch":{"sectorCaps":[{"sector":"households","maxKw":0,"fromHour":<app hour>,"toHour":24}]},"reason":"..."}. ' +
+  `Sectors: ${SECTOR_IDS.join(', ')}.`;
+
 export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext): ToolResult {
   switch (toolName) {
     case 'get_grid_state': {
@@ -415,7 +431,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       if (!parsed.success) {
         return {
           toolName,
-          error: `Invalid args for get_grid_state: ${parsed.error.message}`,
+          error: invalidArgs('get_grid_state', parsed.error),
         };
       }
       const strategy: StrategyId = ctx.activeStrategy || 'proportional';
@@ -462,7 +478,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       if (!parsed.success) {
         return {
           toolName,
-          error: `Invalid args for run_scenario: ${parsed.error.message}`,
+          error: invalidArgs('run_scenario', parsed.error),
         };
       }
       let baseInput = ctx.input;
@@ -506,7 +522,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       if (!parsed.success) {
         return {
           toolName,
-          error: `Invalid args for compare_strategies: ${parsed.error.message}`,
+          error: invalidArgs('compare_strategies', parsed.error),
         };
       }
       const strats: readonly StrategyId[] =
@@ -546,7 +562,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       if (!parsed.success) {
         return {
           toolName,
-          error: `Invalid args for get_sector_metrics: ${parsed.error.message}`,
+          error: invalidArgs('get_sector_metrics', parsed.error),
         };
       }
       const sectorId = parsed.data.sector;
@@ -589,7 +605,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       if (!parsed.success) {
         return {
           toolName,
-          error: `Invalid args for propose_change: ${parsed.error.message}`,
+          error: invalidArgs('propose_change', parsed.error),
         };
       }
       // Generate deterministic proposal id based on patch, strategy & reason

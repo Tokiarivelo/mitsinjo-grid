@@ -16,7 +16,7 @@ const SaveMessageSchema = z.object({
   decision: z
     .object({
       proposalId: z.string().max(64),
-      status: z.enum(['approved', 'rejected']),
+      status: z.enum(['approved', 'rejected', 'undone']),
       items: z
         .array(z.object({ label: z.string(), current: z.string(), proposed: z.string() }))
         .max(40),

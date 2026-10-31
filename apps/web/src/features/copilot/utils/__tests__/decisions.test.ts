@@ -30,5 +30,8 @@ describe('proposal decisions', () => {
     ).toBe(
       '[Operator decision] REJECTED proposal P. Nothing was changed. Change not applied: {"strategy":"balanced"}'
     );
+    expect(decisionToModelText({ proposalId: 'P', status: 'undone', items: [] })).toContain(
+      'UNDID proposal P. The simulation input is back to what it was before that change.'
+    );
   });
 });

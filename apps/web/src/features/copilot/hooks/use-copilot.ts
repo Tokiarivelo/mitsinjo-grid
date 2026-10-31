@@ -11,6 +11,7 @@ import type {
   CopilotEvidence,
   CopilotProposal,
   FallbackReason,
+  ProposalDecision,
   ProposalDecisionStatus,
   ProposalDiffItem,
 } from '../types';
@@ -28,7 +29,7 @@ const FALLBACK_REASONS: readonly FallbackReason[] = ['spend_cap', 'provider_erro
 
 /** Messages that count in the conversation sent to the model (no error bubbles, no empty turns). */
 export function isPayloadMessage(m: ChatMessageData): boolean {
-  if (m.role === 'error') return false;
+  if (m.role === 'error' || m.retried) return false;
   if (m.role === 'decision') return Boolean(m.decision);
   return m.content.trim().length > 0 || Boolean(m.media && m.media.length > 0);
 }
@@ -186,7 +187,9 @@ export function useCopilot() {
   }, []);
 
   const sendMessage = useCallback(
-    async (prompt: string, media?: ChatMediaItem[]) => {
+    async (prompt: string, media?: ChatMediaItem[], options?: { retryOf?: string }) => {
+      // Retry: same question again, no new user bubble; the old answer stays but leaves the payload.
+      const retryOf = options?.retryOf;
       const trimmed = prompt.trim();
       const hasMedia = Boolean(media && media.length > 0);
       if ((!trimmed && !hasMedia) || pending) return;
@@ -251,7 +254,9 @@ export function useCopilot() {
         }),
       };
 
-      const updatedHistory = [...messages, userMessage];
+      const updatedHistory = retryOf
+        ? messages.map((m) => (m.id === retryOf ? { ...m, retried: true } : m))
+        : [...messages, userMessage];
       setMessages([...updatedHistory, assistantMessage]);
       setPending(true);
       setError(null);
@@ -274,6 +279,7 @@ export function useCopilot() {
             input: store.input,
             strategy: store.activeStrategy,
             hour: store.timeIndex,
+            ...(retryOf && { retry: true }),
             ...(summary && { summary }),
             ...(baseCount > 0 && { summarizedCount: baseCount }),
             model: selectedModel || undefined,
@@ -503,37 +509,79 @@ export function useCopilot() {
 
   const decisions = useMemo(() => proposalDecisions(messages), [messages]);
 
-  /** Applies (or not) this message's own proposal, once, and posts the decision in the chat. */
-  const decideProposal = useCallback(
-    (status: ProposalDecisionStatus, message: ChatMessageData, items: ProposalDiffItem[]) => {
-      const proposal = message.proposal;
-      if (!proposal || decisions[proposal.proposalId]) return;
-      if (status === 'approved') {
-        useSimulationStore.getState().applyProposal(proposal.patch, proposal.strategy);
-      }
+  /** Last answer (or error) can be redone while nothing is pending and a question precedes it. */
+  const lastMessage = messages.at(-1);
+  const retryableId =
+    !pending &&
+    lastMessage &&
+    (lastMessage.role === 'assistant' || lastMessage.role === 'error') &&
+    !lastMessage.retried &&
+    messages.some((m) => m.role === 'user')
+      ? lastMessage.id
+      : null;
+
+  /** Asks the last question again, telling the model the previous answer did not help. */
+  const retryLastAnswer = useCallback(() => {
+    if (!retryableId) return;
+    const question = messages.findLast((m) => m.role === 'user');
+    if (!question) return;
+    void sendMessage(question.content, question.media, { retryOf: retryableId });
+  }, [messages, retryableId, sendMessage]);
+
+  /** Posts an operator decision in the chat and saves it with the session (keeps the card locked on reopen). */
+  const postDecision = useCallback(
+    (decision: ProposalDecision) => {
       const decisionMessage: ChatMessageData = {
-        id: `decision-${proposal.proposalId}-${Date.now()}`,
+        id: `decision-${decision.proposalId}-${decision.status}-${Date.now()}`,
         role: 'decision',
         content: '',
-        decision: {
-          proposalId: proposal.proposalId,
-          status,
-          items,
-          ...(proposal.patch && { patch: proposal.patch }),
-          ...(proposal.strategy && { strategy: proposal.strategy }),
-        },
+        decision,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, decisionMessage]);
-      // Saved with the session so a reopened chat keeps the card locked.
       void fetch(`/api/copilot/sessions/${sessionId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(decisionMessage),
       }).catch(() => {});
     },
-    [decisions, sessionId]
+    [sessionId]
   );
+
+  /** Applies (or not) this message's own proposal, once, and posts the decision in the chat. */
+  const decideProposal = useCallback(
+    (status: ProposalDecisionStatus, message: ChatMessageData, items: ProposalDiffItem[]) => {
+      const proposal = message.proposal;
+      if (!proposal || decisions[proposal.proposalId]) return;
+      if (status === 'approved') {
+        const sim = useSimulationStore.getState();
+        sim.approveChange(proposal.proposalId, proposal.patch, proposal.strategy);
+        if (useSimulationStore.getState().status !== 'complete') return;
+      }
+      postDecision({
+        proposalId: proposal.proposalId,
+        status,
+        items,
+        ...(proposal.patch && { patch: proposal.patch }),
+        ...(proposal.strategy && { strategy: proposal.strategy }),
+      });
+    },
+    [decisions, postDecision]
+  );
+
+  /** Last approved change still in the store history: the one "Undo" restores. */
+  const lastChangeId = useSimulationStore((s) => s.changeHistory[s.changeHistory.length - 1]?.id);
+  const undoableProposalId =
+    lastChangeId && decisions[lastChangeId]?.status === 'approved' ? lastChangeId : null;
+
+  /** Undoes the last approved change (store restores the input) and posts it in the chat. */
+  const undoLastChange = useCallback(() => {
+    if (!undoableProposalId) return;
+    const approved = decisions[undoableProposalId];
+    const undoneId = useSimulationStore.getState().undoLastChange();
+    if (!approved || undoneId !== undoableProposalId) return;
+    postDecision({ ...approved, status: 'undone' });
+  }, [decisions, postDecision, undoableProposalId]);
 
   const approveProposal = useCallback(
     (message: ChatMessageData, items: ProposalDiffItem[]) =>
@@ -573,6 +621,10 @@ export function useCopilot() {
     sendMessage,
     approveProposal,
     rejectProposal,
+    undoableProposalId,
+    undoLastChange,
+    retryableId,
+    retryLastAnswer,
     clearMessages,
   };
 }

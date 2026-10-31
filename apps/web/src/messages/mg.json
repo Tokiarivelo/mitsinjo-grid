@@ -352,7 +352,11 @@
         "socMinPctBefore": "Taham-bateria kely indrindra teo aloha (SoC %)",
         "socMinPctAfter": "Taham-bateria kely indrindra aorian'ny (SoC %)",
         "unservedKwhBefore": "Angovo tsy nomena teo aloha (kWh)",
-        "unservedKwhAfter": "Angovo tsy nomena aorian'ny (kWh)"
+        "unservedKwhAfter": "Angovo tsy nomena aorian'ny (kWh)",
+        "lifelineCoveragePct": "Fandrakofana herinaratra vonjy aina (%)",
+        "peakSolarKw": "Fara-tampon'ny herin'ny masoandro (kW)",
+        "peakDemandKw": "Fara-tampon'ny filana (kW)",
+        "lowestSocPct": "Haavon'ny bateria ambany indrindra (SoC %)"
       },
       "errorTitle": "Fampandrenesana simulation",
       "errorFallbackNote": "Mbola azo jerena sy ampiasaina tsara ny voka-panadinana voaisa.",
@@ -489,7 +493,11 @@
         "approvedTitle": "Nekena sy nampiharina tamin'ny simulation ny fanovana",
         "approvedBody": "Mampiasa ireo fandrindrana ireo ankehitriny ny tarehimarika, ny sary ary ny tanàna 3D.",
         "rejectedTitle": "Nolavina ny tolo-kevitra",
-        "rejectedBody": "Tsy nisy niova tao amin'ny simulation."
+        "rejectedBody": "Tsy nisy niova tao amin'ny simulation.",
+        "undoneBadge": "Nofoanana",
+        "undoneTitle": "Nofoanana ny fanovana",
+        "undoneBody": "Niverina tamin'ny fandrindrana teo aloha ny simulation.",
+        "undoLast": "Foano ny fanovana farany"
       },
       "fallback": {
         "spend_cap": "Lany ny teti-bola IA amin'ity fivoriana ity: avy amin'ny mpanampy tsy an-tserasera ity valiny ity. Mbola marina ny tarehimarika avy amin'ny motera.",
@@ -525,6 +533,12 @@
         "pitchZone": "Haavon'ny feo",
         "hz": "{value} Hz",
         "khz": "{value} kHz"
+      },
+      "evidenceShowAll": "Asehoy ny porofo rehetra ({count})",
+      "retry": {
+        "button": "Andramo indray",
+        "hint": "Tsy afa-po? Apetraho indray ilay fanontaniana mba hahazoana valiny vaovao.",
+        "retriedNote": "Valiny natao indray eo ambany (Andramo indray)."
       }
     },
     "gridDiagram": {

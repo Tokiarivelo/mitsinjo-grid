@@ -65,7 +65,7 @@ function deterministicSummary(previous: string | undefined, fold: readonly Histo
 }
 
 const SUMMARIZER_PROMPT = `You summarize a conversation between a solar microgrid operator and an AI copilot (simulated data).
-Write at most 8 short bullet lines ("- "): what the operator asked, proposals made and the operator's decisions (approved / rejected), open questions.
+Write at most 8 short bullet lines ("- "): what the operator asked, proposals made and the operator's decisions (approved / rejected / undone), open questions.
 Never write energy numbers (kW, kWh, %): they must be recomputed by tools. Keep sector and strategy names. Same language as the conversation.
 Start from the previous summary when there is one and fold the new turns into it. Output only the bullets.`;
 

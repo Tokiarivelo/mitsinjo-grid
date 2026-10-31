@@ -406,7 +406,8 @@ interface InputPatch {
 
 ## Copilot HTTP
 
-`POST /api/copilot` body `{ messages: {role:'user'|'assistant', content:string, media?: {type, url, key?}[]}[] /*≤ 40: those not in the summary*/, input: SimulationInput, strategy?, model?, locale?, sessionId?, hour? /*0–23, shown hour: village image + "now" for caps (system note)*/, summary?: string /*≤ 4000*/, summarizedCount?: int /*payload messages before `messages`*/ }`
+`POST /api/copilot` body `{ messages: {role:'user'|'assistant', content:string, media?: {type, url, key?}[]}[] /*≤ 40: those not in the summary*/, input: SimulationInput, strategy?, model?, locale?, sessionId?, hour? /*0–23, shown hour: village image + "now" for caps (system note)*/, summary?: string /*≤ 4000*/, summarizedCount?: int /*payload messages before `messages`*/, retry?: boolean /*same question again; question not saved twice*/ }`.
+Client `ChatMessageData.retried?: boolean` = answer redone by Retry (kept on screen, left out of the payload)
 → `text/event-stream` events:
 `activity {tool, sector?, label}` (UI translates `tool`; `label` is English, logs only) · `delta {text}` · `evidence {resultId, fields: Record<string, number|string>}` ·
 `proposal {proposalId, patch?, strategy?, reason, impact?: ChangeImpact}` · `error {code, reason?, message}` · `done {}` ·
@@ -416,8 +417,12 @@ interface InputPatch {
 `error.code = PROVIDER_FALLBACK` carries `reason: 'spend_cap' | 'provider_error' | 'timeout'` (UI: amber note on that answer).
 
 Operator decision (chat message `role: 'decision'`, saved via `POST /api/copilot/sessions/:id`): `ProposalDecision
-{ proposalId, status: 'approved'|'rejected', items: {label, current, proposed}[] /*snapshot as shown*/, patch?, strategy? }`.
-Sent to the model as a user turn `[Operator decision] APPROVED|REJECTED proposal <id>…`. Session GET adds `summary?, summarizedCount?`.
+{ proposalId, status: 'approved'|'rejected'|'undone', items: {label, current, proposed}[] /*snapshot as shown*/, patch?, strategy? }`.
+Sent to the model as a user turn `[Operator decision] APPROVED|REJECTED|UNDID proposal <id>…`.
+Store (K4): `changeHistory: { id, before: { input, strategy } }[]` (≤ 20, oldest first). `approveChange(id, patch?, strategy?)` =
+`applyProposal` + records the state before it (only if the run succeeds); `undoLastChange(): id | null` restores it and re-runs.
+Cleared by `loadScenario`, `reset`, `applyDeviceRun`. Plain `applyProposal` (sector sliders) is not recorded; an undo also
+drops later slider edits (it restores the whole input). Session GET adds `summary?, summarizedCount?`.
 
 `POST /api/voice` multipart `{ audio: WAV ≤ 2 MB (≈ 60 s 16 kHz mono), locale?, sessionId? }` → `{ text, durationMs, source:
 'meta'|'mock', fallback? }`; 400 missing, 413 too big, 415 not WAV. Audio is not stored.

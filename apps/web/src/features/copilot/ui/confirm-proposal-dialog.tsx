@@ -15,6 +15,7 @@ import type {
 import { useProposalDiff } from '../hooks/use-proposal-diff';
 import { ProposalImpact } from './proposal-impact';
 import { ClinicGuardWarning } from './clinic-guard-warning';
+import { DECISION_ICON } from './proposal-decision-message';
 import { ProposalDiffList } from './proposal-diff-list';
 
 export interface ConfirmProposalDialogProps {
@@ -136,7 +137,7 @@ export function ConfirmProposalDialog({
 export function DecisionBadge({ status }: { status: ProposalDecisionStatus }) {
   const t = useTranslations('features.copilot');
   const approved = status === 'approved';
-  const Icon = approved ? CheckCircle2 : XCircle;
+  const Icon = DECISION_ICON[status];
   return (
     <span
       className={cn(
@@ -147,7 +148,7 @@ export function DecisionBadge({ status }: { status: ProposalDecisionStatus }) {
       )}
     >
       <Icon className="h-3 w-3" aria-hidden="true" />
-      {approved ? t('decision.approvedBadge') : t('decision.rejectedBadge')}
+      {t(`decision.${status}Badge`)}
     </span>
   );
 }
