@@ -65,8 +65,11 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
       `chat/completions` JSON schema, already recorded from real calls, instead of the Responses API): Muse Spark 1.3, Responses API, image as data URL, structured
       output (JSON schema with the category enum), clamp 0–1000 → 0–1, drop unknown categories to `other`.
       **Done when** unit tests cover parsing, clamping, out-of-enum labels and a malformed reply.
-- [ ] **PV-T5** `server/vision/segment.ts`: one `sam-3.1` call per distinct label (parallel, timeout 8 s),
-      decode with `@meta-sam/parser` → SVG path; match SAM instances to Muse boxes by IoU.
+- [ ] **PV-T5** `server/perception/outline.ts`: one `sam-3.1` call per distinct label (parallel, timeout 8 s),
+      decode the mask → SVG path; match SAM instances to Muse boxes by IoU.
+      _Partial (2026-10-31): calls, IoU match, SAM box refinement, timeout fallback and mask metadata parsing done._
+      _Open: mask decoding. The payload is Meta's adaptive range coder (base85); porting it or adding_
+      _`@meta-sam/parser` both fall under the SAM License (redistribution terms, no reverse engineering). Owner decision._
       **Done when** tests run on a recorded SAM response fixture; on timeout the box outline is kept.
 - [ ] **PV-T6** Route `app/api/vision/route.ts` (POST image ≤ 4 MB, resized client-side to ≤ 1280 px)
       streaming `vision_detections`; mock provider returns the fixture for `public/samples/vision-room.jpg`.
