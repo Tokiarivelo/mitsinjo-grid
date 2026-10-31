@@ -208,6 +208,7 @@
       "batteryLow": "Ambany",
       "batteryDepleted": "Lany",
       "perfOverlay": "{calls} antso fanaovana sary · {fps} sary/s",
+      "applianceTag": "{name} · {quantity} × {watts} W",
       "qualityLabel": "Kalitao:",
       "qualityHigh": "Avo",
       "qualityLow": "Ambany",
@@ -636,7 +637,8 @@
       },
       "zoomControls": "Fanalehibiazana ny kisary",
       "zoomHint": "Ctrl + kodiarana na tsongoy mba hanalehibe · sintony mba hanetsika",
-      "onFire": "May"
+      "onFire": "May",
+      "applianceCount": "{count} nampiana"
     },
     "hardwareLink": {
       "title": "Modely ara-batana",
@@ -794,6 +796,13 @@
       "insertFull": "Efa misy fitaovana {max} ny simulation.",
       "insertSceneryNote": "Tsy misy entana ny haingo raha tsy ovaina. Ampidiro raha mampiasa herinaratra (jiro, paompy, atrikasa…).",
       "inSimBadge": "Ao amin'ny simulation",
+      "listSimTitle": "Fitaovana ao amin'ny simulation ({count}/{max})",
+      "listSimHint": "Nampiana avy amin'ny sary. Samy manampy ny fiolahan'ny entany avy amin'ny motera amin'ny sehatra misy azy.",
+      "listSimEmpty": "Mbola tsy misy fitaovana nampiana.",
+      "listSimOpenEditor": "Sokafy ny mpanova ny tanàna",
+      "listSimLine": "{quantity} × {watts} W · {sector} · {daily} isan'andro",
+      "listSimEdit": "Ovay {name}",
+      "listSimRemove": "Esory amin'ny simulation {name}",
       "model3dHint": "Sintony hanodinana · tsindrio na ahodino hanalehibe",
       "model3dNoWebgl": "Mila WebGL ny fijery 3D. Ny sary no mijanona ho fanondroana.",
       "model3dCanvas": "Modely 3D an'ny {label}",

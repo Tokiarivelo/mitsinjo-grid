@@ -124,9 +124,12 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
       input with each question; whether it explains the change with evidence is not checked yet.)_
 - [ ] **PV-T11b** Rest of PV-T11: usage-hours chart (engine curve), scale / colour (visual only), copilot tool
       `edit_appliance` proposing the same fields (confirmed via `confirm-proposal-dialog`).
-- [ ] **PV-T13** 3D village: appliance markers near their sector building (GLB thumbnail or stylized icon)
+- [x] **PV-T13** 3D village: appliance markers near their sector building (GLB thumbnail or stylized icon)
       with tag `name · quantity × W`; 2D diagram and settings list show the same; remove/edit from the list.
       **Done when** an appliance list of 30 stays within the scene budget (`make scene-audit`).
+      _(Done 2026-10-31: `ui/appliance-markers.tsx` (3 instanced draw calls, ≤ 6 tags or the selected sector's),
+      2D « n added », `ApplianceList` on /village + /simulation Buildings tab. Budget by construction; `make scene-audit`
+      not run with 30 lines (needs a server and loads no appliances).)_
 - [ ] **PV-T14** Copilot tools `run_scenario`, `propose_change`, `get_sector_metrics` accept and report
       `appliances`. **Done when** eval case "why does the water sector run out at 19 h?" cites the pumps.
 

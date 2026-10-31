@@ -57,6 +57,7 @@ import { SimControlsPanel } from './sim-controls-panel';
 import { TimelineScrubber, type TimelineScrubberProps } from './timeline-scrubber';
 import { BuildingInspectorPanel } from './building-inspector-panel';
 import { SectorLoadPanel } from './sector-load-panel';
+import { ApplianceList } from '@/features/vision-insert';
 import { VillageViewport } from './village-viewport';
 import { PlaybackActions } from './playback-actions';
 import { ReportFireControl } from '@/features/fire-alert';
@@ -574,6 +575,7 @@ export function SimulationPage() {
                   className={cn('space-y-4', activeTab !== 'buildings' && 'hidden')}
                 >
                   <SectorLoadPanel />
+                  <ApplianceList editorHref="/village" />
                   <BuildingInspectorPanel
                     selectedSector={selectedSector}
                     onSelectSector={handleSelectSector}

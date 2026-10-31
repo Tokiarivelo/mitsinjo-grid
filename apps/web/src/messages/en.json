@@ -208,6 +208,7 @@
       "batteryLow": "Low",
       "batteryDepleted": "Depleted",
       "perfOverlay": "{calls} draw calls · {fps} fps",
+      "applianceTag": "{name} · {quantity} × {watts} W",
       "qualityLabel": "Quality:",
       "qualityHigh": "High",
       "qualityLow": "Low",
@@ -636,7 +637,8 @@
       },
       "zoomControls": "Diagram zoom",
       "zoomHint": "Ctrl + scroll or pinch to zoom · drag to pan",
-      "onFire": "On fire"
+      "onFire": "On fire",
+      "applianceCount": "{count} added"
     },
     "hardwareLink": {
       "title": "Physical scale model",
@@ -794,6 +796,13 @@
       "insertFull": "The simulation already holds {max} appliances.",
       "insertSceneryNote": "Scenery has no load by default. Add it if it uses power (lights, pump, workshop…).",
       "inSimBadge": "In simulation",
+      "listSimTitle": "Appliances in the simulation ({count}/{max})",
+      "listSimHint": "Added from photos. Each one adds its engine load curve to its sector.",
+      "listSimEmpty": "No appliance added yet.",
+      "listSimOpenEditor": "Open the village editor",
+      "listSimLine": "{quantity} × {watts} W · {sector} · {daily} per day",
+      "listSimEdit": "Edit {name}",
+      "listSimRemove": "Remove {name} from the simulation",
       "model3dHint": "Drag to turn · pinch or scroll to zoom",
       "model3dNoWebgl": "The 3D view needs WebGL. The photo stays the reference.",
       "model3dCanvas": "3D model of {label}",

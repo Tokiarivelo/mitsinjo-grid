@@ -25,6 +25,7 @@ import { SolarArray } from './solar-array';
 import { BatteryUnit } from './battery-unit';
 import { DispatchControllerUnit } from './dispatch-controller-unit';
 import { FeederTags } from './feeder-tags';
+import { ApplianceMarkers } from './appliance-markers';
 import { DistributionLines } from './distribution-lines';
 import { VillageBuildings } from './buildings';
 import { CameraController } from './camera-controller';
@@ -283,6 +284,14 @@ export function VillageCanvas({
           animate={animate}
           lampGlow={palette.lampGlow}
           halo={high}
+        />
+        <ApplianceMarkers
+          markers={model.appliances}
+          selectedSector={selectedSector}
+          tagOf={(m) =>
+            tSim('applianceTag', { name: m.name, quantity: m.quantity, watts: m.watts })
+          }
+          htmlPortal={htmlPortal}
         />
         <VillageBuildings
           buildings={model.buildings}

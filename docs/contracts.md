@@ -243,6 +243,8 @@ Store `reportFire(sector)` adds `{ type: 'fire', sector, startHour: timeIndex, d
 once (safety exception: no approval, not in `changeHistory`; no-op if that sector already burns). `BuildingSceneModel.onFire`
 = burning at the shown hour; `feederTone` → `critical-red`, 2D wire `cut`.
 
+3D `SceneModel.appliances: ApplianceMarkerSceneModel[]` (PV-T13) `{ id, name, category, sector, quantity, watts, kwNow /*engine profile at t*/, running, position }`;
+2D diagram sector card adds « n added » when appliances feed the sector (`appliancesPerSector`).
 3D `SceneModel.weather: WeatherId` (from `toSceneModel({ weather })`, default `sunny`): drives sky, clouds and rain only.
 
 ### 3D and 2D SceneModel Controller & Intensity Lighting (PL-T5, PL-T9..PL-T13)

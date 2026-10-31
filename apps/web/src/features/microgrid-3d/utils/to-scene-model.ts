@@ -1,3 +1,4 @@
+import { applianceMarkers } from './appliance-markers';
 import {
   activeFires,
   breakerFromMode,
@@ -296,6 +297,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     battery,
     controller,
     buildings,
+    appliances: applianceMarkers(input.appliances, SECTOR_POSITIONS, validTime, result),
     lines: {
       solarToBattery,
       batteryToBus,

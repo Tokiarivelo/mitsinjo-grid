@@ -13,6 +13,7 @@ import { shapeKey, useObjectShape } from '../hooks/use-object-shape';
 import { useVisionSession } from '../hooks/use-vision-session';
 import { applianceIdFor, photoKey } from '../utils/appliance-draft';
 import { ApplianceInsert } from './appliance-insert';
+import { ApplianceList } from './appliance-list';
 import { DetectionCanvas } from './detection-canvas';
 import { ObjectShapePanel } from './object-shape-panel';
 import { SelectedAppliance } from './selected-appliance';
@@ -51,6 +52,10 @@ export function VillageEditorPage() {
   const shapeTarget = selected && !vision.identifyingIds.includes(selected.id) ? selected : null;
   const targetKey = shapeTarget ? shapeKey(shapeTarget) : null;
   const photo = useMemo(() => (imageUrl ? photoKey(imageUrl) : ''), [imageUrl]);
+  const detectionOf = useMemo(
+    () => new Map(vision.detections.map((d) => [applianceIdFor(photo, d.id), d.id])),
+    [vision.detections, photo]
+  );
   const inSimulationIds = useMemo(() => {
     const ids = new Set((input.appliances ?? []).map((a) => a.id));
     return vision.detections.filter((d) => ids.has(applianceIdFor(photo, d.id))).map((d) => d.id);
@@ -246,6 +251,13 @@ export function VillageEditorPage() {
               </button>
             </aside>
           )}
+          <ApplianceList
+            onEdit={(id) => {
+              const det = detectionOf.get(id);
+              if (det) vision.select(det);
+            }}
+            canEdit={(id) => detectionOf.has(id)}
+          />
           {/* Current village state (store): inserted appliances change its loads at once. */}
           <GridSchematicPreview
             input={input}

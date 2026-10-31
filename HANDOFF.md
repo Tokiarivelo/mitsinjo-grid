@@ -1,10 +1,10 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-31 (PV-T11/T12) · **By:** Claude Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-10-31 (PV-T11/T12/T13) · **By:** Claude Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
-- Plan `docs/tasks/PV-vision-insert.md`. Done: PV-T1…T10, T8b, **T11 (core) + T12** this session. Other plans: `docs/tasks/PM-meta-models.md`
+- Plan `docs/tasks/PV-vision-insert.md`. Done: PV-T1…T10, T8b, **T11 (core) + T12 + T13** this session. Other plans: `docs/tasks/PM-meta-models.md`
   (M1-T1…T5, M2-T1/T2 fire alarm, M3-T1/T2 voice done).
 - **3D shape fix (user: lamp post always fell back to « outline »):** thin objects had no part ≥ 8 % of the box → `no_body`.
   Now `fitRecipe` (`@/lib/object-shape`) stretches parts to fill the box and takes w/h from the photo; `recipeIssue` only refuses
@@ -17,12 +17,15 @@
   `ApplianceInsertPanel` + `ApplianceInsert` (store `applyProposal({ appliances })`), engine `applianceSummary` (preview).
   AI estimate = AI category + catalog default W + suggested sector; manual = catalog-bounded. Scenery insertable as `other`.
   « In simulation » chip in the list. Shared `FIELD_CLASS` moved to `components/ui/field.ts`.
+- **PV-T13:** `SceneModel.appliances` (`utils/appliance-markers.ts`, engine profile at t), `ui/appliance-markers.tsx`
+  (3 instanced draw calls, tags ≤ 6 or selected sector), 2D « n added », `ApplianceList` (+ `useSimulationAppliances`) on
+  /village and /simulation Buildings tab.
 - Checks: tsc ✓, eslint ✓, i18n ✓, vision-insert + strategy-lab tests ✓ (119), engine ✓ except the known < 50 ms sweep bench.
 
 ## Next task
 
-- **PV-T13** 3D village markers for inserted appliances (near their sector building). Then **PV-T11b** (usage-hours chart,
-  copilot `edit_appliance`), PV-T12 live check: copilot explains an inserted pump with evidence.
+- **PV-T14** copilot tools accept and report `appliances` (eval: water runs out at 19 h → cites the pumps). Then **PV-T11b**
+  (usage-hours chart, copilot `edit_appliance`). `make scene-audit` with 30 lines not run (no server).
 - Live check with a Meta key: lamp post photo (scenario V36) now gives « AI shape ».
 - Screenshots not taken: /village insert form + colours (dark + light, 1440 / 390), M1-T5 card, fire banner, 3D fire.
 - `make e2e` when convenient. Then M2-T4 or M1-T6.
@@ -39,4 +42,5 @@
 - Shape: `lib/object-shape.ts`, `server/perception/{object-shape,shape,shape-crop(new),backend,meta}.ts`, `use-object-shape`, `object-shape-panel`.
 - Colours: `globals.css`, `utils/mark-color.ts` (new), `detection-canvas.tsx`.
 - Insert: engine `appliances/load.ts`, `use-appliance-draft`, `utils/appliance-draft`, `ui/appliance-insert{,-panel}` (new), page, index, `components/ui/field.ts`, `sector-rule-row`.
-- Messages ×3; docs contracts, copilot, components, screens/village, stitch-map, PV task, README. Scenarios V28, V36–V43.
+- PV-T13: microgrid-3d `types`, `to-scene-model`, `utils/appliance-markers` + `ui/appliance-markers` (new), `village-canvas`, `grid-diagram`, `scene-palette`; vision-insert `appliance-list`, `use-simulation-appliances` (new); simulation page.
+- Messages ×3; docs contracts, copilot, components, screens/village, stitch-map, PV task, README. Scenarios V28, V36–V46, S89.

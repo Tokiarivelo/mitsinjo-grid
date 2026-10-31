@@ -28,3 +28,5 @@ export {
   type DraftSource,
 } from './hooks/use-appliance-draft';
 export { ApplianceInsert } from './ui/appliance-insert';
+export { ApplianceList, type ApplianceListProps } from './ui/appliance-list';
+export { useSimulationAppliances } from './hooks/use-simulation-appliances';
