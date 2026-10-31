@@ -488,6 +488,11 @@ drops later slider edits (it restores the whole input). Session GET adds `summar
 `POST /api/voice` multipart `{ audio: WAV ≤ 2 MB (≈ 60 s 16 kHz mono), locale?, sessionId? }` → `{ text, durationMs, source:
 'meta'|'mock', fallback? }`; 400 missing, 413 too big, 415 not WAV. Audio is not stored.
 
+`POST /api/vision` multipart `{ image: JPEG|PNG|WebP ≤ 4 MB (client resizes to ≤ 1280 px), sessionId? }` → `text/event-stream`:
+`vision_detections { phase: 'boxes'|'outlines', detections: ApplianceDetection[], refined? /*outlines only*/, source, model, fallback? }`
+(boxes as soon as Muse answers; outlines after SAM, Meta only) · `vision_error { code: 'VISION_FAILED', message }` · `done {}`.
+400 missing, 413 too big, 415 not an image. Image not stored. Mock: `MOCK_DETECTIONS`, drawn in `public/samples/vision-room.jpg`.
+
 Model-switch tools (Zod in `server/copilot/model-tools.ts`, results go back to the model):
 `generate_image {scene:'current_village'|'custom', prompt? /*custom*/, caption?}` → `{ok, model, caption, shownState?:{hour, sky, battery, sectors}}` + `image` event · `segment_image {concept}` →
 `{concept, count, boxCoverage, model, source, note}` + `perception` event · `escalate_deep_reasoning {reason}` → `{ok, model}` + `model` event.

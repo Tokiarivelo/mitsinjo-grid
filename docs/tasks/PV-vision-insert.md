@@ -69,9 +69,10 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
       timeout 8 s), match SAM instances to Muse boxes by IoU, decode the mask with `@meta-sam/parser` (SAM License,
       `THIRD_PARTY_NOTICES.md`) → simplified SVG path. **Done when** tests run on recorded SAM responses (README masks);
       on timeout the box outline is kept.
-- [ ] **PV-T6** Route `app/api/vision/route.ts` (POST image ≤ 4 MB, resized client-side to ≤ 1280 px)
+- [x] **PV-T6** Route `app/api/vision/route.ts` (POST image ≤ 4 MB, resized client-side to ≤ 1280 px)
       streaming `vision_detections`; mock provider returns the fixture for `public/samples/vision-room.jpg`.
-      **Done when** `make dev-mock` shows detections offline.
+      **Done when** `make dev-mock` shows detections offline. _(Route test runs the handler offline; the sample is a drawn
+      room, source `scripts/assets/vision-room.svg`, boxes = `MOCK_DETECTIONS`. On screen in V3.)_
 
 ### V3 — Web: detection editor in the chat
 
