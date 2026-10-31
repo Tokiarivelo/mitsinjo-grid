@@ -56,7 +56,7 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
       `ApplianceSchema`, `InputPatch.appliances`; demand model adds the profiles to their sector.
       **Done when** an input without appliances gives identical results (golden test) and one fridge adds
       exactly its curve to its sector; `ENGINE_VERSION` bumped.
-- [ ] **PV-T3** Strategies, metrics and warnings see appliance load like any sector load (critical share
+- [x] **PV-T3** Strategies, metrics and warnings see appliance load like any sector load (critical share
       from the sector). **Done when** `compare()` changes as expected on `cloudy_day` with 5 pumps on `water`.
 
 ### V2 — Server: detection and outlines
