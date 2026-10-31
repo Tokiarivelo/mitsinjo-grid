@@ -8,9 +8,8 @@
   (M1-T1…T5, M2-T1/T2 fire alarm, M3-T1/T2 voice done).
 - **3D shape fix (user: lamp post always fell back to « outline »):** thin objects had no part ≥ 8 % of the box → `no_body`.
   Now `fitRecipe` (`@/lib/object-shape`) stretches parts to fill the box and takes w/h from the photo; `recipeIssue` only refuses
-  a near-empty recipe. Spark gets a square upscaled crop (`server/perception/shape-crop.ts`, ≥ 640 px) + box ratio in the question
-  - thin-object rule in the prompt. Panel note says why (Meta down vs unusable) + « Try the AI shape again » (`useObjectShape().retry`).
-    Adjusted box (`adjusted`) → box in the cache key → new recipe.
+  a near-empty recipe. Spark gets an upscaled square crop (`shape-crop.ts`, ≥ 640 px), the box ratio and a thin-object rule.
+  Panel note says why, with « Try the AI shape again »; an adjusted box gets a new recipe.
 - **One colour per object** (user): `utils/mark-color.ts` (golden-angle hue + 3 lightness tiers), CSS `[data-mark]` → `--mark`
   from `--theme-mark-s/l` (dark/light); photo outline + list row border use it.
 - **Add to the simulation** (user: every object, charge by hand or by AI): `useApplianceDraft`, `utils/appliance-draft.ts`,
@@ -20,7 +19,7 @@
 - **PV-T13:** `SceneModel.appliances` (`utils/appliance-markers.ts`, engine profile at t), `ui/appliance-markers.tsx`
   (3 instanced draw calls, tags ≤ 6 or selected sector), 2D « n added », `ApplianceList` (+ `useSimulationAppliances`) on
   /village and /simulation Buildings tab.
-- Checks: tsc ✓, eslint ✓, i18n ✓, vision-insert + strategy-lab tests ✓ (119), engine ✓ except the known < 50 ms sweep bench.
+- Checks: tsc ✓, eslint ✓, i18n ✓, web tests (3D, village, simulation: 307) ✓, engine ✓ except the known sweep bench.
 
 ## Next task
 
@@ -39,8 +38,6 @@
 
 ## Files touched this session
 
-- Shape: `lib/object-shape.ts`, `server/perception/{object-shape,shape,shape-crop(new),backend,meta}.ts`, `use-object-shape`, `object-shape-panel`.
-- Colours: `globals.css`, `utils/mark-color.ts` (new), `detection-canvas.tsx`.
-- Insert: engine `appliances/load.ts`, `use-appliance-draft`, `utils/appliance-draft`, `ui/appliance-insert{,-panel}` (new), page, index, `components/ui/field.ts`, `sector-rule-row`.
-- PV-T13: microgrid-3d `types`, `to-scene-model`, `utils/appliance-markers` + `ui/appliance-markers` (new), `village-canvas`, `grid-diagram`, `scene-palette`; vision-insert `appliance-list`, `use-simulation-appliances` (new); simulation page.
-- Messages ×3; docs contracts, copilot, components, screens/village, stitch-map, PV task, README. Scenarios V28, V36–V46, S89.
+- Shape: `lib/object-shape.ts`, `server/perception/*shape*`; colours: `globals.css`, `utils/mark-color.ts`, `detection-canvas`.
+- Insert: engine `appliances/load.ts`, vision-insert `use-appliance-draft`, `use-simulation-appliances`, `appliance-{draft,insert,insert-panel,list}`.
+- 3D: microgrid-3d `types`, `to-scene-model`, `{utils,ui}/appliance-markers`, `village-canvas`, `grid-diagram`. Docs + messages ×3; V28, V36–V46, S89.
