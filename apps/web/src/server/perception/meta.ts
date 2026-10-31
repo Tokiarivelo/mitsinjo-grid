@@ -6,7 +6,12 @@ import { DEFAULT_META_BASE_URL } from '@/server/copilot/providers/meta';
 import { fetchPreferringContributor } from '@/server/copilot/providers/contributor';
 import type { UsageSample } from '@/server/spend';
 import type { PerceptionBackend, PerceptionCall } from './backend';
-import { DETECT_JSON_SCHEMA, DETECT_SYSTEM_PROMPT, parseDetections } from './detect';
+import {
+  DETECT_JSON_SCHEMA,
+  DETECT_QUESTION,
+  DETECT_SYSTEM_PROMPT,
+  parseDetections,
+} from './detect';
 import { maskToOutline } from './mask-outline';
 import { boxUnionCoverage, parseSamOutput } from './parse-sam';
 import {
@@ -235,7 +240,7 @@ export class MetaPerceptionBackend implements PerceptionBackend {
   ): Promise<PerceptionCall<DetectionResult>> {
     const { content, model, usage } = await this.visionJson(
       DETECT_SYSTEM_PROMPT,
-      'List the electrical appliances on this photo.',
+      DETECT_QUESTION,
       imageUrl,
       DETECT_JSON_SCHEMA,
       signal

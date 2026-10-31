@@ -134,6 +134,10 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
       body.response_format.json_schema.schema.properties.objects.items.properties.category.enum
     ).toContain('fridge_vaccine');
     expect(body.messages[1].content[1].image_url.url).toBe('data:image/jpeg;base64,AA');
+    // Regression: an appliance-only question made Muse return [] on outdoor photos.
+    const question = body.messages[1].content[0].text as string;
+    expect(question).not.toMatch(/^List the electrical appliances/);
+    expect(question).toMatch(/buildings, vehicles, trees/);
     expect(out.result.detections).toEqual([
       { id: 'det-1', label: 'Fridge', category: 'fridge', box: { x: 0.1, y: 0.2, w: 0.2, h: 0.8 } },
     ]);

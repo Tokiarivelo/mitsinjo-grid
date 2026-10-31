@@ -22,6 +22,10 @@ export const DETECT_SYSTEM_PROMPT = [
   'Omit what you cannot see. Never give watts, kW or any energy value. Nothing visible → empty list.',
 ].join(' ');
 
+/** User turn sent with the photo: must ask for every object, not only appliances (the model follows it over the system prompt). */
+export const DETECT_QUESTION =
+  'List every notable object you can see on this photo: electrical appliances first, then buildings, vehicles, trees, plants, people, animals and water.';
+
 export const DETECT_JSON_SCHEMA = {
   name: 'ApplianceDetections',
   schema: {
