@@ -409,6 +409,11 @@
       "demand": "demande",
       "minReserve": "réserve min",
       "suggestedPromptsHeader": "SUGGESTIONS D'EXPLORATION",
+      "suggestedIncidentHeader": "À propos de l'incendie",
+      "promptFireImpact": "Incendie – {sector} : qu'est-ce que ça change pour le village maintenant ?",
+      "promptFireEssential": "Incendie – {sector} : le centre de santé et la pompe à eau restent-ils alimentés ?",
+      "promptFireEnergy": "Incendie – {sector} : où va son énergie tant qu'il est isolé ?",
+      "promptFireRestore": "Incendie – {sector} : une fois le feu éteint, comment rétablir son courant en sécurité ?",
       "promptWhyClinic": "Pourquoi le centre de santé reçoit-il moins d'énergie ?",
       "promptCompareStrategies": "Comparer les deux stratégies de répartition",
       "promptSolarDrop40": "Que se passe-t-il si la production solaire chute de 40 % ?",
@@ -622,7 +627,8 @@
         "open": "{sector} : Ouvert / Coupé (0 kW)"
       },
       "zoomControls": "Zoom du schéma",
-      "zoomHint": "Ctrl + molette ou pincer pour zoomer · glisser pour déplacer"
+      "zoomHint": "Ctrl + molette ou pincer pour zoomer · glisser pour déplacer",
+      "onFire": "En feu"
     },
     "hardwareLink": {
       "title": "Maquette physique",
@@ -653,6 +659,23 @@
       "stopFollowing": "Arrêter le suivi",
       "cloudOn": "Nuage sur la lampe",
       "cloudOff": "Retirer le nuage"
+    },
+    "fireAlert": {
+      "reportButton": "Signaler un incendie",
+      "reportTitle": "Quel secteur est en feu ?",
+      "reportHint": "Le secteur est coupé tout de suite à l'heure affichée (règle de sécurité, sans approbation).",
+      "reportCancel": "Fermer",
+      "alreadyBurning": "En feu",
+      "bannerTitle": "INCENDIE : {sectors} coupé",
+      "bannerDesc": "Courant isolé depuis {hour} (0 kW), avant toute stratégie, plafond ou plancher de survie. La remise sous tension demandera votre approbation.",
+      "simulatedTag": "Alarme simulée",
+      "seeVillage": "Voir le village",
+      "askCopilot": "Demander au copilote",
+      "snackbarTitle": "Incendie signalé : {sector}",
+      "snackbarBody": "Courant coupé à {hour}. Alarme simulée.",
+      "dismiss": "Fermer l'avis d'incendie",
+      "notificationsLabel": "Notifications d'incendie",
+      "onFireLabel": "En feu"
     }
   },
   "copilot": {
@@ -804,12 +827,15 @@
     "sectorCappedDesc": "L'alimentation de {sector} a été plafonnée selon la limite de l'opérateur entre {from} et {to}.",
     "lifelineShortfallTitle": "Courant de survie non assuré",
     "lifelineShortfallDesc": "{sector} a reçu moins que son minimum de survie entre {from} et {to}. L'eau et la santé restent alimentées en priorité.",
+    "fireIsolationTitle": "Incendie : {sector} isolé",
+    "fireIsolationDesc": "{sector} est coupé (0 kW) entre {from} et {to} à cause d'un incendie. Règle de sécurité : aucune stratégie, aucun plafond ni plancher de survie ne la contourne.",
     "hoursRange": "{from} - {to}"
   },
   "overview": {
     "subtitle": "Ce qui est en jeu aujourd’hui, et la décision qui change tout.",
     "runSimulation": "Lancer la simulation",
     "openLive": "Ouvrir la simulation en direct",
+    "openLiveHint": "Rejouez la journée dans le village 3D : chronologie, réglages, copilote IA",
     "solarPeak": "Pic solaire PV",
     "solarAvg": "Moyenne solaire PV",
     "batterySoc": "Niveau final de batterie",
@@ -819,7 +845,7 @@
     "energyBalanceDesc": "Production cumulée, flux de stockage et énergie desservie",
     "serviceAllocationTitle": "Répartition des services communautaires",
     "previewTitle": "Jumeau numérique du réseau",
-    "previewSubtitle": "Statut schématique 2D/3D de la production, batterie et secteurs",
+    "previewSubtitle": "Voyez le courant arriver dans chaque bâtiment, heure par heure.",
     "view3d": "Aperçu 3D",
     "view2d": "Schéma 2D",
     "unservedEnergy": "Non desservi : {kwh}",
@@ -834,12 +860,10 @@
     "servedEnergy": "Énergie totale desservie",
     "unservedTotal": "Énergie totale non desservie",
     "energyOverTimeSummary": "Chronologie sur 24 heures de la production solaire, de la demande communautaire totale, de l'énergie fournie en kW et du pourcentage d'état de charge de la batterie.",
-    "schematicBadge": "SCHÉMA 2D",
     "chartTitle": "Production vs Demande 24h",
     "chartSubtitle": "Solaire PV, demande communautaire totale, puissance fournie et SoC batterie",
     "emptyChartNotice": "Lancez la simulation pour visualiser les courbes énergétiques sur 24h.",
     "sectorsCount": "{count} secteurs",
-    "badge3d": "JUMEAU NUMÉRIQUE 3D",
     "quickPhasesLabel": "Phases rapides",
     "phaseDawn": "06:00 Lever",
     "phasePeak": "12:00 Pic solaire",

@@ -173,6 +173,30 @@ describe('Copilot chat flow (decisions, fallback note)', () => {
     ]);
   });
 
+  it('a fire burning now turns the suggestions into questions about it (M2)', async () => {
+    const fetchMock = mockApi([['delta', { text: 'Fire answer.' }]]);
+    useSimulationStore.setState({ timeIndex: 12 });
+    useSimulationStore.getState().reportFire('water');
+    render(<CopilotWorkspace mode="panel" />);
+
+    const group = screen.getByRole('group', { name: 'About the fire' });
+    const first = within(group).getByRole('button', {
+      name: /Fire at Water Pumping Station: what does it change for the village right now\?/,
+    });
+    expect(
+      within(group).getAllByRole('button', { name: /^Fire at Water Pumping Station/ })
+    ).toHaveLength(4);
+
+    fireEvent.click(first);
+    expect(await screen.findByText('Fire answer.')).toBeInTheDocument();
+    const body = String(
+      fetchMock.mock.calls.find(([url]) => url === '/api/copilot')?.[1]?.body ?? ''
+    );
+    expect(body).toContain('Fire at Water Pumping Station');
+    // The engine input sent along carries the fire, so the copilot reasons on it.
+    expect(body).toContain('"type":"fire"');
+  });
+
   it('Retry asks the same question again without the unsatisfying answer', async () => {
     const fetchMock = mockApi([['delta', { text: 'First answer.' }]]);
     render(<CopilotWorkspace mode="panel" />);

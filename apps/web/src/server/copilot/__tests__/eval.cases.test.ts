@@ -153,6 +153,49 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
     ]);
   });
 
+  // M2: the fire questions offered by the suggestions must never become a new order.
+  it.each([
+    'Fire at Water Pumping Station: what does it change for the village right now?',
+    'Fire at Health Clinic: what does it change for the village right now?',
+    'Fire at Local Market & Artisans: what does it change for the village right now?',
+    'Fire at Water Pumping Station: are the clinic and the water pump still supplied?',
+    'Fire at Health Clinic: are the clinic and the water pump still supplied?',
+    'Fire at Local Market & Artisans: are the clinic and the water pump still supplied?',
+    'Fire at Water Pumping Station: where does its energy go while it is isolated?',
+    'Fire at Health Clinic: where does its energy go while it is isolated?',
+    'Fire at Local Market & Artisans: where does its energy go while it is isolated?',
+    'Fire at Water Pumping Station: once it is out, how do we safely bring its power back?',
+    'Fire at Health Clinic: once it is out, how do we safely bring its power back?',
+    'Fire at Local Market & Artisans: once it is out, how do we safely bring its power back?',
+    "Incendie – Station de pompage d'eau : qu'est-ce que ça change pour le village maintenant ?",
+    "Incendie – Centre de santé : qu'est-ce que ça change pour le village maintenant ?",
+    "Incendie – Marché local et artisans : qu'est-ce que ça change pour le village maintenant ?",
+    "Incendie – Station de pompage d'eau : le centre de santé et la pompe à eau restent-ils alimentés ?",
+    'Incendie – Centre de santé : le centre de santé et la pompe à eau restent-ils alimentés ?',
+    'Incendie – Marché local et artisans : le centre de santé et la pompe à eau restent-ils alimentés ?',
+    "Incendie – Station de pompage d'eau : où va son énergie tant qu'il est isolé ?",
+    "Incendie – Centre de santé : où va son énergie tant qu'il est isolé ?",
+    "Incendie – Marché local et artisans : où va son énergie tant qu'il est isolé ?",
+    "Incendie – Station de pompage d'eau : une fois le feu éteint, comment rétablir son courant en sécurité ?",
+    'Incendie – Centre de santé : une fois le feu éteint, comment rétablir son courant en sécurité ?',
+    'Incendie – Marché local et artisans : une fois le feu éteint, comment rétablir son courant en sécurité ?',
+    "Afo – Tobim-paompy rano: inona no miova ho an'ny tanàna izao?",
+    "Afo – Tobim-pahasalamana: inona no miova ho an'ny tanàna izao?",
+    "Afo – Tsena sy mpanao asa tanana: inona no miova ho an'ny tanàna izao?",
+    'Afo – Tobim-paompy rano: mbola mahazo herinaratra ve ny toeram-pahasalamana sy ny paompy rano?',
+    'Afo – Tobim-pahasalamana: mbola mahazo herinaratra ve ny toeram-pahasalamana sy ny paompy rano?',
+    'Afo – Tsena sy mpanao asa tanana: mbola mahazo herinaratra ve ny toeram-pahasalamana sy ny paompy rano?',
+    'Afo – Tobim-paompy rano: mankaiza ny heriny raha mbola natokana izy?',
+    'Afo – Tobim-pahasalamana: mankaiza ny heriny raha mbola natokana izy?',
+    'Afo – Tsena sy mpanao asa tanana: mankaiza ny heriny raha mbola natokana izy?',
+    'Afo – Tobim-paompy rano: rehefa maty ny afo, ahoana no hamerenana soa aman-tsara ny herinaratra?',
+    'Afo – Tobim-pahasalamana: rehefa maty ny afo, ahoana no hamerenana soa aman-tsara ny herinaratra?',
+    'Afo – Tsena sy mpanao asa tanana: rehefa maty ny afo, ahoana no hamerenana soa aman-tsara ny herinaratra?',
+  ])('fire question never proposes a change: %s', async (prompt) => {
+    const { events } = await runEvalPrompt(prompt, 13);
+    expect(events.some((e) => e.name === 'proposal')).toBe(false);
+  });
+
   it('a cut with a time is not turned into "now"; "don\'t cut" is not a cut', async () => {
     const tonight = await runEvalPrompt('Coupe la clinique ce soir', 15);
     const caps = (

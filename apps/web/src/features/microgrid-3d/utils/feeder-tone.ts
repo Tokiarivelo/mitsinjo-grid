@@ -22,6 +22,8 @@ const TONE_STATUS: Record<FeederTone, StatusColor> = {
  * diagrams and the scale-model LEDs. Rule owned by the engine (`feederTone`), mapped to tokens here.
  */
 export function feederTone(feeder: FeederSceneModel, building: BuildingSceneModel): StatusColor {
+  // A burning sector (F1) is shown critical everywhere, even with no load at that hour.
+  if (building.onFire) return 'critical-red';
   return TONE_STATUS[
     engineFeederTone({
       connected: building.connected,

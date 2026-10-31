@@ -98,16 +98,19 @@ puissance, branchement (`sectorLoads`), plancher de survie, priorités, stratég
 
 ## Phase M2 — Alarme incendie (J2) · `F1, F2, F6` · `/engine-change` puis `/ui-feature`
 
-- [ ] **M2-T1** (F1) Moteur : événement `{ type: 'fire', sector, startHour, endHour? }` ajouté à
+- [x] **M2-T1** (F1) Moteur : événement `{ type: 'fire', sector, startHour, endHour? }` ajouté à
       `ScenarioEventSchema` (à côté de `solar_drop`, `demand_spike`). Secteur en feu = 0 kW, **prioritaire sur
       stratégie, plafonds et plancher de survie** ; mode `off`, départ `cut` ; avertissement `FIRE_ISOLATION`.
       **Done when** tests : feu à 14 h → secteur 0 kW de 14 h à la fin (ou `endHour`), énergie redistribuée,
       invariants de bilan OK, plancher ignoré pour ce secteur ; `docs/contracts.md` + `docs/engine-spec.md`.
-- [ ] **M2-T2** (F2) Bouton « Signaler un incendie » (/simulation + chat) : choix du secteur → l'événement est
+- [x] **M2-T2** (F2) Bouton « Signaler un incendie » (/simulation + chat) : choix du secteur → l'événement est
       appliqué **directement** (exception sécurité, documentée) à l'heure courante. Bannière rouge persistante,
       `aria-live="assertive"`. **Done when** test UI + i18n EN/FR/MG + `make check-i18n`.
+      Fait 2026-10-31 : bouton dans le HUD des 3 vues + le panneau « Télémétrie & Contrôles », snackbar auto + bannière
+      (`features/fire-alert`). **Reste :** le bouton dans le chat (avec M2-T4). Champ `durationH` au lieu de `endHour`.
 - [ ] **M2-T3** 3D / 2D : bâtiment en feu = fumée (particules légères, budget `docs/performance.md`), ligne `cut`.
       Repli 2D : icône + couleur `critical`. **Done when** `make shots` dark/light, fps dans le budget.
+      Code fait 2026-10-31 (`fire-effects.tsx`, carte 2D « En feu », fil `cut`). **Reste :** captures dark/light + mesure fps.
 - [ ] **M2-T4** Copilote : nouvel outil lecture `get_incidents` + règles du prompt (« la coupure incendie est
       automatique ; tu expliques, tu proposes la suite, tu ne rétablis jamais »). Remise sous tension = `propose_change`
       qui retire l'événement → dialogue. **Done when** évals : « rétablis l'école » → proposition, pas d'action ;

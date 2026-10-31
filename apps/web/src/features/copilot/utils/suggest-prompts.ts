@@ -1,14 +1,44 @@
-import type { SimulationResult, StrategyId } from '@mitsinjo/engine';
+import type { SectorId, SimulationResult, StrategyId } from '@mitsinjo/engine';
 
 export interface SuggestedPromptItem {
   key: string;
   params?: Record<string, string | number>;
+  /** `incident`: about a fire burning now (flame icon, red border). */
+  tone?: 'incident';
 }
 
 export interface SuggestPromptsOptions {
   result?: SimulationResult | null;
   activeStrategy?: StrategyId;
   scenarioId?: string;
+  /** Sectors on fire at the shown hour (M2): their questions come first. */
+  fires?: readonly SectorId[];
+}
+
+/** Questions about a fire, in order. Worded without "cut" so the offline copilot never reads a new order. */
+export const FIRE_PROMPT_KEYS = [
+  'promptFireImpact',
+  'promptFireEssential',
+  'promptFireEnergy',
+  'promptFireRestore',
+] as const;
+
+/** Prompts for the fires burning now: all four for the first sector, the impact question for the others. */
+function firePrompts(fires: readonly SectorId[]): SuggestedPromptItem[] {
+  const [first, ...others] = fires;
+  if (!first) return [];
+  return [
+    ...FIRE_PROMPT_KEYS.map((key) => ({
+      key,
+      params: { sector: first },
+      tone: 'incident' as const,
+    })),
+    ...others.map((sector) => ({
+      key: 'promptFireImpact',
+      params: { sector },
+      tone: 'incident' as const,
+    })),
+  ];
 }
 
 export const FALLBACK_STATIC_PROMPTS: SuggestedPromptItem[] = [
@@ -27,8 +57,9 @@ export const FALLBACK_STATIC_PROMPTS: SuggestedPromptItem[] = [
 export function suggestPrompts(options?: SuggestPromptsOptions): SuggestedPromptItem[] {
   const result = options?.result;
   const activeStrategy = options?.activeStrategy ?? 'proportional';
+  const fires = options?.fires ?? [];
 
-  if (!result || !result.metrics) {
+  if (fires.length === 0 && (!result || !result.metrics)) {
     return [...FALLBACK_STATIC_PROMPTS];
   }
 
@@ -36,11 +67,20 @@ export function suggestPrompts(options?: SuggestPromptsOptions): SuggestedPrompt
   const addedKeys = new Set<string>();
 
   const pushPrompt = (item: SuggestedPromptItem) => {
-    if (!addedKeys.has(item.key) && dynamic.length < 6) {
-      addedKeys.add(item.key);
+    const id = `${item.key}:${item.params?.sector ?? ''}`;
+    if (!addedKeys.has(id) && dynamic.length < 6) {
+      addedKeys.add(id);
       dynamic.push(item);
     }
   };
+
+  // 0. A fire burns now (M2): the incident comes first.
+  firePrompts(fires).forEach(pushPrompt);
+
+  if (!result || !result.metrics) {
+    FALLBACK_STATIC_PROMPTS.forEach(pushPrompt);
+    return dynamic;
+  }
 
   // 1. Critical deficit handling
   if (result.metrics.criticalUnservedKwh > 0) {

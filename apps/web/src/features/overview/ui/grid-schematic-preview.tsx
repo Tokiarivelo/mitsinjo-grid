@@ -2,12 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Activity, Box, Clock, ExternalLink } from 'lucide-react';
+import { Activity, ArrowRight, Box, Clock, Network, Play } from 'lucide-react';
 import type { SimulationInput, SimulationResult } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtHour, fmtKwh, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
-import { buttonVariants } from '@/components/ui/button';
 import { ViewModeToggle } from '@/components/ui/view-mode-toggle';
 import {
   GridDiagram,
@@ -58,43 +57,39 @@ export function GridSchematicPreview({
         className
       )}
     >
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
-        <div>
+      {/* Header: title + view switch */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-energy-cyan" aria-hidden="true" />
-            <h3 className="font-display text-sm font-semibold text-text-primary tracking-tight">
+            <Activity className="h-4 w-4 shrink-0 text-energy-cyan" aria-hidden="true" />
+            <h3 className="font-display text-base font-semibold text-text-primary tracking-tight">
               {tOverview('previewTitle')}
             </h3>
-            <span className="text-[10px] font-mono text-energy-cyan px-1.5 py-0.5 rounded-control-sm bg-energy-cyan/10 border border-energy-cyan/30">
-              {viewMode === '3d' ? tOverview('badge3d') : tOverview('schematicBadge')}
-            </span>
           </div>
           <p className="text-xs text-text-secondary mt-0.5">{tOverview('previewSubtitle')}</p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {hasWebGL && (
-            <ViewModeToggle
-              label={tOverview('viewModeLabel')}
-              value={viewMode}
-              onChange={setUserViewMode}
-              options={[
-                {
-                  id: '3d' as const,
-                  label: tOverview('view3d'),
-                  icon: <Box className="h-3 w-3" aria-hidden="true" />,
-                },
-                { id: '2d' as const, label: tOverview('view2d') },
-              ]}
-            />
-          )}
-
-          <Link href="/simulation" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
-            <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span>{tOverview('openLive')}</span>
-          </Link>
-        </div>
+        {hasWebGL && (
+          <ViewModeToggle
+            size="md"
+            className="w-full sm:w-auto shrink-0"
+            label={tOverview('viewModeLabel')}
+            value={viewMode}
+            onChange={setUserViewMode}
+            options={[
+              {
+                id: '3d' as const,
+                label: tOverview('view3d'),
+                icon: <Box className="h-4 w-4" aria-hidden="true" />,
+              },
+              {
+                id: '2d' as const,
+                label: tOverview('view2d'),
+                icon: <Network className="h-4 w-4" aria-hidden="true" />,
+              },
+            ]}
+          />
+        )}
       </div>
 
       {/* Viewport Content */}
@@ -130,6 +125,30 @@ export function GridSchematicPreview({
           <GridDiagram model={sceneModel} variant="topology" />
         </div>
       )}
+
+      {/* Main call to action: the live 3D simulation is the heart of the demo */}
+      <Link
+        href="/simulation"
+        className="group relative isolate mb-3 flex min-h-14 items-center gap-3 rounded-control bg-energy-cyan px-4 py-2.5 text-slate-950 shadow-lg shadow-energy-cyan/30 transition hover:brightness-105 hover:shadow-energy-cyan/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+      >
+        <span
+          aria-hidden="true"
+          className="absolute -inset-1 -z-10 rounded-control bg-energy-cyan/30 blur-md motion-safe:animate-pulse"
+        />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950/15">
+          <Play className="h-4 w-4 fill-current" aria-hidden="true" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col text-left">
+          <span className="font-display text-sm sm:text-base font-bold leading-tight">
+            {tOverview('openLive')}
+          </span>
+          <span className="text-xs leading-snug opacity-80">{tOverview('openLiveHint')}</span>
+        </span>
+        <ArrowRight
+          className="h-5 w-5 shrink-0 motion-safe:transition-transform motion-safe:group-hover:translate-x-1"
+          aria-hidden="true"
+        />
+      </Link>
 
       {/* Quick-Phase Hour Selector */}
       <div className="pt-2 pb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border/40">

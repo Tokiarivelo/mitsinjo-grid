@@ -7,6 +7,7 @@ import {
   Search,
   Sliders,
   ZapOff,
+  Flame,
 } from 'lucide-react';
 import type { SimWarning } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
@@ -119,6 +120,15 @@ export function ImpactBanner({ warnings, className, showNominal = true }: Impact
             icon = <Sliders className="h-4 w-4 text-energy-cyan" aria-hidden="true" />;
             title = tWarnings('sectorCappedTitle');
             desc = tWarnings('sectorCappedDesc', { sector: sectorName, from: fromStr, to: toStr });
+            break;
+          }
+
+          case 'FIRE_ISOLATION': {
+            const sectorName = w.sector ? tSectors(w.sector) : '';
+            toneClass = 'border-critical-red/60 bg-critical-red/15 text-critical-red';
+            icon = <Flame className="h-4 w-4 text-critical-red" aria-hidden="true" />;
+            title = tWarnings('fireIsolationTitle', { sector: sectorName });
+            desc = tWarnings('fireIsolationDesc', { sector: sectorName, from: fromStr, to: toStr });
             break;
           }
 

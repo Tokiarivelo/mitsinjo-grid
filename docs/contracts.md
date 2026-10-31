@@ -60,7 +60,8 @@ type ScenarioEvent =
       startHour: number;
       durationH: number;
       factor: number;
-    };
+    }
+  | { type: 'fire'; sector: SectorId; startHour: number; durationH: number }; // F1: sector at 0 kW, beats caps + floor
 interface SectorCap {
   sector: SectorId;
   maxKw: number; // ≥ 0
@@ -147,7 +148,8 @@ type WarningCode =
   | 'CURTAILMENT'
   | 'ANOMALY_TO_VERIFY'
   | 'SECTOR_CAPPED'
-  | 'LIFELINE_SHORTFALL';
+  | 'LIFELINE_SHORTFALL'
+  | 'FIRE_ISOLATION'; // sector cut by a fire event (one range per sector)
 interface SimWarning {
   code: WarningCode;
   sector?: SectorId;
@@ -198,6 +200,11 @@ Store (`useSimulationStore`): `workflow` (default `[{ weather: 'sunny' }]` = pla
 applies the bridge patch, sets the strategy and hour, one-day workflow, then `run()` → `source = 'device'`,
 `deviceHourMs = scale.timeScale × 1000` (null without `scale`); selectors `selectFollowsDevice`, `selectDeviceHourMs`;
 `releaseDevice()` and `loadScenario` set `source = 'scenario'`.
+
+Fire (M2): engine `activeFires(events, t): FireEvent[]`, `effectiveSectorCaps(input)` = caps + one 0 kW cap per fire.
+Store `reportFire(sector)` adds `{ type: 'fire', sector, startHour: timeIndex, durationH: 24 − timeIndex }` and re-runs at
+once (safety exception: no approval, not in `changeHistory`; no-op if that sector already burns). `BuildingSceneModel.onFire`
+= burning at the shown hour; `feederTone` → `critical-red`, 2D wire `cut`.
 
 3D `SceneModel.weather: WeatherId` (from `toSceneModel({ weather })`, default `sunny`): drives sky, clouds and rain only.
 

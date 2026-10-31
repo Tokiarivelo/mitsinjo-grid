@@ -409,6 +409,11 @@
       "demand": "demand",
       "minReserve": "min reserve",
       "suggestedPromptsHeader": "SUGGESTED EXPLORATION PROMPTS",
+      "suggestedIncidentHeader": "About the fire",
+      "promptFireImpact": "Fire at {sector}: what does it change for the village right now?",
+      "promptFireEssential": "Fire at {sector}: are the clinic and the water pump still supplied?",
+      "promptFireEnergy": "Fire at {sector}: where does its energy go while it is isolated?",
+      "promptFireRestore": "Fire at {sector}: once it is out, how do we safely bring its power back?",
       "promptWhyClinic": "Why is the clinic receiving less energy?",
       "promptCompareStrategies": "Compare the two allocation strategies",
       "promptSolarDrop40": "What happens if solar production drops by 40%?",
@@ -622,7 +627,8 @@
         "open": "{sector}: Open / Cut (0 kW)"
       },
       "zoomControls": "Diagram zoom",
-      "zoomHint": "Ctrl + scroll or pinch to zoom · drag to pan"
+      "zoomHint": "Ctrl + scroll or pinch to zoom · drag to pan",
+      "onFire": "On fire"
     },
     "hardwareLink": {
       "title": "Physical scale model",
@@ -653,6 +659,23 @@
       "stopFollowing": "Stop following",
       "cloudOn": "Cloud over the lamp",
       "cloudOff": "Remove the cloud"
+    },
+    "fireAlert": {
+      "reportButton": "Report a fire",
+      "reportTitle": "Which sector is on fire?",
+      "reportHint": "The sector is cut off at once at the shown hour (safety rule, no approval).",
+      "reportCancel": "Close",
+      "alreadyBurning": "On fire",
+      "bannerTitle": "FIRE: {sectors} cut off",
+      "bannerDesc": "Power isolated since {hour} (0 kW), ahead of every strategy, cap or survival floor. Restoring power will need your approval.",
+      "simulatedTag": "Simulated alarm",
+      "seeVillage": "See the village",
+      "askCopilot": "Ask the copilot",
+      "snackbarTitle": "Fire reported: {sector}",
+      "snackbarBody": "Power cut at {hour}. Simulated alarm.",
+      "dismiss": "Dismiss the fire notice",
+      "notificationsLabel": "Fire notifications",
+      "onFireLabel": "On fire"
     }
   },
   "copilot": {
@@ -804,12 +827,15 @@
     "sectorCappedDesc": "{sector} power intake was capped by operator limit between {from} and {to}.",
     "lifelineShortfallTitle": "Survival power not held",
     "lifelineShortfallDesc": "{sector} received less than its survival minimum between {from} and {to}. Water and health are kept on first.",
+    "fireIsolationTitle": "Fire: {sector} isolated",
+    "fireIsolationDesc": "{sector} is cut off (0 kW) between {from} and {to} because of a fire. Safety rule: no strategy, cap or survival floor overrides it.",
     "hoursRange": "{from} - {to}"
   },
   "overview": {
     "subtitle": "What is at stake today, and the decision that changes it.",
     "runSimulation": "Run simulation",
     "openLive": "Open live simulation",
+    "openLiveHint": "Play the day in the 3D village: timeline, controls, AI copilot",
     "solarPeak": "Peak Solar PV",
     "solarAvg": "Avg Solar PV",
     "batterySoc": "Battery End SoC",
@@ -819,7 +845,7 @@
     "energyBalanceDesc": "Cumulative generation, storage flows, and served energy",
     "serviceAllocationTitle": "Community Service Allocation",
     "previewTitle": "Village Grid Digital Twin",
-    "previewSubtitle": "Schematic 2D/3D status of generation, battery, and sector nodes",
+    "previewSubtitle": "See power reach each building, hour by hour.",
     "view3d": "3D Preview",
     "view2d": "2D Schematic",
     "unservedEnergy": "Unserved: {kwh}",
@@ -834,12 +860,10 @@
     "servedEnergy": "Total Served Energy",
     "unservedTotal": "Total Unserved Energy",
     "energyOverTimeSummary": "24-hour timeline of solar generation, total community demand, served energy in kW and battery state of charge percentage.",
-    "schematicBadge": "2D SCHEMATIC",
     "chartTitle": "24h Generation vs Demand",
     "chartSubtitle": "Solar PV, total community demand, served power, and battery SoC",
     "emptyChartNotice": "Run the simulation to view 24h energy curves.",
     "sectorsCount": "{count} sectors",
-    "badge3d": "3D DIGITAL TWIN",
     "quickPhasesLabel": "Quick Phases",
     "phaseDawn": "06:00 Dawn",
     "phasePeak": "12:00 Solar Peak",

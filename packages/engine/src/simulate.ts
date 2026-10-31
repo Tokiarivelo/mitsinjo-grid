@@ -27,6 +27,7 @@ import {
   lifelineFloorsByHour,
 } from './strategies';
 import { generateWarnings } from './warnings';
+import { effectiveSectorCaps } from './fire';
 
 function allocateWithCaps(
   strategy: StrategyId,
@@ -96,7 +97,9 @@ export function simulateSteps(input: SimulationInput, strategy: StrategyId): Sim
   let storedKwh = (input.battery.initialSocPct / 100) * input.battery.capacityKwh;
   let violations = 0;
   const steps: StepResult[] = new Array(HORIZON_H);
-  const lifelineFloors = lifelineFloorsByHour(input.sectors, input.sectorCaps);
+  // Fires (F1) are 0 kW caps on top of the operator's caps.
+  const sectorCaps = effectiveSectorCaps(input);
+  const lifelineFloors = lifelineFloorsByHour(input.sectors, sectorCaps);
   const lifelineEnabled = input.strategyParams?.lifeline?.enabled !== false;
 
   for (let t = 0; t < HORIZON_H; t++) {
@@ -106,7 +109,7 @@ export function simulateSteps(input: SimulationInput, strategy: StrategyId): Sim
     const { dischargeMaxKw } = computeDischargeMaxKw(input.battery, storedKwh);
     const availableKw = solarKw + dischargeMaxKw;
 
-    const activeCaps = input.sectorCaps?.filter((c) => t >= c.fromHour && t < c.toHour) ?? [];
+    const activeCaps = sectorCaps?.filter((c) => t >= c.fromHour && t < c.toHour) ?? [];
 
     const sectorSteps = allocateWithCaps(
       strategy,
@@ -148,7 +151,7 @@ export function simulateSteps(input: SimulationInput, strategy: StrategyId): Sim
       newStoredKwh: batteryResult.storedKwh,
       availableKw,
       battery: input.battery,
-      sectorCaps: input.sectorCaps,
+      sectorCaps,
       lifelineFloors: lifelineFloors[t],
       lifelineEnabled,
     });

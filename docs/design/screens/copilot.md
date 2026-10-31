@@ -38,6 +38,13 @@ context column scrolls on its own. Below `md` the list lets the swipe pass on to
 - Suggest a scenario to protect essential services.
 - Le soir, ne coupez pas le quartier, laissez au moins la lumière (proposes lifeline survival floor).
 
+Fire burning at the shown hour (M2, `suggestPrompts({ fires })`, sectors from `useActiveFires`): header « About the fire »
+(flame, critical-red) and four chips first, flame icon + red border: « Fire at {sector}: what does it change for the village
+right now? » · « …are the clinic and the water pump still supplied? » · « …where does its energy go while it is isolated? » ·
+« …once it is out, how do we safely bring its power back? »; one impact chip per other burning sector, then the usual list.
+Same in the follow-up row. The fire banner's « Ask the copilot » opens `/copilot` on these. Worded without "cut" (the
+offline copilot would read a new cut order; eval test).
+
 ## Response format (ChatMessage sections)
 
 1 What happened. 2 Computed evidence (engine values, field-referenced). 3 Why it matters (community impact). 4 Explore next (suggested change).

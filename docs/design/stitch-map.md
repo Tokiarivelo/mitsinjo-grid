@@ -71,3 +71,5 @@ Status values: `not generated` · `generated` · `exported` · `implemented` · 
   Checked 1440×900 (Circuit dark + light, 3D dark) and 390×844 (Circuit dark), no horizontal overflow.
 - M1-T5 2026-10-31: no mockup. Proposal card rows gain a checkbox (whole row is the label, ≥ 44 px) and a hint line;
   « Not applied (unchecked) » list on decided cards. Same tokens as the existing diff rows.
+- Fire alarm 2026-10-31 (M2-T2/T3): no mockup. Red alert banner (page + compact in the viewport), snackbars bottom right,
+  « Report a fire » in the HUD and the deck, 2D « On fire » card, 3D flames + smoke. Critical-red tokens only. Not screenshotted yet.

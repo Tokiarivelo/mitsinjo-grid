@@ -29,6 +29,7 @@ const building = (over: Partial<BuildingSceneModel> = {}): BuildingSceneModel =>
   loadMultiplier: 1,
   intensity: 1,
   mode: 'full',
+  onFire: false,
   ...over,
 });
 

@@ -60,6 +60,7 @@ export const WarningCodeSchema = z.enum([
   'ANOMALY_TO_VERIFY',
   'SECTOR_CAPPED',
   'LIFELINE_SHORTFALL',
+  'FIRE_ISOLATION',
 ]);
 export type WarningCode = z.infer<typeof WarningCodeSchema>;
 

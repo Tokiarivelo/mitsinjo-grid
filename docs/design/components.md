@@ -98,6 +98,7 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 - `RetryAnswer`: secondary « Retry » (≥ 44 px, full width when narrow) under the last answer or error; on a redone
   answer a muted note « Answer redone below (Retry). »
 - Follow-up suggestions (`SuggestedPrompts variant="compact"`): one horizontally scrollable line, hidden while answering.
+  `fires` prop: fire questions first, `tone: 'incident'` chips (flame, critical-red border), header « About the fire ».
 - Microphone: tap to record, tap to stop (spinner while transcribing); text lands in the input, editable. Errors
   (unsupported, denied, failed, empty) show inline in amber, dismissible. Auto-scroll only while the reader is at the bottom.
 - Playback line: when the copilot ran `control_playback`, a cyan `role="status"` pill (clock icon) « Time cursor moved
@@ -107,6 +108,18 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 - `CopilotTerminal`: full-screen glass chat (`GlassPanel`), same conversation as the tab via `CopilotProvider` /
   `useSharedCopilot`; title bar (dots, title, AI badge, new session, close), model line, log, terminal composer.
   Modals (lightbox, sketch) render outside the glass (`backdrop-filter` would trap `fixed`).
+
+## Fire alarm (`features/fire-alert`, M2-T2)
+
+- `ReportFireControl` (`variant` `hud` | `panel`): danger button « Report a fire » (Flame) → sector list (≥ 44 px rows,
+  burning ones disabled « On fire ») → `reportFire(sector)` at the shown hour, no approval. In every view's HUD (3D,
+  Topology, Circuit, full screen too) and at the top of the « Telemetry & Controls » deck.
+- `FireAlertBanner`: big red `role="alert"` card while a fire burns (flame pulse, « FIRE: <sectors> cut off », since when,
+  « Simulated alarm » tag, links « See the village » / « Ask the copilot »). Sticky at the top of every page (`FireAlertLayer`
+  in `AppShell`); `compact` one-line version inside the viewport (shows in full screen).
+- `FireSnackbars`: bottom right (above the mobile nav), one `role="alert"` card per fire that just started (reported or reached
+  on the timeline), hides after 10 s or on « × » (44 px); shows again if the fire ends and comes back.
+- 2D diagrams: burning sector card = 2 px critical-red border + glow + « On fire » flame badge; its wire shows the cut mark.
 
 ## GlassPanel
 

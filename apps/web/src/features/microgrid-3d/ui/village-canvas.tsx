@@ -33,6 +33,7 @@ import { Vegetation } from './vegetation';
 import { Vehicles } from './vehicles';
 import { PostEffects } from './post-effects';
 import { QualityProbe } from './quality-probe';
+import { FireEffects } from './fire-effects';
 import { WeatherEffects } from './weather-effects';
 import { BakedContactShadows, ResumeOnVisible, ShadowBake } from './render-control';
 import { VillageScenePlaceholder } from './scene-placeholder';
@@ -227,6 +228,7 @@ export function VillageCanvas({
           quality={quality}
           animate={weatherMotion}
         />
+        <FireEffects buildings={model.buildings} quality={quality} animate={weatherMotion} />
 
         <Suspense fallback={null}>
           <Environment files={SUNSET_HDRI_URL} environmentIntensity={palette.envIntensity} />

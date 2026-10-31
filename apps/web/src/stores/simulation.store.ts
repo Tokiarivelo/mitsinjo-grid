@@ -13,6 +13,7 @@ import {
   scenarios,
   compareWorkflow,
   applyPatch,
+  activeFires,
   MAX_WORKFLOW_DAYS,
 } from '@mitsinjo/engine';
 
@@ -66,6 +67,11 @@ export interface SimulationState {
   selectSector: (sector: SectorId | null) => void;
   setTimeIndex: (timeIndex: number) => void;
   applyProposal: (patch?: InputPatch, strategy?: StrategyId) => void;
+  /**
+   * Fire reported in a sector (M2-T2, safety exception): adds a fire event from the shown hour to the end of
+   * the day and re-runs the engine at once, no approval. A sector already burning at that hour is left as is.
+   */
+  reportFire: (sector: SectorId) => void;
   /** applyProposal + records the state before it, so `undoLastChange` can restore it. */
   approveChange: (id: string, patch?: InputPatch, strategy?: StrategyId) => void;
   /** Restores the input and strategy from before the last approved change, re-runs the engine. Returns its id. */
@@ -186,6 +192,30 @@ function commitWorkflow(
   set({ ...modifiedState(), ...patch });
 }
 
+type SetState = (partial: Partial<SimulationState>) => void;
+type GetState = () => SimulationState;
+
+/** New input (and strategy) + engine re-run on every workflow day. Throws if the engine fails. */
+function commitInput(set: SetState, get: GetState, input: SimulationInput, strategy: StrategyId) {
+  set({ input, activeStrategy: strategy, status: 'running', error: null });
+  const workflowResults = compareWorkflow(input, get().workflow, ALL_STRATEGIES);
+  set({
+    workflowResults,
+    results: dayComparison(workflowResults, get().dayIndex),
+    status: 'complete',
+    error: null,
+  });
+}
+
+function failRun(set: SetState, err: unknown, fallback: string) {
+  set({
+    status: 'error',
+    error: err instanceof Error ? err.message : fallback,
+    isPlaying: false,
+    playbackStatus: 'idle',
+  });
+}
+
 export const useSimulationStore = create<SimulationState>((set, get) => ({
   ...initialSimulationData,
 
@@ -288,28 +318,20 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     try {
       const patched =
         patch && Object.keys(patch).length > 0 ? applyPatch(get().input, patch) : get().input;
-      const nextStrategy = strategy ?? get().activeStrategy;
-
-      set({
-        input: patched,
-        activeStrategy: nextStrategy,
-        status: 'running',
-        error: null,
-      });
-      const workflowResults = compareWorkflow(patched, get().workflow, ALL_STRATEGIES);
-      set({
-        workflowResults,
-        results: dayComparison(workflowResults, get().dayIndex),
-        status: 'complete',
-        error: null,
-      });
+      commitInput(set, get, patched, strategy ?? get().activeStrategy);
     } catch (err) {
-      set({
-        status: 'error',
-        error: err instanceof Error ? err.message : 'Failed to apply proposal',
-        isPlaying: false,
-        playbackStatus: 'idle',
-      });
+      failRun(set, err, 'Failed to apply proposal');
+    }
+  },
+
+  reportFire: (sector: SectorId) => {
+    const { input, timeIndex, activeStrategy } = get();
+    if (activeFires(input.events, timeIndex).some((f) => f.sector === sector)) return;
+    const fire = { type: 'fire' as const, sector, startHour: timeIndex, durationH: 24 - timeIndex };
+    try {
+      commitInput(set, get, { ...input, events: [...input.events, fire] }, activeStrategy);
+    } catch (err) {
+      failRun(set, err, 'Failed to report the fire');
     }
   },
 

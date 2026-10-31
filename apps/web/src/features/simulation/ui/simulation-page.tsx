@@ -59,6 +59,7 @@ import { BuildingInspectorPanel } from './building-inspector-panel';
 import { SectorLoadPanel } from './sector-load-panel';
 import { VillageViewport } from './village-viewport';
 import { PlaybackActions } from './playback-actions';
+import { ReportFireControl } from '@/features/fire-alert';
 import { WeatherWorkflowPanel } from './weather-workflow-panel';
 import { HardwareLinkSection } from '@/features/hardware-link';
 import { DayStrip } from './day-strip';
@@ -345,6 +346,11 @@ export function SimulationPage() {
                   <PanelRightClose className="h-3.5 w-3.5" aria-hidden="true" />
                   <span className="text-[11px] font-sans">{tSim('hideDeck')}</span>
                 </button>
+              </div>
+
+              {/* Safety: report a fire from the deck, whatever tab is open (M2-T2) */}
+              <div className="px-4 py-3 border-b border-border">
+                <ReportFireControl variant="panel" />
               </div>
 
               {/* TAB NAVIGATION BAR */}

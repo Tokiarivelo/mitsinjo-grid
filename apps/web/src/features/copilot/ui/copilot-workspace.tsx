@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { Sparkles, Bot, AlertTriangle, X, History, Plus, Trash2 } from 'lucide-react';
 import { useAppLocale, useTranslations } from '@/lib/i18n';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -13,6 +13,7 @@ import { ChatComposer } from './chat-composer';
 import { ModelPicker } from './model-picker';
 import { useVoiceInput } from '../hooks/use-voice-input';
 import { useSimulationStore } from '@/stores/simulation.store';
+import { useActiveFires } from '@/features/fire-alert';
 import type { ChatMediaItem } from '../types';
 import { ChatMessageItem } from './chat-message-item';
 import { ToolActivity } from './tool-activity';
@@ -41,6 +42,9 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
 
   const activeStrategy = useSimulationStore((s) => s.activeStrategy);
   const result = useSimulationStore((s) => s.results[s.activeStrategy]);
+  // Fires burning now steer the suggested questions (« Ask the copilot » on the fire banner lands here).
+  const fires = useActiveFires();
+  const fireSectors = useMemo(() => fires.map((f) => f.sector), [fires]);
 
   const {
     sessionId,
@@ -283,6 +287,7 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
                     disabled={pending}
                     result={result}
                     activeStrategy={activeStrategy}
+                    fires={fireSectors}
                   />
                 </div>
               </div>
@@ -336,6 +341,7 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
               onSelectPrompt={(p) => send(p)}
               result={result}
               activeStrategy={activeStrategy}
+              fires={fireSectors}
             />
           )}
 

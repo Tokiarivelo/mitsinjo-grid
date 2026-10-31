@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-31 · **By:** Claude Code · **Branch:** `feat/meta-models` · **PR:** none yet · last commit 294e70a
+**Updated:** 2026-10-31 · **By:** Claude Code · **Branch:** `feat/meta-models` · **PR:** none yet · last commit ee7b654; fire alarm work below **uncommitted**
 
 ## State
 
@@ -8,19 +8,20 @@
 - **M1-T5** (K3): checkbox per proposal line (`useProposalSelection`, `utils/proposal-parts.ts`); engine block + clinic guard
   follow the checked lines (`lib/proposal-impact.ts`, shared with `propose_change`); decision carries `skipped`; mock cuts
   every sector named before « garde / keep / sauf ». Scenarios A88–A92.
-- Committed 2026-10-31 as 4 signed commits (each typechecked + its tests run on its own snapshot):
-  `7bdbcff` overview incident screen · `93f6484` copilot undo (M1-T4) + Retry + folded evidence + tool-error answers ·
-  `22e6cd4` glass full-screen terminal / controls / minimizable timeline (also wires Undo + Retry in the chat) ·
-  `294e70a` `control_playback` tool.
-- Checks: tsc ✓, eslint ✓, prettier ✓, i18n ✓, web 678/678.
-- `make e2e` and `make shots` **not run** this session (e2e stopped by the user); M1-T5 card not screenshotted yet.
+- **Fire alarm (M2-T1 ✓, M2-T2 ✓ except chat button, M2-T3 code only):** engine `fire` event (0 kW cap that beats caps +
+  floor, `FIRE_ISOLATION`, v0.4.0, `src/fire.ts`); store `reportFire`; `features/fire-alert` (auto snackbar, big sticky banner
+  in AppShell, compact banner in the viewport, « Report a fire » in every view HUD + the deck); 2D « On fire » card + cut wire;
+  3D `fire-effects.tsx` (flames, instanced smoke, light on high). Scenarios S83–S88.
+- Checks: tsc ✓, eslint ✓, prettier ✓, i18n ✓, web 687/687, engine 230/231 (sweep < 50 ms bench fails on this machine
+  with or without the change: 52–85 ms).
 
 ## Next task
 
-- `make e2e` when convenient (random nav timeouts seen before).
+- `make e2e` when convenient.
 - Live check with a Meta key: does Spark call `control_playback` for "pause" / "go to 18:00"? Note it in docs/copilot.md.
-- `make shots`: proposal card with checkboxes, dark + light, 390 px (design gate for M1-T5).
-- Then **M1-T6** (4 eval cases).
+- Screenshots (design gate) not taken: M1-T5 card, fire banner/snackbar, 3D fire, 2D « On fire » (dark + light, 390 px);
+  measure 3D fps with a fire (`?perf=1`). Then commit the fire work.
+- Then M2-T4 (`get_incidents`, restore via `propose_change`, chat fire button) or **M1-T6** (4 eval cases).
 
 ## Decisions taken
 

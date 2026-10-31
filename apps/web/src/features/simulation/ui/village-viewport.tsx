@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react';
 import { CopilotTerminal } from '@/features/copilot';
+import { FireAlertBanner, ReportFireControl, useActiveFires } from '@/features/fire-alert';
 import type { SectorId, SimulationInput, SimulationResult, WeatherId } from '@mitsinjo/engine';
 import { WEATHER_VISUALS } from '../utils/weather';
 import { cn } from '@/lib/utils';
@@ -138,6 +139,7 @@ export function VillageViewport({
   const demandKw = step?.demandKw ?? null;
 
   // Scene model for 3D visualization (pure mapping)
+  const fires = useActiveFires();
   const sceneModel = useMemo(
     () =>
       toSceneModel({
@@ -299,6 +301,9 @@ export function VillageViewport({
           </div>
         )}
 
+        {/* Safety: report a fire in any view (3D, topology, circuit), full screen included */}
+        <ReportFireControl className="pointer-events-auto" />
+
         {/* Right: View Mode Toggle (3D vs 2D Topology vs Circuit) */}
         <ViewModeToggle
           label={tSim('viewModeLabel')}
@@ -320,6 +325,15 @@ export function VillageViewport({
           ]}
         />
       </div>
+
+      {/* Fire alarm in the view itself (also in full screen, where the page banner is hidden) */}
+      {fires.length > 0 && (
+        <FireAlertBanner
+          compact
+          fires={fires}
+          className="absolute z-20 top-16 sm:top-14 left-1/2 -translate-x-1/2 max-w-[calc(100%-1.5rem)]"
+        />
+      )}
 
       {/* Main Viewport Content Area */}
       {viewMode === '3d' && hasWebGL ? (

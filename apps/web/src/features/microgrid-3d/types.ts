@@ -45,6 +45,8 @@ export interface BuildingSceneModel {
   intensity: number;
   /** Feeder / sector mode from engine (PL-T12). */
   mode: SectorMode;
+  /** A fire event burns in this sector at the shown hour (F1): the engine cut it to 0 kW. */
+  onFire: boolean;
 }
 
 export interface SolarSceneModel {

@@ -1,4 +1,5 @@
 import {
+  activeFires,
   breakerFromMode,
   controllerModeAt,
   SECTOR_IDS,
@@ -163,6 +164,9 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     ? SECTOR_IDS.reduce((sum, id) => sum + (step.sectors[id]?.servedKw ?? 0), 0)
     : 0;
 
+  // Sectors burning at this hour (F1): engine fire events, shown as fire in 3D / 2D / circuit.
+  const burning = new Set(activeFires(input.events, validTime).map((f) => f.sector));
+
   for (const sectorId of SECTOR_IDS) {
     const sectorConfig = input.sectors.find((s) => s.id === sectorId);
     const priority = sectorConfig?.priority ?? 'medium';
@@ -219,6 +223,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
       loadMultiplier,
       intensity,
       mode,
+      onFire: burning.has(sectorId),
     };
 
     feeders[sectorId] = {

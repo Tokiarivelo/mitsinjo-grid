@@ -16,6 +16,11 @@ describe('OverviewPage — incident screen', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /run simulation/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /simulate a solar drop/i })).toBeInTheDocument();
+    // The live simulation is the one prominent way into the 3D village
+    expect(screen.getByRole('link', { name: /open live simulation/i })).toHaveAttribute(
+      'href',
+      '/simulation'
+    );
     // No rings before a run
     expect(screen.queryByRole('heading', { name: /same day, different decision/i })).toBeNull();
   });

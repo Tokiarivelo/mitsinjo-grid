@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useMemo, type ReactNode } from 'react';
-import { BatteryCharging, Cpu, RotateCcw, Sun, ZoomIn, ZoomOut } from 'lucide-react';
+import { BatteryCharging, Cpu, Flame, RotateCcw, Sun, ZoomIn, ZoomOut } from 'lucide-react';
 import type { SectorId, StrategyId } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtKw, fmtPct } from '@/lib/format';
@@ -39,6 +39,8 @@ export interface GridDiagramProps {
 }
 
 function sectorWireState(b: BuildingSceneModel, active: boolean): WireState {
+  // A burning sector (F1) is isolated: red break mark, whatever the hour's load.
+  if (b.onFire) return 'cut';
   if (active) {
     return b.mode === 'lifeline' ? 'lifeline' : 'flow';
   }
@@ -195,7 +197,7 @@ export function GridDiagram({
                     line={line}
                     state={state}
                     intensity={b.intensity}
-                    colorClass={STATUS_TEXT_CLASS[b.statusColor]}
+                    colorClass={STATUS_TEXT_CLASS[b.onFire ? 'critical-red' : b.statusColor]}
                     animate={animate}
                     glow={glow}
                   />
@@ -297,6 +299,7 @@ export function GridDiagram({
                   statusLabel={t(`status.${buildings[id].status}`)}
                   modeLabel={t(`feederMode.${buildings[id].mode}`)}
                   noLoadLabel={t('status.noLoad')}
+                  fireLabel={t('onFire')}
                   selected={selectedSector === id}
                   onSelect={onSelectSector}
                 />
@@ -428,6 +431,7 @@ function SectorCard({
   statusLabel,
   modeLabel,
   noLoadLabel,
+  fireLabel,
   selected,
   onSelect,
 }: {
@@ -438,16 +442,23 @@ function SectorCard({
   statusLabel: string;
   modeLabel: string;
   noLoadLabel: string;
+  /** Badge + status line of a burning sector (F1). */
+  fireLabel: string;
   selected: boolean;
   onSelect?: (sector: SectorId | null) => void;
 }) {
   // A sector with no demand this hour is not "powered": show it neutral.
-  const noLoad = hasResult && building.status === 'full' && building.demandKw <= 0.05;
-  const statusColor = noLoad ? 'idle' : building.statusColor;
+  const onFire = building.onFire;
+  const noLoad = !onFire && hasResult && building.status === 'full' && building.demandKw <= 0.05;
+  const statusColor = onFire ? 'critical-red' : noLoad ? 'idle' : building.statusColor;
 
   // Halo glow on building cards ∝ intensity & mode (PL-T12, using semantic @theme tokens exclusively)
   let glowClass = 'border-border shadow-none';
-  if (selected) {
+  if (onFire) {
+    glowClass =
+      'border-2 border-critical-red bg-critical-red/10 shadow-[0_0_14px_var(--color-critical-red)]' +
+      (selected ? ' ring-2 ring-energy-cyan/50' : '');
+  } else if (selected) {
     glowClass =
       'border-energy-cyan ring-2 ring-energy-cyan/50 shadow-[0_0_12px_var(--color-energy-cyan)]';
   } else if (hasResult && building.connected && building.intensity > 0) {
@@ -485,15 +496,23 @@ function SectorCard({
           <SectorIcon sector={id} className="h-[1.9cqw] w-[1.9cqw]" />
           <span className="truncate font-semibold text-text-primary">{name}</span>
         </span>
-        {hasResult && building.connected && (
-          <span
-            className={cn(
-              'shrink-0 rounded-full border px-[0.5cqw] py-[0.1cqw] font-mono text-[1.05cqw] uppercase tracking-wider',
-              modeBadgeClass
-            )}
-          >
-            {modeLabel}
+        {onFire ? (
+          <span className="shrink-0 flex items-center gap-[0.3cqw] rounded-full border border-critical-red bg-critical-red/20 px-[0.5cqw] py-[0.1cqw] font-mono text-[1.05cqw] font-semibold uppercase tracking-wider text-critical-red">
+            <Flame className="h-[1.2cqw] w-[1.2cqw] motion-safe:animate-pulse" aria-hidden="true" />
+            {fireLabel}
           </span>
+        ) : (
+          hasResult &&
+          building.connected && (
+            <span
+              className={cn(
+                'shrink-0 rounded-full border px-[0.5cqw] py-[0.1cqw] font-mono text-[1.05cqw] uppercase tracking-wider',
+                modeBadgeClass
+              )}
+            >
+              {modeLabel}
+            </span>
+          )
         )}
       </div>
       <span className="truncate whitespace-nowrap font-mono text-[1.35cqw]">
@@ -512,7 +531,7 @@ function SectorCard({
           )}
           aria-hidden="true"
         />
-        <span className="truncate">{noLoad ? noLoadLabel : statusLabel}</span>
+        <span className="truncate">{onFire ? fireLabel : noLoad ? noLoadLabel : statusLabel}</span>
       </span>
     </>
   );

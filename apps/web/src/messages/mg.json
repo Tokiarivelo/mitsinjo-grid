@@ -409,6 +409,11 @@
       "demand": "tinady",
       "minReserve": "tahiry kely indrindra",
       "suggestedPromptsHeader": "FANONTANIANA ATOLOTRA",
+      "suggestedIncidentHeader": "Momba ny afo",
+      "promptFireImpact": "Afo – {sector}: inona no miova ho an'ny tanàna izao?",
+      "promptFireEssential": "Afo – {sector}: mbola mahazo herinaratra ve ny toeram-pahasalamana sy ny paompy rano?",
+      "promptFireEnergy": "Afo – {sector}: mankaiza ny heriny raha mbola natokana izy?",
+      "promptFireRestore": "Afo – {sector}: rehefa maty ny afo, ahoana no hamerenana soa aman-tsara ny herinaratra?",
       "promptWhyClinic": "Nahoana no mihena ny herinaratra any amin'ny tobim-pahasalamana?",
       "promptCompareStrategies": "Ampitahao ireo paikady fitsinjarana roa",
       "promptSolarDrop40": "Inona no mitranga raha mihena 40% ny vokatra masoandro?",
@@ -622,7 +627,8 @@
         "open": "{sector}: Misokatra / Tapaka (0 kW)"
       },
       "zoomControls": "Fanalehibiazana ny kisary",
-      "zoomHint": "Ctrl + kodiarana na tsongoy mba hanalehibe · sintony mba hanetsika"
+      "zoomHint": "Ctrl + kodiarana na tsongoy mba hanalehibe · sintony mba hanetsika",
+      "onFire": "May"
     },
     "hardwareLink": {
       "title": "Modely ara-batana",
@@ -653,6 +659,23 @@
       "stopFollowing": "Atsahatra ny fanarahana",
       "cloudOn": "Rahona eo amin'ny jiro",
       "cloudOff": "Esorina ny rahona"
+    },
+    "fireAlert": {
+      "reportButton": "Hilaza afo",
+      "reportTitle": "Sehatra inona no may?",
+      "reportHint": "Tapaka avy hatrany amin'ny ora aseho ny sehatra (fitsipika fiarovana, tsy mila fankatoavana).",
+      "reportCancel": "Hidiana",
+      "alreadyBurning": "May",
+      "bannerTitle": "AFO: tapaka ny {sectors}",
+      "bannerDesc": "Natokana hatramin'ny {hour} ny herinaratra (0 kW), mialoha ny paikady, fetra na herinaratra vonjy aina rehetra. Mila ny fankatoavanao ny famerenana ny herinaratra.",
+      "simulatedTag": "Fanairana simulation",
+      "seeVillage": "Jereo ny tanàna",
+      "askCopilot": "Anontanio ny copilote",
+      "snackbarTitle": "Afo voalaza: {sector}",
+      "snackbarBody": "Tapaka tamin'ny {hour} ny herinaratra. Fanairana simulation.",
+      "dismiss": "Hidio ny filazana afo",
+      "notificationsLabel": "Filazana afo",
+      "onFireLabel": "May"
     }
   },
   "copilot": {
@@ -804,12 +827,15 @@
     "sectorCappedDesc": "Ny herinaratra ho an'ny {sector} dia noferana tamin'ny fetran'ny mpitantana teo anelanelan'ny {from} sy {to}.",
     "lifelineShortfallTitle": "Tsy voatazona ny herinaratra fototra",
     "lifelineShortfallDesc": "Nahazo latsaky ny fetra farany ilaina ny {sector} teo anelanelan'ny {from} sy {to}. Ny rano sy ny fahasalamana no tazonina voalohany.",
+    "fireIsolationTitle": "Afo: {sector} natokana",
+    "fireIsolationDesc": "Tapaka (0 kW) ny {sector} eo anelanelan'ny {from} sy {to} noho ny afo. Fitsipika fiarovana: tsy misy paikady, fetra na herinaratra vonjy aina manova izany.",
     "hoursRange": "{from} - {to}"
   },
   "overview": {
     "subtitle": "Izay atahorana anio, sy ny fanapahan-kevitra manova izany.",
     "runSimulation": "Handefa ny simulation",
     "openLive": "Hanokatra ny simulation mivantana",
+    "openLiveHint": "Avereno ny andro ao amin’ny tanàna 3D: fandaharam-potoana, fanaraha-maso, copilote IA",
     "solarPeak": "Herin'ny masoandro farany ambony",
     "solarAvg": "Herin'ny masoandro salanisa",
     "batterySoc": "Tahiry faran'ny bateria",
@@ -819,7 +845,7 @@
     "energyBalanceDesc": "Famokarana, fikorianan'ny tahiry ary angovo voazara",
     "serviceAllocationTitle": "Fizarana amin'ny tolotra fiaraha-monina",
     "previewTitle": "Endrika nomerikan'ny tambajotra",
-    "previewSubtitle": "Sary 2D/3D maneho ny famokarana, bateria sy tolotra",
+    "previewSubtitle": "Jereo ny herinaratra tonga amin’ny trano tsirairay, isan’ora.",
     "view3d": "Fijery 3D",
     "view2d": "Kisary 2D",
     "unservedEnergy": "Tsy voazara: {kwh}",
@@ -834,12 +860,10 @@
     "servedEnergy": "Totalin'ny angovo voazara",
     "unservedTotal": "Totalin'ny angovo tsy voazara",
     "energyOverTimeSummary": "Fivoaran'ny famokarana masoandro, fitakiana manontolo, angovo voazara amin'ny kW ary tahirin'ny bateria mandritra ny 24 ora.",
-    "schematicBadge": "SARY 2D",
     "chartTitle": "Famokarana sy Filàna 24h",
     "chartSubtitle": "Masoandro PV, filàna manontolo, herinaratra voazara ary SoC bateria",
     "emptyChartNotice": "Alefaso ny simulation hijerena ny firafitry ny herinaratra mandritra ny 24 ora.",
     "sectorsCount": "Sokajy {count}",
-    "badge3d": "KAMBANA NOMERIKA 3D",
     "quickPhasesLabel": "Dingana haingana",
     "phaseDawn": "06:00 Maraina",
     "phasePeak": "12:00 Masoandro mitataovovonana",

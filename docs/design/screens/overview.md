@@ -14,7 +14,7 @@ Scene spec: `docs/design/3d-scene.md`. Shell: `docs/design/shell.md`. Contracts:
 | ● INCIDENT · ESSENTIAL SERVICES (pulsing pill) | Village twin preview          |
 | H1: The clinic and the water pump go dark at   | (GridSchematicPreview, 3D/2D, |
 |     23:00.                                     |  quick phases, docked strip)  |
-| Strategy + missing kWh sentence                |                               |
+| Strategy + missing kWh sentence                | [▶ Open live simulation →]    |
 | [23:00 Outage starts][1 h Hours][0.1 kWh]      |                               |
 | [Ask the copilot why]  [See the village at 23:00]                               |
 +------------------------------------------------+-------------------------------+
@@ -27,6 +27,12 @@ Scene spec: `docs/design/3d-scene.md`. Shell: `docs/design/shell.md`. Contracts:
 ```
 
 Mobile: hero text then twin (one column); the 3 rings stay side by side (small ring, caption hidden).
+
+## Twin preview (`GridSchematicPreview`)
+
+- Header: title + plain subtitle, large 3D/2D `ViewModeToggle size="md"` (full width on mobile, ≥ 44 px). No mode badge (the toggle shows it).
+- Under the viewport: the screen's most visible link, « Open live simulation » → `/simulation` (filled `energy-cyan`, glow,
+  play icon + one-line hint). It is the entry to the core of the demo; no other "open live" link on the page.
 
 ## States (`IncidentHero`)
 
