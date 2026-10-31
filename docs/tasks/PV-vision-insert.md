@@ -49,7 +49,7 @@ outline?: string (SVG path, image-normalized) }`. Never contains power values.
 
 ### V1 — Engine: appliance catalog and load (pure, tested)
 
-- [ ] **PV-T1** `packages/engine/src/appliances/catalog.ts`: `APPLIANCE_CATALOG: Record<ApplianceCategory,
+- [x] **PV-T1** `packages/engine/src/appliances/catalog.ts`: `APPLIANCE_CATALOG: Record<ApplianceCategory,
 ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-spec.md`).
       **Done when** every category has a spec and a test checks bounds and 24 values.
 - [ ] **PV-T2** `applianceProfileKw(appliance): number[24]` = watts × quantity × duty / 1000; Zod schemas

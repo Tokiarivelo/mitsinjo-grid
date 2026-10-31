@@ -25,6 +25,33 @@ type ScenarioId =
   | 'meter_anomaly';
 ```
 
+```ts
+// PV vision insert (schemas/appliance.ts)
+type ApplianceCategory =
+  | 'fridge'
+  | 'freezer'
+  | 'tv'
+  | 'lamp'
+  | 'fan'
+  | 'laptop'
+  | 'phone_charger'
+  | 'radio'
+  | 'water_pump'
+  | 'rice_mill'
+  | 'sewing_machine'
+  | 'welder'
+  | 'fridge_vaccine'
+  | 'computer'
+  | 'other'; // APPLIANCE_CATEGORIES
+interface ApplianceSpec {
+  category: ApplianceCategory;
+  defaultW: number;
+  minW: number;
+  maxW: number; // W, min ≤ default ≤ max
+  hourlyDuty: number[];
+} // 24 values 0–1 (HourlyDutySchema)
+```
+
 ## Input
 
 ```ts
@@ -293,6 +320,8 @@ toHardwareCommand(input, result, hour, scale, seq?): HardwareCommand
 feederNominalKw(scale, sector): number               // nominalW × powerScale / 1000
 DEFAULT_HARDWARE_SCALE                               // powerScale 4000, timeScale 20, luxFullSun 20000
 TIME_SCALE_PRESETS                                   // [60, 20, 10, 5] s per simulated hour (app speed buttons)
+// Appliances (PV)
+APPLIANCE_CATALOG: Record<ApplianceCategory, ApplianceSpec> // read-only; not in demand until PV-T2
 ```
 
 ### Physical scale model (PH, `schemas/hardware.ts`)

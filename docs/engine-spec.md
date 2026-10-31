@@ -146,6 +146,29 @@ into feeder setpoints (`toHardwareCommand`); `dispatch/` holds the breaker / con
 the 3D and 2D views. No new energy math: demand comes from `computeProfileDemandKw` × request, served kW from the
 result. Contract and formulas: `contracts.md` § Physical scale model; hardware design: `docs/maquette-physique.md`.
 
+### Appliance catalog (PV)
+
+`appliances/catalog.ts` → `APPLIANCE_CATALOG[category]`: rated power bounds (W) and a default 24 h duty profile
+(share of each hour at rated power). Not wired into demand yet (PV-T2). Orders of magnitude for village use, cross-checked
+against Efficiency for Access / CLASP appliance data, the ESMAP Multi-Tier Framework load tiers and WHO PQS E003
+(solar vaccine fridges). Vision only picks the category; watts and hours come from here.
+
+| category          | default W (min–max) | default use                         |
+| ----------------- | ------------------- | ----------------------------------- |
+| fridge / freezer  | 100 / 150 (50–400)  | 24 h, duty 0.35–0.4, 0.5–0.55 12–18 |
+| fridge_vaccine    | 60 (30–150)         | 24 h, duty 0.35, 0.45 12–18         |
+| tv                | 60 (20–200)         | 12–14 0.3, 18–22 1, 22–23 0.4       |
+| lamp              | 10 (3–60)           | 05–06 0.5, 18–22 1, 22–24 0.3       |
+| fan               | 50 (20–100)         | 11–16 0.8, 19–22 0.5                |
+| laptop / computer | 50 / 150 (20–300)   | 08–17 0.6 / 0.8 (+ laptop 19–21)    |
+| phone_charger     | 5 (2–20)            | 12–14 0.3, 18–22 0.5                |
+| radio             | 10 (3–40)           | 06–08, 12–13 0.5, 18–21 0.7         |
+| water_pump        | 750 (200–3000)      | 08–16, full 09–15 (sun-driven)      |
+| rice_mill         | 7500 (3000–15000)   | 08–12 and 14–17, duty 0.6           |
+| sewing_machine    | 100 (50–250)        | 08–12 and 14–17, duty 0.5           |
+| welder            | 3000 (1500–6000)    | 09–12 and 14–16, duty 0.3           |
+| other             | 100 (1–5000)        | 08–18, duty 0.5                     |
+
 ## 7. Tests (Vitest, `packages/engine/src/__tests__`)
 
 nominal no-deficit · solar drop changes results · never below reserve · never above capacity ·
