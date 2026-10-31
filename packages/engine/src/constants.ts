@@ -1,6 +1,6 @@
 import type { Priority, SectorId, StrategyId, WeatherId } from './schemas';
 
-export const ENGINE_VERSION = '0.4.0';
+export const ENGINE_VERSION = '0.5.0';
 
 export const EPS = 1e-9;
 

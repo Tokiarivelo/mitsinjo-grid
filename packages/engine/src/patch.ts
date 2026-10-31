@@ -93,6 +93,12 @@ export function patchInputUnchecked(input: SimulationInput, patch: InputPatch): 
     }
   }
 
+  if (patch.appliances !== undefined) {
+    // No appliance stays implicit so the input hash matches an input that never had any.
+    if (patch.appliances.length === 0) delete cloned.appliances;
+    else cloned.appliances = structuredClone(patch.appliances);
+  }
+
   if (patch.criticalShares !== undefined) {
     for (const [secId, share] of Object.entries(patch.criticalShares)) {
       const s = cloned.sectors.find((sec) => sec.id === secId);

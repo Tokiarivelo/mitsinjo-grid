@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AppliancesSchema } from './appliance';
 import { PrioritySchema, ScenarioIdSchema, SECTOR_IDS, SectorIdSchema } from './common';
 
 export const SectorConfigSchema = z.object({
@@ -164,6 +165,8 @@ export const SimulationInputSchema = z.object({
   demandMultiplier: z.number().min(0.5).max(2),
   sectorCaps: z.array(SectorCapSchema).optional(),
   strategyParams: StrategyParamsSchema.optional(),
+  /** Appliances added to their sector's modelled load (PV). Absent = none. */
+  appliances: AppliancesSchema.optional(),
 });
 export type SimulationInput = z.infer<typeof SimulationInputSchema>;
 
@@ -190,5 +193,7 @@ export const InputPatchSchema = z.object({
       kw: z.record(SectorIdSchema, z.number().min(0).max(2)).optional(),
     })
     .optional(),
+  /** Replaces the whole appliance list (PV); `[]` removes every appliance. */
+  appliances: AppliancesSchema.optional(),
 });
 export type InputPatch = z.infer<typeof InputPatchSchema>;

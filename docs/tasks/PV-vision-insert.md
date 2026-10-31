@@ -52,7 +52,7 @@ outline?: string (SVG path, image-normalized) }`. Never contains power values.
 - [x] **PV-T1** `packages/engine/src/appliances/catalog.ts`: `APPLIANCE_CATALOG: Record<ApplianceCategory,
 ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-spec.md`).
       **Done when** every category has a spec and a test checks bounds and 24 values.
-- [ ] **PV-T2** `applianceProfileKw(appliance): number[24]` = watts × quantity × duty / 1000; Zod schemas
+- [x] **PV-T2** `applianceProfileKw(appliance): number[24]` = watts × quantity × duty / 1000; Zod schemas
       `ApplianceSchema`, `InputPatch.appliances`; demand model adds the profiles to their sector.
       **Done when** an input without appliances gives identical results (golden test) and one fridge adds
       exactly its curve to its sector; `ENGINE_VERSION` bumped.

@@ -7,6 +7,7 @@ import {
   flowLevel,
 } from '../dispatch';
 import { isSectorConnected } from '../model';
+import { sectorApplianceKw } from '../appliances';
 import { computeProfileDemandKw } from '../model';
 import { HardwareScaleSchema, SECTOR_IDS, TelemetrySampleSchema } from '../schemas';
 import type {
@@ -73,9 +74,16 @@ export function scaleTelemetry(
   });
 
   const meterReadings: Partial<Record<SectorId, number[]>> = {};
+  const applianceKw = sectorApplianceKw(base.appliances);
   for (const sector of base.sectors) {
     meterReadings[sector.id] = Array.from({ length: HORIZON_H }, (_, h) => {
-      const expected = computeProfileDemandKw(sector, base.demandMultiplier, base.events, h);
+      const expected = computeProfileDemandKw(
+        sector,
+        base.demandMultiplier,
+        base.events,
+        h,
+        applianceKw
+      );
       const requests = byHour[h]!.map((s) => s.requests[sector.id]).filter(
         (r): r is number => r !== undefined
       );

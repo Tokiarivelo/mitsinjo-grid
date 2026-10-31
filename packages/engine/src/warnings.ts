@@ -1,5 +1,6 @@
 import { EPS } from './constants';
 import { effectiveSectorCaps, fireEvents } from './fire';
+import { sectorApplianceKw } from './appliances';
 import { computeProfileDemandKw } from './model/demand';
 import { type LifelineFloorsByHour, lifelineFloorsByHour } from './strategies/lifeline';
 import type { BatteryConfig, SectorId, SimulationInput, SimWarning, StepResult } from './schemas';
@@ -107,11 +108,18 @@ export function generateWarnings(
 
   // 6. ANOMALY_TO_VERIFY: detector for persistent gap vs profile > 25% for >= 2 h
   if (input?.sectors) {
+    const applianceKw = sectorApplianceKw(input.appliances);
     for (const s of input.sectors) {
       if (s.meterReadings && s.meterReadings.length === steps.length) {
         const divergentHours: number[] = [];
         for (let t = 0; t < steps.length; t++) {
-          const expectedKw = computeProfileDemandKw(s, input.demandMultiplier, input.events, t);
+          const expectedKw = computeProfileDemandKw(
+            s,
+            input.demandMultiplier,
+            input.events,
+            t,
+            applianceKw
+          );
           const meterKw = s.meterReadings[t] ?? 0;
 
           let gap = 0;

@@ -50,6 +50,15 @@ interface ApplianceSpec {
   maxW: number; // W, min ≤ default ≤ max
   hourlyDuty: number[];
 } // 24 values 0–1 (HourlyDutySchema)
+interface Appliance {
+  id: string; // 1–64, unique in the list
+  name: string; // 1–40 (trimmed)
+  category: ApplianceCategory;
+  sector: SectorId;
+  watts: number; // one unit, within APPLIANCE_CATALOG[category] minW–maxW
+  quantity: number; // int 1–50
+  hourlyDuty?: number[]; // 24 values 0–1, default = catalog profile
+}
 ```
 
 ## Input
@@ -109,6 +118,7 @@ interface SimulationInput {
     balancedWeights?: Record<Priority, number>;
     lifeline?: { enabled: boolean }; // default enabled
   };
+  appliances?: Appliance[]; // ≤ MAX_APPLIANCES (30); absent = none (PV)
 }
 ```
 
@@ -321,7 +331,9 @@ feederNominalKw(scale, sector): number               // nominalW × powerScale /
 DEFAULT_HARDWARE_SCALE                               // powerScale 4000, timeScale 20, luxFullSun 20000
 TIME_SCALE_PRESETS                                   // [60, 20, 10, 5] s per simulated hour (app speed buttons)
 // Appliances (PV)
-APPLIANCE_CATALOG: Record<ApplianceCategory, ApplianceSpec> // read-only; not in demand until PV-T2
+APPLIANCE_CATALOG: Record<ApplianceCategory, ApplianceSpec> // read-only
+applianceProfileKw(appliance: Appliance): number[]  // 24 kW: watts × quantity × duty / 1000
+sectorApplianceKw(appliances?): Partial<Record<SectorId, number[]>> // summed per sector
 ```
 
 ### Physical scale model (PH, `schemas/hardware.ts`)
@@ -446,6 +458,7 @@ interface InputPatch {
   balancedWeights?: Partial<Record<Priority, number>>; // 0–10, at least one > 0
   lifeline?: { enabled?: boolean; kw?: Partial<Record<SectorId, number>> }; // 0–2 kW
   sectorLoads?: Partial<Record<SectorId, number>>; // 0–3 → loadMultiplier (1 removes it, 0 disconnects)
+  appliances?: Appliance[]; // replaces the list; [] removes the field (hash unchanged)
 }
 ```
 

@@ -119,8 +119,9 @@ Total ≈ 128 kWh/day (factory not connected). Tune so that: `baseline` → 0 un
 
 ### Live sector load (`loadMultiplier`)
 
-Demand of a sector at hour t = `profileKw[t] × (loadMultiplier ?? 1) × demandMultiplier × active spikes`
-(meter readings replace the profile). `0` = not connected: zero demand, hidden from overview, strategy cards and
+Demand of a sector at hour t = `(profileKw[t] × (loadMultiplier ?? 1) + applianceKw[t]) × demandMultiplier × active spikes`
+(meter readings replace the whole modelled profile, appliances included). `applianceKw` = sum of
+`applianceProfileKw` of the sector's appliances (PV, ENGINE_VERSION 0.5.0); 0 when the sector is not connected. `0` = not connected: zero demand, hidden from overview, strategy cards and
 coverage lists (`connectedSectors`). Set via `InputPatch.sectorLoads` (UI slider on `/simulation`, copilot patch).
 
 ### Adding a consumer sector (checklist)
@@ -149,7 +150,8 @@ result. Contract and formulas: `contracts.md` § Physical scale model; hardware 
 ### Appliance catalog (PV)
 
 `appliances/catalog.ts` → `APPLIANCE_CATALOG[category]`: rated power bounds (W) and a default 24 h duty profile
-(share of each hour at rated power). Not wired into demand yet (PV-T2). Orders of magnitude for village use, cross-checked
+(share of each hour at rated power). Inserted appliances (`input.appliances`) add to their sector's demand, see
+§ Live sector load; `watts` must stay within the category bounds. Orders of magnitude for village use, cross-checked
 against Efficiency for Access / CLASP appliance data, the ESMAP Multi-Tier Framework load tiers and WHO PQS E003
 (solar vaccine fridges). Vision only picks the category; watts and hours come from here.
 

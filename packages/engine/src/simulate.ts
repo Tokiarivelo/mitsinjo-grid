@@ -1,5 +1,6 @@
 import { ENGINE_VERSION, EPS, HORIZON_H } from './constants';
 import { computeInputHash, computeResultId } from './hash';
+import { sectorApplianceKw } from './appliances';
 import { checkStepInvariants } from './invariants';
 import { calculateMetrics } from './metrics';
 import {
@@ -102,9 +103,17 @@ export function simulateSteps(input: SimulationInput, strategy: StrategyId): Sim
   const lifelineFloors = lifelineFloorsByHour(input.sectors, sectorCaps);
   const lifelineEnabled = input.strategyParams?.lifeline?.enabled !== false;
 
+  const applianceKw = sectorApplianceKw(input.appliances);
+
   for (let t = 0; t < HORIZON_H; t++) {
     const solarKw = computeSolarStep(input.solar, input.events, t);
-    const demandResult = computeDemandStep(input.sectors, input.demandMultiplier, input.events, t);
+    const demandResult = computeDemandStep(
+      input.sectors,
+      input.demandMultiplier,
+      input.events,
+      t,
+      applianceKw
+    );
 
     const { dischargeMaxKw } = computeDischargeMaxKw(input.battery, storedKwh);
     const availableKw = solarKw + dischargeMaxKw;
