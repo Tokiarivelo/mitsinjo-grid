@@ -2,13 +2,14 @@ import 'server-only';
 
 import { env } from '@/lib/env';
 import { spendGuard, type SpendGuard } from '@/server/spend';
-import type { PerceptionBackend, PerceptionCall } from './backend';
+import type { PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
 import { MetaPerceptionBackend } from './meta';
 import { MockPerceptionBackend } from './mock';
 import type {
   DetectionResult,
   PerceptionSource,
   SegmentResult,
+  ShapeResult,
   TranscribeOptions,
   Transcript,
   VisionResult,
@@ -87,6 +88,14 @@ export class PerceptionClient {
     signal?: AbortSignal
   ): Promise<DetectionResult> {
     return this.run('identifyRegion', (b) => b.identifyRegion(imageUrl, hint, signal));
+  }
+
+  describeShape(
+    imageUrl: string,
+    target: ShapeSubject,
+    signal?: AbortSignal
+  ): Promise<ShapeResult> {
+    return this.run('describeShape', (b) => b.describeShape(imageUrl, target, signal));
   }
 }
 

@@ -5,7 +5,7 @@ import { env } from '@/lib/env';
 import { DEFAULT_META_BASE_URL } from '@/server/copilot/providers/meta';
 import { fetchPreferringContributor } from '@/server/copilot/providers/contributor';
 import type { UsageSample } from '@/server/spend';
-import type { PerceptionBackend, PerceptionCall } from './backend';
+import type { PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
 import {
   DETECT_JSON_SCHEMA,
   DETECT_QUESTION,
@@ -14,11 +14,13 @@ import {
 } from './detect';
 import { maskToOutline } from './mask-outline';
 import { REGION_SYSTEM_PROMPT, regionQuestion } from './region-prompt';
+import { parseRecipe, SHAPE_JSON_SCHEMA, SHAPE_SYSTEM_PROMPT, shapeQuestion } from './shape';
 import { boxUnionCoverage, parseSamOutput } from './parse-sam';
 import {
   ObservationSchema,
   type DetectionResult,
   type SegmentResult,
+  type ShapeResult,
   type TranscribeOptions,
   type Transcript,
   type VisionResult,
@@ -267,6 +269,24 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       signal
     );
     return { model, usage, result: { detections: parseDetections(content) } };
+  }
+
+  async describeShape(
+    imageUrl: string,
+    target: ShapeSubject,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<ShapeResult>> {
+    const { content, model, usage } = await this.visionJson(
+      SHAPE_SYSTEM_PROMPT,
+      shapeQuestion(target.label),
+      imageUrl,
+      SHAPE_JSON_SCHEMA,
+      signal
+    );
+    const recipe = parseRecipe(content);
+    if (!recipe)
+      console.info(`[vision] ${model} gave no usable 3D recipe: ${content.slice(0, 300)}`);
+    return { model, usage, result: { recipe } };
   }
 
   async segmentImage(

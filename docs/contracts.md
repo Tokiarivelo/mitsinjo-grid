@@ -505,6 +505,15 @@ JSON `VisionRegion[]` (1–10, `{ id, points: [x,y][] (3–400, 0–1, closed po
 fallback? }` (no `vision_detections`). Client: `useVisionSession.sendShapes(shapes, fallbackLabel)` shows each shape at once
 (`shapeToDetection`: operator text or fallback label, `category: 'other'`, the drawn outline), then takes the model's label /
 kind / category / box; drawn outline kept until SAM sends one. Failure → `identifyFailed`, the shape keeps the operator text.
+`POST /api/vision/shape` (PV-T9) multipart `{ image (same rules and normalization as /api/vision, shared
+`server/perception/vision-request.ts`), target: JSON ShapeTarget { id, label, category, box }, sessionId? }` → JSON
+`ObjectShape { detectionId, mode: 'recipe'|'silhouette', recipe? /*recipe only*/, reason? /*silhouette only: 'provider_error'|
+'spend_cap'|'malformed'|'no_body'|'out_of_bounds'|'proportions'*/, source, model, fallback? }`; 400 missing / invalid target.
+`ObjectRecipe { proportions: {w,h,d} (largest = 1), parts: { shape: 'box'|'cylinder'|'sphere'|'cone', at: [x,y,z] (−0.6…0.6),
+size: [x,y,z] (0.01–1), axis?: 'x'|'y'|'z', color: '#rrggbb', front?: true }[] (1–12) }`: object centred, x right, y up, z to the camera,
+in fractions of its own size. Shared Zod + `recipeIssue`, `frontPartIndex`, `silhouetteRings` in `@/lib/object-shape`; no power value.
+Client: `useObjectShape().requestShape(photo, target, sessionId?)` → `{ status: 'idle'|'loading'|'ready', shape? }`; a network or
+HTTP failure also ends in `silhouette` (`reason: 'provider_error'`), never an error state. Nothing is stored (crop sent inline).
 SSE parsing for every client stream: `@/lib/sse` (`parseSseChunk`, `readSseStream`).
 
 Model-switch tools (Zod in `server/copilot/model-tools.ts`, results go back to the model):

@@ -46,7 +46,8 @@ mitsinjo-grid/
             │   ├── design/page.tsx     # UI kit catalog (renders features/design-system)
             │   ├── api/copilot/route.ts
             │   ├── api/voice/route.ts  # chat microphone → transcribe (Meta Voice / mock)
-            │   └── api/vision/route.ts # photo → appliances (Muse boxes, SAM outlines / mock), SSE
+            │   ├── api/vision/route.ts # photo → appliances (Muse boxes, SAM outlines / mock), SSE
+            │   └── api/vision/shape/route.ts # selected object → 3D recipe (Spark) or silhouette fallback, JSON
             ├── features/
             │   ├── overview/           # ui/ hooks/ utils/ __tests__/ index.ts
             │   ├── simulation/         # controls, run/reset, timeline
@@ -98,16 +99,16 @@ Scale model (local, `docs/maquette-physique.md`):
 
 ## 4. Ownership boundaries
 
-| Layer               | May                                       | May not                                                                 |
-| ------------------- | ----------------------------------------- | ----------------------------------------------------------------------- |
-| `packages/engine`   | compute all numbers, validate input       | import React/Next, fetch, read env                                      |
-| `stores/`           | hold input, status, results, selection    | compute energy values                                                   |
-| `features/*/ui`     | render props                              | call engine or store directly (use hooks)                               |
-| `features/*/hooks`  | read store, call engine via store actions | fetch LLM except `copilot/hooks`, `vision-insert/hooks` (`/api/vision`) |
-| `server/copilot`    | call LLM + engine, validate tool args     | be imported by client code                                              |
-| `server/perception` | report what a model heard / saw           | compute energy values, apply changes                                    |
-| 3D scene            | map result fields → visuals               | derive or interpolate energy values                                     |
-| `apps/bridge`       | place frames on the sim clock, I/O        | compute energy values (calls the engine)                                |
+| Layer               | May                                       | May not                                                                                      |
+| ------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `packages/engine`   | compute all numbers, validate input       | import React/Next, fetch, read env                                                           |
+| `stores/`           | hold input, status, results, selection    | compute energy values                                                                        |
+| `features/*/ui`     | render props                              | call engine or store directly (use hooks)                                                    |
+| `features/*/hooks`  | read store, call engine via store actions | fetch LLM except `copilot/hooks`, `vision-insert/hooks` (`/api/vision`, `/api/vision/shape`) |
+| `server/copilot`    | call LLM + engine, validate tool args     | be imported by client code                                                                   |
+| `server/perception` | report what a model heard / saw           | compute energy values, apply changes                                                         |
+| 3D scene            | map result fields → visuals               | derive or interpolate energy values                                                          |
+| `apps/bridge`       | place frames on the sim clock, I/O        | compute energy values (calls the engine)                                                     |
 
 ## 5. Store shape (summary; types in contracts.md)
 

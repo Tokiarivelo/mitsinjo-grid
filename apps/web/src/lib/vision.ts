@@ -134,3 +134,31 @@ export function isAppliance(d: Pick<ApplianceDetection, 'kind'>): boolean {
 export function boxPath(b: NormBox): string {
   return `M${b.x} ${b.y}H${b.x + b.w}V${b.y + b.h}H${b.x}Z`;
 }
+
+/**
+ * Absolute `M x yL x y…H x V y…Z` path (SAM outlines, `boxPath`, `polygonPath`) → closed rings of points.
+ * Other commands are never emitted by this app; rings with fewer than 3 points are dropped.
+ */
+export function pathToRings(path: string): Array<Array<readonly [number, number]>> {
+  const rings: Array<Array<readonly [number, number]>> = [];
+  let ring: Array<readonly [number, number]> = [];
+  const close = () => {
+    if (ring.length >= 3) rings.push(ring);
+    ring = [];
+  };
+  for (const m of path.matchAll(/([MLHVZ])\s*(-?[\d.]+)?(?:[ ,](-?[\d.]+))?/g)) {
+    const cmd = m[1];
+    const a = Number(m[2]);
+    const b = Number(m[3]);
+    const last = ring[ring.length - 1];
+    if (cmd === 'Z') close();
+    else if (cmd === 'H' && last && Number.isFinite(a)) ring.push([a, last[1]]);
+    else if (cmd === 'V' && last && Number.isFinite(a)) ring.push([last[0], a]);
+    else if (cmd === 'M' || cmd === 'L') {
+      if (cmd === 'M' && ring.length) close();
+      if (Number.isFinite(a) && Number.isFinite(b)) ring.push([a, b]);
+    }
+  }
+  close();
+  return rings;
+}

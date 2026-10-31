@@ -10,5 +10,7 @@ export {
   SEGMENT_TIMEOUT_MS,
   MAX_SEGMENT_CONCEPTS,
 } from './outline';
-export type { PerceptionBackend, PerceptionCall } from './backend';
+export type { PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
+export { parseRecipe, mockRecipe, SHAPE_JSON_SCHEMA } from './shape';
+export { runObjectShape, SHAPE_TIMEOUT_MS } from './object-shape';
 export * from './schemas';

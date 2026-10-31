@@ -41,6 +41,13 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
   `parseSamOutput` also returns each mask still encoded (`{encoding, height, width, payload}`, raster over the box);
   `mask-outline.ts` decodes it with `@meta-sam/parser` (SAM License, `THIRD_PARTY_NOTICES.md`) into a simplified SVG path in
   image fractions (≤ 160 points) set on each SAM instance and carried to the matched detection. Unreadable mask → no outline. Never throws: missing key, spend cap or API error → deterministic mock with `fallback` set.
+  `describeShape` (PV-T9, `shape.ts` + `object-shape.ts`): **Meta models only** (no photo→3D model on the Meta API, checked
+  2026-10-31). One Spark call on a crop around the selected object (same crop helper as regions), JSON schema `ObjectRecipe`
+  (≤ 12 parts box / cylinder / sphere / cone, `at` + `size` in object fractions, `#rrggbb`, main body `front: true` gets the photo),
+  20 s timeout. `parseRecipe` is lenient (clamps, drops bad parts, grey for bad colours); `recipeIssue` (shared) rejects a recipe
+  with no body part (≥ 8 % volume), parts > 0.3 outside the box, or w/h more than 2.5× off the photo box. Meta failure, spend cap,
+  timeout, unreadable or poor recipe → `silhouette` mode (the browser extrudes the SAM outline, else the box; no extra call).
+  Mock: fixed recipes (fridge, TV, fan, lamp; else a box), not checked.
   Image generation stays in `providers/meta.ts` (`/responses`, model `META_IMAGE_MODEL`).
 - `server/spend/`: `SpendGuard` estimates cost from catalogue prices (API `usage` when given, else ≈ 4 chars/token) per session
   (`sessionId`, else `global`). Over `META_SPEND_CAP_USD` → mock + `PROVIDER_FALLBACK` `reason: 'spend_cap'`. In memory: resets on restart.

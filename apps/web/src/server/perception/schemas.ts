@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ObjectRecipeSchema } from '@/lib/object-shape';
 import { ApplianceDetectionSchema } from '@/lib/vision';
 
 export {
@@ -91,6 +92,12 @@ export const SegmentResultSchema = PerceptionSourceSchema.extend({
   boxCoverage: z.number().min(0).max(1),
 });
 export type SegmentResult = z.infer<typeof SegmentResultSchema>;
+
+/** Spark's 3D recipe of one object (PV-T9); null when the reply was not usable. */
+export const ShapeResultSchema = PerceptionSourceSchema.extend({
+  recipe: ObjectRecipeSchema.nullable(),
+});
+export type ShapeResult = z.infer<typeof ShapeResultSchema>;
 
 export const DetectionResultSchema = PerceptionSourceSchema.extend({
   detections: z.array(ApplianceDetectionSchema),

@@ -1,5 +1,8 @@
 import { decodeMaskToSVGPath } from '@meta-sam/parser';
+import { pathToRings } from '@/lib/vision';
 import type { SamMask } from './parse-sam';
+
+export { pathToRings };
 
 /** Simplification tolerance, in image fractions (≈ 2 px on a 1000 px photo). */
 export const OUTLINE_TOLERANCE = 0.002;
@@ -7,29 +10,6 @@ export const OUTLINE_TOLERANCE = 0.002;
 export const MAX_OUTLINE_POINTS = 160;
 
 type Pt = readonly [number, number];
-
-/** Absolute `M x yL x y…Z` path → closed rings of points. Other commands are not emitted by the parser. */
-export function pathToRings(path: string): Pt[][] {
-  const rings: Pt[][] = [];
-  let ring: Pt[] = [];
-  for (const m of path.matchAll(/([MLZ])\s*(?:(-?[\d.]+)[ ,](-?[\d.]+))?/g)) {
-    const cmd = m[1];
-    if (cmd === 'Z') {
-      if (ring.length >= 3) rings.push(ring);
-      ring = [];
-      continue;
-    }
-    if (cmd === 'M' && ring.length) {
-      if (ring.length >= 3) rings.push(ring);
-      ring = [];
-    }
-    const x = Number(m[2]);
-    const y = Number(m[3]);
-    if (Number.isFinite(x) && Number.isFinite(y)) ring.push([x, y]);
-  }
-  if (ring.length >= 3) rings.push(ring);
-  return rings;
-}
 
 function segmentDistance(p: Pt, a: Pt, b: Pt): number {
   const dx = b[0] - a[0];

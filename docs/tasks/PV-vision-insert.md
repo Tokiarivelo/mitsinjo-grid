@@ -23,15 +23,15 @@ Status: **plan**, nothing implemented. Research done on 2026-10-31 (sources at t
 
 ## Building blocks (research summary)
 
-| Step              | Model / service                                                      | Input → output                                                                                                                                | Cost / limits                                                                                       |
-| ----------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Detect + classify | `muse-spark-1.3` (Meta Model API, already used)                      | image + JSON schema → `[{label, category, bbox:[x_min,y_min,x_max,y_max]}]`, grid 0–1000, top-left origin; missing objects omitted            | tokens for 1 image + short JSON; values may exceed 1000 → clamp; counting imperfect                 |
-| Precise outlines  | `sam-3.1` (Meta Model API, `POST /v1/responses`)                     | image + one noun phrase (`input_text`) → special-token text `<Nf>id<\|box;x1;y1;x2;y2;w;h[;c]\|><\|mask;…data=H,W,~payload\|>`, source pixels | ≈ $2.50 / 1k images; text prompts only on the API (no box/point prompt); one phrase per request     |
-| Mask decode       | `@meta-sam/parser` (npm, 0.1.0, Meta)                                | SAM output → typed records, raster / COCO RLE / **SVG path**                                                                                  | SAM License (copy in `licenses/`), added 2026-10-31                                                 |
-| Photo → 3D        | **SAM 3D Objects** via fal.ai (`fal-ai/sam-3/3d-objects`) or Runware | cropped image (+ mask) → GLB (single mesh, optional baked texture) + PLY splat                                                                | **not on Meta Model API** → extra key; ≈ 5–30 s+, ≈ $0.02/object (unverified); hidden side invented |
+| Step              | Model / service                                               | Input → output                                                                                                                                | Cost / limits                                                                                   |
+| ----------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Detect + classify | `muse-spark-1.3` (Meta Model API, already used)               | image + JSON schema → `[{label, category, bbox:[x_min,y_min,x_max,y_max]}]`, grid 0–1000, top-left origin; missing objects omitted            | tokens for 1 image + short JSON; values may exceed 1000 → clamp; counting imperfect             |
+| Precise outlines  | `sam-3.1` (Meta Model API, `POST /v1/responses`)              | image + one noun phrase (`input_text`) → special-token text `<Nf>id<\|box;x1;y1;x2;y2;w;h[;c]\|><\|mask;…data=H,W,~payload\|>`, source pixels | ≈ $2.50 / 1k images; text prompts only on the API (no box/point prompt); one phrase per request |
+| Mask decode       | `@meta-sam/parser` (npm, 0.1.0, Meta)                         | SAM output → typed records, raster / COCO RLE / **SVG path**                                                                                  | SAM License (copy in `licenses/`), added 2026-10-31                                             |
+| Photo → 3D        | `muse-spark-1.3` shape recipe (+ SAM 3.1 outline as fallback) | crop → JSON parts recipe (box / cylinder / sphere / cone, colours); poor or failed → SAM outline extruded, photo on the front                 | Meta models only (user, 2026-10-31): no photo→3D model on the Meta API; SAM 3D Objects not used |
 
 Open checks before coding (the session network blocked `dev.meta.ai`): exact `sam-3.1` request metadata
-(`mask_encoding`, `include_confidence`), max image size, rate limits, `@meta-sam/parser` licence, fal.ai price.
+(`mask_encoding`, `include_confidence`), max image size, rate limits, `@meta-sam/parser` licence.
 
 ## Data contracts (add to `docs/contracts.md` in V1)
 
@@ -92,12 +92,15 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
 
 ### V4 — Web: 3D object editor
 
-- [ ] **PV-T9** `server/vision/mesh.ts` + `vision_mesh_ready`: crop the selected object, call SAM 3D Objects
-      (fal.ai, `FAL_KEY`, timeout 45 s), store the GLB (R2 via `server/storage/r2.ts`) and return its URL.
-      Behind `VISION_3D_PROVIDER=fal|none` (default `none`).
-      **Done when** tests mock fal.ai; without a key the stylized model is used with no error shown.
-- [ ] **PV-T10** `object-editor-3d.tsx`: R3F viewer (orbit, auto-fit, lazy-loaded, mesh capped in faces or
-      decimated) + stylized fallback per category (reuse `merge-parts` / scene palette).
+- [x] **PV-T9** 3D shape with Meta models only (user change 2026-10-31: no fal.ai; the Meta API has no photo→3D model).
+      `POST /api/vision/shape` → `server/perception/object-shape.ts`: one Spark call on a crop of the object returns an
+      `ObjectRecipe` (≤ 12 primitive parts, colours, main body carries the photo); Meta failure, spend cap, 20 s timeout,
+      unreadable or poor recipe (`recipeIssue`) → `silhouette` mode (SAM outline, else box, extruded in the browser).
+      Hook `useObjectShape` (network failure → silhouette too). **Done when** tests cover recipe, each fallback and the
+      mock recipes; no error is ever shown. _(Nothing stored: no GLB, crop sent inline.)_
+- [ ] **PV-T10** `object-editor-3d.tsx`: R3F viewer (orbit, auto-fit, lazy-loaded) of the `useObjectShape` result:
+      recipe parts merged (reuse `merge-parts` / scene palette) with the photo on the `frontPartIndex` part's front face
+      (texture offset/repeat = detection box), or the `silhouetteRings` extrusion (depth per category) with the photo on the front.
       **Done when** both modes render in dark/light, 1440 and 390 px, within `docs/performance.md` budgets.
 - [ ] **PV-T11** Edit panel: name, category, sector, watts (catalog bounds), quantity, usage hours preview
       (engine curve, chart), scale/color (visual only). Copilot tool `edit_appliance` proposes the same
@@ -116,13 +119,13 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
 ## Env vars (add to `src/lib/env.ts`, `.env.example`, `docs/setup/env.md`)
 
 - Detection and SAM reuse `META_VISION_MODEL` (default `muse-spark-1.3`) and `META_SEGMENT_MODEL` (default `sam-3.1`).
-- `VISION_3D_PROVIDER` (`none` | `fal`), `FAL_KEY` (only if `fal`).
+- No 3D-specific variable: the shape recipe uses `META_VISION_MODEL` and the spend cap.
 
 ## Cost per photo (estimate)
 
 1 Muse call (≈ 1 image + ~300 output tokens) + N SAM calls (N = distinct labels, ≈ $0.0025 each)
 
-- 1 SAM 3D call per selected object (≈ $0.02, unverified). No LLM call for watts or curves.
+- 1 Spark call per selected object for its 3D recipe (≈ 1 small crop + ~300 output tokens). No LLM call for watts or curves.
 
 ## Exit criteria
 
@@ -138,5 +141,5 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
 - SAM on Meta Model API: https://dev.meta.ai/docs/sam/overview · https://dev.meta.ai/docs/sam/segmenting ·
   https://dev.meta.ai/docs/sam/client-libraries · https://dev.meta.ai/models/sam-3-1
 - SAM wire grammar: https://pypi.org/project/meta-sam-parser/ · example: https://github.com/anthonynolan/sam3
-- SAM 3D Objects hosted: https://fal.ai/models/fal-ai/sam-3/3d-objects/api ·
+- SAM 3D Objects hosted (not used, Meta-only rule): https://fal.ai/models/fal-ai/sam-3/3d-objects/api ·
   https://runware.ai/docs/models/meta-sam-3d-objects

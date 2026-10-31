@@ -1,4 +1,5 @@
-import type { PerceptionBackend, PerceptionCall } from './backend';
+import type { PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
+import { mockRecipe } from './shape';
 import { boxUnionCoverage } from './parse-sam';
 import { classifyLabel } from './detect';
 import type {
@@ -6,6 +7,7 @@ import type {
   DetectionResult,
   Observation,
   SegmentResult,
+  ShapeResult,
   TranscribeOptions,
   Transcript,
   VisionResult,
@@ -183,6 +185,18 @@ export class MockPerceptionBackend implements PerceptionBackend {
         ? { id: 'region', label, category: c.category, box }
         : { id: 'region', label, kind: 'scenery', category: 'other', scenery: c.scenery, box };
     return { model: MOCK_PERCEPTION_MODEL, usage: {}, result: { detections: [detection] } };
+  }
+
+  /** Fixed recipe per category (fridge, TV, fan, lamp; else a box). */
+  async describeShape(
+    _imageUrl: string,
+    target: ShapeSubject
+  ): Promise<PerceptionCall<ShapeResult>> {
+    return {
+      model: MOCK_PERCEPTION_MODEL,
+      usage: {},
+      result: { recipe: mockRecipe(target.category) },
+    };
   }
 
   async detectAppliances(): Promise<PerceptionCall<DetectionResult>> {

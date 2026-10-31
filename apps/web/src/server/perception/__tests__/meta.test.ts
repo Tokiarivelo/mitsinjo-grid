@@ -144,6 +144,34 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
     expect(out.usage).toEqual({ inputTokens: 1500, outputTokens: 120 });
   });
 
+  it('asks Spark for a 3D recipe with the parts schema (PV-T9)', async () => {
+    const recipe = {
+      proportions: { w: 0.5, h: 1, d: 0.5 },
+      parts: [{ shape: 'box', at: [0, 0, 0], size: [1, 1, 1], color: '#eeeeee', front: true }],
+    };
+    const fetchMock = respond({
+      choices: [{ message: { content: JSON.stringify(recipe) } }],
+      usage: { prompt_tokens: 900, completion_tokens: 200 },
+    });
+    const out = await backend.describeShape('data:image/jpeg;base64,AA', {
+      label: 'Fridge',
+      category: 'fridge',
+    });
+    const body = JSON.parse(lastRequest(fetchMock).init.body as string);
+    expect(lastRequest(fetchMock).url).toBe(`${BASE}/chat/completions`);
+    expect(body.response_format.json_schema.name).toBe('ObjectRecipe');
+    expect(body.messages[1].content[0].text).toContain('"Fridge"');
+    expect(out.result.recipe).toEqual(recipe);
+    expect(out.usage).toEqual({ inputTokens: 900, outputTokens: 200 });
+
+    respond({ choices: [{ message: { content: 'A white fridge.' } }] });
+    const prose = await backend.describeShape('data:image/jpeg;base64,AA', {
+      label: 'Fridge',
+      category: 'fridge',
+    });
+    expect(prose.result.recipe).toBeNull();
+  });
+
   it('throws on a malformed detection reply so the client can fall back', async () => {
     respond({ choices: [{ message: { content: 'A fridge, I think.' } }] });
     await expect(backend.detectAppliances('data:image/jpeg;base64,AA')).rejects.toThrow(/JSON/);

@@ -1,7 +1,9 @@
+import type { ApplianceCategory } from '@mitsinjo/engine';
 import type { UsageSample } from '@/server/spend';
 import type {
   DetectionResult,
   SegmentResult,
+  ShapeResult,
   TranscribeOptions,
   Transcript,
   VisionResult,
@@ -48,4 +50,16 @@ export interface PerceptionBackend {
     hint: string | undefined,
     signal?: AbortSignal
   ): Promise<PerceptionCall<DetectionResult>>;
+  /** 3D recipe of one object (PV-T9): `imageUrl` is the crop around it. One vision call. */
+  describeShape(
+    imageUrl: string,
+    target: ShapeSubject,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<ShapeResult>>;
+}
+
+/** What `describeShape` is told about the object. */
+export interface ShapeSubject {
+  label: string;
+  category: ApplianceCategory;
 }
