@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { AlertTriangle, Loader2, RotateCcw, ScanSearch, Sparkles } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { boxPath, type ApplianceDetection } from '@/lib/vision';
+import { boxPath, isAppliance, type ApplianceDetection } from '@/lib/vision';
 import type { VisionStatus } from '../hooks/use-vision-detection';
 import { categoryHint } from '../utils/labels';
+import { useObjectName } from '../hooks/use-object-name';
 
 export interface DetectionCanvasProps {
   imageUrl: string;
@@ -37,7 +38,8 @@ export function DetectionCanvas({
   const active = detections.find((d) => d.id === activeId) ?? null;
   const busy = status === 'loading';
   const showList = status === 'refining' || status === 'ready';
-  const hint = (d: ApplianceDetection) => categoryHint(d.label, t(`categories.${d.category}`));
+  const objectName = useObjectName();
+  const hint = (d: ApplianceDetection) => categoryHint(d.label, objectName(d));
 
   return (
     <div className="flex flex-col gap-3">
@@ -83,9 +85,13 @@ export function DetectionCanvas({
                     'cursor-pointer transition-colors',
                     selected
                       ? 'fill-solar-amber/25 stroke-solar-amber'
-                      : hot
-                        ? 'fill-energy-cyan/30 stroke-energy-cyan'
-                        : 'fill-energy-cyan/10 stroke-energy-cyan'
+                      : !isAppliance(d)
+                        ? hot
+                          ? 'fill-text-secondary/25 stroke-text-secondary'
+                          : 'fill-text-secondary/5 stroke-text-secondary'
+                        : hot
+                          ? 'fill-energy-cyan/30 stroke-energy-cyan'
+                          : 'fill-energy-cyan/10 stroke-energy-cyan'
                   )}
                   onPointerEnter={() => setActiveId(d.id)}
                   onPointerLeave={() => setActiveId((id) => (id === d.id ? null : id))}
@@ -177,9 +183,14 @@ export function DetectionCanvas({
                     )}
                   >
                     <span className="min-w-0 truncate font-medium">{d.label}</span>
-                    {hint(d) && (
-                      <span className="shrink-0 text-xs text-text-secondary">{hint(d)}</span>
-                    )}
+                    <span className="flex shrink-0 items-center gap-1.5 text-xs text-text-secondary">
+                      {hint(d)}
+                      {!isAppliance(d) && (
+                        <span className="rounded border border-border px-1 py-px text-[10px] uppercase tracking-wide text-text-muted">
+                          {t('noLoad')}
+                        </span>
+                      )}
+                    </span>
                   </button>
                 </li>
               );

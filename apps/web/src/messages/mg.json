@@ -686,18 +686,18 @@
     "visionInsert": {
       "openButton": "Hitady fitaovana",
       "title": "Hitady fitaovana",
-      "subtitle": "Tsindrio ny fitaovana voafefy mba hifidianana azy.",
+      "subtitle": "Tsindrio ny zavatra voafefy mba hifidianana azy.",
       "aiLabel": "Fahitan'ny IA · hamarinina",
       "demoNote": "Ohatra fanandramana (tsy misy aterineto), tsy ity sary ity.",
       "imageAlt": "Sary hodinihina",
       "loading": "Mitady fitaovana…",
       "refining": "Manatsara ny sisiny…",
-      "empty": "Tsy nahitana fitaovana tamin'ity sary ity.",
+      "empty": "Tsy misy fantatra amin'ity sary ity.",
       "emptyHint": "Andramo sary akaiky kokoa sy mazava tsara.",
       "error": "Tsy nahomby ny fitadiavana fitaovana.",
       "retry": "Andramo indray",
       "close": "Hidio",
-      "listTitle": "Fitaovana hita ({count})",
+      "listTitle": "Zavatra hita ({count})",
       "selected": "Voafidy: {label} ({category})",
       "selectedPlain": "Voafidy: {label}",
       "noneSelected": "Mbola tsy misy fitaovana voafidy.",
@@ -727,7 +727,19 @@
       "changePhoto": "Hanova sary",
       "badType": "Ampiasao sary JPEG, PNG na WebP.",
       "selectedTitle": "Fitaovana voafidy",
-      "nextStepNote": "Manaraka: ovay amin'ny 3D izy ary ampidiro ao amin'ny simulation. Ny herinaratrany dia avy amin'ny katalaogin'ny motera, fa tsy avy amin'ny IA mihitsy."
+      "nextStepNote": "Manaraka: ovay amin'ny 3D izy ary ampidiro ao amin'ny simulation. Ny herinaratrany dia avy amin'ny katalaogin'ny motera, fa tsy avy amin'ny IA mihitsy.",
+      "scenery": {
+        "building": "Trano",
+        "vehicle": "Fiara",
+        "tree": "Hazo",
+        "plant": "Zavamaniry",
+        "person": "Olona",
+        "animal": "Biby",
+        "water": "Rano",
+        "other": "Zavatra"
+      },
+      "noLoad": "Tsy mandany",
+      "sceneryNote": "Tsy fitaovana elektrika: tsy misy herinaratra lanina ao amin'ny simulation."
     }
   },
   "copilot": {

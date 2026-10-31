@@ -686,18 +686,18 @@
     "visionInsert": {
       "openButton": "Find appliances",
       "title": "Find appliances",
-      "subtitle": "Tap an outlined appliance to select it.",
+      "subtitle": "Tap an outlined object to select it.",
       "aiLabel": "AI perception · to verify",
       "demoNote": "Demo detections (offline sample), not this photo.",
       "imageAlt": "Photo to analyse",
       "loading": "Looking for appliances…",
       "refining": "Refining outlines…",
-      "empty": "No appliance found on this photo.",
+      "empty": "Nothing recognised on this photo.",
       "emptyHint": "Try a closer, well-lit photo.",
       "error": "Appliance detection failed.",
       "retry": "Try again",
       "close": "Close",
-      "listTitle": "Appliances found ({count})",
+      "listTitle": "Objects found ({count})",
       "selected": "Selected: {label} ({category})",
       "selectedPlain": "Selected: {label}",
       "noneSelected": "No appliance selected yet.",
@@ -727,7 +727,19 @@
       "changePhoto": "Change photo",
       "badType": "Use a JPEG, PNG or WebP photo.",
       "selectedTitle": "Selected appliance",
-      "nextStepNote": "Next: edit it in 3D and insert it into the simulation. Its power will come from the engine catalog, never from the AI."
+      "nextStepNote": "Next: edit it in 3D and insert it into the simulation. Its power will come from the engine catalog, never from the AI.",
+      "scenery": {
+        "building": "Building",
+        "vehicle": "Vehicle",
+        "tree": "Tree",
+        "plant": "Plant",
+        "person": "Person",
+        "animal": "Animal",
+        "water": "Water",
+        "other": "Object"
+      },
+      "noLoad": "No load",
+      "sceneryNote": "Not an electrical appliance: no load in the simulation."
     }
   },
   "copilot": {

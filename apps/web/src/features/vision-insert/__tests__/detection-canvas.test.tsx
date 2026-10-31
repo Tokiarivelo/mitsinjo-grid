@@ -44,7 +44,7 @@ describe('DetectionCanvas (PV-T7)', () => {
     expect(path('det-1').getAttribute('d')).toBe(fridge.outline);
     expect(path('det-2').getAttribute('d')).toBe('M0.42 0.3H0.6799999999999999V0.54H0.42Z');
     expect(screen.getByText('AI perception · to verify')).toBeTruthy();
-    expect(screen.getByText('Appliances found (2)')).toBeTruthy();
+    expect(screen.getByText('Objects found (2)')).toBeTruthy();
   });
 
   it('hover on an outline highlights it and shows its label chip', () => {
@@ -81,7 +81,7 @@ describe('DetectionCanvas (PV-T7)', () => {
 
   it('empty result: message, no overlay', () => {
     const { container } = setup({ detections: [] });
-    expect(screen.getByText('No appliance found on this photo.')).toBeTruthy();
+    expect(screen.getByText('Nothing recognised on this photo.')).toBeTruthy();
     expect(container.querySelector('svg path[data-detection]')).toBeNull();
   });
 
@@ -110,5 +110,22 @@ describe('DetectionCanvas (PV-T7)', () => {
     expect(screen.getByText('Refining outlines…')).toBeTruthy();
     expect(screen.getByText(/Demo detections/)).toBeTruthy();
     expect(container.querySelectorAll('path[data-detection]')).toHaveLength(1);
+  });
+
+  it('scenery (house, car…) is outlined in grey, tagged « No load », still selectable', () => {
+    const house: ApplianceDetection = {
+      id: 'det-3',
+      label: 'Stone house',
+      kind: 'scenery',
+      category: 'other',
+      scenery: 'building',
+      box: { x: 0.2, y: 0.2, w: 0.5, h: 0.4 },
+    };
+    const { path, onSelect } = setup({ detections: [fridge, house] });
+    expect(path('det-3').getAttribute('class')).toContain('stroke-text-secondary');
+    expect(path('det-1').getAttribute('class')).toContain('stroke-energy-cyan');
+    const item = screen.getByRole('button', { name: /Stone house\s*Building\s*No load/ });
+    fireEvent.click(item);
+    expect(onSelect).toHaveBeenCalledWith('det-3');
   });
 });

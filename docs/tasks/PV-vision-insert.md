@@ -83,6 +83,7 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
       **Done when** component tests cover hover, select, empty result, error state.
 - [x] **PV-T7b** Own menu entry: `/village` « Village editor » (sidebar + MobileNav) with photo picker, sample room,
       detection canvas and selected-appliance aside; the chat image chip keeps the dialog as a shortcut. V4 builds on this page.
+      _(Also: live village preview on the page; detection outlines scenery — houses, cars, trees — as « no load ».)_
 - [ ] **PV-T8** Missing object: the user draws a box and picks a category (no AI call).
       **Done when** a manual box becomes a `VisionDetection` like the others.
 

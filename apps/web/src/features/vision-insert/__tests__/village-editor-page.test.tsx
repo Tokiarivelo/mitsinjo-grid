@@ -44,6 +44,8 @@ describe('VillageEditorPage (/village)', () => {
     expect(screen.getByRole('button', { name: 'Choose a photo' })).toBeTruthy();
     expect(screen.getAllByText('SIMULATED DATA').length).toBeGreaterThan(0);
     expect(fetchMock).not.toHaveBeenCalled();
+    // Current village state sits next to the editor (2D plan in jsdom: no WebGL).
+    expect(screen.getByText('Village Grid Digital Twin')).toBeTruthy();
   });
 
   it('refuses a file that is not a JPEG, PNG or WebP photo', async () => {

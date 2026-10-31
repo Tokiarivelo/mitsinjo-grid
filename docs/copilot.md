@@ -27,7 +27,9 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
 - `server/perception/`: `getPerceptionClient(sessionId)` → `transcribe` (Voice, `POST /asr/transcribe`, multipart, **WAV only**, ≤ 10 min),
   `analyzeImage` (Spark 1.3 `chat/completions` + `response_format: json_schema`), `segmentImage` (SAM `POST /responses`, boxes parsed
   from the text output, masks ignored), `detectAppliances` (PV: Spark 1.3, same `chat/completions` JSON-schema call, category enum from the
-  engine; `detect.ts` clamps the 0–1000 grid to 0–1 fractions, maps unknown categories to `other`, throws on a non-JSON reply).
+  engine; `detect.ts` clamps the 0–1000 grid to 0–1 fractions, maps unknown categories to `other`, throws on a non-JSON reply). The prompt asks for every visible object: catalog
+  appliances (`kind:'appliance'`, street lamp → `lamp`) and scenery (houses, cars, trees… `kind:'scenery'`, no load), so an outdoor
+  photo is never empty; boxes as array or `{x_min,…}` object are both read).
   `refineDetections` (`outline.ts`, PV-T5): one SAM call per distinct label (≤ 8, parallel, 8 s timeout each), greedy best-IoU
   (≥ 0.3) match → the detection takes the pixel-precise SAM box. Timeout, error, spend cap or a mock answer → Muse box kept.
   `parseSamOutput` also returns each mask still encoded (`{encoding, height, width, payload}`, raster over the box);

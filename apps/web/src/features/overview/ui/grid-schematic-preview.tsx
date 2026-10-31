@@ -20,6 +20,8 @@ export interface GridSchematicPreviewProps {
   input: SimulationInput;
   hour?: number;
   onHourChange?: (hour: number) => void;
+  /** Title above the 3D/2D switch at every width (narrow side columns). */
+  stacked?: boolean;
   className?: string;
 }
 
@@ -28,6 +30,7 @@ export function GridSchematicPreview({
   input,
   hour = 12,
   onHourChange,
+  stacked = false,
   className,
 }: GridSchematicPreviewProps) {
   const tOverview = useTranslations('overview');
@@ -58,7 +61,12 @@ export function GridSchematicPreview({
       )}
     >
       {/* Header: title + view switch */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
+      <div
+        className={cn(
+          'flex flex-col justify-between gap-3 pb-3 border-b border-border/60',
+          !stacked && 'sm:flex-row sm:items-center'
+        )}
+      >
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Activity className="h-4 w-4 shrink-0 text-energy-cyan" aria-hidden="true" />
@@ -72,7 +80,7 @@ export function GridSchematicPreview({
         {hasWebGL && (
           <ViewModeToggle
             size="md"
-            className="w-full sm:w-auto shrink-0"
+            className={cn('w-full shrink-0', !stacked && 'sm:w-auto')}
             label={tOverview('viewModeLabel')}
             value={viewMode}
             onChange={setUserViewMode}

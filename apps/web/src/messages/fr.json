@@ -686,18 +686,18 @@
     "visionInsert": {
       "openButton": "Trouver les appareils",
       "title": "Trouver les appareils",
-      "subtitle": "Touchez un appareil entouré pour le choisir.",
+      "subtitle": "Touchez un objet entouré pour le choisir.",
       "aiLabel": "Perception IA · à vérifier",
       "demoNote": "Détections de démo (exemple hors ligne), pas cette photo.",
       "imageAlt": "Photo à analyser",
       "loading": "Recherche des appareils…",
       "refining": "Affinage des contours…",
-      "empty": "Aucun appareil trouvé sur cette photo.",
+      "empty": "Rien de reconnu sur cette photo.",
       "emptyHint": "Essayez une photo plus proche et bien éclairée.",
       "error": "La détection des appareils a échoué.",
       "retry": "Réessayer",
       "close": "Fermer",
-      "listTitle": "Appareils trouvés ({count})",
+      "listTitle": "Objets trouvés ({count})",
       "selected": "Choisi : {label} ({category})",
       "selectedPlain": "Choisi : {label}",
       "noneSelected": "Aucun appareil choisi pour le moment.",
@@ -727,7 +727,19 @@
       "changePhoto": "Changer de photo",
       "badType": "Utilisez une photo JPEG, PNG ou WebP.",
       "selectedTitle": "Appareil choisi",
-      "nextStepNote": "Ensuite : le modifier en 3D et l'insérer dans la simulation. Sa puissance viendra du catalogue du moteur, jamais de l'IA."
+      "nextStepNote": "Ensuite : le modifier en 3D et l'insérer dans la simulation. Sa puissance viendra du catalogue du moteur, jamais de l'IA.",
+      "scenery": {
+        "building": "Bâtiment",
+        "vehicle": "Véhicule",
+        "tree": "Arbre",
+        "plant": "Plante",
+        "person": "Personne",
+        "animal": "Animal",
+        "water": "Eau",
+        "other": "Objet"
+      },
+      "noLoad": "Sans charge",
+      "sceneryNote": "Pas un appareil électrique : aucune charge dans la simulation."
     }
   },
   "copilot": {

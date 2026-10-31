@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { gridBoxToNorm, MAX_DETECTIONS, parseDetections, toApplianceCategory } from '../detect';
+import {
+  gridBoxToNorm,
+  MAX_DETECTIONS,
+  parseDetections,
+  toApplianceCategory,
+  toSceneryType,
+} from '../detect';
 import { ApplianceDetectionSchema } from '../schemas';
 
 const reply = (objects: unknown[]) => JSON.stringify({ objects });
@@ -87,5 +93,60 @@ describe('parseDetections (PV-T4)', () => {
       ])
     );
     expect(Object.keys(d!).sort()).toEqual(['box', 'category', 'id', 'label']);
+  });
+
+  it('outdoor scene: houses, cars and trees become scenery (no load); street lights are lamps', () => {
+    const out = parseDetections(
+      reply([
+        { label: 'Stone house', kind: 'scenery', scenery: 'building', bbox: [350, 250, 700, 600] },
+        { label: 'Blue car', kind: 'scenery', scenery: 'vehicle', bbox: [290, 590, 480, 720] },
+        { label: 'Willow tree', kind: 'scenery', bbox: [0, 0, 220, 650] },
+        {
+          label: 'Street lamp',
+          kind: 'appliance',
+          category: 'street_light',
+          bbox: [565, 480, 580, 560],
+        },
+      ])
+    );
+    expect(out.map((d) => [d.id, d.label, d.kind ?? 'appliance', d.category, d.scenery])).toEqual([
+      ['det-1', 'Street lamp', 'appliance', 'lamp', undefined],
+      ['det-2', 'Stone house', 'scenery', 'other', 'building'],
+      ['det-3', 'Blue car', 'scenery', 'other', 'vehicle'],
+      ['det-4', 'Willow tree', 'scenery', 'other', 'tree'],
+    ]);
+    for (const d of out) expect(ApplianceDetectionSchema.safeParse(d).success).toBe(true);
+  });
+
+  it('without kind: a scenery word in category or label makes it scenery', () => {
+    const out = parseDetections(
+      reply([
+        { label: 'Car', category: 'car', bbox: [0, 0, 100, 100] },
+        { label: 'Flowers', bbox: [0, 0, 100, 100] },
+        { label: 'Microwave', category: 'microwave', bbox: [0, 0, 100, 100] },
+        { label: 'Water pump', bbox: [0, 0, 100, 100] },
+      ])
+    );
+    expect(out.map((d) => [d.label, d.kind ?? 'appliance', d.scenery ?? d.category])).toEqual([
+      ['Microwave', 'appliance', 'other'],
+      ['Water pump', 'appliance', 'water_pump'],
+      ['Car', 'scenery', 'vehicle'],
+      ['Flowers', 'scenery', 'plant'],
+    ]);
+    expect(toSceneryType('houses')).toBe('building');
+    expect(toSceneryType('fridge')).toBeNull();
+  });
+
+  it('accepts object-shaped boxes and a `box` key', () => {
+    const out = parseDetections(
+      reply([
+        { label: 'Fan', category: 'fan', bbox: { x_min: 100, y_min: 200, x_max: 300, y_max: 400 } },
+        { label: 'TV', category: 'tv', box: [400, 300, 700, 550] },
+      ])
+    );
+    expect(out.map((d) => d.box)).toEqual([
+      { x: 0.1, y: 0.2, w: 0.2, h: 0.2 },
+      { x: 0.4, y: 0.3, w: 0.3, h: 0.25 },
+    ]);
   });
 });
