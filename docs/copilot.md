@@ -26,7 +26,8 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
 
 - `server/perception/`: `getPerceptionClient(sessionId)` → `transcribe` (Voice, `POST /asr/transcribe`, multipart, **WAV only**, ≤ 10 min),
   `analyzeImage` (Spark 1.3 `chat/completions` + `response_format: json_schema`), `segmentImage` (SAM `POST /responses`, boxes parsed
-  from the text output, masks ignored). Never throws: missing key, spend cap or API error → deterministic mock with `fallback` set.
+  from the text output, masks ignored), `detectAppliances` (PV: Spark 1.3, same `chat/completions` JSON-schema call, category enum from the
+  engine; `detect.ts` clamps the 0–1000 grid to 0–1 fractions, maps unknown categories to `other`, throws on a non-JSON reply). Never throws: missing key, spend cap or API error → deterministic mock with `fallback` set.
   Image generation stays in `providers/meta.ts` (`/responses`, model `META_IMAGE_MODEL`).
 - `server/spend/`: `SpendGuard` estimates cost from catalogue prices (API `usage` when given, else ≈ 4 chars/token) per session
   (`sessionId`, else `global`). Over `META_SPEND_CAP_USD` → mock + `PROVIDER_FALLBACK` `reason: 'spend_cap'`. In memory: resets on restart.

@@ -111,6 +111,40 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
     expect(out.model).toBe('muse-spark-1.3');
   });
 
+  it('detects appliances with the category enum schema and parses the boxes', async () => {
+    const fetchMock = respond({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              objects: [{ label: 'Fridge', category: 'refrigerator', bbox: [100, 200, 300, 1040] }],
+            }),
+          },
+        },
+      ],
+      usage: { prompt_tokens: 1500, completion_tokens: 120 },
+    });
+    const out = await backend.detectAppliances('data:image/jpeg;base64,AA');
+
+    const body = JSON.parse(lastRequest(fetchMock).init.body as string);
+    expect(lastRequest(fetchMock).url).toBe(`${BASE}/chat/completions`);
+    expect(body.model).toBe('muse-spark-1.3');
+    expect(body.response_format.json_schema.name).toBe('ApplianceDetections');
+    expect(
+      body.response_format.json_schema.schema.properties.objects.items.properties.category.enum
+    ).toContain('fridge_vaccine');
+    expect(body.messages[1].content[1].image_url.url).toBe('data:image/jpeg;base64,AA');
+    expect(out.result.detections).toEqual([
+      { id: 'det-1', label: 'Fridge', category: 'fridge', box: { x: 0.1, y: 0.2, w: 0.2, h: 0.8 } },
+    ]);
+    expect(out.usage).toEqual({ inputTokens: 1500, outputTokens: 120 });
+  });
+
+  it('throws on a malformed detection reply so the client can fall back', async () => {
+    respond({ choices: [{ message: { content: 'A fridge, I think.' } }] });
+    await expect(backend.detectAppliances('data:image/jpeg;base64,AA')).rejects.toThrow(/JSON/);
+  });
+
   it('segments through /responses and reads the boxes', async () => {
     const fetchMock = respond({
       output: [

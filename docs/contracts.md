@@ -502,4 +502,7 @@ Every result carries `{ source: 'meta'|'mock', model, fallback?: 'provider_error
 Transcript { text; durationMs; turns: { startMs; endMs; text; speaker? }[] }
 VisionResult { summary; observations: { label; value: number|string|boolean; unit?; confidence /*0–1*/ }[] }
 SegmentResult { concept; imageWidth; imageHeight; instances: { box:{x1,y1,x2,y2}; confidence? }[]; count; boxCoverage /*0–1*/ }
+// PV: appliances on a photo. Labels + geometry only, never watts (the engine catalog gives power).
+DetectionResult { detections: { id /*det-n*/; label /*1–40*/; category: ApplianceCategory; confidence? /*0–1*/;
+  box: { x; y; w; h } /*image fractions 0–1, top-left*/; outline? /*SVG path, 0–1*/ }[] /*≤ 20*/ }
 ```

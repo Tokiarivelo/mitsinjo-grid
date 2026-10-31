@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MOCK_PERCEPTION_MODEL, MockPerceptionBackend } from '../mock';
 import {
+  DetectionResultSchema,
   SegmentResultSchema,
   TranscriptSchema,
   VisionResultSchema,
@@ -47,5 +48,23 @@ describe('MockPerceptionBackend', () => {
     expect(result.boxCoverage).toBeGreaterThan(0);
     expect(result.boxCoverage).toBeLessThan(1);
     expect(SegmentResultSchema.parse({ ...result, ...asMock })).toBeTruthy();
+  });
+
+  it('detects the fixed sample-room appliances, valid and without power values', async () => {
+    const a = await mock.detectAppliances();
+    const b = await mock.detectAppliances();
+    expect(a).toEqual(b);
+    expect(a.result.detections.map((d) => d.category)).toEqual([
+      'fridge',
+      'tv',
+      'lamp',
+      'fan',
+      'phone_charger',
+    ]);
+    expect(DetectionResultSchema.parse({ ...a.result, ...asMock })).toBeTruthy();
+    for (const d of a.result.detections) {
+      expect(d.box.x + d.box.w).toBeLessThanOrEqual(1);
+      expect(d.box.y + d.box.h).toBeLessThanOrEqual(1);
+    }
   });
 });

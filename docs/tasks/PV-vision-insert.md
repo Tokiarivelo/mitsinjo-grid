@@ -61,7 +61,8 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
 
 ### V2 — Server: detection and outlines
 
-- [ ] **PV-T4** `server/vision/detect.ts`: Muse Spark 1.3, Responses API, image as data URL, structured
+- [x] **PV-T4** `server/perception/detect.ts` (reuses the perception client: fallback, spend cap, contributor id;
+      `chat/completions` JSON schema, already recorded from real calls, instead of the Responses API): Muse Spark 1.3, Responses API, image as data URL, structured
       output (JSON schema with the category enum), clamp 0–1000 → 0–1, drop unknown categories to `other`.
       **Done when** unit tests cover parsing, clamping, out-of-enum labels and a malformed reply.
 - [ ] **PV-T5** `server/vision/segment.ts`: one `sam-3.1` call per distinct label (parallel, timeout 8 s),
@@ -105,7 +106,7 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
 
 ## Env vars (add to `src/lib/env.ts`, `.env.example`, `docs/setup/env.md`)
 
-- `VISION_SAM_MODEL` (default `sam-3.1`), `VISION_DETECT_MODEL` (default `muse-spark-1.3`).
+- Detection and SAM reuse `META_VISION_MODEL` (default `muse-spark-1.3`) and `META_SEGMENT_MODEL` (default `sam-3.1`).
 - `VISION_3D_PROVIDER` (`none` | `fal`), `FAL_KEY` (only if `fal`).
 
 ## Cost per photo (estimate)

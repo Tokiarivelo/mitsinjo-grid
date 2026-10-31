@@ -1,3 +1,4 @@
+import { ApplianceCategorySchema } from '@mitsinjo/engine';
 import { z } from 'zod';
 
 /**
@@ -81,3 +82,29 @@ export const SegmentResultSchema = PerceptionSourceSchema.extend({
   boxCoverage: z.number().min(0).max(1),
 });
 export type SegmentResult = z.infer<typeof SegmentResultSchema>;
+
+/** Box in image fractions (0–1), top-left origin. */
+export const NormBoxSchema = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  w: z.number().min(0).max(1),
+  h: z.number().min(0).max(1),
+});
+export type NormBox = z.infer<typeof NormBoxSchema>;
+
+/** One appliance seen on a photo (PV). Labels and geometry only: never a power value. */
+export const ApplianceDetectionSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1).max(40),
+  category: ApplianceCategorySchema,
+  confidence: z.number().min(0).max(1).optional(),
+  box: NormBoxSchema,
+  /** SVG path in image fractions (0–1), from SAM (PV-T5). Absent → draw the box. */
+  outline: z.string().optional(),
+});
+export type ApplianceDetection = z.infer<typeof ApplianceDetectionSchema>;
+
+export const DetectionResultSchema = PerceptionSourceSchema.extend({
+  detections: z.array(ApplianceDetectionSchema),
+});
+export type DetectionResult = z.infer<typeof DetectionResultSchema>;

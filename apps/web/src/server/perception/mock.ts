@@ -1,6 +1,8 @@
 import type { PerceptionBackend, PerceptionCall } from './backend';
 import { boxUnionCoverage } from './parse-sam';
 import type {
+  ApplianceDetection,
+  DetectionResult,
   Observation,
   SegmentResult,
   TranscribeOptions,
@@ -50,6 +52,48 @@ const MOCK_OBSERVATIONS: Array<{ match: RegExp; summary: string; observations: O
     match: /panel|panneau|ombre|shade/i,
     summary: 'Mock: one panel partly covered by leaves.',
     observations: [{ label: 'shaded_panel', value: 10, unit: '%', confidence: 0.5 }],
+  },
+];
+
+/**
+ * Appliances "seen" on any photo in mock mode (fixture of the bundled sample room, PV-T6).
+ * Image fractions, top-left origin.
+ */
+export const MOCK_DETECTIONS: ApplianceDetection[] = [
+  {
+    id: 'det-1',
+    label: 'Fridge',
+    category: 'fridge',
+    confidence: 0.9,
+    box: { x: 0.06, y: 0.22, w: 0.2, h: 0.66 },
+  },
+  {
+    id: 'det-2',
+    label: 'Television',
+    category: 'tv',
+    confidence: 0.85,
+    box: { x: 0.42, y: 0.3, w: 0.26, h: 0.24 },
+  },
+  {
+    id: 'det-3',
+    label: 'Ceiling lamp',
+    category: 'lamp',
+    confidence: 0.8,
+    box: { x: 0.5, y: 0.02, w: 0.08, h: 0.1 },
+  },
+  {
+    id: 'det-4',
+    label: 'Standing fan',
+    category: 'fan',
+    confidence: 0.75,
+    box: { x: 0.76, y: 0.38, w: 0.16, h: 0.5 },
+  },
+  {
+    id: 'det-5',
+    label: 'Phone charger',
+    category: 'phone_charger',
+    confidence: 0.6,
+    box: { x: 0.44, y: 0.62, w: 0.06, h: 0.06 },
   },
 ];
 
@@ -116,6 +160,14 @@ export class MockPerceptionBackend implements PerceptionBackend {
           imageHeight
         ),
       },
+    };
+  }
+
+  async detectAppliances(): Promise<PerceptionCall<DetectionResult>> {
+    return {
+      model: MOCK_PERCEPTION_MODEL,
+      usage: {},
+      result: { detections: MOCK_DETECTIONS.map((d) => ({ ...d, box: { ...d.box } })) },
     };
   }
 }

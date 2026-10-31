@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SpendGuard } from '@/server/spend';
 import type { PerceptionBackend } from '../backend';
 import { PerceptionClient } from '../client';
-import { MockPerceptionBackend } from '../mock';
+import { MOCK_DETECTIONS, MockPerceptionBackend } from '../mock';
 
 const image = 'data:image/png;base64,AA';
 
@@ -11,6 +11,7 @@ function fakeMeta(overrides: Partial<PerceptionBackend> = {}): PerceptionBackend
     name: 'meta',
     transcribe: vi.fn(),
     segmentImage: vi.fn(),
+    detectAppliances: vi.fn(),
     analyzeImage: vi.fn().mockResolvedValue({
       model: 'muse-spark-1.3',
       usage: { inputTokens: 1000, outputTokens: 100 },
@@ -70,5 +71,18 @@ describe('PerceptionClient', () => {
     const out = await mockMode.segmentImage(image, 'roof');
     expect(out.source).toBe('mock');
     expect(out.fallback).toBeUndefined();
+  });
+
+  it('detection: a malformed Meta reply falls back to the mock fixture, flagged', async () => {
+    const meta = fakeMeta({
+      detectAppliances: vi
+        .fn()
+        .mockRejectedValue(new Error('Appliance detection reply is not valid JSON')),
+    });
+    const client = new PerceptionClient(meta, new MockPerceptionBackend(), new SpendGuard(1), 's1');
+    const out = await client.detectAppliances(image);
+    expect(out.source).toBe('mock');
+    expect(out.fallback).toBe('provider_error');
+    expect(out.detections).toEqual(MOCK_DETECTIONS);
   });
 });

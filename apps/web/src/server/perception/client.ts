@@ -6,6 +6,7 @@ import type { PerceptionBackend, PerceptionCall } from './backend';
 import { MetaPerceptionBackend } from './meta';
 import { MockPerceptionBackend } from './mock';
 import type {
+  DetectionResult,
   PerceptionSource,
   SegmentResult,
   TranscribeOptions,
@@ -69,6 +70,10 @@ export class PerceptionClient {
 
   segmentImage(imageUrl: string, concept: string, signal?: AbortSignal): Promise<SegmentResult> {
     return this.run('segmentImage', (b) => b.segmentImage(imageUrl, concept, signal));
+  }
+
+  detectAppliances(imageUrl: string, signal?: AbortSignal): Promise<DetectionResult> {
+    return this.run('detectAppliances', (b) => b.detectAppliances(imageUrl, signal));
   }
 }
 

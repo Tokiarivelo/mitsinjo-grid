@@ -1,5 +1,11 @@
 import type { UsageSample } from '@/server/spend';
-import type { SegmentResult, TranscribeOptions, Transcript, VisionResult } from './schemas';
+import type {
+  DetectionResult,
+  SegmentResult,
+  TranscribeOptions,
+  Transcript,
+  VisionResult,
+} from './schemas';
 
 type WithoutSource<T> = Omit<T, 'source' | 'model' | 'fallback'>;
 
@@ -31,4 +37,9 @@ export interface PerceptionBackend {
     concept: string,
     signal?: AbortSignal
   ): Promise<PerceptionCall<SegmentResult>>;
+  /** Appliances visible on a photo (PV): labels, categories, boxes. One vision call. */
+  detectAppliances(
+    imageUrl: string,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<DetectionResult>>;
 }

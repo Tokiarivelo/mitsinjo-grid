@@ -4,10 +4,13 @@ import { z } from 'zod';
 import { env } from '@/lib/env';
 import { DEFAULT_META_BASE_URL } from '@/server/copilot/providers/meta';
 import { fetchPreferringContributor } from '@/server/copilot/providers/contributor';
+import type { UsageSample } from '@/server/spend';
 import type { PerceptionBackend, PerceptionCall } from './backend';
+import { DETECT_JSON_SCHEMA, DETECT_SYSTEM_PROMPT, parseDetections } from './detect';
 import { boxUnionCoverage, parseSamOutput } from './parse-sam';
 import {
   ObservationSchema,
+  type DetectionResult,
   type SegmentResult,
   type TranscribeOptions,
   type Transcript,
@@ -155,15 +158,18 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     };
   }
 
-  async analyzeImage(
-    imageUrl: string,
+  /** Spark `chat/completions` with a JSON-schema answer: shared by every vision call. */
+  private async visionJson(
+    system: string,
     question: string,
+    imageUrl: string,
+    jsonSchema: object,
     signal?: AbortSignal
-  ): Promise<PerceptionCall<VisionResult>> {
+  ): Promise<{ content: string; model: string; usage: UsageSample }> {
     const body = (model: string) => ({
       model,
       messages: [
-        { role: 'system', content: VISION_SYSTEM_PROMPT },
+        { role: 'system', content: system },
         {
           role: 'user',
           content: [
@@ -172,7 +178,7 @@ export class MetaPerceptionBackend implements PerceptionBackend {
           ],
         },
       ],
-      response_format: { type: 'json_schema', json_schema: VISION_JSON_SCHEMA },
+      response_format: { type: 'json_schema', json_schema: jsonSchema },
     });
     const sent = await this.postWithModel(
       '/chat/completions',
@@ -181,13 +187,32 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       { 'Content-Type': 'application/json' },
       signal
     );
-    const model = sent.model;
     const data = sent.data as {
       choices?: Array<{ message?: { content?: string | null } }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
+    return {
+      content: data.choices?.[0]?.message?.content ?? '',
+      model: sent.model,
+      usage: {
+        inputTokens: data.usage?.prompt_tokens ?? 0,
+        outputTokens: data.usage?.completion_tokens ?? 0,
+      },
+    };
+  }
 
-    const content = data.choices?.[0]?.message?.content ?? '';
+  async analyzeImage(
+    imageUrl: string,
+    question: string,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<VisionResult>> {
+    const { content, model, usage } = await this.visionJson(
+      VISION_SYSTEM_PROMPT,
+      question,
+      imageUrl,
+      VISION_JSON_SCHEMA,
+      signal
+    );
     const parsed = VisionPayloadSchema.parse(JSON.parse(content));
     // Keep only well-formed observations; clamp confidence the model may print as 0-100.
     const observations = parsed.observations.flatMap((raw) => {
@@ -200,14 +225,21 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       return ok.success ? [ok.data] : [];
     });
 
-    return {
-      model,
-      usage: {
-        inputTokens: data.usage?.prompt_tokens ?? 0,
-        outputTokens: data.usage?.completion_tokens ?? 0,
-      },
-      result: { summary: parsed.summary, observations },
-    };
+    return { model, usage, result: { summary: parsed.summary, observations } };
+  }
+
+  async detectAppliances(
+    imageUrl: string,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<DetectionResult>> {
+    const { content, model, usage } = await this.visionJson(
+      DETECT_SYSTEM_PROMPT,
+      'List the electrical appliances on this photo.',
+      imageUrl,
+      DETECT_JSON_SCHEMA,
+      signal
+    );
+    return { model, usage, result: { detections: parseDetections(content) } };
   }
 
   async segmentImage(
