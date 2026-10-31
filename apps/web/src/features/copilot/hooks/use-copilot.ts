@@ -18,6 +18,7 @@ import type {
 import { parseMessageSections } from '../utils/parse-sections';
 import { COPILOT_PAYLOAD_MAX } from '../utils/history';
 import { decisionToModelText, proposalDecisions } from '../utils/decisions';
+import { applyPlaybackControl, parsePlaybackControl } from '../utils/apply-playback-control';
 
 class CopilotHttpError extends Error {
   constructor(readonly key: CopilotErrorKey) {
@@ -443,6 +444,17 @@ export function useCopilot() {
                     msg.id === assistantMsgId ? { ...msg, proposal: collectedProposal } : msg
                   )
                 );
+                break;
+              }
+              case 'control': {
+                // Playback only (no scenario change): applied at once, noted on the answer.
+                const control = parsePlaybackControl(dataObj);
+                if (control) {
+                  applyPlaybackControl(useSimulationStore.getState(), control);
+                  setMessages((prev) =>
+                    prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, control } : msg))
+                  );
+                }
                 break;
               }
               case 'summary': {

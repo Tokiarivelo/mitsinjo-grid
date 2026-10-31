@@ -138,6 +138,18 @@ describe('Copilot chat flow (decisions, fallback note)', () => {
     await waitFor(() => expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1));
   });
 
+  it('a playback order from the chat moves the time cursor and says so', async () => {
+    mockApi([
+      ['control', { action: 'seek', hour: 18 }],
+      ['delta', { text: 'Time cursor moved to 18:00.' }],
+    ]);
+    render(<CopilotWorkspace mode="panel" />);
+    await ask('go to 18:00');
+    expect(await screen.findByText('Time cursor moved to 18:00')).toBeInTheDocument();
+    expect(useSimulationStore.getState().timeIndex).toBe(18);
+    expect(useSimulationStore.getState().isPlaying).toBe(false);
+  });
+
   it('rejecting changes nothing and says so in the chat', async () => {
     mockApi([['proposal', { ...marketCut }]]);
     render(<CopilotWorkspace mode="panel" />);

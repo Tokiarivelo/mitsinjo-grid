@@ -26,7 +26,8 @@ export type SseEventName =
   | 'chart'
   | 'model'
   | 'perception'
-  | 'summary';
+  | 'summary'
+  | 'control';
 
 export type SseEmitter = (event: SseEventName, data: Record<string, unknown>) => void;
 
@@ -92,6 +93,8 @@ function getToolActivityLabel(name: string, args: Record<string, unknown>): stri
       return `Reviewing ${args.sector ?? ''} sector telemetry`;
     case 'propose_change':
       return 'Formulating scenario proposal';
+    case 'control_playback':
+      return 'Controlling playback';
     default:
       return 'Reviewing computed results';
   }
@@ -441,6 +444,11 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
 
           if (toolResult.proposal) {
             emit('proposal', toolResult.proposal);
+          }
+
+          // Playback / time cursor: the client runs it at once (no scenario change).
+          if (toolResult.control) {
+            emit('control', toolResult.control);
           }
 
           // Return tool result to history

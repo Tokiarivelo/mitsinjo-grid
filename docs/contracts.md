@@ -363,13 +363,18 @@ expected demand. `toHardwareCommand`: `duty = clamp(servedKw / feederNominalKw, 
 
 ## Copilot tools (LLM-facing; args validated with Zod server-side)
 
-| Tool                 | Args                                                                                    | Returns                                                                                     |
-| -------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `get_grid_state`     | `{ hourly?: boolean }`                                                                  | `{ scenarioId, input summary, metrics of active strategy, resultId, hourly?, highlights? }` |
-| `run_scenario`       | `{ scenarioId?, patch?: InputPatch, strategy }`                                         | `{ resultId, metrics, warnings }`                                                           |
-| `compare_strategies` | `{ strategies?: StrategyId[] }` (on current input)                                      | `{ [strategy]: { resultId, metrics } }` (evidence includes lifelineCoveragePct)             |
-| `get_sector_metrics` | `{ sector: SectorId, strategy?: StrategyId }` (default: active)                         | `SectorMetrics & { priority, hourly: {t,demandKw,servedKw}[] }`                             |
-| `propose_change`     | `{ patch?: InputPatch, strategy?: StrategyId, reason: string }` (≥ 1 of patch/strategy) | `{ proposalId, impact: ChangeImpact }` — **not applied**; UI asks user                      |
+| Tool                 | Args                                                                                        | Returns                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `get_grid_state`     | `{ hourly?: boolean }`                                                                      | `{ scenarioId, input summary, metrics of active strategy, resultId, hourly?, highlights? }` |
+| `run_scenario`       | `{ scenarioId?, patch?: InputPatch, strategy }`                                             | `{ resultId, metrics, warnings }`                                                           |
+| `compare_strategies` | `{ strategies?: StrategyId[] }` (on current input)                                          | `{ [strategy]: { resultId, metrics } }` (evidence includes lifelineCoveragePct)             |
+| `get_sector_metrics` | `{ sector: SectorId, strategy?: StrategyId }` (default: active)                             | `SectorMetrics & { priority, hourly: {t,demandKw,servedKw}[] }`                             |
+| `propose_change`     | `{ patch?: InputPatch, strategy?: StrategyId, reason: string }` (≥ 1 of patch/strategy)     | `{ proposalId, impact: ChangeImpact }` — **not applied**; UI asks user                      |
+| `control_playback`   | `{ action: 'play'\|'pause'\|'stop'\|'restart'\|'seek', hour?: 0–23 }` (`seek` needs `hour`) | `{ status: 'applied_in_app', action, hour?, note }` + SSE `control`; view only              |
+
+`control_playback` is the one tool the app runs without approval: it only moves the 24 h playback / time cursor
+(`applyPlaybackControl` → store `play/pause/stop/restart/setTimeIndex`; seek pauses first). Inputs, strategy and
+results never change, so it is not a "mutation" in the `propose_change` sense.
 
 `get_grid_state({hourly:true})` adds `hourly: {t, solarKw, demandKw, socPct}[24]` (engine steps, rounded) and `highlights
 { peakSolarKw, peakSolarHour, peakDemandKw, peakDemandHour, lowestSocPct, lowestSocHour }` (picked from the steps), also in
@@ -413,6 +418,7 @@ Client `ChatMessageData.retried?: boolean` = answer redone by Retry (kept on scr
 `proposal {proposalId, patch?, strategy?, reason, impact?: ChangeImpact}` · `error {code, reason?, message}` · `done {}` ·
 `model {model, modality, reason}` (modality `chat|reasoning|vision|image`; a second `model` event announces a switch to Wonder) · `image {imageUrl, caption}` ·
 `perception {kind:'segment', concept, count, boxCoverage, instances[], imageWidth, imageHeight, source, model, fallback?}` ·
+`control {action, hour?}` (playback command from `control_playback`; client applies it, `ChatMessageData.control` shows a cyan line) ·
 `summary {text, summarizedCount}` (history folded into the summary; client sends only later messages, session stores both).
 `error.code = PROVIDER_FALLBACK` carries `reason: 'spend_cap' | 'provider_error' | 'timeout'` (UI: amber note on that answer).
 

@@ -468,7 +468,8 @@
         "generate_image": "Génération d'une image",
         "escalate_deep_reasoning": "Passage au raisonnement approfondi",
         "default": "Analyse des résultats calculés",
-        "compact_history": "Résumé de la conversation précédente"
+        "compact_history": "Résumé de la conversation précédente",
+        "control_playback": "Contrôle de la lecture"
       },
       "unknownValue": "Inconnu",
       "chartType": "graphique {type}",
@@ -556,6 +557,13 @@
         "welcome": "Posez une question sur le village affiché. Chaque chiffre vient du moteur ; les changements attendent votre approbation.",
         "attachments": "[{count, plural, one {# fichier} other {# fichiers}}]",
         "placeholder": "Demandez au copilote…"
+      },
+      "control": {
+        "play": "Lecture lancée",
+        "pause": "Lecture en pause",
+        "stop": "Lecture arrêtée (retour à 00:00)",
+        "restart": "Lecture relancée depuis 00:00",
+        "seek": "Curseur placé à {hour}"
       }
     },
     "gridDiagram": {

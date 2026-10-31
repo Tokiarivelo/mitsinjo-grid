@@ -468,7 +468,8 @@
         "generate_image": "Generating a picture",
         "escalate_deep_reasoning": "Switching to deep reasoning",
         "default": "Reviewing computed results",
-        "compact_history": "Summarizing the earlier conversation"
+        "compact_history": "Summarizing the earlier conversation",
+        "control_playback": "Controlling playback"
       },
       "unknownValue": "Unknown",
       "chartType": "{type} chart",
@@ -556,6 +557,13 @@
         "welcome": "Ask about the village you are looking at. Every number comes from the engine; changes wait for your approval.",
         "attachments": "[{count, plural, one {# file} other {# files}}]",
         "placeholder": "Ask the copilot…"
+      },
+      "control": {
+        "play": "Playback started",
+        "pause": "Playback paused",
+        "stop": "Playback stopped (back to 00:00)",
+        "restart": "Playback restarted from 00:00",
+        "seek": "Time cursor moved to {hour}"
       }
     },
     "gridDiagram": {

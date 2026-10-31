@@ -95,6 +95,8 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 - Follow-up suggestions (`SuggestedPrompts variant="compact"`): one horizontally scrollable line, hidden while answering.
 - Microphone: tap to record, tap to stop (spinner while transcribing); text lands in the input, editable. Errors
   (unsupported, denied, failed, empty) show inline in amber, dismissible. Auto-scroll only while the reader is at the bottom.
+- Playback line: when the copilot ran `control_playback`, a cyan `role="status"` pill (clock icon) « Time cursor moved
+  to 18:00 » / « Playback paused »… above the answer.
 - `ChatComposer` (`useChatComposer` state): input + attach / sketch / mic / send; `variant` `card` (tab) or `terminal`
   (`❯` prompt, short placeholder). `ModelPicker` `{models, value, onChange, size: md|sm|terminal}`: one select for both.
 - `CopilotTerminal`: full-screen glass chat (`GlassPanel`), same conversation as the tab via `CopilotProvider` /

@@ -468,7 +468,8 @@
         "generate_image": "Famoronana sary",
         "escalate_deep_reasoning": "Mifindra amin'ny fandinihana lalina",
         "default": "Fandinihana ny valiny voakajy",
-        "compact_history": "Famintinana ny resaka teo aloha"
+        "compact_history": "Famintinana ny resaka teo aloha",
+        "control_playback": "Fanaraha-maso ny famakiana"
       },
       "unknownValue": "Tsy fantatra",
       "chartType": "sary {type}",
@@ -556,6 +557,13 @@
         "welcome": "Manontania momba ny tanàna aseho. Avy amin'ny motera ny tarehimarika rehetra; miandry ny fankatoavanao ny fanovana.",
         "attachments": "[{count, plural, one {rakitra #} other {rakitra #}}]",
         "placeholder": "Manontania ny copilote…"
+      },
+      "control": {
+        "play": "Natomboka ny famakiana",
+        "pause": "Najanona vetivety ny famakiana",
+        "stop": "Najanona ny famakiana (miverina 00:00)",
+        "restart": "Naverina natomboka tamin'ny 00:00",
+        "seek": "Nafindra tamin'ny {hour} ny famantarana ora"
       }
     },
     "gridDiagram": {

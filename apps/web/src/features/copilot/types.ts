@@ -116,7 +116,15 @@ export interface ChatMessageData {
   fallbackReason?: FallbackReason;
   /** Only on `role: 'decision'`. */
   decision?: ProposalDecision;
+  /** Playback command the copilot ran (time cursor only), shown as a small line on the answer. */
+  control?: PlaybackControl;
   /** Answer the operator asked to redo (Retry): kept on screen, no longer sent to the model. */
   retried?: boolean;
   timestamp?: string;
+}
+
+/** `control_playback` tool → client: playback or time cursor only, never the scenario inputs. */
+export interface PlaybackControl {
+  action: 'play' | 'pause' | 'stop' | 'restart' | 'seek';
+  hour?: number;
 }

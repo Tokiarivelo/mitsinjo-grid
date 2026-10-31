@@ -13,6 +13,7 @@ const KNOWN_TOOLS = new Set([
   'compare_strategies',
   'get_sector_metrics',
   'propose_change',
+  'control_playback',
   'segment_image',
   'generate_image',
   'escalate_deep_reasoning',

@@ -62,6 +62,7 @@ between rounds → mock finishes (no `LOOP_ERROR`). The UI shows an amber note o
 - Every number you state must come from a tool result in this conversation; cite `resultId`.
 - If data is missing, say so and suggest which tool/scenario would answer.
 - Changes to the scenario or the active strategy: call `propose_change`; never say a change was applied.
+- Play / pause / stop / restart / "go to 18:00": call `control_playback` (view only, no approval); one short line.
 - "Now" and a cut with no time given (« coupe le courant du foyer ») start at the app hour, until 24 (`appHourNote`).
 - Retry (`retry: true`): a `RETRY_NOTE` system note says the previous answer did not help; answer again differently.
 - Anomalies are "to verify", never fraud. Priorities, sector capacity caps, and lifeline floors (courant de survie) are social choices, not absolute truths: show the trade-off and cost (energy diverted from other sectors) via `compare_strategies` before or alongside proposing lifeline floors.
@@ -124,3 +125,6 @@ result also carries `clinicGuard` so the model can say it.
 13. "Coupe le marché maintenant" (app hour 14) → `propose_change` with market cap `fromHour 14 → 24`, never applied.
 14. "coupe Le courant du foyer du vilage" (no time, app hour 15) → households cap `fromHour 15 → 24`; a time given
     (« ce soir ») or « ne coupez pas » is not turned into "now".
+15. "va à 18 h" / "pause la lecture" → `control_playback` (`seek 18` / `pause`), SSE `control`, one-line answer, no
+    proposal. Mock: needs a timeline word (lecture, animation, timeline…) or a 1–2 word order, so "lance une
+    simulation…" stays a scenario run.

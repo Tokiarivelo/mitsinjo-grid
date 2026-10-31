@@ -156,6 +156,20 @@ export const GetSectorMetricsSchema = z.object({
   strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
 });
 
+/** Playback commands the chat may run directly: they move the time cursor only, never the inputs. */
+export const PLAYBACK_ACTIONS = ['play', 'pause', 'stop', 'restart', 'seek'] as const;
+export type PlaybackAction = (typeof PLAYBACK_ACTIONS)[number];
+
+export const ControlPlaybackSchema = z
+  .object({
+    action: z.enum(PLAYBACK_ACTIONS),
+    hour: z.number().int().min(0).max(23).optional(),
+  })
+  .refine((d) => d.action !== 'seek' || d.hour !== undefined, {
+    message: 'seek needs an hour from 0 to 23.',
+    path: ['hour'],
+  });
+
 export const ProposeChangeSchema = z
   .object({
     patch: InputPatchSchema.optional(),
@@ -329,6 +343,27 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     },
   },
   {
+    name: 'control_playback',
+    description:
+      'Run, pause, stop or restart the simulation playback, or move the time cursor to an hour (seek). ' +
+      'Applied at once in the app: it changes only what is shown, never the scenario inputs or the strategy ' +
+      '(use propose_change for those).',
+    parameters: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: [...PLAYBACK_ACTIONS] },
+        hour: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 23,
+          description: 'Target hour for seek (0-23).',
+        },
+      },
+      required: ['action'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'propose_change',
     description:
       'Propose a scenario parameter change or strategy switch to the human operator for review. Does NOT automatically apply changes.',
@@ -406,6 +441,8 @@ export interface ToolResult {
     impact?: ChangeImpact;
   };
   evidence?: Record<string, number | string>;
+  /** control_playback: what the app runs on the client (time cursor / playback only). */
+  control?: { action: PlaybackAction; hour?: number };
 }
 
 /** Short, readable validation error for the model (no Zod JSON dump), with a fix hint when there is one. */
@@ -596,6 +633,26 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
           [`${sectorId}_servedKwh`]: compactSec.servedKwh,
           [`${sectorId}_unservedKwh`]: compactSec.unservedKwh,
           [`${sectorId}_coveragePct`]: compactSec.coveragePct,
+        },
+      };
+    }
+
+    case 'control_playback': {
+      const parsed = ControlPlaybackSchema.safeParse(rawArgs);
+      if (!parsed.success) {
+        return { toolName, error: invalidArgs('control_playback', parsed.error) };
+      }
+      const control = {
+        action: parsed.data.action,
+        ...(parsed.data.action === 'seek' && { hour: parsed.data.hour }),
+      };
+      return {
+        toolName,
+        control,
+        data: {
+          status: 'applied_in_app',
+          ...control,
+          note: 'Only playback / the time cursor changed. Scenario inputs, strategy and results are unchanged.',
         },
       };
     }

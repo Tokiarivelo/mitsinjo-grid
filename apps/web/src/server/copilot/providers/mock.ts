@@ -40,6 +40,74 @@ const MOCK_SECTOR_WORDS: Array<{ match: RegExp; sector: SectorId }> = [
   { match: /household|foyer|ménage|tokantrano/i, sector: 'households' },
   { match: /clinic|clinique|santé|health|toeram-pahasalamana/i, sector: 'health' },
 ];
+/** Playback words need a timeline noun, or the order alone ("pause", "lecture"), so "lance une simulation" is not "play". */
+const MOCK_PLAYBACK_NOUN = /\b(lecture|animation|timeline|playback|journ|curseur|fandaharana)/i;
+const MOCK_PLAYBACK_ACTIONS: Array<{
+  match: RegExp;
+  action: 'play' | 'pause' | 'stop' | 'restart';
+}> = [
+  { match: /\b(restart|recommence\w*|redémarre\w*|averina|avereno)\b/i, action: 'restart' },
+  { match: /\b(pause|ampiato\w*)\b/i, action: 'pause' },
+  { match: /\b(stop|arrête\w*|arrêter|ajanony)\b/i, action: 'stop' },
+  { match: /\b(play|lance\w*|joue\w*|démarre\w*|start|alefaso|lecture)\b/i, action: 'play' },
+];
+/** "Go to 18:00" / "va à 18 h" / "mandehana amin'ny 18". */
+const MOCK_SEEK =
+  /\b(?:go to|jump to|move to|va à|aller à|passe à|avance à|mandehana amin'ny)\s*(\d{1,2})\s*(?:h\b|:00)?/i;
+
+/** Playback order the mock sends to control_playback, or null when the question is not one. */
+export function mockPlaybackCommand(
+  query: string
+): { action: 'play' | 'pause' | 'stop' | 'restart' | 'seek'; hour?: number } | null {
+  const seek = MOCK_SEEK.exec(query);
+  if (seek) {
+    const hour = Number(seek[1]);
+    return hour >= 0 && hour <= 23 ? { action: 'seek', hour } : null;
+  }
+  const words = query.trim().split(/\s+/).length;
+  if (!MOCK_PLAYBACK_NOUN.test(query) && words > 2) return null;
+  const hit = MOCK_PLAYBACK_ACTIONS.find((a) => a.match.test(query));
+  return hit ? { action: hit.action } : null;
+}
+
+const MOCK_PLAYBACK_DONE: Record<'en' | 'fr' | 'mg', Record<string, string>> = {
+  en: {
+    play: 'Playback started.',
+    pause: 'Playback paused.',
+    stop: 'Playback stopped, back to 00:00.',
+    restart: 'Playback restarted from 00:00.',
+    seek: 'Time cursor moved to {hour}.',
+    tail: 'Only the view moved; no setting changed.',
+  },
+  fr: {
+    play: 'Lecture lancée.',
+    pause: 'Lecture en pause.',
+    stop: 'Lecture arrêtée, retour à 00:00.',
+    restart: 'Lecture relancée depuis 00:00.',
+    seek: 'Curseur déplacé à {hour}.',
+    tail: "Seule la vue a changé ; aucun réglage n'a été modifié.",
+  },
+  mg: {
+    play: 'Natomboka ny famakiana.',
+    pause: 'Najanona kely ny famakiana.',
+    stop: "Najanona ny famakiana, miverina amin'ny 00:00.",
+    restart: "Naverina hatramin'ny 00:00 ny famakiana.",
+    seek: "Nafindra amin'ny {hour} ny ora.",
+    tail: 'Ny fijery ihany no niova; tsy nisy masontsivana novaina.',
+  },
+};
+
+/** One-line answer after control_playback ran. */
+export function playbackDoneAnswer(
+  action: string,
+  hour: number | undefined,
+  lang: 'en' | 'fr' | 'mg'
+): string {
+  const t = MOCK_PLAYBACK_DONE[lang];
+  const hh = `${String(hour ?? 0).padStart(2, '0')}:00`;
+  return `${(t[action] ?? t.play!).replace('{hour}', hh)} ${t.tail}`;
+}
+
 /** Same default as the loop when the client sends no hour. */
 const MOCK_DEFAULT_HOUR = 12;
 
@@ -263,6 +331,11 @@ export class MockLlmProvider implements LlmProvider {
     console.info(
       `[copilot:mock] Generating synthetic response for user query: "${userMsg?.content?.slice(0, 50).replace(/\n/g, ' ') || ''}..." (french: ${fr})`
     );
+
+    const playback = mockPlaybackCommand(query);
+    if (playback) {
+      return { toolCalls: [{ id: 'call_playback', name: 'control_playback', args: playback }] };
+    }
 
     const hasImage = Boolean(userMsg?.media?.some((m) => m.type === 'image'));
     if (hasImage && MOCK_COUNT_WORDS.test(query)) {
@@ -787,6 +860,13 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
       };
     }
 
+    if (toolName === 'control_playback' && !err) {
+      const data = (payload.data as Record<string, unknown> | undefined) ?? payload;
+      const hour = typeof data.hour === 'number' ? data.hour : undefined;
+      return {
+        content: playbackDoneAnswer(String(data.action), hour, this.locale ?? (fr ? 'fr' : 'en')),
+      };
+    }
     if (err) {
       return { content: toolErrorAnswer(toolName, err, this.locale ?? (fr ? 'fr' : 'en')) };
     }

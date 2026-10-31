@@ -10,6 +10,7 @@ import {
   VolumeX,
   Play,
   ChevronRight,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations } from '@/lib/i18n';
@@ -22,6 +23,7 @@ import type { ActiveMedia } from './media-lightbox-modal';
 import { evidenceView } from '../utils/evidence-view';
 import { EvidenceTable } from './evidence-table';
 import { RetryAnswer } from './retry-answer';
+import { fmtHour } from '@/lib/format';
 
 export interface ChatMessageItemProps {
   message: ChatMessageData;
@@ -237,6 +239,19 @@ export function ChatMessageItem({
             />
             <span>{tCopilot(`fallback.${message.fallbackReason}`)}</span>
           </div>
+        )}
+
+        {/* Playback command the copilot ran (view only: no input changed) */}
+        {message.control && (
+          <p
+            role="status"
+            className="self-start flex items-center gap-1.5 px-2.5 py-1 rounded-control bg-energy-cyan/10 border border-energy-cyan/40 text-[11px] font-mono text-energy-cyan"
+          >
+            <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {tCopilot(`control.${message.control.action}`, {
+              hour: fmtHour(message.control.hour ?? 0),
+            })}
+          </p>
         )}
 
         {/* Structured diagnostic card */}
