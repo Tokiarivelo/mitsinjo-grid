@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { readSseStream } from '@/lib/sse';
-import { MAX_REGIONS, VisionRegionsEventSchema, type ApplianceDetection } from '@/lib/vision';
+import {
+  MAX_REGIONS,
+  VisionRegionsEventSchema,
+  type ApplianceDetection,
+  type NormBox,
+} from '@/lib/vision';
 import { prepareVisionImage } from '../utils/prepare-image';
 import { shapeToDetection, shapeToRegion, type DrawnShape } from '../utils/shapes';
 import { useVisionDetection } from './use-vision-detection';
@@ -28,6 +33,11 @@ export function useVisionSession(imageUrl: string | null) {
   const { detect, reset } = vision;
   const [selection, setSelection] = useState<{ image: string; id: string } | null>(null);
   const [manual, setManual] = useState<ManualState | null>(null);
+  /** Boxes the operator corrected on this photo (AI or drawn objects), by object id. */
+  const [adjustedBoxes, setAdjustedBoxes] = useState<{
+    image: string;
+    boxes: Record<string, NormBox>;
+  } | null>(null);
   const aborts = useRef(new Set<AbortController>());
 
   useEffect(() => {
@@ -47,11 +57,20 @@ export function useVisionSession(imageUrl: string | null) {
 
   const current = imageUrl && manual?.image === imageUrl ? manual : null;
   const manualItems = useMemo(() => current?.items ?? [], [current]);
-  // AI objects first, then the ones drawn by hand (in drawing order).
-  const detections = useMemo(
-    () => (manualItems.length ? [...vision.detections, ...manualItems] : vision.detections),
-    [vision.detections, manualItems]
-  );
+  const boxes = imageUrl && adjustedBoxes?.image === imageUrl ? adjustedBoxes.boxes : null;
+  // AI objects first, then the ones drawn by hand (in drawing order). A corrected box wins over a
+  // later model answer (SAM outlines), and its outline goes: it no longer matches.
+  const detections = useMemo(() => {
+    const all = manualItems.length ? [...vision.detections, ...manualItems] : vision.detections;
+    if (!boxes) return all;
+    return all.map((d) => {
+      const box = boxes[d.id];
+      if (!box) return d;
+      const next: ApplianceDetection = { ...d, box, adjusted: true };
+      delete next.outline;
+      return next;
+    });
+  }, [vision.detections, manualItems, boxes]);
   const selectedId = imageUrl && selection?.image === imageUrl ? selection.id : null;
   const selected = detections.find((d) => d.id === selectedId) ?? null;
 
@@ -162,8 +181,21 @@ export function useVisionSession(imageUrl: string | null) {
     [imageUrl, patch]
   );
 
+  /** The operator corrected an object's box (AI or drawn): kept for this photo only. */
+  const adjustBox = useCallback(
+    (id: string, box: NormBox) => {
+      if (!imageUrl) return;
+      setAdjustedBoxes((a) => ({
+        image: imageUrl,
+        boxes: { ...(a?.image === imageUrl ? a.boxes : {}), [id]: box },
+      }));
+    },
+    [imageUrl]
+  );
+
   return {
     ...vision,
+    adjustBox,
     detections,
     selectedId,
     selected,

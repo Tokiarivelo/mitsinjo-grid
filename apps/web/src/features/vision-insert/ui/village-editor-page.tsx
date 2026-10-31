@@ -180,6 +180,7 @@ export function VillageEditorPage() {
                 manualRoom={vision.manualRoom}
                 identifyingIds={vision.identifyingIds}
                 identifyFailed={vision.identifyFailed}
+                onAdjustBox={vision.adjustBox}
               />
             </section>
           )}

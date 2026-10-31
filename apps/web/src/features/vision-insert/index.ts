@@ -20,3 +20,5 @@ export { useObjectName, useDetectionLabel } from './hooks/use-object-name';
 export { useObjectShape, shapeKey, type ObjectShapeState } from './hooks/use-object-shape';
 export { ObjectShapePanel, type ObjectShapePanelProps } from './ui/object-shape-panel';
 export { recipeMesh, silhouetteMesh, SILHOUETTE_DEPTH } from './utils/object-geometry';
+export { usePhotoZoom, stepZoom, photoWidth, ZOOM_STEPS } from './hooks/use-photo-zoom';
+export { ZoomControls } from './ui/zoom-controls';

@@ -12,7 +12,16 @@ type Editor = ReturnType<typeof useShapeEditor>;
  * Drawing layer on the photo (PV-T8): drawn shapes (amber, dashed), the stroke in progress, and
  * 4 corner handles (44 px touch area) on the selected shape. Pointer and keyboard go to the editor.
  */
-export function DrawOverlay({ editor, tool }: { editor: Editor; tool: DrawTool }) {
+export function DrawOverlay({
+  editor,
+  tool,
+  passThrough,
+}: {
+  editor: Editor;
+  tool: DrawTool;
+  /** « Move the photo » mode: pointers reach the scroll box (pan), not the shapes. */
+  passThrough?: boolean;
+}) {
   const t = useTranslations('features.visionInsert');
   const active = editor.shapes.find((s) => s.id === editor.activeId) ?? null;
 
@@ -23,7 +32,8 @@ export function DrawOverlay({ editor, tool }: { editor: Editor; tool: DrawTool }
       tabIndex={0}
       className={cn(
         'absolute inset-0 touch-none bg-canvas/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-energy-cyan',
-        editor.full ? 'cursor-default' : 'cursor-crosshair'
+        editor.full ? 'cursor-default' : 'cursor-crosshair',
+        passThrough && 'pointer-events-none'
       )}
       {...editor.handlers}
     >

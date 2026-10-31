@@ -155,6 +155,13 @@ export function useShapeEditor({ maxShapes, edgeMap, tool }: ShapeEditorOptions)
       (id: string, hint: string) => update(id, (s) => ({ ...s, hint: hint.slice(0, 40) })),
       [update]
     ),
+    /** Starts from existing shapes (box correction): replaces the list, selects the first. */
+    load: useCallback((list: DrawnShape[]) => {
+      setShapes(list);
+      setActiveId(list[0]?.id ?? null);
+      setDraft(null);
+      gesture.current = null;
+    }, []),
     /** Keyboard path: a centred box to move / resize with the arrows. */
     addBox: useCallback(() => add('box', DEFAULT_BOX), [add]),
     clear: useCallback(() => {

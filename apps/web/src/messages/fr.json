@@ -773,7 +773,18 @@
       "model3dOutlineNote": "La forme IA n'était pas utilisable : construite à partir du contour de l'objet.",
       "model3dHint": "Glisser pour tourner · pincer ou molette pour zoomer",
       "model3dNoWebgl": "La vue 3D demande WebGL. La photo reste la référence.",
-      "model3dCanvas": "Modèle 3D : {label}"
+      "model3dCanvas": "Modèle 3D : {label}",
+      "zoomGroup": "Zoom de la photo",
+      "zoomIn": "Zoomer",
+      "zoomOut": "Dézoomer",
+      "zoomReset": "Revenir à 100 % (actuellement {percent} %)",
+      "zoomLevel": "{percent} %",
+      "panPhoto": "Déplacer la photo (au lieu de dessiner)",
+      "adjustButton": "Ajuster le cadre de {label}",
+      "adjustTitle": "Ajustement du cadre de {label}",
+      "adjustHint": "Faites glisser le cadre ou ses coins. Clavier : flèches pour déplacer, Maj + flèches pour redimensionner. Zoomez pour plus de précision.",
+      "adjustSave": "Enregistrer le cadre",
+      "adjustedBadge": "Ajusté"
     }
   },
   "copilot": {

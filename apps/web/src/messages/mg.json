@@ -773,7 +773,18 @@
       "model3dOutlineNote": "Tsy azo nampiasaina ny endrika AI: namboarina avy amin'ny sisin'ilay zavatra.",
       "model3dHint": "Sintony hanodinana · tsindrio na ahodino hanalehibe",
       "model3dNoWebgl": "Mila WebGL ny fijery 3D. Ny sary no mijanona ho fanondroana.",
-      "model3dCanvas": "Modely 3D an'ny {label}"
+      "model3dCanvas": "Modely 3D an'ny {label}",
+      "zoomGroup": "Fanalehibiazana ny sary",
+      "zoomIn": "Hanalehibe",
+      "zoomOut": "Hanakely",
+      "zoomReset": "Miverina amin'ny 100 % (ankehitriny {percent} %)",
+      "zoomLevel": "{percent} %",
+      "panPhoto": "Afindrao ny sary (fa tsy manao sary)",
+      "adjustButton": "Ahitsio ny efajoron'ny {label}",
+      "adjustTitle": "Fanitsiana ny efajoron'ny {label}",
+      "adjustHint": "Sintony ny efajoro na ny zorony. Fitendry: zana-tsipika hamindra, Shift + zana-tsipika hanova habe. Hanalehibe mba ho marina kokoa.",
+      "adjustSave": "Tehirizo ny efajoro",
+      "adjustedBadge": "Nahitsy"
     }
   },
   "copilot": {

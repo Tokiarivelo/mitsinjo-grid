@@ -117,6 +117,13 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
   Shift + arrows / Delete, « Add a box » (centred). Per shape: « What is it? (optional) » free text, trash. « Send the
   object / objects (n) » → objects listed at once (dashed, « Added by you », « Identifying… »), then named by the model.
   Also in the error state; ≤ 30 per photo (button disabled + note).
+  Zoom (user request 2026-10-31, `usePhotoZoom`, `ZoomControls`): − / « 100 % » / + above the photo (1 · 1.5 · 2 · 3 · 4×,
+  44 px buttons). The photo sits in a `max-h-[60vh]` scroll box (bars, wheel, touch pan); its width is fitted (tall photos
+  ≤ 60 vh, so overlays match) × zoom, every layer stays in photo fractions. Zooming keeps the view centre (or the box being
+  adjusted). While drawing or adjusting on a zoomed photo: hand toggle « Move the photo » (`aria-pressed`) = the drawing
+  layer lets pointers through to pan. `onAdjustBox` (optional): « Adjust the box of {label} » for the selected object (AI
+  or drawn, not while identifying) → the box in the same editor (drag, corners, arrows / Shift + arrows), amber panel
+  Save / Cancel; saved box → `adjusted: true`, SAM outline dropped, « Adjusted » chip in the list.
 - `VisionDialog`: portal to `body` (glass panels trap fixed overlays), bottom sheet on mobile / centred card ≥ sm,
   runs detection on open, Esc closes, footer shows the selected appliance (insert comes in V4).
   (`❯` prompt, short placeholder). `ModelPicker` `{models, value, onChange, size: md|sm|terminal}`: one select for both.

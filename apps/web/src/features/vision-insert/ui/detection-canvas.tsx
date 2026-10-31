@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import {
   AlertTriangle,
+  Check,
+  Crop,
   Loader2,
   RotateCcw,
   ScanSearch,
@@ -12,15 +14,24 @@ import {
 } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { boxPath, isAppliance, MAX_REGIONS, type ApplianceDetection } from '@/lib/vision';
+import {
+  boxPath,
+  isAppliance,
+  MAX_REGIONS,
+  polygonBounds,
+  type ApplianceDetection,
+  type NormBox,
+} from '@/lib/vision';
 import type { VisionStatus } from '../hooks/use-vision-detection';
 import { categoryHint } from '../utils/labels';
 import { useDetectionLabel, useObjectName } from '../hooks/use-object-name';
 import { useEdgeMap } from '../hooks/use-edge-map';
 import { useShapeEditor } from '../hooks/use-shape-editor';
-import type { DrawnShape, DrawTool } from '../utils/shapes';
+import { usePhotoZoom } from '../hooks/use-photo-zoom';
+import { boxPoints, type DrawnShape, type DrawTool } from '../utils/shapes';
 import { DrawOverlay } from './draw-overlay';
 import { DrawPanel } from './draw-panel';
+import { ZoomControls } from './zoom-controls';
 
 export interface DetectionCanvasProps {
   imageUrl: string;
@@ -43,6 +54,8 @@ export interface DetectionCanvasProps {
   identifyingIds?: readonly string[];
   /** The last identification failed: drawn objects keep the operator's text. */
   identifyFailed?: boolean;
+  /** The operator corrected an object's box. Absent = no « Adjust the box » button. */
+  onAdjustBox?: (id: string, box: NormBox) => void;
 }
 
 /**
@@ -62,6 +75,7 @@ export function DetectionCanvas({
   manualRoom = MAX_REGIONS,
   identifyingIds = [],
   identifyFailed,
+  onAdjustBox,
 }: DetectionCanvasProps) {
   const t = useTranslations('features.visionInsert');
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -79,10 +93,51 @@ export function DetectionCanvas({
     edgeMap: edges.status === 'ready' ? edges.map : null,
     tool,
   });
+  const [panOn, setPanOn] = useState(false);
+  // Box correction: one box loaded in a second editor (move + corner handles, no new shape).
+  const adjustEditor = useShapeEditor({ maxShapes: 1, edgeMap: null, tool: 'box' });
+  const [adjustingId, setAdjustingId] = useState<string | null>(null);
+  // Picking another object (list) ends the correction without saving.
+  const adjusting =
+    adjustingId && adjustingId === selectedId
+      ? (detections.find((d) => d.id === adjustingId) ?? null)
+      : null;
+  const selectedDetection = detections.find((d) => d.id === selectedId) ?? null;
+  const { viewportRef, contentStyle, onImageLoad, centreOn, ...zoom } = usePhotoZoom(
+    imageUrl,
+    adjusting?.box ?? null
+  );
   const canDraw = !!onSendShapes && status !== 'idle' && status !== 'loading';
+  const canAdjust =
+    !!onAdjustBox &&
+    !!selectedDetection &&
+    !drawing &&
+    !adjusting &&
+    !busy &&
+    !identifyingIds.includes(selectedDetection.id);
+  const startAdjust = (d: ApplianceDetection) => {
+    const { x, y, w, h } = d.box;
+    adjustEditor.load([
+      { id: d.id, tool: 'box', points: boxPoints([x, y], [x + w, y + h]), hint: '' },
+    ]);
+    setAdjustingId(d.id);
+    centreOn(d.box);
+  };
+  const stopAdjust = () => {
+    adjustEditor.clear();
+    setAdjustingId(null);
+    setPanOn(false);
+  };
+  const saveAdjust = () => {
+    const shape = adjustEditor.shapes[0];
+    if (adjusting && shape) onAdjustBox?.(adjusting.id, polygonBounds(shape.points));
+    stopAdjust();
+  };
+  const editing = drawing || !!adjusting;
   const stopDrawing = () => {
     editor.clear();
     setDrawing(false);
+    setPanOn(false);
   };
   const send = () => {
     if (onSendShapes?.(editor.shapes, t('drawnObject'))) stopDrawing();
@@ -105,78 +160,123 @@ export function DetectionCanvas({
             {t('refining')}
           </span>
         )}
+        <div className="ml-auto">
+          <ZoomControls
+            zoom={zoom}
+            pan={
+              editing && zoom.zoom > 1
+                ? { on: panOn, toggle: () => setPanOn((on) => !on) }
+                : undefined
+            }
+          />
+        </div>
       </div>
 
-      <div className="relative w-full overflow-hidden rounded-xl border border-border bg-canvas-sunken">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={imageUrl}
-          alt={t('imageAlt')}
-          className={cn('block h-auto max-h-[60vh] w-full object-contain', busy && 'opacity-60')}
-        />
-        {showList && detections.length > 0 && (
-          <svg
-            viewBox="0 0 1 1"
-            preserveAspectRatio="none"
-            className="absolute inset-0 h-full w-full"
-            aria-hidden="true"
-          >
-            {detections.map((d) => {
-              const selected = d.id === selectedId;
-              const hot = d.id === activeId;
-              return (
-                <path
-                  key={d.id}
-                  data-detection={d.id}
-                  d={d.outline ?? boxPath(d.box)}
-                  vectorEffect="non-scaling-stroke"
-                  strokeWidth={selected || hot ? 3 : 2}
-                  strokeDasharray={d.manual ? '6 4' : undefined}
-                  className={cn(
-                    'cursor-pointer transition-colors',
-                    selected
-                      ? 'fill-solar-amber/25 stroke-solar-amber'
-                      : !isAppliance(d)
-                        ? hot
-                          ? 'fill-text-secondary/25 stroke-text-secondary'
-                          : 'fill-text-secondary/5 stroke-text-secondary'
-                        : hot
-                          ? 'fill-energy-cyan/30 stroke-energy-cyan'
-                          : 'fill-energy-cyan/10 stroke-energy-cyan'
-                  )}
-                  onPointerEnter={() => setActiveId(d.id)}
-                  onPointerLeave={() => setActiveId((id) => (id === d.id ? null : id))}
-                  onClick={() => onSelect(d.id)}
-                />
-              );
-            })}
-          </svg>
-        )}
-        {showList && active && (
-          <span
-            className="pointer-events-none absolute max-w-[60%] truncate rounded-md bg-surface-elevated/95 px-2 py-0.5 text-[11px] font-medium text-text-primary shadow border border-border"
-            style={{
-              left: `${Math.min(active.box.x, 0.98) * 100}%`,
-              top: `${active.box.y * 100}%`,
-              transform: active.box.y > 0.08 ? 'translateY(-110%)' : 'translateY(4px)',
-            }}
-          >
-            {hint(active) ? `${nameOf(active)} · ${hint(active)}` : nameOf(active)}
-          </span>
-        )}
-        {drawing && <DrawOverlay editor={editor} tool={tool} />}
-        {busy && (
-          <div
-            role="status"
-            className="absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium text-text-primary"
-          >
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            {t('loading')}
+      {/* Scroll box: pans the zoomed photo (bars, wheel, touch). The content is exactly the photo,
+          so every overlay below stays in photo fractions at any zoom. */}
+      <div
+        ref={viewportRef}
+        className="max-h-[60vh] w-full overflow-auto rounded-xl border border-border bg-canvas-sunken [-webkit-overflow-scrolling:touch]"
+      >
+        <div className="relative mx-auto" style={contentStyle}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt={t('imageAlt')}
+            onLoad={onImageLoad}
+            className={cn('block h-auto w-full', busy && 'opacity-60')}
+          />
+          {showList && detections.length > 0 && (
+            <svg
+              viewBox="0 0 1 1"
+              preserveAspectRatio="none"
+              className="absolute inset-0 h-full w-full"
+              aria-hidden="true"
+            >
+              {detections.map((d) => {
+                // The box being corrected is drawn by the editor layer.
+                if (d.id === adjusting?.id) return null;
+                const selected = d.id === selectedId;
+                const hot = d.id === activeId;
+                return (
+                  <path
+                    key={d.id}
+                    data-detection={d.id}
+                    d={d.outline ?? boxPath(d.box)}
+                    vectorEffect="non-scaling-stroke"
+                    strokeWidth={selected || hot ? 3 : 2}
+                    strokeDasharray={d.manual ? '6 4' : undefined}
+                    className={cn(
+                      'cursor-pointer transition-colors',
+                      selected
+                        ? 'fill-solar-amber/25 stroke-solar-amber'
+                        : !isAppliance(d)
+                          ? hot
+                            ? 'fill-text-secondary/25 stroke-text-secondary'
+                            : 'fill-text-secondary/5 stroke-text-secondary'
+                          : hot
+                            ? 'fill-energy-cyan/30 stroke-energy-cyan'
+                            : 'fill-energy-cyan/10 stroke-energy-cyan'
+                    )}
+                    onPointerEnter={() => setActiveId(d.id)}
+                    onPointerLeave={() => setActiveId((id) => (id === d.id ? null : id))}
+                    onClick={() => onSelect(d.id)}
+                  />
+                );
+              })}
+            </svg>
+          )}
+          {showList && active && (
+            <span
+              className="pointer-events-none absolute max-w-[60%] truncate rounded-md bg-surface-elevated/95 px-2 py-0.5 text-[11px] font-medium text-text-primary shadow border border-border"
+              style={{
+                left: `${Math.min(active.box.x, 0.98) * 100}%`,
+                top: `${active.box.y * 100}%`,
+                transform: active.box.y > 0.08 ? 'translateY(-110%)' : 'translateY(4px)',
+              }}
+            >
+              {hint(active) ? `${nameOf(active)} · ${hint(active)}` : nameOf(active)}
+            </span>
+          )}
+          {drawing && <DrawOverlay editor={editor} tool={tool} passThrough={panOn} />}
+          {adjusting && <DrawOverlay editor={adjustEditor} tool="box" passThrough={panOn} />}
+          {busy && (
+            <div
+              role="status"
+              className="absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium text-text-primary"
+            >
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              {t('loading')}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {adjusting ? (
+        <div className="flex flex-col gap-2 rounded-lg border border-solar-amber/40 bg-solar-amber/5 p-3">
+          <p className="text-sm text-text-primary">
+            {t('adjustTitle', { label: nameOf(adjusting) })}
+          </p>
+          <p className="text-xs text-text-secondary">{t('adjustHint')}</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={saveAdjust}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-energy-cyan px-3 text-sm font-medium text-slate-950 hover:bg-energy-cyan/90 cursor-pointer"
+            >
+              <Check className="h-4 w-4" aria-hidden="true" />
+              {t('adjustSave')}
+            </button>
+            <button
+              type="button"
+              onClick={stopAdjust}
+              className="inline-flex min-h-11 items-center rounded-lg border border-border bg-surface-elevated px-3 text-sm font-medium text-text-primary hover:bg-surface-hover cursor-pointer"
+            >
+              {t('cancel')}
+            </button>
           </div>
-        )}
-      </div>
-
-      {drawing && onSendShapes ? (
+        </div>
+      ) : drawing && onSendShapes ? (
         <DrawPanel
           editor={editor}
           tool={tool}
@@ -197,6 +297,16 @@ export function DetectionCanvas({
               <SquareDashedMousePointer className="h-4 w-4" aria-hidden="true" />
               {t('drawButton')}
             </button>
+            {canAdjust && selectedDetection && (
+              <button
+                type="button"
+                onClick={() => startAdjust(selectedDetection)}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-3 text-sm font-medium text-text-primary hover:bg-surface-hover cursor-pointer"
+              >
+                <Crop className="h-4 w-4" aria-hidden="true" />
+                {t('adjustButton', { label: nameOf(selectedDetection) })}
+              </button>
+            )}
             {manualRoom <= 0 && <span className="text-xs text-text-muted">{t('manualLimit')}</span>}
           </div>
         )
@@ -277,6 +387,11 @@ export function DetectionCanvas({
                       {d.manual && (
                         <span className="rounded border border-solar-amber/50 px-1 py-px text-[10px] uppercase tracking-wide text-text-secondary">
                           {t('manualBadge')}
+                        </span>
+                      )}
+                      {d.adjusted && (
+                        <span className="rounded border border-border px-1 py-px text-[10px] uppercase tracking-wide text-text-secondary">
+                          {t('adjustedBadge')}
                         </span>
                       )}
                       {!isAppliance(d) && (

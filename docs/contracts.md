@@ -499,7 +499,8 @@ Shared Zod (client + server): `@/lib/vision` (`NormBoxSchema`, `ApplianceDetecti
 same name translated by the model in the same call; the page shows `localLabel(d, locale)` (switching language needs no new call).
 `ApplianceDetection` adds `kind?: 'appliance'|'scenery'` (absent = appliance) and `scenery?: 'building'|'vehicle'|'tree'|'plant'|'person'|'animal'|'water'|'other'`;
 scenery is outlined and selectable but has no load (`category: 'other'`, never inserted). Appliances come first in the list.
-`manual?: true` = object the operator drew (PV-T8), listed after the AI ones, ≤ 30 per photo. Multipart field `regions?` =
+`manual?: true` = object the operator drew (PV-T8), listed after the AI ones, ≤ 30 per photo. `adjusted?: true` = box corrected by
+the operator (`useVisionSession.adjustBox(id, box)`, per photo; wins over later model answers, outline dropped). Multipart field `regions?` =
 JSON `VisionRegion[]` (1–10, `{ id, points: [x,y][] (3–400, 0–1, closed polygon), hint? ≤ 40 }`) → identify only those shapes:
 `vision_regions { phase: 'boxes'|'outlines', results: { regionId, detection? /*id = regionId, manual: true*/ }[], source, model,
 fallback? }` (no `vision_detections`). Client: `useVisionSession.sendShapes(shapes, fallbackLabel)` shows each shape at once

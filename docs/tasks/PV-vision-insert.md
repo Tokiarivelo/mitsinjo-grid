@@ -90,6 +90,10 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
       to name, sort and outline it. Rectangle / free hand / magnetic lasso, several shapes editable (move, resize) before
       « Send the objects », `manual: true`; works when the AI failed; ≤ 30 per photo. In `/village` and the chat dialog.)_
 
+- [x] **PV-T8b** (user request 2026-10-31) Correct an AI box and zoom the photo for precise drawing: « Adjust the box »
+      on the selected object (move / corners / keyboard, Save / Cancel → `adjusted`, outline dropped); zoom 1–4× with pan
+      (scroll, hand toggle while drawing), centred on the adjusted box. Also fixes overlays on tall photos (fitted width).
+
 ### V4 — Web: 3D object editor
 
 - [x] **PV-T9** 3D shape with Meta models only (user change 2026-10-31: no fal.ai; the Meta API has no photo→3D model).

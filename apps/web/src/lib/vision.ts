@@ -53,6 +53,8 @@ export const ApplianceDetectionSchema = z.object({
   outline: z.string().optional(),
   /** Shape drawn by the operator (PV-T8); label and category then come from the vision model. Set by the client. */
   manual: z.literal(true).optional(),
+  /** Box moved or resized by the operator: `box` is theirs and the SAM outline was dropped. Set by the client. */
+  adjusted: z.literal(true).optional(),
 });
 export type ApplianceDetection = z.infer<typeof ApplianceDetectionSchema>;
 

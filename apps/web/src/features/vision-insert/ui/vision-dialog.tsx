@@ -73,6 +73,7 @@ export function VisionDialog({ imageUrl, onClose }: VisionDialogProps) {
             manualRoom={vision.manualRoom}
             identifyingIds={vision.identifyingIds}
             identifyFailed={vision.identifyFailed}
+            onAdjustBox={vision.adjustBox}
           />
         </div>
 

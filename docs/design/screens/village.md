@@ -17,4 +17,6 @@ the engine catalog gives power (never the AI). Sidebar + MobileNav entry « Vill
 - Missing objects (PV-T8): « Draw missing objects » under the photo → rectangle, free hand or magnetic lasso, several shapes,
   each movable / resizable until sent, optional « What is it? » text → « Send the objects (n) »: listed at once after the AI
   objects (« Added by you », « Identifying… »), then named and sorted by the vision model, outline refined by SAM. Removable.
+- Photo zoom (− / 100 % / +, pan by scrolling or the hand toggle while drawing) and « Adjust the box » on the selected object
+  (AI box moved / resized, then saved) — `components.md` § DetectionCanvas.
 - States: loading / refining / ready / empty / error + retry (states-copy.md « vision »). Mobile: one column, `pb-20`.
