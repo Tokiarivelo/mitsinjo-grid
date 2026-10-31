@@ -15,7 +15,8 @@ const GRID = 1000;
 
 export const DETECT_SYSTEM_PROMPT = [
   'You outline objects on a photo for the operator of a SIMULATED rural solar microgrid.',
-  'List up to 20 notable objects, electrical appliances first. For each: a short label;',
+  'List up to 20 notable objects, electrical appliances first. For each: a short English label (also used to outline it),',
+  'the same short name in French (label_fr) and in Malagasy (label_mg);',
   'kind "appliance" with a category from the enum (street lights and lamp posts are "lamp", other if no category fits),',
   'or kind "scenery" for things without a plug (buildings, vehicles, trees, plants, people, animals, water) with a scenery type;',
   'and bbox [x_min, y_min, x_max, y_max] on a 0-1000 grid, origin top-left.',
@@ -37,6 +38,8 @@ export const DETECT_JSON_SCHEMA = {
           type: 'object',
           properties: {
             label: { type: 'string' },
+            label_fr: { type: 'string' },
+            label_mg: { type: 'string' },
             kind: { type: 'string', enum: ['appliance', 'scenery'] },
             category: { type: 'string', enum: [...APPLIANCE_CATEGORIES] },
             scenery: { type: 'string', enum: [...SCENERY_TYPES] },
@@ -227,6 +230,14 @@ function classify(
   return { kind: 'appliance', category };
 }
 
+/** `label_fr` / `label_mg` from the model → `labels`, or undefined when neither is usable. */
+function translatedLabels(obj: Record<string, unknown>): ApplianceDetection['labels'] {
+  const pick = (v: unknown) => (typeof v === 'string' ? v.trim().slice(0, 40) : '') || undefined;
+  const fr = pick(obj.label_fr);
+  const mg = pick(obj.label_mg);
+  return fr || mg ? { ...(fr ? { fr } : {}), ...(mg ? { mg } : {}) } : undefined;
+}
+
 /** Appliance or scenery for a free label (operator hint, PV-T8): same rules as a model object. */
 export function classifyLabel(label: string) {
   return classify({ label });
@@ -264,7 +275,13 @@ export function parseDetections(content: string): ApplianceDetection[] {
     const label =
       (typeof obj.label === 'string' ? obj.label.trim().slice(0, 40) : '') || fallbackLabel;
     const confidence = toConfidence(obj.confidence);
-    const base = { label, box, ...(confidence !== undefined ? { confidence } : {}) };
+    const labels = translatedLabels(obj);
+    const base = {
+      label,
+      ...(labels ? { labels } : {}),
+      box,
+      ...(confidence !== undefined ? { confidence } : {}),
+    };
     if (c.kind === 'appliance') appliances.push({ ...base, category: c.category });
     else scenery.push({ ...base, kind: 'scenery', category: 'other', scenery: c.scenery });
   }

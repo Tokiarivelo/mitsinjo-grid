@@ -35,7 +35,15 @@ export type SceneryType = z.infer<typeof SceneryTypeSchema>;
  */
 export const ApplianceDetectionSchema = z.object({
   id: z.string().min(1),
+  /** English name from the model (also SAM's text prompt), or the operator's own text. */
   label: z.string().min(1).max(40),
+  /** Same name in French / Malagasy when the model gave it; the page shows the one for its language. */
+  labels: z
+    .object({
+      fr: z.string().min(1).max(40).optional(),
+      mg: z.string().min(1).max(40).optional(),
+    })
+    .optional(),
   kind: z.enum(['appliance', 'scenery']).optional(),
   category: ApplianceCategorySchema,
   scenery: SceneryTypeSchema.optional(),
@@ -107,6 +115,14 @@ export function polygonBounds(points: ReadonlyArray<readonly [number, number]>):
   const x = Math.min(...xs);
   const y = Math.min(...ys);
   return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+}
+
+/** Name to show in `locale` (`en`, `fr`, `mg`): the translated label when present, else `label`. */
+export function localLabel(
+  d: Pick<ApplianceDetection, 'label' | 'labels'>,
+  locale: string
+): string {
+  return (locale === 'fr' || locale === 'mg' ? d.labels?.[locale] : undefined) ?? d.label;
 }
 
 /** True when the object can carry an electrical load (an appliance). */

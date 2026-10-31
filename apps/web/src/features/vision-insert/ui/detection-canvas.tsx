@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { boxPath, isAppliance, MAX_REGIONS, type ApplianceDetection } from '@/lib/vision';
 import type { VisionStatus } from '../hooks/use-vision-detection';
 import { categoryHint } from '../utils/labels';
-import { useObjectName } from '../hooks/use-object-name';
+import { useDetectionLabel, useObjectName } from '../hooks/use-object-name';
 import { useEdgeMap } from '../hooks/use-edge-map';
 import { useShapeEditor } from '../hooks/use-shape-editor';
 import type { DrawnShape, DrawTool } from '../utils/shapes';
@@ -88,7 +88,8 @@ export function DetectionCanvas({
     if (onSendShapes?.(editor.shapes, t('drawnObject'))) stopDrawing();
   };
   const objectName = useObjectName();
-  const hint = (d: ApplianceDetection) => categoryHint(d.label, objectName(d));
+  const nameOf = useDetectionLabel();
+  const hint = (d: ApplianceDetection) => categoryHint(nameOf(d), objectName(d));
 
   return (
     <div className="flex flex-col gap-3">
@@ -160,7 +161,7 @@ export function DetectionCanvas({
               transform: active.box.y > 0.08 ? 'translateY(-110%)' : 'translateY(4px)',
             }}
           >
-            {hint(active) ? `${active.label} · ${hint(active)}` : active.label}
+            {hint(active) ? `${nameOf(active)} · ${hint(active)}` : nameOf(active)}
           </span>
         )}
         {drawing && <DrawOverlay editor={editor} tool={tool} />}
@@ -264,7 +265,7 @@ export function DetectionCanvas({
                         : 'border-border bg-surface text-text-primary hover:bg-surface-hover'
                     )}
                   >
-                    <span className="min-w-0 truncate font-medium">{d.label}</span>
+                    <span className="min-w-0 truncate font-medium">{nameOf(d)}</span>
                     <span className="flex shrink-0 items-center gap-1.5 text-xs text-text-secondary">
                       {hint(d)}
                       {identifyingIds.includes(d.id) && (
@@ -289,7 +290,7 @@ export function DetectionCanvas({
                     <button
                       type="button"
                       onClick={() => onRemoveManual(d.id)}
-                      aria-label={t('removeManual', { label: d.label })}
+                      aria-label={t('removeManual', { label: nameOf(d) })}
                       className="flex w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-muted hover:bg-surface-hover hover:text-critical-red cursor-pointer"
                     >
                       <Trash2 className="h-4 w-4" aria-hidden="true" />

@@ -16,3 +16,4 @@ export * from './utils/shapes';
 export { buildEdgeMap, snapToEdge, type EdgeMap } from './utils/edge-map';
 export { prepareVisionImage } from './utils/prepare-image';
 export { categoryHint } from './utils/labels';
+export { useObjectName, useDetectionLabel } from './hooks/use-object-name';

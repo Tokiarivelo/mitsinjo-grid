@@ -64,6 +64,7 @@ export const MOCK_DETECTIONS: ApplianceDetection[] = [
   {
     id: 'det-1',
     label: 'Fridge',
+    labels: { fr: 'Réfrigérateur', mg: 'Vata fampangatsiahana' },
     category: 'fridge',
     confidence: 0.9,
     box: { x: 0.06, y: 0.22, w: 0.2, h: 0.66 },
@@ -71,6 +72,7 @@ export const MOCK_DETECTIONS: ApplianceDetection[] = [
   {
     id: 'det-2',
     label: 'Television',
+    labels: { fr: 'Télévision', mg: 'Fahitalavitra' },
     category: 'tv',
     confidence: 0.85,
     box: { x: 0.42, y: 0.3, w: 0.26, h: 0.24 },
@@ -78,6 +80,7 @@ export const MOCK_DETECTIONS: ApplianceDetection[] = [
   {
     id: 'det-3',
     label: 'Ceiling lamp',
+    labels: { fr: 'Plafonnier', mg: 'Jiro mihantona' },
     category: 'lamp',
     confidence: 0.8,
     box: { x: 0.5, y: 0.02, w: 0.08, h: 0.1 },
@@ -85,6 +88,7 @@ export const MOCK_DETECTIONS: ApplianceDetection[] = [
   {
     id: 'det-4',
     label: 'Standing fan',
+    labels: { fr: 'Ventilateur sur pied', mg: 'Fivelezana mijoro' },
     category: 'fan',
     confidence: 0.75,
     box: { x: 0.76, y: 0.38, w: 0.16, h: 0.5 },
@@ -92,6 +96,7 @@ export const MOCK_DETECTIONS: ApplianceDetection[] = [
   {
     id: 'det-5',
     label: 'Phone charger',
+    labels: { fr: 'Chargeur de téléphone', mg: 'Fiampangana finday' },
     category: 'phone_charger',
     confidence: 0.6,
     box: { x: 0.44, y: 0.62, w: 0.06, h: 0.06 },

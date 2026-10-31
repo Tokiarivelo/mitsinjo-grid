@@ -495,6 +495,8 @@ drops later slider edits (it restores the whole input). Session GET adds `summar
 (`hostVisionImage`) and Muse + SAM get the link (`VisionImage {url, inlineUrl?}`); Meta failure → one retry inline (base64).
 R2 off or mock mode: base64 only, nothing stored. Mock: `MOCK_DETECTIONS`, drawn in `public/samples/vision-room.jpg`.
 Shared Zod (client + server): `@/lib/vision` (`NormBoxSchema`, `ApplianceDetectionSchema`, `VisionDetectionsEventSchema`).
+`ApplianceDetection.label` = English name from the model (also SAM's text prompt) or the operator's text; `labels?: { fr?, mg? }` =
+same name translated by the model in the same call; the page shows `localLabel(d, locale)` (switching language needs no new call).
 `ApplianceDetection` adds `kind?: 'appliance'|'scenery'` (absent = appliance) and `scenery?: 'building'|'vehicle'|'tree'|'plant'|'person'|'animal'|'water'|'other'`;
 scenery is outlined and selectable but has no load (`category: 'other'`, never inserted). Appliances come first in the list.
 `manual?: true` = object the operator drew (PV-T8), listed after the AI ones, ≤ 30 per photo. Multipart field `regions?` =
