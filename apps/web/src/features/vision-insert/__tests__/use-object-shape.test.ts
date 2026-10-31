@@ -68,6 +68,32 @@ describe('useObjectShape (PV-T9)', () => {
     }
   });
 
+  it('keeps answers per object until clear(); offline silhouettes are retried', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify(recipeShape)));
+    const { result } = renderHook(() => useObjectShape());
+    await act(() => result.current.requestShape('data:image/png;base64,AA', target));
+    fetchMock.mockImplementation(async () => new Response(JSON.stringify(recipeShape)));
+    await act(() => result.current.requestShape('data:image/png;base64,AA', target));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.shape).toEqual(recipeShape);
+    // A renamed object (manual shape identified) is a new request.
+    await act(() =>
+      result.current.requestShape('data:image/png;base64,AA', { ...target, label: 'Freezer' })
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    act(() => result.current.clear());
+    expect(result.current.status).toBe('idle');
+    await act(() => result.current.requestShape('data:image/png;base64,AA', target));
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    const other = { ...target, id: 'det-2' };
+    fetchMock.mockRejectedValueOnce(new Error('offline'));
+    await act(() => result.current.requestShape('data:image/png;base64,AA', other));
+    expect(result.current.shape?.mode).toBe('silhouette');
+    await act(() => result.current.requestShape('data:image/png;base64,AA', other));
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
+
   it('reset goes back to idle', async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify(recipeShape)));
     const { result } = renderHook(() => useObjectShape());

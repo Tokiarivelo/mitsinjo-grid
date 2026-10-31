@@ -513,7 +513,8 @@ kind / category / box; drawn outline kept until SAM sends one. Failure → `iden
 size: [x,y,z] (0.01–1), axis?: 'x'|'y'|'z', color: '#rrggbb', front?: true }[] (1–12) }`: object centred, x right, y up, z to the camera,
 in fractions of its own size. Shared Zod + `recipeIssue`, `frontPartIndex`, `silhouetteRings` in `@/lib/object-shape`; no power value.
 Client: `useObjectShape().requestShape(photo, target, sessionId?)` → `{ status: 'idle'|'loading'|'ready', shape? }`; a network or
-HTTP failure also ends in `silhouette` (`reason: 'provider_error'`), never an error state. Nothing is stored (crop sent inline).
+HTTP failure also ends in `silhouette` (`reason: 'provider_error'`), never an error state. Answers kept per `shapeKey` (id, label,
+category) until `clear()` (new photo); offline silhouettes are not kept. Viewer geometry: `features/vision-insert/utils/object-geometry.ts`. Nothing is stored (crop sent inline).
 SSE parsing for every client stream: `@/lib/sse` (`parseSseChunk`, `readSseStream`).
 
 Model-switch tools (Zod in `server/copilot/model-tools.ts`, results go back to the model):

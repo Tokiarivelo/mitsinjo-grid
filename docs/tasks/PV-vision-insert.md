@@ -98,9 +98,12 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
       unreadable or poor recipe (`recipeIssue`) → `silhouette` mode (SAM outline, else box, extruded in the browser).
       Hook `useObjectShape` (network failure → silhouette too). **Done when** tests cover recipe, each fallback and the
       mock recipes; no error is ever shown. _(Nothing stored: no GLB, crop sent inline.)_
-- [ ] **PV-T10** `object-editor-3d.tsx`: R3F viewer (orbit, auto-fit, lazy-loaded) of the `useObjectShape` result:
+- [x] **PV-T10** `object-editor-3d.tsx`: R3F viewer (orbit, auto-fit, lazy-loaded) of the `useObjectShape` result:
       recipe parts merged (reuse `merge-parts` / scene palette) with the photo on the `frontPartIndex` part's front face
       (texture offset/repeat = detection box), or the `silhouetteRings` extrusion (depth per category) with the photo on the front.
+      _(Done: UVs point into the whole photo instead of offset/repeat; one merged vertex-coloured mesh + one photo mesh (2 draw
+      calls, < 15 k triangles); `ObjectShapePanel` in the /village aside, appliances only, one Spark call per object per photo.
+      Chat dialog keeps detection only. Screens 1440 + 390, dark + light checked.)_
       **Done when** both modes render in dark/light, 1440 and 390 px, within `docs/performance.md` budgets.
 - [ ] **PV-T11** Edit panel: name, category, sector, watts (catalog bounds), quantity, usage hours preview
       (engine curve, chart), scale/color (visual only). Copilot tool `edit_appliance` proposes the same

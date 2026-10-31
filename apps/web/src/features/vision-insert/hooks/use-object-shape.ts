@@ -21,22 +21,35 @@ const offlineSilhouette = (detectionId: string): ObjectShape => ({
   model: 'none',
 });
 
+/** Same object again (id, name, category) → same shape: a reselect costs no Spark call. */
+export const shapeKey = (t: Pick<ShapeTarget, 'id' | 'label' | 'category'>) =>
+  `${t.id}|${t.label}|${t.category}`;
+
 /**
  * 3D shape of the selected object (PV-T9): asks `/api/vision/shape` for a Spark recipe; any failure ends
- * in `silhouette` mode (never an error state). A new request cancels the previous one.
+ * in `silhouette` mode (never an error state). A new request cancels the previous one. Answers are kept
+ * per object until `clear()` (new photo); an offline silhouette is not kept, so a later reselect retries.
  */
 export function useObjectShape() {
   const [state, setState] = useState<ObjectShapeState>(IDLE);
   const abortRef = useRef<AbortController | null>(null);
+  const cacheRef = useRef(new Map<string, ObjectShape>());
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
   const requestShape = useCallback(
     async (imageDataUrl: string, target: ShapeTarget, sessionId?: string) => {
       abortRef.current?.abort();
+      const key = shapeKey(target);
+      const cached = cacheRef.current.get(key);
+      if (cached) {
+        setState({ status: 'ready', shape: cached });
+        return;
+      }
       const controller = new AbortController();
       abortRef.current = controller;
       setState({ status: 'loading' });
+      let offline = false;
       let shape: ObjectShape;
       try {
         const form = new FormData();
@@ -57,11 +70,14 @@ export function useObjectShape() {
           signal: controller.signal,
         });
         const parsed = res.ok ? ObjectShapeSchema.safeParse(await res.json()) : null;
+        offline = !parsed?.success;
         shape = parsed?.success ? parsed.data : offlineSilhouette(target.id);
       } catch {
+        offline = true;
         shape = offlineSilhouette(target.id);
       }
       if (controller.signal.aborted) return;
+      if (!offline) cacheRef.current.set(key, shape);
       setState({ status: 'ready', shape });
     },
     []
@@ -72,5 +88,12 @@ export function useObjectShape() {
     setState(IDLE);
   }, []);
 
-  return { ...state, requestShape, reset };
+  /** New photo: forget every kept shape (ids repeat across photos). */
+  const clear = useCallback(() => {
+    cacheRef.current.clear();
+    abortRef.current?.abort();
+    setState(IDLE);
+  }, []);
+
+  return { ...state, requestShape, reset, clear };
 }

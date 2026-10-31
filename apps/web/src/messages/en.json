@@ -765,7 +765,15 @@
       "shapesLimit": "Shape limit reached for this send.",
       "identifying": "Identifying…",
       "identifyError": "The drawn objects could not be identified: they keep your text.",
-      "drawnObject": "Drawn object"
+      "drawnObject": "Drawn object",
+      "model3dTitle": "3D model",
+      "model3dLoading": "Building the 3D model…",
+      "model3dAi": "AI shape",
+      "model3dOutline": "Outline shape",
+      "model3dOutlineNote": "The AI shape was not usable: built from the object's outline.",
+      "model3dHint": "Drag to turn · pinch or scroll to zoom",
+      "model3dNoWebgl": "The 3D view needs WebGL. The photo stays the reference.",
+      "model3dCanvas": "3D model of {label}"
     }
   },
   "copilot": {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { ImagePlus, ScanSearch, Sparkles } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { GridSchematicPreview } from '@/features/overview';
@@ -8,8 +8,12 @@ import { selectActiveResult, selectInput, selectTimeIndex, useSimulationStore } 
 import { readAsDataUrl } from '@/lib/files';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { isAppliance } from '@/lib/vision';
+import { useDetectionLabel } from '../hooks/use-object-name';
+import { shapeKey, useObjectShape } from '../hooks/use-object-shape';
 import { useVisionSession } from '../hooks/use-vision-session';
 import { DetectionCanvas } from './detection-canvas';
+import { ObjectShapePanel } from './object-shape-panel';
 import { SelectedAppliance } from './selected-appliance';
 
 /** Photos the vision route accepts. */
@@ -18,7 +22,8 @@ export const SAMPLE_ROOM_URL = '/samples/vision-room.jpg';
 
 /**
  * /village — Village editor (PV): add a photo, see the objects found, pick one, next to the current village.
- * 3D editing and « Insert into simulation » come in V4.
+ * The selected appliance gets its 3D model (PV-T10: Spark recipe or outline fallback, once per object).
+ * Editing and « Insert into simulation » come next (PV-T11, T12).
  */
 export function VillageEditorPage() {
   const t = useTranslations('features.visionInsert');
@@ -32,6 +37,28 @@ export function VillageEditorPage() {
   const result = useSimulationStore(selectActiveResult);
   const timeIndex = useSimulationStore(selectTimeIndex);
   const setTimeIndex = useSimulationStore((s) => s.setTimeIndex);
+  const nameOf = useDetectionLabel();
+  const { requestShape, reset: resetShape, clear: clearShapes, ...objectShape } = useObjectShape();
+  const selected = vision.selected;
+  // Appliances only (scenery is never inserted), once the vision model has named a drawn shape.
+  const shapeTarget =
+    selected && isAppliance(selected) && !vision.identifyingIds.includes(selected.id)
+      ? selected
+      : null;
+  const targetKey = shapeTarget ? shapeKey(shapeTarget) : null;
+
+  // New photo: object ids start again, so kept shapes no longer apply.
+  useEffect(() => clearShapes(), [imageUrl, clearShapes]);
+  useEffect(() => {
+    if (!imageUrl || !shapeTarget) {
+      resetShape();
+      return;
+    }
+    const { id, label, category, box } = shapeTarget;
+    void requestShape(imageUrl, { id, label, category, box });
+    // Keyed on the object (id, name, category): a SAM box refinement does not pay for a new recipe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageUrl, targetKey, requestShape, resetShape]);
 
   const pickPhoto = async (file: Blob) => {
     if (!PHOTO_TYPES.includes(file.type)) {
@@ -166,6 +193,14 @@ export function VillageEditorPage() {
               <div aria-live="polite">
                 <SelectedAppliance selected={vision.selected} />
               </div>
+              {shapeTarget && (
+                <ObjectShapePanel
+                  {...objectShape}
+                  detection={shapeTarget}
+                  label={nameOf(shapeTarget)}
+                  imageUrl={imageUrl}
+                />
+              )}
               <p className="flex items-start gap-1.5 text-xs text-text-muted">
                 <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-ai-violet" aria-hidden="true" />
                 {t('nextStepNote')}

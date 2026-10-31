@@ -765,7 +765,15 @@
       "shapesLimit": "Tratra ny isan'ny endrika azo alefa indray mandeha.",
       "identifying": "Fantarina…",
       "identifyError": "Tsy fantatra ireo zavatra voasoritra: mitazona ny soratrao izy ireo.",
-      "drawnObject": "Zavatra voasoritra"
+      "drawnObject": "Zavatra voasoritra",
+      "model3dTitle": "Modely 3D",
+      "model3dLoading": "Manamboatra ny modely 3D…",
+      "model3dAi": "Endrika AI",
+      "model3dOutline": "Endrika avy amin'ny sisiny",
+      "model3dOutlineNote": "Tsy azo nampiasaina ny endrika AI: namboarina avy amin'ny sisin'ilay zavatra.",
+      "model3dHint": "Sintony hanodinana · tsindrio na ahodino hanalehibe",
+      "model3dNoWebgl": "Mila WebGL ny fijery 3D. Ny sary no mijanona ho fanondroana.",
+      "model3dCanvas": "Modely 3D an'ny {label}"
     }
   },
   "copilot": {

@@ -12,7 +12,25 @@ import { SAMPLE_ROOM_URL, VillageEditorPage } from '../index';
 const detections = [
   { id: 'det-1', label: 'Fridge', category: 'fridge', box: { x: 0.1, y: 0.1, w: 0.2, h: 0.5 } },
   { id: 'det-2', label: 'Samsung TV', category: 'tv', box: { x: 0.5, y: 0.3, w: 0.2, h: 0.2 } },
+  {
+    id: 'det-3',
+    label: 'Stone house',
+    kind: 'scenery',
+    scenery: 'building',
+    category: 'other',
+    box: { x: 0.7, y: 0.1, w: 0.2, h: 0.2 },
+  },
 ];
+const shapeReply = {
+  detectionId: 'det-2',
+  mode: 'recipe',
+  recipe: {
+    proportions: { w: 1, h: 0.6, d: 0.1 },
+    parts: [{ shape: 'box', at: [0, 0, 0], size: [1, 1, 1], color: '#222222', front: true }],
+  },
+  source: 'mock',
+  model: 'mock-perception-v1',
+};
 const sseBody = `event: vision_detections\ndata: ${JSON.stringify({ phase: 'boxes', detections, source: 'mock', model: 'm' })}\n\nevent: done\ndata: {}\n\n`;
 
 const originalFetch = global.fetch;
@@ -22,7 +40,9 @@ beforeEach(() => {
     url === SAMPLE_ROOM_URL
       ? // jsdom's FileReader only reads its own Blob, not Node's Response.blob().
         ({ blob: async () => new Blob([new Uint8Array(8)], { type: 'image/jpeg' }) } as Response)
-      : new Response(sseBody, { headers: { 'Content-Type': 'text/event-stream' } })
+      : url === '/api/vision/shape'
+        ? new Response(JSON.stringify(shapeReply))
+        : new Response(sseBody, { headers: { 'Content-Type': 'text/event-stream' } })
   );
   global.fetch = fetchMock as unknown as typeof fetch;
 });
@@ -67,5 +87,36 @@ describe('VillageEditorPage (/village)', () => {
     fireEvent.click(tv);
     expect(screen.getByText('Selected: Samsung TV (Television)')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Change photo' })).toBeTruthy();
+  });
+
+  it('builds the 3D model of a selected appliance once, never for scenery (PV-T10)', async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Use the sample room' }));
+    const tv = await screen.findByRole('button', { name: /Samsung TV/ }, { timeout: 5000 });
+    fireEvent.click(tv);
+    expect(screen.getByText('3D model')).toBeTruthy();
+    // jsdom has no WebGL: the badge still says how the shape was made, the photo stays the reference.
+    expect(await screen.findByText('AI shape')).toBeTruthy();
+    expect(
+      screen.getByText('The 3D view needs WebGL. The photo stays the reference.')
+    ).toBeTruthy();
+    const shapeCalls = () => fetchMock.mock.calls.filter((c) => c[0] === '/api/vision/shape');
+    expect(shapeCalls()).toHaveLength(1);
+    const target = JSON.parse(
+      (shapeCalls()[0]![1] as RequestInit & { body: FormData }).body.get('target') as string
+    );
+    expect(target).toEqual({
+      id: 'det-2',
+      label: 'Samsung TV',
+      category: 'tv',
+      box: detections[1]!.box,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Stone house/ }));
+    expect(screen.queryByText('3D model')).toBeNull();
+    // Back to the TV: kept shape, no new Spark call.
+    fireEvent.click(screen.getByRole('button', { name: /Samsung TV/ }));
+    expect(await screen.findByText('AI shape')).toBeTruthy();
+    expect(shapeCalls()).toHaveLength(1);
   });
 });
