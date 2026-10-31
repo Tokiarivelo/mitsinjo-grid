@@ -116,13 +116,13 @@ flowchart TD
 
 ## 5. Visual Tour
 
-| Screen                              | Description                                                                                                                                           | Mockup / Screenshot                                                      |
-| :---------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------- |
-| **Overview** (`/overview`)          | Executive health dashboard, current KPI summary cards, quick scenario links, and 24h battery/solar graph.                                             | [`design/stitch/overview.png`](design/stitch/overview.png)               |
-| **Live Simulation** (`/simulation`) | 24-hour simulation runner with interactive sliders, 3D village digital twin, hourly telemetry table, and timeline scrubber.                           | [`design/stitch/live-simulation.png`](design/stitch/live-simulation.png) |
-| **Strategy Lab** (`/strategies`)    | Side-by-side comparison matrix of Proportional vs. Essential-First vs. Balanced strategies with delta highlights and decision summaries.              | [`design/stitch/strategy-lab.png`](design/stitch/strategy-lab.png)       |
-| **AI Copilot** (`/copilot`)         | Streaming conversational copilot with 4-part structured reasoning, verifiable simulation IDs, and interactive one-click proposal cards.               | [`design/stitch/copilot.png`](design/stitch/copilot.png)                 |
-| **Scenarios** (`/scenarios`)        | Scenario library featuring pre-tuned community benchmarks: Baseline, Cloudy Afternoon, High Evening Demand, Battery Constraint, and Essential Stress. | [`design/stitch/scenarios.png`](design/stitch/scenarios.png)             |
+| Screen                              | Description                                                                                                                                                        | Mockup / Screenshot                                                      |
+| :---------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------- |
+| **Overview** (`/overview`)          | Incident screen: is the clinic at risk today, engine-computed impact (outage hour, hours, kWh), one CTA to the copilot, and essential coverage rings per strategy. | [`design/stitch/overview.png`](design/stitch/overview.png)               |
+| **Live Simulation** (`/simulation`) | 24-hour simulation runner with interactive sliders, 3D village digital twin, hourly telemetry table, and timeline scrubber.                                        | [`design/stitch/live-simulation.png`](design/stitch/live-simulation.png) |
+| **Strategy Lab** (`/strategies`)    | Side-by-side comparison matrix of Proportional vs. Essential-First vs. Balanced strategies with delta highlights and decision summaries.                           | [`design/stitch/strategy-lab.png`](design/stitch/strategy-lab.png)       |
+| **AI Copilot** (`/copilot`)         | Streaming conversational copilot with 4-part structured reasoning, verifiable simulation IDs, and interactive one-click proposal cards.                            | [`design/stitch/copilot.png`](design/stitch/copilot.png)                 |
+| **Scenarios** (`/scenarios`)        | Scenario library featuring pre-tuned community benchmarks: Baseline, Cloudy Afternoon, High Evening Demand, Battery Constraint, and Essential Stress.              | [`design/stitch/scenarios.png`](design/stitch/scenarios.png)             |
 
 ---
 

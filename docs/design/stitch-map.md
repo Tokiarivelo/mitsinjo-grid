@@ -3,15 +3,15 @@
 Mockups are exported **once** to `design/stitch/` (committed) so agents read a local PNG (~1–2k tokens)
 instead of calling the Stitch MCP every time. Use the MCP only to generate, refresh or export.
 
-| Surface         | Route / scope         | Spec                       | Stitch screen id                 | Export                                          | Status   |
-| --------------- | --------------------- | -------------------------- | -------------------------------- | ----------------------------------------------- | -------- |
-| Live Simulation | /simulation           | screens/live-simulation.md | 2cf782dffaed4ee69a889c7f4cbcb003 | `design/stitch/live-simulation.png` (+ `.html`) | exported |
-| Overview        | /overview             | screens/overview.md        | 060970653b394197a26b4e4997703260 | `design/stitch/overview.png` (+ `.html`)        | checked  |
-| Strategy Lab    | /strategies           | screens/strategy-lab.md    | bfbfa25691fe45f2b5af82216ceb242c | `design/stitch/strategy-lab.png` (+ `.html`)    | checked  |
-| AI Copilot      | /copilot + side panel | screens/copilot.md         | b5ff63b413004edca491b83aadfe9f08 | `design/stitch/copilot.png` (+ `.html`)         | checked  |
-| Scenarios       | /scenarios            | screens/scenarios.md       | d0c1f73e58cb428989306f98803e2a11 | `design/stitch/scenarios.png` (+ `.html`)       | checked  |
-| App shell       | sidebar/header/panel  | shell.md                   | (from any screen)                | crop of `live-simulation.png`                   | exported |
-| UI kit          | components/ui         | components.md              | —                                | none (derive from screens)                      | —        |
+| Surface         | Route / scope         | Spec                       | Stitch screen id                 | Export                                          | Status                         |
+| --------------- | --------------------- | -------------------------- | -------------------------------- | ----------------------------------------------- | ------------------------------ |
+| Live Simulation | /simulation           | screens/live-simulation.md | 2cf782dffaed4ee69a889c7f4cbcb003 | `design/stitch/live-simulation.png` (+ `.html`) | exported                       |
+| Overview        | /overview             | screens/overview.md        | 060970653b394197a26b4e4997703260 | `design/stitch/overview.png` (+ `.html`)        | checked (built without mockup) |
+| Strategy Lab    | /strategies           | screens/strategy-lab.md    | bfbfa25691fe45f2b5af82216ceb242c | `design/stitch/strategy-lab.png` (+ `.html`)    | checked                        |
+| AI Copilot      | /copilot + side panel | screens/copilot.md         | b5ff63b413004edca491b83aadfe9f08 | `design/stitch/copilot.png` (+ `.html`)         | checked                        |
+| Scenarios       | /scenarios            | screens/scenarios.md       | d0c1f73e58cb428989306f98803e2a11 | `design/stitch/scenarios.png` (+ `.html`)       | checked                        |
+| App shell       | sidebar/header/panel  | shell.md                   | (from any screen)                | crop of `live-simulation.png`                   | exported                       |
+| UI kit          | components/ui         | components.md              | —                                | none (derive from screens)                      | —                              |
 
 Stitch project id: `4259585850792174155` (Design System asset: `assets/d762353e27224da2a6e34c396b0f78df`).
 Status values: `not generated` · `generated` · `exported` · `implemented` · `checked` (passed /design-check).
@@ -36,6 +36,7 @@ Status values: `not generated` · `generated` · `exported` · `implemented` · 
 - Overview: no telemetry strip (temp, RH, DNI, sync, grid V) — engine has no such fields (precedence 1).
 - Overview: no AI optimization panel — AI text lives only in copilot components; a computed InsightCard is used instead.
 - Overview: 2-column Bento Command Center (col-span-7 Left / col-span-5 Right). Docked 4-stat Energy Balance summary strip sits directly beneath the 3D digital twin viewport; 24h telemetry chart underneath; right column hosts Service Allocation hierarchy and computed Scenario Impact / Copilot insights. No fake weather telemetry (precedence 1).
+- Overview 2026-10-30: rebuilt as an "Incident" screen, built without mockup (old export = dashboard). Hackathon rules list "dashboards as the main feature" as an anti-project: KPI cards, 24h chart and sector list removed; hero alert + impact tiles + strategy rings + twin. Gate-out 1440/390 dark/light ✓, no overflow.
 - Strategy Lab: decision summary sits above the cards (read before comparing) instead of bottom-right; no "Recommended" ribbon — the summary's "Use this strategy" action plays that role.
 - Live Simulation 3D: look follows `design/reference/Mitsinjo Grid_ Village at Sunset.png` (stylized low-poly, not photoreal; no in-scene text such as the "École" sign, i18n rule). Golden-hour light by day, night by night: the reference's permanent sunset would hide the time-of-day signal.
 - Strategy Lab: no fixed-inputs tile strip; scenario, PV and battery are one line under the title (values from `input`).

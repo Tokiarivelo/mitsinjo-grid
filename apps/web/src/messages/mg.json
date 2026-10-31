@@ -42,7 +42,7 @@
   "routes": {
     "overview": {
       "title": "Topimaso",
-      "subtitle": "Fandanjana angovo sy tranga miasa"
+      "subtitle": "Izay atahorana anio, sy ny fanapahan-kevitra manova izany."
     },
     "simulation": {
       "title": "Fandinihana mivantana",
@@ -764,10 +764,9 @@
     "hoursRange": "{from} - {to}"
   },
   "overview": {
-    "subtitle": "Fahatakarana ny fisian'ny herinaratra sy ny fiantraikany eo amin'ny fiaraha-monina.",
+    "subtitle": "Izay atahorana anio, sy ny fanapahan-kevitra manova izany.",
     "runSimulation": "Handefa ny simulation",
     "openLive": "Hanokatra ny simulation mivantana",
-    "simulating": "Manao simulation...",
     "solarPeak": "Herin'ny masoandro farany ambony",
     "solarAvg": "Herin'ny masoandro salanisa",
     "batterySoc": "Tahiry faran'ny bateria",
@@ -776,9 +775,6 @@
     "energyBalanceTitle": "Fandanjalanjana angovo 24 ora",
     "energyBalanceDesc": "Famokarana, fikorianan'ny tahiry ary angovo voazara",
     "serviceAllocationTitle": "Fizarana amin'ny tolotra fiaraha-monina",
-    "serviceAllocationDesc": "Fizarana herinaratra amin'ny sehatra 5 ao an-tanàna",
-    "scenarioImpactTitle": "Fiantraikan'ny toe-javatra & Fampitandremana",
-    "scenarioImpactDesc": "Fampitandremana voakajy sy tombana amin'ny tambajotra",
     "previewTitle": "Endrika nomerikan'ny tambajotra",
     "previewSubtitle": "Sary 2D/3D maneho ny famokarana, bateria sy tolotra",
     "view3d": "Fijery 3D",
@@ -789,16 +785,12 @@
     "batteryCaption": "SoC ambany indrindra: {min} · Azo ampiasaina: {kwh}",
     "solarCaption": "Famokarana 24 ora: {kwh}",
     "solarDeltaBaseline": "{delta} raha oharina amin'ny fototra",
-    "emptyTitle": "Mbola tsy misy valin'ny simulation",
     "emptyDesc": "Alefaso ny simulation mba hanisana ny fizarana herinaratra sy hijerena ny fahafaham-po.",
     "solarGen": "Totalin'ny famokarana masoandro",
     "batteryNet": "Tahirin'ny bateria (fiandohana → farany)",
     "servedEnergy": "Totalin'ny angovo voazara",
     "unservedTotal": "Totalin'ny angovo tsy voazara",
-    "energyOverTimeTitle": "Angovo araka ny fotoana (24 ora)",
-    "energyOverTimeSubtitle": "Famokarana masoandro, fitakiana, angovo voazara ary tahirin'ny bateria",
     "energyOverTimeSummary": "Fivoaran'ny famokarana masoandro, fitakiana manontolo, angovo voazara amin'ny kW ary tahirin'ny bateria mandritra ny 24 ora.",
-    "clinicWarningInsight": "Miantraika amin'ny tolotra fototra ao amin'ny tobim-pahasalamana ny fizarana mitovy lenta. Mifindrà amin'ny Laharam-pahamehana fototra ao amin'ny Labo Paikady mba hiarovana ny aina.",
     "schematicBadge": "SARY 2D",
     "chartTitle": "Famokarana sy Filàna 24h",
     "chartSubtitle": "Masoandro PV, filàna manontolo, herinaratra voazara ary SoC bateria",
@@ -810,12 +802,41 @@
     "phasePeak": "12:00 Masoandro mitataovovonana",
     "phaseEvening": "19:00 Hariva be mpampiasa",
     "phaseNight": "23:00 Alina",
-    "sheddingProtocolTitle": "Fomba fanapahan-jiro mandeha hoazy",
-    "sheddingProtocolDesc": "Manapaka voalohany ny tsenan'ny tanàna sy ny sekoly fototra rehefa latsaky ny 20% ny bateria, mba hiarovana ny vata fampangatsiahana fitsaboana.",
-    "compareStrategiesCta": "Ampitahao ao amin'ny Strategy Lab",
     "nodeMitsinjoBus": "KASARY: MITSINJO_BUS",
     "nodeCoordinates": "LAT -19.12° | LON 48.23°",
-    "viewModeLabel": "Fomba fijery"
+    "viewModeLabel": "Fomba fijery",
+    "incident": {
+      "pill": {
+        "empty": "Vonona hanao simulation",
+        "risk": "Olana · tolotra ilaina indrindra",
+        "safe": "Milamina ny zava-drehetra"
+      },
+      "title": {
+        "empty": "Inona no mitranga rehefa mihena ny masoandro?",
+        "safe": "Mbola misy herinaratra ny tolotra ilaina rehetra."
+      },
+      "riskTitle": "Maty jiro ny toeram-pitsaboana sy ny paompy rano amin’ny {hour}.",
+      "riskDesc": "Amin’ny {strategy}, tsy ampy {kwh} ny angovo ilaina amin’ity andro simulation ity. Fanapahan-kevitra iray monja no afaka manova izany.",
+      "safeDesc": "Amin’ny {strategy}, manana herinaratra tontolo andro ny toeram-pitsaboana sy ny paompy rano. Andramo ny fiovan’ny toetrandro mba hahitana izay atahorana.",
+      "emptyDesc": "Ataovy simulation ny andro iray ao an-tanàna ary jereo izay mitazona herinaratra rehefa lany ny bateria.",
+      "stats": {
+        "start": "Fiandohan’ny fahatapahana",
+        "hours": "Ora tsy misy herinaratra ilaina",
+        "missing": "Angovo ilaina tsy ampy",
+        "coverage": "Fandrakofana ilaina"
+      },
+      "hoursValue": "{hours} ora",
+      "askCopilot": "Anontanio ny copilote hoe nahoana",
+      "askCopilotSafe": "Anontanio ny copilote",
+      "showAt": "Jereo ny tanàna amin’ny {hour}",
+      "solarDrop": "Simulation fihenan’ny masoandro (−40%)",
+      "run": "Alefa ny simulation",
+      "ringsTitle": "Andro iray ihany, fanapahan-kevitra hafa",
+      "ringsDesc": "Ampahany amin’ny filan’ny toeram-pitsaboana sy ny rano omen’ny paikady tsirairay. Toetrandro mitovy, bateria mitovy: kajian’ny motera.",
+      "ringLabel": "Fandrakofana ilaina amin’ny {strategy}",
+      "ringCaption": "filana ilaina voavaly",
+      "ringHours": "{hours} ora tsy misy herinaratra"
+    }
   },
   "strategies": {
     "subtitle": "Fampitahana mifanila ny fomba fizarana herinaratra amin'ny toe-javatra mitovy",

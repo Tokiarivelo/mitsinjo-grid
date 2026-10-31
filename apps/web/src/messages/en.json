@@ -42,7 +42,7 @@
   "routes": {
     "overview": {
       "title": "Overview",
-      "subtitle": "System balance, critical metrics and active scenario"
+      "subtitle": "What is at stake today, and the decision that changes it."
     },
     "simulation": {
       "title": "Live Simulation",
@@ -764,10 +764,9 @@
     "hoursRange": "{from} - {to}"
   },
   "overview": {
-    "subtitle": "Understand energy availability and community impact.",
+    "subtitle": "What is at stake today, and the decision that changes it.",
     "runSimulation": "Run simulation",
     "openLive": "Open live simulation",
-    "simulating": "Simulating...",
     "solarPeak": "Peak Solar PV",
     "solarAvg": "Avg Solar PV",
     "batterySoc": "Battery End SoC",
@@ -776,9 +775,6 @@
     "energyBalanceTitle": "24h Energy Balance",
     "energyBalanceDesc": "Cumulative generation, storage flows, and served energy",
     "serviceAllocationTitle": "Community Service Allocation",
-    "serviceAllocationDesc": "Energy coverage across 5 village sectors",
-    "scenarioImpactTitle": "Scenario Impact & Alerts",
-    "scenarioImpactDesc": "Computed alerts and grid health assessment",
     "previewTitle": "Village Grid Digital Twin",
     "previewSubtitle": "Schematic 2D/3D status of generation, battery, and sector nodes",
     "view3d": "3D Preview",
@@ -789,16 +785,12 @@
     "batteryCaption": "Min SoC: {min} · Usable: {kwh}",
     "solarCaption": "24h Generation: {kwh}",
     "solarDeltaBaseline": "{delta} vs baseline",
-    "emptyTitle": "No simulation results yet",
     "emptyDesc": "Run the simulation to calculate energy distribution and inspect community coverage.",
     "solarGen": "Total Solar Generation",
     "batteryNet": "Battery SoC (start → end)",
     "servedEnergy": "Total Served Energy",
     "unservedTotal": "Total Unserved Energy",
-    "energyOverTimeTitle": "Energy Over Time (24h)",
-    "energyOverTimeSubtitle": "Solar generation, demand, served power, and battery state of charge",
     "energyOverTimeSummary": "24-hour timeline of solar generation, total community demand, served energy in kW and battery state of charge percentage.",
-    "clinicWarningInsight": "Proportional shedding impacts essential health clinic services. Switch to Essential-First in Strategy Lab to preserve life-critical loads.",
     "schematicBadge": "2D SCHEMATIC",
     "chartTitle": "24h Generation vs Demand",
     "chartSubtitle": "Solar PV, total community demand, served power, and battery SoC",
@@ -810,12 +802,41 @@
     "phasePeak": "12:00 Solar Peak",
     "phaseEvening": "19:00 Evening Peak",
     "phaseNight": "23:00 Night",
-    "sheddingProtocolTitle": "Automated shedding protocol",
-    "sheddingProtocolDesc": "Microgrid prioritization isolates Village Market & Primary School when battery reserve drops below 20%, preserving healthcare cold chain and life-support lines.",
-    "compareStrategiesCta": "Compare Strategies in Strategy Lab",
     "nodeMitsinjoBus": "NODE: MITSINJO_BUS",
     "nodeCoordinates": "LAT -19.12° | LON 48.23°",
-    "viewModeLabel": "Preview mode"
+    "viewModeLabel": "Preview mode",
+    "incident": {
+      "pill": {
+        "empty": "Ready to simulate",
+        "risk": "Incident · essential services",
+        "safe": "All clear"
+      },
+      "title": {
+        "empty": "What happens when the sun drops?",
+        "safe": "Every essential service stays on."
+      },
+      "riskTitle": "The clinic and the water pump go dark at {hour}.",
+      "riskDesc": "With {strategy}, {kwh} of essential energy is missing on this simulated day. One decision can change that.",
+      "safeDesc": "With {strategy}, the clinic and the water pump are fully supplied all day. Try a weather shock to see what is at stake.",
+      "emptyDesc": "Simulate a day in the village and see who keeps power when the battery runs low.",
+      "stats": {
+        "start": "Outage starts",
+        "hours": "Hours without essential power",
+        "missing": "Essential energy missing",
+        "coverage": "Essential coverage"
+      },
+      "hoursValue": "{hours} h",
+      "askCopilot": "Ask the copilot why",
+      "askCopilotSafe": "Ask the copilot",
+      "showAt": "See the village at {hour}",
+      "solarDrop": "Simulate a solar drop (−40%)",
+      "run": "Run simulation",
+      "ringsTitle": "Same day, different decision",
+      "ringsDesc": "Share of clinic and water demand served by each strategy. Same weather, same battery: computed by the engine.",
+      "ringLabel": "Essential coverage with {strategy}",
+      "ringCaption": "essential needs met",
+      "ringHours": "{hours} h without power"
+    }
   },
   "strategies": {
     "subtitle": "Side-by-side comparison of allocation algorithms under identical conditions",

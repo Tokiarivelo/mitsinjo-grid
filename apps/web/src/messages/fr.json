@@ -42,7 +42,7 @@
   "routes": {
     "overview": {
       "title": "Aperçu",
-      "subtitle": "Bilan énergétique, indicateurs critiques et scénario actif"
+      "subtitle": "Ce qui est en jeu aujourd’hui, et la décision qui change tout."
     },
     "simulation": {
       "title": "Simulation en direct",
@@ -764,10 +764,9 @@
     "hoursRange": "{from} - {to}"
   },
   "overview": {
-    "subtitle": "Comprenez la disponibilité énergétique et l'impact communautaire.",
+    "subtitle": "Ce qui est en jeu aujourd’hui, et la décision qui change tout.",
     "runSimulation": "Lancer la simulation",
     "openLive": "Ouvrir la simulation en direct",
-    "simulating": "Simulation en cours...",
     "solarPeak": "Pic solaire PV",
     "solarAvg": "Moyenne solaire PV",
     "batterySoc": "Niveau final de batterie",
@@ -776,9 +775,6 @@
     "energyBalanceTitle": "Bilan énergétique 24h",
     "energyBalanceDesc": "Production cumulée, flux de stockage et énergie desservie",
     "serviceAllocationTitle": "Répartition des services communautaires",
-    "serviceAllocationDesc": "Couverture énergétique sur les 5 secteurs du village",
-    "scenarioImpactTitle": "Impact du scénario & Alertes",
-    "scenarioImpactDesc": "Alertes calculées et évaluation de la santé du réseau",
     "previewTitle": "Jumeau numérique du réseau",
     "previewSubtitle": "Statut schématique 2D/3D de la production, batterie et secteurs",
     "view3d": "Aperçu 3D",
@@ -789,16 +785,12 @@
     "batteryCaption": "SoC min : {min} · Utilisable : {kwh}",
     "solarCaption": "Production 24h : {kwh}",
     "solarDeltaBaseline": "{delta} vs référence",
-    "emptyTitle": "Aucun résultat de simulation pour le moment",
     "emptyDesc": "Lancez la simulation pour calculer la distribution d'énergie et inspecter la couverture communautaire.",
     "solarGen": "Production solaire totale",
     "batteryNet": "SoC batterie (début → fin)",
     "servedEnergy": "Énergie totale desservie",
     "unservedTotal": "Énergie totale non desservie",
-    "energyOverTimeTitle": "Énergie dans le temps (24h)",
-    "energyOverTimeSubtitle": "Production solaire, demande, énergie fournie et niveau de batterie",
     "energyOverTimeSummary": "Chronologie sur 24 heures de la production solaire, de la demande communautaire totale, de l'énergie fournie en kW et du pourcentage d'état de charge de la batterie.",
-    "clinicWarningInsight": "Le délestage proportionnel affecte les services essentiels du dispensaire. Basculez sur Priorité Essentielle dans le Labo Stratégies pour préserver les charges vitales.",
     "schematicBadge": "SCHÉMA 2D",
     "chartTitle": "Production vs Demande 24h",
     "chartSubtitle": "Solaire PV, demande communautaire totale, puissance fournie et SoC batterie",
@@ -810,12 +802,41 @@
     "phasePeak": "12:00 Pic solaire",
     "phaseEvening": "19:00 Pic du soir",
     "phaseNight": "23:00 Nuit",
-    "sheddingProtocolTitle": "Protocole de délestage automatisé",
-    "sheddingProtocolDesc": "La hiérarchisation isole le marché et l'école primaire dès que la réserve de batterie descend sous 20 %, préservant ainsi la chaîne du froid médicale.",
-    "compareStrategiesCta": "Comparer dans le laboratoire de stratégies",
     "nodeMitsinjoBus": "NŒUD : BUS_MITSINJO",
     "nodeCoordinates": "LAT -19.12° | LON 48.23°",
-    "viewModeLabel": "Mode d’aperçu"
+    "viewModeLabel": "Mode d’aperçu",
+    "incident": {
+      "pill": {
+        "empty": "Prêt à simuler",
+        "risk": "Incident · services essentiels",
+        "safe": "Tout va bien"
+      },
+      "title": {
+        "empty": "Que se passe-t-il quand le soleil baisse ?",
+        "safe": "Tous les services essentiels restent allumés."
+      },
+      "riskTitle": "Le centre de santé et la pompe à eau s’éteignent à {hour}.",
+      "riskDesc": "Avec {strategy}, il manque {kwh} d’énergie essentielle sur cette journée simulée. Une seule décision peut changer cela.",
+      "safeDesc": "Avec {strategy}, le centre de santé et la pompe à eau sont alimentés toute la journée. Simulez un choc météo pour voir ce qui est en jeu.",
+      "emptyDesc": "Simulez une journée au village et voyez qui garde le courant quand la batterie faiblit.",
+      "stats": {
+        "start": "Début de la coupure",
+        "hours": "Heures sans courant essentiel",
+        "missing": "Énergie essentielle manquante",
+        "coverage": "Couverture essentielle"
+      },
+      "hoursValue": "{hours} h",
+      "askCopilot": "Demander pourquoi au copilote",
+      "askCopilotSafe": "Demander au copilote",
+      "showAt": "Voir le village à {hour}",
+      "solarDrop": "Simuler une baisse solaire (−40 %)",
+      "run": "Lancer la simulation",
+      "ringsTitle": "Même journée, autre décision",
+      "ringsDesc": "Part des besoins du centre de santé et de l’eau servie par chaque stratégie. Même météo, même batterie : calculé par le moteur.",
+      "ringLabel": "Couverture essentielle avec {strategy}",
+      "ringCaption": "besoins essentiels couverts",
+      "ringHours": "{hours} h sans courant"
+    }
   },
   "strategies": {
     "subtitle": "Comparaison côte à côte des algorithmes d'allocation sous conditions identiques",
