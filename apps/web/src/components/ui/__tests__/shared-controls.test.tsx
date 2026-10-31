@@ -37,4 +37,18 @@ describe('ViewModeToggle', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Circuit' }));
     expect(onChange).toHaveBeenCalledWith('circuit');
   });
+
+  it('size md gives 44 px touch targets that share the width', () => {
+    render(
+      <ViewModeToggle options={options} value="3d" onChange={vi.fn()} label="View" size="md" />
+    );
+    const btn = screen.getByRole('button', { name: '3D' });
+    expect(btn.className).toContain('min-h-11');
+    expect(btn.className).toContain('flex-1');
+  });
+
+  it('size sm (default) keeps the compact look', () => {
+    render(<ViewModeToggle options={options} value="3d" onChange={vi.fn()} label="View" />);
+    expect(screen.getByRole('button', { name: '3D' }).className).not.toContain('min-h-11');
+  });
 });

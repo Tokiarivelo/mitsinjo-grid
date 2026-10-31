@@ -8,9 +8,7 @@ import {
   uploadBufferToR2,
   isR2Configured,
 } from '@/server/storage/r2';
-
-/** Chat media only: raster images and videos. SVG is excluded (it can carry scripts). */
-const MEDIA_CONTENT_TYPE = /^(image\/(png|jpe?g|webp|gif|avif)|video\/(mp4|webm|quicktime))$/i;
+import { MEDIA_CONTENT_TYPE, parseDataUrl } from '@/server/storage/media';
 
 /** Base64 data URLs above ~9 MB of binary are rejected. */
 const MAX_DATA_URL_CHARS = 12_000_000;
@@ -91,8 +89,8 @@ export async function POST(req: NextRequest) {
 
     // Action 2: Direct Base64 Data URL Upload (e.g. from Canvas sketch)
     if (data.action === 'upload_data_url') {
-      const match = data.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-      if (!match || !match[1] || !match[2]) {
+      const decoded = parseDataUrl(data.dataUrl);
+      if (!decoded) {
         // If not a data URL, return as-is
         return new Response(
           JSON.stringify({
@@ -106,12 +104,10 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const contentType = match[1];
+      const { contentType, buffer } = decoded;
       if (!MEDIA_CONTENT_TYPE.test(contentType)) {
         return jsonError('Unsupported media type', 415);
       }
-      const base64Data = match[2];
-      const buffer = Buffer.from(base64Data, 'base64');
       const filename = data.filename || `sketch-${Date.now()}.png`;
       const fileKey = `copilot/${Date.now()}-${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 

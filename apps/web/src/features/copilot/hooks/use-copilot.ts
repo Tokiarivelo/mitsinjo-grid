@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useSimulationStore } from '@/stores';
 import { useAppLocale } from '@/lib/i18n';
 import type {
@@ -10,8 +10,16 @@ import type {
   CopilotErrorKey,
   CopilotEvidence,
   CopilotProposal,
+  FallbackReason,
+  ProposalDecision,
+  ProposalDecisionStatus,
+  ProposalDiffItem,
 } from '../types';
 import { parseMessageSections } from '../utils/parse-sections';
+import { COPILOT_PAYLOAD_MAX } from '../utils/history';
+import { decisionToModelText, proposalDecisions } from '../utils/decisions';
+import { applyPlaybackControl, parsePlaybackControl } from '../utils/apply-playback-control';
+import type { PartialApproval } from '../utils/proposal-parts';
 
 class CopilotHttpError extends Error {
   constructor(readonly key: CopilotErrorKey) {
@@ -19,23 +27,51 @@ class CopilotHttpError extends Error {
   }
 }
 
-/** Messages the API accepts: no error bubbles, no empty assistant turns. */
-export function toPayloadMessages(messages: ChatMessageData[]) {
+const FALLBACK_REASONS: readonly FallbackReason[] = ['spend_cap', 'provider_error', 'timeout'];
+
+/** Messages that count in the conversation sent to the model (no error bubbles, no empty turns). */
+export function isPayloadMessage(m: ChatMessageData): boolean {
+  if (m.role === 'error' || m.retried) return false;
+  if (m.role === 'decision') return Boolean(m.decision);
+  return m.content.trim().length > 0 || Boolean(m.media && m.media.length > 0);
+}
+
+/**
+ * Request history: the valid messages not yet folded into the summary (`summarizedCount` of them
+ * are), at most `COPILOT_PAYLOAD_MAX`. Operator decisions go as user turns the model can read.
+ */
+/**
+ * Payload messages before the first one sent: those in the summary plus any beyond
+ * `COPILOT_PAYLOAD_MAX` (sent to the server, which reports the new total after a compaction).
+ */
+export function payloadBaseCount(messages: ChatMessageData[], summarizedCount = 0): number {
+  const unsent = messages.filter(isPayloadMessage).length - summarizedCount;
+  return summarizedCount + Math.max(0, unsent - COPILOT_PAYLOAD_MAX);
+}
+
+export function toPayloadMessages(messages: ChatMessageData[], summarizedCount = 0) {
   return messages
-    .filter(
-      (m) => m.role !== 'error' && (m.content.trim().length > 0 || (m.media && m.media.length > 0))
-    )
+    .filter(isPayloadMessage)
+    .slice(summarizedCount)
+    .slice(-COPILOT_PAYLOAD_MAX)
     .map((m) => {
+      if (m.role === 'decision' && m.decision) {
+        return { role: 'user' as const, content: decisionToModelText(m.decision) };
+      }
       const item: {
         role: 'user' | 'assistant';
         content: string;
-        media?: Array<{ type: 'image' | 'video'; url: string }>;
+        media?: Array<{ type: 'image' | 'video'; url: string; key?: string }>;
       } = {
         role: m.role as 'user' | 'assistant',
         content: m.content,
       };
       if (m.media && m.media.length > 0) {
-        item.media = m.media.map((med) => ({ type: med.type, url: med.url }));
+        item.media = m.media.map((med) => ({
+          type: med.type,
+          url: med.url,
+          ...(med.key ? { key: med.key } : {}),
+        }));
       }
       return item;
     });
@@ -49,7 +85,9 @@ export function useCopilot() {
   const [pending, setPending] = useState(false);
   const [toolActivity, setToolActivity] = useState<CopilotActivity | null>(null);
   const [error, setError] = useState<CopilotErrorKey | null>(null);
-  const [pendingProposal, setPendingProposal] = useState<CopilotProposal | null>(null);
+  // Conversation summary (auto-compaction): text + how many payload messages it covers.
+  const [summary, setSummary] = useState<string | undefined>(undefined);
+  const [summarizedCount, setSummarizedCount] = useState(0);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('auto');
 
@@ -77,6 +115,8 @@ export function useCopilot() {
         if (data.session) {
           setSessionId(data.session.id);
           setMessages(data.session.messages || []);
+          setSummary(data.session.summary || undefined);
+          setSummarizedCount(data.session.summarizedCount ?? 0);
         }
       }
     } catch {
@@ -89,6 +129,8 @@ export function useCopilot() {
     setSessionId(newId);
     setMessages([]);
     setError(null);
+    setSummary(undefined);
+    setSummarizedCount(0);
   }, []);
 
   const removeSession = useCallback(
@@ -132,12 +174,12 @@ export function useCopilot() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && Array.isArray(data.models)) {
-          setAvailableModels(data.models);
-          if (data.activeModel) {
-            setSelectedModel(data.activeModel);
-          } else if (data.models[0]) {
-            setSelectedModel(data.models[0]);
-          }
+          // Auto (adaptive routing) is always offered and always the default choice.
+          const models: string[] = data.models.includes('auto')
+            ? data.models
+            : ['auto', ...data.models];
+          setAvailableModels(models);
+          setSelectedModel('auto');
         }
       })
       .catch(() => {
@@ -147,7 +189,9 @@ export function useCopilot() {
   }, []);
 
   const sendMessage = useCallback(
-    async (prompt: string, media?: ChatMediaItem[]) => {
+    async (prompt: string, media?: ChatMediaItem[], options?: { retryOf?: string }) => {
+      // Retry: same question again, no new user bubble; the old answer stays but leaves the payload.
+      const retryOf = options?.retryOf;
       const trimmed = prompt.trim();
       const hasMedia = Boolean(media && media.length > 0);
       if ((!trimmed && !hasMedia) || pending) return;
@@ -171,7 +215,9 @@ export function useCopilot() {
                 if (upRes.ok) {
                   const upData = await upRes.json();
                   if (upData.publicUrl) {
-                    return { ...item, url: upData.publicUrl };
+                    // Key kept only when stored in R2, so a reopened session re-signs the link.
+                    const key = upData.configured ? upData.fileKey : undefined;
+                    return { ...item, url: upData.publicUrl, ...(key ? { key } : {}) };
                   }
                 }
               }
@@ -210,7 +256,9 @@ export function useCopilot() {
         }),
       };
 
-      const updatedHistory = [...messages, userMessage];
+      const updatedHistory = retryOf
+        ? messages.map((m) => (m.id === retryOf ? { ...m, retried: true } : m))
+        : [...messages, userMessage];
       setMessages([...updatedHistory, assistantMessage]);
       setPending(true);
       setError(null);
@@ -221,7 +269,8 @@ export function useCopilot() {
       abortRef.current = abortController;
 
       try {
-        const payloadMessages = toPayloadMessages(updatedHistory);
+        const payloadMessages = toPayloadMessages(updatedHistory, summarizedCount);
+        const baseCount = payloadBaseCount(updatedHistory, summarizedCount);
 
         const res = await fetch('/api/copilot', {
           method: 'POST',
@@ -231,6 +280,10 @@ export function useCopilot() {
             messages: payloadMessages,
             input: store.input,
             strategy: store.activeStrategy,
+            hour: store.timeIndex,
+            ...(retryOf && { retry: true }),
+            ...(summary && { summary }),
+            ...(baseCount > 0 && { summarizedCount: baseCount }),
             model: selectedModel || undefined,
             locale,
           }),
@@ -387,7 +440,6 @@ export function useCopilot() {
               }
               case 'proposal': {
                 collectedProposal = dataObj as unknown as CopilotProposal;
-                setPendingProposal(collectedProposal);
                 setMessages((prev) =>
                   prev.map((msg) =>
                     msg.id === assistantMsgId ? { ...msg, proposal: collectedProposal } : msg
@@ -395,10 +447,40 @@ export function useCopilot() {
                 );
                 break;
               }
+              case 'control': {
+                // Playback only (no scenario change): applied at once, noted on the answer.
+                const control = parsePlaybackControl(dataObj);
+                if (control) {
+                  applyPlaybackControl(useSimulationStore.getState(), control);
+                  setMessages((prev) =>
+                    prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, control } : msg))
+                  );
+                }
+                break;
+              }
+              case 'summary': {
+                // Older turns were folded into the summary: send only the newer ones next time.
+                if (
+                  typeof dataObj.text === 'string' &&
+                  typeof dataObj.summarizedCount === 'number'
+                ) {
+                  setSummary(dataObj.text);
+                  setSummarizedCount(dataObj.summarizedCount);
+                }
+                break;
+              }
               case 'error': {
-                setError(
-                  dataObj.code === 'PROVIDER_FALLBACK' ? 'errorProviderFallback' : 'errorGeneric'
-                );
+                if (dataObj.code === 'PROVIDER_FALLBACK') {
+                  // The answer still arrives (offline copilot): a note on it, not a red alert.
+                  const reason = FALLBACK_REASONS.find((r) => r === dataObj.reason) ?? 'unknown';
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMsgId ? { ...msg, fallbackReason: reason } : msg
+                    )
+                  );
+                } else {
+                  setError('errorGeneric');
+                }
                 break;
               }
               case 'done': {
@@ -435,25 +517,111 @@ export function useCopilot() {
         setToolActivity(null);
       }
     },
-    [messages, pending, selectedModel, sessionId, locale, fetchSessions]
+    [messages, pending, selectedModel, sessionId, locale, fetchSessions, summary, summarizedCount]
   );
 
-  const approveProposal = useCallback(() => {
-    if (!pendingProposal) return;
-    const store = useSimulationStore.getState();
-    store.applyProposal(pendingProposal.patch, pendingProposal.strategy);
-    setPendingProposal(null);
-  }, [pendingProposal]);
+  const decisions = useMemo(() => proposalDecisions(messages), [messages]);
 
-  const rejectProposal = useCallback(() => {
-    setPendingProposal(null);
-  }, []);
+  /** Last answer (or error) can be redone while nothing is pending and a question precedes it. */
+  const lastMessage = messages.at(-1);
+  const retryableId =
+    !pending &&
+    lastMessage &&
+    (lastMessage.role === 'assistant' || lastMessage.role === 'error') &&
+    !lastMessage.retried &&
+    messages.some((m) => m.role === 'user')
+      ? lastMessage.id
+      : null;
+
+  /** Asks the last question again, telling the model the previous answer did not help. */
+  const retryLastAnswer = useCallback(() => {
+    if (!retryableId) return;
+    const question = messages.findLast((m) => m.role === 'user');
+    if (!question) return;
+    void sendMessage(question.content, question.media, { retryOf: retryableId });
+  }, [messages, retryableId, sendMessage]);
+
+  /** Posts an operator decision in the chat and saves it with the session (keeps the card locked on reopen). */
+  const postDecision = useCallback(
+    (decision: ProposalDecision) => {
+      const decisionMessage: ChatMessageData = {
+        id: `decision-${decision.proposalId}-${decision.status}-${Date.now()}`,
+        role: 'decision',
+        content: '',
+        decision,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, decisionMessage]);
+      void fetch(`/api/copilot/sessions/${sessionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(decisionMessage),
+      }).catch(() => {});
+    },
+    [sessionId]
+  );
+
+  /** Applies (or not) this message's own proposal, once, and posts the decision in the chat. */
+  const decideProposal = useCallback(
+    (
+      status: ProposalDecisionStatus,
+      message: ChatMessageData,
+      items: ProposalDiffItem[],
+      partial?: PartialApproval
+    ) => {
+      const proposal = message.proposal;
+      if (!proposal || decisions[proposal.proposalId]) return;
+      // K3: only the checked lines are applied (and recorded) when the operator left some out.
+      const { patch, strategy } = partial?.pick ?? proposal;
+      if (status === 'approved') {
+        const sim = useSimulationStore.getState();
+        sim.approveChange(proposal.proposalId, patch, strategy);
+        if (useSimulationStore.getState().status !== 'complete') return;
+      }
+      postDecision({
+        proposalId: proposal.proposalId,
+        status,
+        items,
+        ...(partial && partial.skipped.length > 0 && { skipped: partial.skipped }),
+        ...(patch && { patch }),
+        ...(strategy && { strategy }),
+      });
+    },
+    [decisions, postDecision]
+  );
+
+  /** Last approved change still in the store history: the one "Undo" restores. */
+  const lastChangeId = useSimulationStore((s) => s.changeHistory[s.changeHistory.length - 1]?.id);
+  const undoableProposalId =
+    lastChangeId && decisions[lastChangeId]?.status === 'approved' ? lastChangeId : null;
+
+  /** Undoes the last approved change (store restores the input) and posts it in the chat. */
+  const undoLastChange = useCallback(() => {
+    if (!undoableProposalId) return;
+    const approved = decisions[undoableProposalId];
+    const undoneId = useSimulationStore.getState().undoLastChange();
+    if (!approved || undoneId !== undoableProposalId) return;
+    postDecision({ ...approved, status: 'undone' });
+  }, [decisions, postDecision, undoableProposalId]);
+
+  const approveProposal = useCallback(
+    (message: ChatMessageData, items: ProposalDiffItem[], partial?: PartialApproval) =>
+      decideProposal('approved', message, items, partial),
+    [decideProposal]
+  );
+
+  const rejectProposal = useCallback(
+    (message: ChatMessageData, items: ProposalDiffItem[]) =>
+      decideProposal('rejected', message, items),
+    [decideProposal]
+  );
 
   const clearMessages = useCallback(() => {
     setMessages([]);
     setError(null);
     setToolActivity(null);
-    setPendingProposal(null);
+    setSummary(undefined);
+    setSummarizedCount(0);
   }, []);
 
   return {
@@ -467,13 +635,17 @@ export function useCopilot() {
     pending,
     toolActivity,
     error,
-    pendingProposal,
+    decisions,
     availableModels,
     selectedModel,
     setSelectedModel,
     sendMessage,
     approveProposal,
     rejectProposal,
+    undoableProposalId,
+    undoLastChange,
+    retryableId,
+    retryLastAnswer,
     clearMessages,
   };
 }

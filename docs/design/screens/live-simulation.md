@@ -121,6 +121,13 @@ The collapsible side deck contains four structured tabs:
     - Zoom & pan (`useZoomPan`, `utils/zoom-pan.ts`, 100–400 %): zoom buttons bottom-right, Ctrl/⌘ + wheel or
       pinch, drag to pan once zoomed (a tap still selects a sector). Full-screen button in the HUD for both 2D
       views; in full screen the plain wheel zooms.
+- **Full screen** (3D, Topology, Circuit; `VillageViewport` props `fullscreenControls`, `fullscreenDock`):
+  - HUD toggles « Controls » and « Copilot » open two `GlassPanel`s: the controls drawer (left, same
+    `SimControlsPanel` without its own card) and the `CopilotTerminal` (right). Phones: one panel at a time.
+  - Dock at the bottom between the panels: engine values of the hour + the `TimelineScrubber` as glass.
+    Its minimize button (`compact`) folds it to one bar (transport, hour, slider) and hides the values strip.
+  - 2D views keep the diagram between the panels and above the dock (dock height measured), so no sector
+    card or button is covered. Controls panels lay out by their own width (container queries).
 
 ### 4. Tab `Copilote IA` (AI Copilot & Insights)
 

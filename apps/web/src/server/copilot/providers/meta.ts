@@ -2,6 +2,7 @@ import 'server-only';
 
 import { env } from '@/lib/env';
 import type { LlmProvider, ChatMessage, ToolDefinition, LlmTurn, ToolCall } from '../provider';
+import { fetchPreferringContributor } from './contributor';
 
 export const DEFAULT_META_MODEL = 'muse-spark-1.3';
 export const DEFAULT_META_BASE_URL = 'https://api.meta.ai/v1';
@@ -20,15 +21,25 @@ export class MetaLlmProvider implements LlmProvider {
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private model: string;
+  private readonly preferContributor: boolean;
+  /** Model id that answered the last chat call (contributor variant or standard). */
+  private lastUsedModel?: string;
 
-  constructor(options?: { apiKey?: string; baseUrl?: string; model?: string }) {
+  constructor(options?: {
+    apiKey?: string;
+    baseUrl?: string;
+    model?: string;
+    preferContributor?: boolean;
+  }) {
     this.apiKey = options?.apiKey || env.META_API_KEY || '';
     this.baseUrl = options?.baseUrl || env.META_BASE_URL || DEFAULT_META_BASE_URL;
     this.model = options?.model || env.META_MODEL || DEFAULT_META_MODEL;
+    this.preferContributor = options?.preferContributor ?? env.META_PREFER_CONTRIBUTOR;
   }
 
+  /** Model to bill: the one that answered last, else the selected one. */
   getModel(): string {
-    return this.model;
+    return this.lastUsedModel ?? this.model;
   }
 
   setModel(model: string) {
@@ -194,20 +205,24 @@ export class MetaLlmProvider implements LlmProvider {
     const startTime = Date.now();
     let res: Response;
     try {
-      res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: this.model,
-          messages: formattedMessages,
-          tools: formattedTools.length > 0 ? formattedTools : undefined,
-          temperature: 0.2,
-        }),
-        signal,
-      });
+      const sent = await fetchPreferringContributor(this.model, this.preferContributor, (model) =>
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: formattedMessages,
+            tools: formattedTools.length > 0 ? formattedTools : undefined,
+            temperature: 0.2,
+          }),
+          signal,
+        })
+      );
+      res = sent.res;
+      this.lastUsedModel = sent.model;
     } catch (networkErr) {
       const elapsedMs = Date.now() - startTime;
       console.error(
@@ -227,7 +242,9 @@ export class MetaLlmProvider implements LlmProvider {
       throw new Error(`Meta LLM API error (${res.status}): ${errorText}`);
     }
 
-    console.info(`[copilot:meta] Received 200 OK from Meta API in ${elapsedMs}ms`);
+    console.info(
+      `[copilot:meta] Received 200 OK from Meta API in ${elapsedMs}ms (answered by "${this.lastUsedModel}")`
+    );
 
     interface OpenAiResponse {
       choices: {
@@ -244,6 +261,7 @@ export class MetaLlmProvider implements LlmProvider {
           }[];
         };
       }[];
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
     }
 
     const data = (await res.json()) as OpenAiResponse;
@@ -282,6 +300,14 @@ export class MetaLlmProvider implements LlmProvider {
     return {
       content: msg.content ?? null,
       toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      ...(data.usage
+        ? {
+            usage: {
+              inputTokens: data.usage.prompt_tokens ?? 0,
+              outputTokens: data.usage.completion_tokens ?? 0,
+            },
+          }
+        : {}),
     };
   }
 
@@ -296,7 +322,7 @@ export class MetaLlmProvider implements LlmProvider {
 
     const url = `${this.baseUrl.replace(/\/$/, '')}/responses`;
     console.info(
-      `[copilot:meta] Requesting image from ${url} with muse-image-1.0 for: "${prompt.slice(0, 60)}..."`
+      `[copilot:meta] Requesting image from ${url} with ${env.META_IMAGE_MODEL} for: "${prompt.slice(0, 60)}..."`
     );
 
     const startTime = Date.now();
@@ -309,7 +335,7 @@ export class MetaLlmProvider implements LlmProvider {
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: 'muse-image-1.0',
+          model: env.META_IMAGE_MODEL,
           input: prompt,
         }),
         signal,

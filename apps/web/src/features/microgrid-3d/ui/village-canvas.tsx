@@ -33,6 +33,7 @@ import { Vegetation } from './vegetation';
 import { Vehicles } from './vehicles';
 import { PostEffects } from './post-effects';
 import { QualityProbe } from './quality-probe';
+import { FireEffects } from './fire-effects';
 import { WeatherEffects } from './weather-effects';
 import { BakedContactShadows, ResumeOnVisible, ShadowBake } from './render-control';
 import { VillageScenePlaceholder } from './scene-placeholder';
@@ -171,7 +172,8 @@ export function VillageCanvas({
   return (
     <div
       ref={htmlPortal}
-      className={cn('relative', className)}
+      // `isolate`: drei labels use z-index up to 16 777 271; keep them under the HUD and the copilot terminal.
+      className={cn('relative isolate', className)}
       style={{ width: '100%', height: '100%' }}
     >
       {perfEnabled && perf && (
@@ -226,6 +228,7 @@ export function VillageCanvas({
           quality={quality}
           animate={weatherMotion}
         />
+        <FireEffects buildings={model.buildings} quality={quality} animate={weatherMotion} />
 
         <Suspense fallback={null}>
           <Environment files={SUNSET_HDRI_URL} environmentIntensity={palette.envIntensity} />

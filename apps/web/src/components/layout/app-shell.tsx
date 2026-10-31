@@ -12,6 +12,7 @@ import type { ScenarioOption } from '@/components/ui/scenario-selector';
 import { useTranslations } from '@/lib/i18n';
 import { useSimulationStore } from '@/stores';
 import type { ScenarioId } from '@mitsinjo/engine';
+import { FireAlertLayer } from '@/features/fire-alert';
 
 export interface AppShellProps {
   children: ReactNode;
@@ -114,6 +115,7 @@ export function AppShell({
               className
             )}
           >
+            <FireAlertLayer />
             {children}
           </main>
 

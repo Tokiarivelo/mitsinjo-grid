@@ -42,7 +42,7 @@
   "routes": {
     "overview": {
       "title": "Aperçu",
-      "subtitle": "Bilan énergétique, indicateurs critiques et scénario actif"
+      "subtitle": "Ce qui est en jeu aujourd’hui, et la décision qui change tout."
     },
     "simulation": {
       "title": "Simulation en direct",
@@ -123,6 +123,8 @@
       "timelineTitle": "Curseur Temporel 24h",
       "timelineSubtitle": "Parcourez les 24 heures pour inspecter les flux de puissance en direct",
       "timelineScrubberLabel": "Curseur de l heure du jour",
+      "timelineMinimize": "Réduire le curseur temporel",
+      "timelineExpand": "Agrandir le curseur temporel",
       "stepBackward": "Reculer d une heure",
       "stepForward": "Avancer d une heure",
       "startPlayback": "Démarrer la lecture",
@@ -255,6 +257,12 @@
         "disconnect": "Débrancher",
         "connectAria": "Raccorder {sector} au réseau",
         "disconnectAria": "Débrancher {sector} du réseau"
+      },
+      "fsControls": {
+        "title": "Contrôles de simulation",
+        "toggle": "Contrôles",
+        "open": "Afficher les contrôles de simulation",
+        "close": "Masquer les contrôles de simulation"
       }
     },
     "strategyLab": {
@@ -343,13 +351,30 @@
         "batteryCapacityKwh": "Capacité stockage batterie (kWh)",
         "socStartPct": "Niveau de batterie initial (SoC %)",
         "socEndPct": "Niveau de batterie final (SoC %)",
-        "socMinPct": "Niveau de batterie minimal (SoC %)"
+        "socMinPct": "Niveau de batterie minimal (SoC %)",
+        "servedKwhBefore": "Énergie servie avant (kWh)",
+        "servedKwhAfter": "Énergie servie après (kWh)",
+        "servedKwhDelta": "Écart d'énergie servie (kWh)",
+        "offHoursBefore": "Heures sans courant avant (h)",
+        "offHoursAfter": "Heures sans courant après (h)",
+        "socMinPctBefore": "Batterie minimale avant (SoC %)",
+        "socMinPctAfter": "Batterie minimale après (SoC %)",
+        "unservedKwhBefore": "Énergie non servie avant (kWh)",
+        "unservedKwhAfter": "Énergie non servie après (kWh)",
+        "lifelineCoveragePct": "Couverture du courant de survie (%)",
+        "peakSolarKw": "Pointe de production solaire (kW)",
+        "peakDemandKw": "Pointe de demande (kW)",
+        "lowestSocPct": "Niveau de batterie le plus bas (SoC %)"
       },
       "errorTitle": "Avis consultatif de simulation",
       "errorFallbackNote": "Les résultats déterministes de la simulation restent pleinement consultables et actifs.",
       "proposalTitle": "PROPOSITION DE MODIFICATION DU SCÉNARIO",
       "proposalReason": "Justification",
       "proposalApprove": "Approuver et appliquer le scénario",
+      "proposalApproveSelected": "Approuver la sélection ({count})",
+      "proposalLinesHint": "Décochez une ligne pour l'écarter. Seules les lignes cochées sont appliquées ; le calcul moteur suit votre choix.",
+      "proposalLineToggle": "Appliquer : {label}",
+      "proposalSkippedTitle": "Non appliqué (décoché)",
       "proposalReject": "Rejeter",
       "diffSolarDrop": "Chute solaire",
       "diffDropWindow": "Fenêtre de baisse",
@@ -362,6 +387,7 @@
       "diffLifelineStatus": "Courant de survie",
       "diffLifelineFloor": "Plancher de survie",
       "noCap": "Aucun (non plafonné)",
+      "capStartsNow": "{range} · dès maintenant",
       "contextPanelAria": "Contexte actif de simulation",
       "contextTitle": "CONTEXTE ACTIF (CALCULÉ)",
       "contextActiveScenario": "Référence active",
@@ -383,6 +409,11 @@
       "demand": "demande",
       "minReserve": "réserve min",
       "suggestedPromptsHeader": "SUGGESTIONS D'EXPLORATION",
+      "suggestedIncidentHeader": "À propos de l'incendie",
+      "promptFireImpact": "Incendie – {sector} : qu'est-ce que ça change pour le village maintenant ?",
+      "promptFireEssential": "Incendie – {sector} : le centre de santé et la pompe à eau restent-ils alimentés ?",
+      "promptFireEnergy": "Incendie – {sector} : où va son énergie tant qu'il est isolé ?",
+      "promptFireRestore": "Incendie – {sector} : une fois le feu éteint, comment rétablir son courant en sécurité ?",
       "promptWhyClinic": "Pourquoi le centre de santé reçoit-il moins d'énergie ?",
       "promptCompareStrategies": "Comparer les deux stratégies de répartition",
       "promptSolarDrop40": "Que se passe-t-il si la production solaire chute de 40 % ?",
@@ -397,7 +428,6 @@
       "modelAuto": "✦ Auto (Adaptatif)",
       "voiceInput": "Saisie vocale",
       "voiceListening": "Écoute en cours...",
-      "voiceNotSupported": "Reconnaissance vocale non supportée par ce navigateur",
       "readAloud": "Écouter la réponse",
       "stopAudio": "Arrêter la lecture",
       "imageGeneratedBadge": "Visuel Généré",
@@ -443,10 +473,107 @@
         "compare_strategies": "Comparaison des stratégies",
         "get_sector_metrics": "Analyse des données du secteur {sector}",
         "propose_change": "Préparation d'une proposition à valider",
-        "default": "Analyse des résultats calculés"
+        "segment_image": "Détection d'objets sur la photo",
+        "generate_image": "Génération d'une image",
+        "escalate_deep_reasoning": "Passage au raisonnement approfondi",
+        "default": "Analyse des résultats calculés",
+        "compact_history": "Résumé de la conversation précédente",
+        "control_playback": "Contrôle de la lecture"
       },
       "unknownValue": "Inconnu",
-      "chartType": "graphique {type}"
+      "chartType": "graphique {type}",
+      "impactTitle": "Calcul moteur",
+      "impactSubtitle": "Journée simulée, réglages actuels vs après approbation",
+      "impactColBefore": "Avant",
+      "impactColAfter": "Après",
+      "impactColChange": "Écart",
+      "impactServed": "{sector} : énergie servie",
+      "impactOffHours": "{sector} : heures sans courant",
+      "impactSocMin": "Charge minimale de la batterie",
+      "impactUnserved": "Énergie non servie (village)",
+      "impactHours": "{count} h",
+      "impactNoChange": "Le moteur ne voit aucun changement d'énergie servie ni d'heures sans courant pour cette proposition.",
+      "clinicGuard": {
+        "title": "Danger : ce changement coupe la clinique",
+        "reasons": {
+          "cap_zero": "Clinique plafonnée à 0 kW : vaccins et soins privés de courant.",
+          "disconnected": "Clinique déconnectée du réseau.",
+          "floor_zero": "Plancher de survie de la clinique mis à 0 kW.",
+          "lifeline_off": "Planchers de survie désactivés pour tous les secteurs, clinique comprise."
+        },
+        "secondConfirm": "L'approbation demande une seconde confirmation.",
+        "armed": "Cliquez encore pour confirmer. Refusez pour garder la clinique alimentée.",
+        "confirmAgain": "Confirmer : couper la clinique"
+      },
+      "decision": {
+        "approvedBadge": "Approuvé",
+        "rejectedBadge": "Refusé",
+        "approvedTitle": "Changement approuvé et appliqué à la simulation",
+        "approvedBody": "Indicateurs, graphiques et village 3D utilisent maintenant ces réglages.",
+        "rejectedTitle": "Proposition refusée",
+        "rejectedBody": "Rien n'a changé dans la simulation.",
+        "undoneBadge": "Annulé",
+        "undoneTitle": "Changement annulé",
+        "undoneBody": "La simulation est revenue aux réglages d'avant ce changement.",
+        "undoLast": "Annuler le dernier changement"
+      },
+      "fallback": {
+        "spend_cap": "Le budget IA de cette session est épuisé : cette réponse vient du copilote hors ligne. Les chiffres du moteur restent valables.",
+        "provider_error": "Le modèle Meta a renvoyé une erreur : cette réponse vient du copilote hors ligne. Les chiffres du moteur restent valables.",
+        "timeout": "Le modèle Meta a mis trop de temps : cette réponse vient du copilote hors ligne. Les chiffres du moteur restent valables.",
+        "unknown": "Une partie de cette réponse vient du copilote hors ligne. Les chiffres du moteur restent valables."
+      },
+      "generatedImageAlt": "Image générée du micro-réseau",
+      "generatedVideoTitle": "Vidéo de simulation",
+      "attachmentAlt": "Pièce jointe",
+      "mediaVideo": "Vidéo",
+      "mediaImage": "Image",
+      "modelRoleChat": "copilote + outils",
+      "modelRoleReasoning": "raisonnement",
+      "modelRoleImage": "images",
+      "closeSessions": "Fermer les conversations enregistrées",
+      "noValue": "Aucun",
+      "dropWindowValue": "{from}:00–{to}:00 ({hours} h)",
+      "loadDisconnected": "Non connecté",
+      "diffSectorLoad": "Charge",
+      "voice": {
+        "stop": "Arrêter l'enregistrement",
+        "transcribing": "Transcription de votre voix…",
+        "unsupported": "Ce navigateur ne peut pas enregistrer l'audio. Tapez votre message.",
+        "denied": "Accès au micro refusé. Autorisez-le dans le navigateur, ou tapez votre message.",
+        "failed": "Impossible de transcrire l'enregistrement. Réessayez ou tapez votre message.",
+        "empty": "Aucune voix entendue. Réessayez plus près du micro.",
+        "dismiss": "Fermer",
+        "spectrumTitle": "Spectre de la voix",
+        "spectrumAria": "Spectre de fréquences du micro en direct, de 80 Hz à 8 kHz",
+        "peak": "Pic {freq}",
+        "peakNone": "Pic —",
+        "pitchZone": "Hauteur de voix",
+        "hz": "{value} Hz",
+        "khz": "{value} kHz"
+      },
+      "evidenceShowAll": "Voir toutes les preuves ({count})",
+      "retry": {
+        "button": "Réessayer",
+        "hint": "Pas satisfait ? Reposez la même question pour une nouvelle réponse.",
+        "retriedNote": "Réponse refaite plus bas (Réessayer)."
+      },
+      "terminal": {
+        "title": "mitsinjo · copilote",
+        "open": "Ouvrir le terminal du copilote",
+        "close": "Masquer le terminal du copilote",
+        "toggle": "Copilote",
+        "welcome": "Posez une question sur le village affiché. Chaque chiffre vient du moteur ; les changements attendent votre approbation.",
+        "attachments": "[{count, plural, one {# fichier} other {# fichiers}}]",
+        "placeholder": "Demandez au copilote…"
+      },
+      "control": {
+        "play": "Lecture lancée",
+        "pause": "Lecture en pause",
+        "stop": "Lecture arrêtée (retour à 00:00)",
+        "restart": "Lecture relancée depuis 00:00",
+        "seek": "Curseur placé à {hour}"
+      }
     },
     "gridDiagram": {
       "topologyLabel": "Plan du village : flux d'énergie du hub solaire vers chaque secteur",
@@ -500,7 +627,8 @@
         "open": "{sector} : Ouvert / Coupé (0 kW)"
       },
       "zoomControls": "Zoom du schéma",
-      "zoomHint": "Ctrl + molette ou pincer pour zoomer · glisser pour déplacer"
+      "zoomHint": "Ctrl + molette ou pincer pour zoomer · glisser pour déplacer",
+      "onFire": "En feu"
     },
     "hardwareLink": {
       "title": "Maquette physique",
@@ -531,6 +659,23 @@
       "stopFollowing": "Arrêter le suivi",
       "cloudOn": "Nuage sur la lampe",
       "cloudOff": "Retirer le nuage"
+    },
+    "fireAlert": {
+      "reportButton": "Signaler un incendie",
+      "reportTitle": "Quel secteur est en feu ?",
+      "reportHint": "Le secteur est coupé tout de suite à l'heure affichée (règle de sécurité, sans approbation).",
+      "reportCancel": "Fermer",
+      "alreadyBurning": "En feu",
+      "bannerTitle": "INCENDIE : {sectors} coupé",
+      "bannerDesc": "Courant isolé depuis {hour} (0 kW), avant toute stratégie, plafond ou plancher de survie. La remise sous tension demandera votre approbation.",
+      "simulatedTag": "Alarme simulée",
+      "seeVillage": "Voir le village",
+      "askCopilot": "Demander au copilote",
+      "snackbarTitle": "Incendie signalé : {sector}",
+      "snackbarBody": "Courant coupé à {hour}. Alarme simulée.",
+      "dismiss": "Fermer l'avis d'incendie",
+      "notificationsLabel": "Notifications d'incendie",
+      "onFireLabel": "En feu"
     }
   },
   "copilot": {
@@ -682,13 +827,15 @@
     "sectorCappedDesc": "L'alimentation de {sector} a été plafonnée selon la limite de l'opérateur entre {from} et {to}.",
     "lifelineShortfallTitle": "Courant de survie non assuré",
     "lifelineShortfallDesc": "{sector} a reçu moins que son minimum de survie entre {from} et {to}. L'eau et la santé restent alimentées en priorité.",
+    "fireIsolationTitle": "Incendie : {sector} isolé",
+    "fireIsolationDesc": "{sector} est coupé (0 kW) entre {from} et {to} à cause d'un incendie. Règle de sécurité : aucune stratégie, aucun plafond ni plancher de survie ne la contourne.",
     "hoursRange": "{from} - {to}"
   },
   "overview": {
-    "subtitle": "Comprenez la disponibilité énergétique et l'impact communautaire.",
+    "subtitle": "Ce qui est en jeu aujourd’hui, et la décision qui change tout.",
     "runSimulation": "Lancer la simulation",
     "openLive": "Ouvrir la simulation en direct",
-    "simulating": "Simulation en cours...",
+    "openLiveHint": "Rejouez la journée dans le village 3D : chronologie, réglages, copilote IA",
     "solarPeak": "Pic solaire PV",
     "solarAvg": "Moyenne solaire PV",
     "batterySoc": "Niveau final de batterie",
@@ -697,11 +844,8 @@
     "energyBalanceTitle": "Bilan énergétique 24h",
     "energyBalanceDesc": "Production cumulée, flux de stockage et énergie desservie",
     "serviceAllocationTitle": "Répartition des services communautaires",
-    "serviceAllocationDesc": "Couverture énergétique sur les 5 secteurs du village",
-    "scenarioImpactTitle": "Impact du scénario & Alertes",
-    "scenarioImpactDesc": "Alertes calculées et évaluation de la santé du réseau",
     "previewTitle": "Jumeau numérique du réseau",
-    "previewSubtitle": "Statut schématique 2D/3D de la production, batterie et secteurs",
+    "previewSubtitle": "Voyez le courant arriver dans chaque bâtiment, heure par heure.",
     "view3d": "Aperçu 3D",
     "view2d": "Schéma 2D",
     "unservedEnergy": "Non desservi : {kwh}",
@@ -710,33 +854,56 @@
     "batteryCaption": "SoC min : {min} · Utilisable : {kwh}",
     "solarCaption": "Production 24h : {kwh}",
     "solarDeltaBaseline": "{delta} vs référence",
-    "emptyTitle": "Aucun résultat de simulation pour le moment",
     "emptyDesc": "Lancez la simulation pour calculer la distribution d'énergie et inspecter la couverture communautaire.",
     "solarGen": "Production solaire totale",
     "batteryNet": "SoC batterie (début → fin)",
     "servedEnergy": "Énergie totale desservie",
     "unservedTotal": "Énergie totale non desservie",
-    "energyOverTimeTitle": "Énergie dans le temps (24h)",
-    "energyOverTimeSubtitle": "Production solaire, demande, énergie fournie et niveau de batterie",
     "energyOverTimeSummary": "Chronologie sur 24 heures de la production solaire, de la demande communautaire totale, de l'énergie fournie en kW et du pourcentage d'état de charge de la batterie.",
-    "clinicWarningInsight": "Le délestage proportionnel affecte les services essentiels du dispensaire. Basculez sur Priorité Essentielle dans le Labo Stratégies pour préserver les charges vitales.",
-    "schematicBadge": "SCHÉMA 2D",
     "chartTitle": "Production vs Demande 24h",
     "chartSubtitle": "Solaire PV, demande communautaire totale, puissance fournie et SoC batterie",
     "emptyChartNotice": "Lancez la simulation pour visualiser les courbes énergétiques sur 24h.",
     "sectorsCount": "{count} secteurs",
-    "badge3d": "JUMEAU NUMÉRIQUE 3D",
     "quickPhasesLabel": "Phases rapides",
     "phaseDawn": "06:00 Lever",
     "phasePeak": "12:00 Pic solaire",
     "phaseEvening": "19:00 Pic du soir",
     "phaseNight": "23:00 Nuit",
-    "sheddingProtocolTitle": "Protocole de délestage automatisé",
-    "sheddingProtocolDesc": "La hiérarchisation isole le marché et l'école primaire dès que la réserve de batterie descend sous 20 %, préservant ainsi la chaîne du froid médicale.",
-    "compareStrategiesCta": "Comparer dans le laboratoire de stratégies",
     "nodeMitsinjoBus": "NŒUD : BUS_MITSINJO",
     "nodeCoordinates": "LAT -19.12° | LON 48.23°",
-    "viewModeLabel": "Mode d’aperçu"
+    "viewModeLabel": "Mode d’aperçu",
+    "incident": {
+      "pill": {
+        "empty": "Prêt à simuler",
+        "risk": "Incident · services essentiels",
+        "safe": "Tout va bien"
+      },
+      "title": {
+        "empty": "Que se passe-t-il quand le soleil baisse ?",
+        "safe": "Tous les services essentiels restent allumés."
+      },
+      "riskTitle": "Le centre de santé et la pompe à eau s’éteignent à {hour}.",
+      "riskDesc": "Avec {strategy}, il manque {kwh} d’énergie essentielle sur cette journée simulée. Une seule décision peut changer cela.",
+      "safeDesc": "Avec {strategy}, le centre de santé et la pompe à eau sont alimentés toute la journée. Simulez un choc météo pour voir ce qui est en jeu.",
+      "emptyDesc": "Simulez une journée au village et voyez qui garde le courant quand la batterie faiblit.",
+      "stats": {
+        "start": "Début de la coupure",
+        "hours": "Heures sans courant essentiel",
+        "missing": "Énergie essentielle manquante",
+        "coverage": "Couverture essentielle"
+      },
+      "hoursValue": "{hours} h",
+      "askCopilot": "Demander pourquoi au copilote",
+      "askCopilotSafe": "Demander au copilote",
+      "showAt": "Voir le village à {hour}",
+      "solarDrop": "Simuler une baisse solaire (−40 %)",
+      "run": "Lancer la simulation",
+      "ringsTitle": "Même journée, autre décision",
+      "ringsDesc": "Part des besoins du centre de santé et de l’eau servie par chaque stratégie. Même météo, même batterie : calculé par le moteur.",
+      "ringLabel": "Couverture essentielle avec {strategy}",
+      "ringCaption": "besoins essentiels couverts",
+      "ringHours": "{hours} h sans courant"
+    }
   },
   "strategies": {
     "subtitle": "Comparaison côte à côte des algorithmes d'allocation sous conditions identiques",

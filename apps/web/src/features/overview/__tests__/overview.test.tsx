@@ -3,74 +3,81 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { resetSimulationStore, useSimulationStore } from '@/stores';
 import { OverviewPage } from '../index';
 
-describe('OverviewPage (P4-T3, P4-T7)', () => {
+describe('OverviewPage — incident screen', () => {
   beforeEach(() => {
     resetSimulationStore();
   });
 
-  it('renders simulated data notice and heading in initial empty state', () => {
+  it('starts empty with the simulated notice and both start buttons', () => {
     render(<OverviewPage />);
     expect(screen.getByText('SIMULATED DATA')).toBeInTheDocument();
-    expect(screen.getByText('Mitsinjo Grid')).toBeInTheDocument();
-
-    // 4 metric cards in empty state
-    expect(screen.getByText('Peak Solar PV')).toBeInTheDocument();
-    expect(screen.getByText('Battery End SoC')).toBeInTheDocument();
-    expect(screen.getByText('Total 24h Demand')).toBeInTheDocument();
-    expect(screen.getByText('Essential Services')).toBeInTheDocument();
-
-    // CTA button to run simulation
-    const runButtons = screen.getAllByRole('button', { name: /run simulation/i });
-    expect(runButtons.length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getByRole('heading', { level: 1, name: /what happens when the sun drops/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /run simulation/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /simulate a solar drop/i })).toBeInTheDocument();
+    // The live simulation is the one prominent way into the 3D village
+    expect(screen.getByRole('link', { name: /open live simulation/i })).toHaveAttribute(
+      'href',
+      '/simulation'
+    );
+    // No rings before a run
+    expect(screen.queryByRole('heading', { name: /same day, different decision/i })).toBeNull();
   });
 
-  it('runs simulation on button click and populates cards, chart and energy bars', () => {
+  it('shows "all clear" on the baseline day', () => {
     render(<OverviewPage />);
-    const runBtn = screen.getAllByRole('button', { name: /run simulation/i })[0]!;
-    fireEvent.click(runBtn);
+    fireEvent.click(screen.getByRole('button', { name: /run simulation/i }));
 
-    // After running, simulation status is complete
     expect(useSimulationStore.getState().status).toBe('complete');
-
-    // All 5 community sectors are rendered with progressbars
-    expect(screen.getAllByText('Health Clinic').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Water Pumping Station').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Primary School').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Village Households').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Local Market & Artisans').length).toBeGreaterThanOrEqual(1);
-
-    const progressbars = screen.getAllByRole('progressbar');
-    expect(progressbars.length).toBe(5);
-
-    // Energy balance items are displayed
-    expect(screen.getByText(/Total Solar Generation/i)).toBeInTheDocument();
-    expect(screen.getByText(/Total Served Energy/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: /every essential service stays on/i })
+    ).toBeInTheDocument();
   });
 
-  it('displays warning and impact insight on cloudy_afternoon deficit', () => {
+  it('solar drop → incident with start hour, copilot CTA and strategy rings', () => {
+    render(<OverviewPage />);
+    fireEvent.click(screen.getByRole('button', { name: /simulate a solar drop/i }));
+
+    const state = useSimulationStore.getState();
+    expect(state.scenarioId).toBe('cloudy_afternoon');
+    const crit = state.results[state.activeStrategy]!.warnings.find(
+      (w) => w.code === 'CRITICAL_UNMET'
+    )!;
+    const hour = `${String(crit.fromHour).padStart(2, '0')}:00`;
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: new RegExp(`go dark at ${hour}`) })
+    ).toBeInTheDocument();
+    // The twin jumps to the outage hour
+    expect(state.timeIndex).toBe(crit.fromHour);
+    expect(screen.getByRole('link', { name: /ask the copilot why/i })).toHaveAttribute(
+      'href',
+      '/copilot'
+    );
+    expect(
+      screen.getByRole('heading', { name: /same day, different decision/i })
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('img', { name: /essential coverage with/i })).toHaveLength(3);
+  });
+
+  it('"See the village at" moves the timeline to the outage hour', () => {
     useSimulationStore.getState().loadScenario('cloudy_afternoon');
     useSimulationStore.getState().run();
-
+    useSimulationStore.getState().setTimeIndex(6);
     render(<OverviewPage />);
 
-    // Essential shortfall detected in cards and insight banner
-    const shortfallElements = screen.getAllByText(/critical shortfall/i);
-    expect(shortfallElements.length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(screen.getByRole('button', { name: /see the village at/i }));
+    expect(useSimulationStore.getState().timeIndex).not.toBe(6);
   });
 
-  it('switches active scenario via scenario selector', () => {
+  it('changing scenario recomputes right away', () => {
     render(<OverviewPage />);
-    const select = screen.getByLabelText(/select simulation scenario/i);
-    fireEvent.change(select, { target: { value: 'cloudy_afternoon' } });
-
-    expect(useSimulationStore.getState().scenarioId).toBe('cloudy_afternoon');
-  });
-
-  it('updates timeIndex when clicking quick-phase buttons', () => {
-    render(<OverviewPage />);
-    const eveningBtn = screen.getByRole('button', { name: /19:00 evening peak/i });
-    fireEvent.click(eveningBtn);
-
-    expect(useSimulationStore.getState().timeIndex).toBe(19);
+    fireEvent.change(screen.getByLabelText(/select simulation scenario/i), {
+      target: { value: 'cloudy_afternoon' },
+    });
+    const state = useSimulationStore.getState();
+    expect(state.scenarioId).toBe('cloudy_afternoon');
+    expect(state.status).toBe('complete');
   });
 });

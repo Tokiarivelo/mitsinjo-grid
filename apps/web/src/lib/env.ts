@@ -5,6 +5,21 @@ const envSchema = z.object({
   META_API_KEY: z.string().optional(),
   META_MODEL: z.string().optional(),
   META_BASE_URL: z.string().optional(),
+  // Perception models (voice, vision, segmentation, image) and spend cap
+  META_VOICE_MODEL: z.string().default('muse-voice-transcribe-1.0'),
+  META_VISION_MODEL: z.string().default('muse-spark-1.3'),
+  META_SEGMENT_MODEL: z.string().default('sam-3.1'),
+  META_IMAGE_MODEL: z.string().default('muse-image-1.0'),
+  /** Estimated Meta spend allowed per chat session (USD). Over it → deterministic mock. 0 = no paid calls. */
+  META_SPEND_CAP_USD: z.coerce.number().min(0).default(15),
+  /**
+   * Prefer Spark *-contributor ids (up to 95 % cheaper; Meta trains on inputs/outputs, rate-limited).
+   * Refused → automatic retry on the standard id. `false` for real (non-simulated) user data.
+   */
+  META_PREFER_CONTRIBUTOR: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
   // Cloudflare R2 Storage
   R2_ACCOUNT_ID: z.string().optional(),
   R2_ACCESS_KEY_ID: z.string().optional(),
@@ -20,6 +35,12 @@ export const env = envSchema.parse({
   META_API_KEY: process.env.META_API_KEY,
   META_MODEL: process.env.META_MODEL,
   META_BASE_URL: process.env.META_BASE_URL,
+  META_VOICE_MODEL: process.env.META_VOICE_MODEL || undefined,
+  META_VISION_MODEL: process.env.META_VISION_MODEL || undefined,
+  META_SEGMENT_MODEL: process.env.META_SEGMENT_MODEL || undefined,
+  META_IMAGE_MODEL: process.env.META_IMAGE_MODEL || undefined,
+  META_SPEND_CAP_USD: process.env.META_SPEND_CAP_USD || undefined,
+  META_PREFER_CONTRIBUTOR: process.env.META_PREFER_CONTRIBUTOR || undefined,
   R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
   R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
   R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,

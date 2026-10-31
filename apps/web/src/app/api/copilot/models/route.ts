@@ -13,7 +13,8 @@ export async function GET() {
   if (env.LLM_PROVIDER === 'meta' && env.META_API_KEY) {
     const rawModels = await MetaLlmProvider.listModels();
     const models = ['auto', ...rawModels.filter((m) => m !== 'auto')];
-    const activeModel = env.META_MODEL && models.includes(env.META_MODEL) ? env.META_MODEL : 'auto';
+    // The picker always starts on Auto (adaptive); META_MODEL is the chat model Auto uses.
+    const activeModel = 'auto';
 
     console.info(
       `[copilot:models] Serving provider="meta", activeModel="${activeModel}", models=[${models.join(', ')}]`

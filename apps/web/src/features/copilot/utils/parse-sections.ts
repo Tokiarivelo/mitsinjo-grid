@@ -1,31 +1,71 @@
 import type { MessageSections } from '../types';
 
+type SectionKey = keyof MessageSections;
+
+/** Section headings the prompts ask for (EN, FR, MG) and the mock writes, lowercased. */
+const HEADINGS: Record<SectionKey, string[]> = {
+  whatHappened: [
+    'what happened',
+    "ce qui s'est passé",
+    "ce qui s'est passe",
+    "que s'est-il passé",
+    'inona no nitranga',
+  ],
+  computedEvidence: [
+    'computed evidence',
+    'preuves calculées',
+    'preuves calculees',
+    'porofo voakajy',
+  ],
+  whyItMatters: ['why it matters', "pourquoi c'est important", 'nahoana no zava-dehibe'],
+  exploreNext: [
+    'explore next',
+    'et ensuite',
+    'pour aller plus loin',
+    'explorer ensuite',
+    "dingan'ny hoavy",
+  ],
+};
+
+function sectionOf(heading: string): SectionKey | undefined {
+  const h = heading
+    .trim()
+    .toLowerCase()
+    .replace(/[’`]/g, "'")
+    .replace(/[:.]+$/, '');
+  return (Object.keys(HEADINGS) as SectionKey[]).find((k) => HEADINGS[k].includes(h));
+}
+
+/**
+ * Splits an answer into the four copilot sections. Each section runs until the next known heading,
+ * in any order, so a missing section never swallows the next one. Text before the first known
+ * heading, and other `###` headings, stay in the section they belong to (never dropped).
+ */
 export function parseMessageSections(content: string): MessageSections {
   if (!content) return {};
 
-  const whatHappenedMatch = content.match(
-    /###\s*(?:What happened|Ce qui s'est passé|Ce qui s'est passe)\s*\n([\s\S]*?)(?=###\s*(?:Computed evidence|Preuves calculées|Preuves calculees)|$)/i
-  );
-  const computedEvidenceMatch = content.match(
-    /###\s*(?:Computed evidence|Preuves calculées|Preuves calculees)\s*\n([\s\S]*?)(?=###\s*(?:Why it matters|Pourquoi c'est important)|$)/i
-  );
-  const whyItMattersMatch = content.match(
-    /###\s*(?:Why it matters|Pourquoi c'est important)\s*\n([\s\S]*?)(?=###\s*(?:Explore next|Pour aller plus loin)|$)/i
-  );
-  const exploreNextMatch = content.match(
-    /###\s*(?:Explore next|Pour aller plus loin)\s*\n([\s\S]*?)$/i
-  );
+  const parts: Partial<Record<SectionKey, string[]>> = {};
+  let current: SectionKey = 'whatHappened';
+  let foundKnown = false;
 
-  if (whatHappenedMatch || computedEvidenceMatch || whyItMattersMatch || exploreNextMatch) {
-    return {
-      whatHappened: whatHappenedMatch?.[1]?.trim(),
-      computedEvidence: computedEvidenceMatch?.[1]?.trim(),
-      whyItMatters: whyItMattersMatch?.[1]?.trim(),
-      exploreNext: exploreNextMatch?.[1]?.trim(),
-    };
+  for (const line of content.split('\n')) {
+    const heading = line.match(/^#{1,4}\s+(.+)$/);
+    const key = heading ? sectionOf(heading[1] ?? '') : undefined;
+    if (key) {
+      current = key;
+      foundKnown = true;
+      parts[key] ??= [];
+      continue;
+    }
+    (parts[current] ??= []).push(line);
   }
 
-  return {
-    whatHappened: content.trim(),
-  };
+  if (!foundKnown) return { whatHappened: content.trim() };
+
+  const out: MessageSections = {};
+  for (const key of Object.keys(parts) as SectionKey[]) {
+    const text = parts[key]?.join('\n').trim();
+    if (text) out[key] = text;
+  }
+  return out;
 }

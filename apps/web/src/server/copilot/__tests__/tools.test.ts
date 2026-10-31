@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scenarios } from '@mitsinjo/engine';
+import { scenarios, simulate } from '@mitsinjo/engine';
 import {
   executeTool,
   GetGridStateSchema,
@@ -140,6 +140,20 @@ describe('Copilot Tools (P6-T2)', () => {
       expect(implicit.resultId).toBe(explicit.resultId);
     });
 
+    it('get_grid_state hourly: 24 engine points and highlights picked from them, all in evidence', () => {
+      const res = executeTool('get_grid_state', { hourly: true }, ctx);
+      const hourly = res.data?.hourly as { t: number; solarKw: number; socPct: number }[];
+      expect(hourly).toHaveLength(24);
+      const sim = simulate(ctx.input, ctx.activeStrategy ?? 'proportional');
+      expect(hourly[12]?.solarKw).toBeCloseTo(sim.steps[12]!.solarKw, 2);
+      const h = res.data?.highlights as Record<string, number>;
+      expect(h.peakSolarKw).toBe(Math.max(...hourly.map((p) => p.solarKw)));
+      expect(h.lowestSocPct).toBe(Math.min(...hourly.map((p) => p.socPct)));
+      expect(res.evidence).toMatchObject(h);
+      // Without the flag the payload stays compact.
+      expect(executeTool('get_grid_state', {}, ctx).data?.hourly).toBeUndefined();
+    });
+
     it('executes propose_change without mutating state', () => {
       const res = executeTool(
         'propose_change',
@@ -155,6 +169,73 @@ describe('Copilot Tools (P6-T2)', () => {
       expect(res.proposal?.reason).toBe('Test proposal');
       // Verify ctx input is untouched
       expect(ctx.input.solar.peakKw).toBe(baseInput.solar.peakKw);
+    });
+
+    it('propose_change flags a clinic cut for the model, not a safe change (M1-T2)', () => {
+      const unsafe = executeTool(
+        'propose_change',
+        {
+          patch: { sectorCaps: [{ sector: 'health', maxKw: 0, fromHour: 18, toHour: 22 }] },
+          reason: 'Cut the clinic tonight',
+        },
+        ctx
+      );
+      expect(unsafe.data?.clinicGuard).toEqual(['cap_zero']);
+      const safe = executeTool(
+        'propose_change',
+        { patch: { solarDropPct: 30 }, reason: 'Safe change' },
+        ctx
+      );
+      expect(safe.data?.clinicGuard).toBeUndefined();
+    });
+
+    it('propose_change attaches the engine before/after impact, all of it in evidence (M1-T1)', () => {
+      const res = executeTool(
+        'propose_change',
+        {
+          patch: { sectorCaps: [{ sector: 'market', maxKw: 0, fromHour: 8, toHour: 12 }] },
+          reason: 'Cut the market this morning',
+        },
+        ctx
+      );
+      expect(res.error).toBeUndefined();
+      const impact = res.proposal?.impact;
+      expect(impact).toBeDefined();
+      const market = impact!.sectors.market!;
+      expect(market.offHoursAfter).toBeGreaterThan(market.offHoursBefore);
+      expect(market.servedKwhAfter).toBeLessThan(market.servedKwhBefore);
+      // Only changed sectors are kept.
+      expect(impact!.sectors.industry).toBeUndefined();
+      // Every number the dialog shows is an evidence value.
+      const evidenceValues = new Set(Object.values(res.evidence ?? {}));
+      const shown = [
+        impact!.socMinPctBefore,
+        impact!.socMinPctAfter,
+        impact!.unservedKwhBefore,
+        impact!.unservedKwhAfter,
+        ...Object.values(impact!.sectors).flatMap((s) =>
+          s
+            ? [
+                s.servedKwhBefore,
+                s.servedKwhAfter,
+                s.servedKwhDelta,
+                s.offHoursBefore,
+                s.offHoursAfter,
+              ]
+            : []
+        ),
+      ];
+      for (const n of shown) expect(evidenceValues.has(n)).toBe(true);
+    });
+
+    it('propose_change with a strategy only compares current vs proposed strategy', () => {
+      const res = executeTool(
+        'propose_change',
+        { strategy: 'essential_first', reason: 'Protect the clinic' },
+        { ...ctx, activeStrategy: 'proportional' }
+      );
+      expect(res.proposal?.impact?.strategyBefore).toBe('proportional');
+      expect(res.proposal?.impact?.strategyAfter).toBe('essential_first');
     });
 
     it('executes propose_change with strategy rules (criticalShares & balancedWeights) (PZ-T10)', () => {

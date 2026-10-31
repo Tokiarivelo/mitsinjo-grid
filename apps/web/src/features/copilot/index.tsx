@@ -7,6 +7,8 @@ export function CopilotPage() {
 }
 
 export { CopilotWorkspace } from './ui/copilot-workspace';
+export { CopilotTerminal } from './ui/copilot-terminal';
+export { CopilotProvider } from './hooks/copilot-context';
 export { MarkdownRenderer } from './ui/markdown-renderer';
 export { MediaLightboxModal } from './ui/media-lightbox-modal';
 export { CanvasSketchDialog } from './ui/canvas-sketch-dialog';

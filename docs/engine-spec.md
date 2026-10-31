@@ -77,7 +77,17 @@ Warnings: merge consecutive hours into ranges. `CRITICAL_UNMET` (any critical sh
 `SECTOR_PARTIAL` (sector coverage < 100 % in a step), `RESERVE_REACHED` (soc ≤ min + 0.5),
 `CURTAILMENT` (curtailedKw > 0), `SECTOR_CAPPED` (sector allocation constrained by a capacity cap),
 `ANOMALY_TO_VERIFY` (meter readings persistently diverge from expected profile by > 25% for ≥ 2 consecutive hours),
-`LIFELINE_SHORTFALL` (energy < Σ planchers, identifies sectors experiencing shortfall).
+`LIFELINE_SHORTFALL` (energy < Σ planchers, identifies sectors experiencing shortfall),
+`FIRE_ISOLATION` (every hour a `fire` event cuts a sector).
+Fire (`{ type: 'fire', sector, startHour, durationH }`, F1, ENGINE_VERSION 0.4.0): each fire adds a 0 kW cap on its sector for
+its hours (`effectiveSectorCaps`). Caps combine by minimum, so the fire beats strategy, operator caps and the lifeline floor
+(the cap-aware floor drops to 0, no `LIFELINE_SHORTFALL`); the energy goes to the other sectors; mode `off`.
+Change impact (`changeImpact(before, after)`): per sector `servedKwh` before/after/delta and `offHours` (steps with
+demand > ε and `mode = 'off'`; a sector without load is never off), plus `socMinPct` and `unservedKwh` before/after.
+Used by the approval dialog ("Engine calculation").
+Clinic guard (`clinicGuard(patch)`, K6): lists why a patch endangers `health` — `cap_zero` (cap < 0.05 kW),
+`disconnected` (`sectorLoads.health = 0`), `floor_zero` (lifeline floor < 0.05 kW), `lifeline_off` (floors disabled).
+Empty = safe. The dialog then shows a red warning and needs a second click.
 
 ## 5. Default parameters
 

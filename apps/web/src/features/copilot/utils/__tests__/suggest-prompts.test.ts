@@ -88,4 +88,25 @@ describe('suggestPrompts (P6-T10)', () => {
     const prompts = suggestPrompts({ result: curtailOnly });
     expect(prompts.find((p) => p.key === 'promptDeficitHours')).toBeUndefined();
   });
+
+  it('a fire burning now puts its four questions first, then one per other burning sector (M2)', () => {
+    const result = simulate(scenarios.baseline.input, 'proportional');
+    const prompts = suggestPrompts({ result, fires: ['water', 'school'] });
+    expect(prompts.slice(0, 5)).toEqual([
+      { key: 'promptFireImpact', params: { sector: 'water' }, tone: 'incident' },
+      { key: 'promptFireEssential', params: { sector: 'water' }, tone: 'incident' },
+      { key: 'promptFireEnergy', params: { sector: 'water' }, tone: 'incident' },
+      { key: 'promptFireRestore', params: { sector: 'water' }, tone: 'incident' },
+      { key: 'promptFireImpact', params: { sector: 'school' }, tone: 'incident' },
+    ]);
+    expect(prompts).toHaveLength(6);
+    expect(prompts[5]?.tone).toBeUndefined();
+  });
+
+  it('fire questions also show before any result; no fire → unchanged list', () => {
+    const prompts = suggestPrompts({ fires: ['health'] });
+    expect(prompts.slice(0, 4).every((p) => p.tone === 'incident')).toBe(true);
+    expect(prompts).toHaveLength(6);
+    expect(suggestPrompts({ fires: [] })).toEqual(FALLBACK_STATIC_PROMPTS);
+  });
 });

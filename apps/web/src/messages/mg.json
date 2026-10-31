@@ -42,7 +42,7 @@
   "routes": {
     "overview": {
       "title": "Topimaso",
-      "subtitle": "Fandanjana angovo sy tranga miasa"
+      "subtitle": "Izay atahorana anio, sy ny fanapahan-kevitra manova izany."
     },
     "simulation": {
       "title": "Fandinihana mivantana",
@@ -123,6 +123,8 @@
       "timelineTitle": "Fikarohana Ora 24h",
       "timelineSubtitle": "Zahao ny fikorianan ny herinaratra isan ora mandritra ny 24 ora",
       "timelineScrubberLabel": "Fisafidianana ny ora",
+      "timelineMinimize": "Ahenao ny fikarohana ora",
+      "timelineExpand": "Halehibeazo ny fikarohana ora",
       "stepBackward": "Mihemotra 1 ora",
       "stepForward": "Mandroso 1 ora",
       "startPlayback": "Alefaso ny fizotry ny fotoana",
@@ -255,6 +257,12 @@
         "disconnect": "Esory",
         "connectAria": "Ampifandraiso amin'ny tamba-jotra {sector}",
         "disconnectAria": "Esory amin'ny tamba-jotra {sector}"
+      },
+      "fsControls": {
+        "title": "Fanaraha-maso ny simulation",
+        "toggle": "Fanaraha-maso",
+        "open": "Asehoy ny fanaraha-maso ny simulation",
+        "close": "Afeno ny fanaraha-maso ny simulation"
       }
     },
     "strategyLab": {
@@ -343,13 +351,30 @@
         "batteryCapacityKwh": "Fahafahan'ny bateria (kWh)",
         "socStartPct": "Taham-bateria am-piandohana (SoC %)",
         "socEndPct": "Taham-bateria farany (SoC %)",
-        "socMinPct": "Taham-bateria kely indrindra (SoC %)"
+        "socMinPct": "Taham-bateria kely indrindra (SoC %)",
+        "servedKwhBefore": "Angovo nomena teo aloha (kWh)",
+        "servedKwhAfter": "Angovo nomena aorian'ny (kWh)",
+        "servedKwhDelta": "Fiovan'ny angovo nomena (kWh)",
+        "offHoursBefore": "Ora tsy misy jiro teo aloha (h)",
+        "offHoursAfter": "Ora tsy misy jiro aorian'ny (h)",
+        "socMinPctBefore": "Taham-bateria kely indrindra teo aloha (SoC %)",
+        "socMinPctAfter": "Taham-bateria kely indrindra aorian'ny (SoC %)",
+        "unservedKwhBefore": "Angovo tsy nomena teo aloha (kWh)",
+        "unservedKwhAfter": "Angovo tsy nomena aorian'ny (kWh)",
+        "lifelineCoveragePct": "Fandrakofana herinaratra vonjy aina (%)",
+        "peakSolarKw": "Fara-tampon'ny herin'ny masoandro (kW)",
+        "peakDemandKw": "Fara-tampon'ny filana (kW)",
+        "lowestSocPct": "Haavon'ny bateria ambany indrindra (SoC %)"
       },
       "errorTitle": "Fampandrenesana simulation",
       "errorFallbackNote": "Mbola azo jerena sy ampiasaina tsara ny voka-panadinana voaisa.",
       "proposalTitle": "TOLO-KEVITRA FANOVANA SCENARIO",
       "proposalReason": "Antony",
       "proposalApprove": "Ekena ary ampiharina",
+      "proposalApproveSelected": "Ekeo ireo voafidy ({count})",
+      "proposalLinesHint": "Esory ny marika amin'ny andalana iray raha tsy hampiharina. Ny andalana voamarika ihany no ampiharina; manaraka ny safidinao ny kajy ataon'ny motera.",
+      "proposalLineToggle": "Ampiharo: {label}",
+      "proposalSkippedTitle": "Tsy nampiharina (tsy voamarika)",
       "proposalReject": "Lavina",
       "diffSolarDrop": "Fihenan'ny masoandro",
       "diffDropWindow": "Fotoana fihenana",
@@ -362,6 +387,7 @@
       "diffLifelineStatus": "Herinaratra vonjy aina",
       "diffLifelineFloor": "Fetra ambany vonjy aina",
       "noCap": "Tsy misy fetra",
+      "capStartsNow": "{range} · manomboka izao",
       "contextPanelAria": "Toe-javatra simulation miasa",
       "contextTitle": "TOE-JAVATRA MIASA (VOAPAIKA)",
       "contextActiveScenario": "Scenario miasa",
@@ -383,6 +409,11 @@
       "demand": "tinady",
       "minReserve": "tahiry kely indrindra",
       "suggestedPromptsHeader": "FANONTANIANA ATOLOTRA",
+      "suggestedIncidentHeader": "Momba ny afo",
+      "promptFireImpact": "Afo – {sector}: inona no miova ho an'ny tanàna izao?",
+      "promptFireEssential": "Afo – {sector}: mbola mahazo herinaratra ve ny toeram-pahasalamana sy ny paompy rano?",
+      "promptFireEnergy": "Afo – {sector}: mankaiza ny heriny raha mbola natokana izy?",
+      "promptFireRestore": "Afo – {sector}: rehefa maty ny afo, ahoana no hamerenana soa aman-tsara ny herinaratra?",
       "promptWhyClinic": "Nahoana no mihena ny herinaratra any amin'ny tobim-pahasalamana?",
       "promptCompareStrategies": "Ampitahao ireo paikady fitsinjarana roa",
       "promptSolarDrop40": "Inona no mitranga raha mihena 40% ny vokatra masoandro?",
@@ -397,7 +428,6 @@
       "modelAuto": "✦ Auto (Mampifanaraka)",
       "voiceInput": "Fampidirana feo",
       "voiceListening": "Mihaino...",
-      "voiceNotSupported": "Tsy tohanan'ity navigateur ity ny feo",
       "readAloud": "Henoy ny valiny",
       "stopAudio": "Atsaharo ny feo",
       "imageGeneratedBadge": "Sary Namboarina",
@@ -443,10 +473,107 @@
         "compare_strategies": "Fampitahana ireo paikady",
         "get_sector_metrics": "Fandinihana ny angon-drakitry ny sehatra {sector}",
         "propose_change": "Fanomanana tolo-kevitra ho hamarinina",
-        "default": "Fandinihana ny valiny voakajy"
+        "segment_image": "Fitadiavana zavatra eo amin'ny sary",
+        "generate_image": "Famoronana sary",
+        "escalate_deep_reasoning": "Mifindra amin'ny fandinihana lalina",
+        "default": "Fandinihana ny valiny voakajy",
+        "compact_history": "Famintinana ny resaka teo aloha",
+        "control_playback": "Fanaraha-maso ny famakiana"
       },
       "unknownValue": "Tsy fantatra",
-      "chartType": "sary {type}"
+      "chartType": "sary {type}",
+      "impactTitle": "Kajy ataon'ny motera",
+      "impactSubtitle": "Andro nalaina tahaka, fanitsiana ankehitriny sy aorian'ny fanekena",
+      "impactColBefore": "Teo aloha",
+      "impactColAfter": "Aoriana",
+      "impactColChange": "Fiovana",
+      "impactServed": "{sector} : angovo nomena",
+      "impactOffHours": "{sector} : ora tsy misy jiro",
+      "impactSocMin": "Fiampangan'ny bateria kely indrindra",
+      "impactUnserved": "Angovo tsy nomena (tanàna)",
+      "impactHours": "{count} ora",
+      "impactNoChange": "Tsy mahita fiovana amin'ny angovo nomena na ora tsy misy jiro ny motera amin'ity tolo-kevitra ity.",
+      "clinicGuard": {
+        "title": "Loza : manapaka ny toeram-pitsaboana ity fanovana ity",
+        "reasons": {
+          "cap_zero": "Voafetra ho 0 kW ny toeram-pitsaboana: tsy misy herinaratra ny vakisiny sy ny fitsaboana.",
+          "disconnected": "Tapaka amin'ny tambajotra ny toeram-pitsaboana.",
+          "floor_zero": "Natao 0 kW ny herinaratra vonjy ain'ny toeram-pitsaboana.",
+          "lifeline_off": "Novonoina ho an'ny sehatra rehetra ny herinaratra vonjy aina, anisan'izany ny toeram-pitsaboana."
+        },
+        "secondConfirm": "Mila fanamafisana faharoa ny fankatoavana.",
+        "armed": "Tsindrio indray hanamafisana. Laviso raha tianao hijanona misy herinaratra ny toeram-pitsaboana.",
+        "confirmAgain": "Hamafisina: tapahina ny toeram-pitsaboana"
+      },
+      "decision": {
+        "approvedBadge": "Nekena",
+        "rejectedBadge": "Nolavina",
+        "approvedTitle": "Nekena sy nampiharina tamin'ny simulation ny fanovana",
+        "approvedBody": "Mampiasa ireo fandrindrana ireo ankehitriny ny tarehimarika, ny sary ary ny tanàna 3D.",
+        "rejectedTitle": "Nolavina ny tolo-kevitra",
+        "rejectedBody": "Tsy nisy niova tao amin'ny simulation.",
+        "undoneBadge": "Nofoanana",
+        "undoneTitle": "Nofoanana ny fanovana",
+        "undoneBody": "Niverina tamin'ny fandrindrana teo aloha ny simulation.",
+        "undoLast": "Foano ny fanovana farany"
+      },
+      "fallback": {
+        "spend_cap": "Lany ny teti-bola IA amin'ity fivoriana ity: avy amin'ny mpanampy tsy an-tserasera ity valiny ity. Mbola marina ny tarehimarika avy amin'ny motera.",
+        "provider_error": "Nanome hadisoana ny modely Meta: avy amin'ny mpanampy tsy an-tserasera ity valiny ity. Mbola marina ny tarehimarika avy amin'ny motera.",
+        "timeout": "Naharitra loatra ny modely Meta: avy amin'ny mpanampy tsy an-tserasera ity valiny ity. Mbola marina ny tarehimarika avy amin'ny motera.",
+        "unknown": "Avy amin'ny mpanampy tsy an-tserasera ny ampahany amin'ity valiny ity. Mbola marina ny tarehimarika avy amin'ny motera."
+      },
+      "generatedImageAlt": "Sary noforonina an'ny tambajotra kely",
+      "generatedVideoTitle": "Horonan-tsarin'ny simulation",
+      "attachmentAlt": "Rakitra miaraka",
+      "mediaVideo": "Horonan-tsary",
+      "mediaImage": "Sary",
+      "modelRoleChat": "mpanampy + fitaovana",
+      "modelRoleReasoning": "fisainana lalina",
+      "modelRoleImage": "sary",
+      "closeSessions": "Hidio ireo resaka voatahiry",
+      "noValue": "Tsy misy",
+      "dropWindowValue": "{from}:00–{to}:00 ({hours} ora)",
+      "loadDisconnected": "Tsy mifandray",
+      "diffSectorLoad": "Enta-mavesatra",
+      "voice": {
+        "stop": "Ajanony ny fandraketana",
+        "transcribing": "Mandika ny feonao…",
+        "unsupported": "Tsy afaka mandrakitra feo ity navigateur ity. Soraty ny hafatrao.",
+        "denied": "Nolavina ny fidirana amin'ny mikrô. Avelao ao amin'ny navigateur, na soraty ny hafatrao.",
+        "failed": "Tsy voadika ny feo voarakitra. Andramo indray na soraty ny hafatrao.",
+        "empty": "Tsy nisy feo re. Andramo indray akaiky kokoa ny mikrô.",
+        "dismiss": "Hidio",
+        "spectrumTitle": "Onjan'ny feo",
+        "spectrumAria": "Onjan'ny feo avy amin'ny mikrô amin'izao fotoana izao, 80 Hz hatramin'ny 8 kHz",
+        "peak": "Ambony indrindra {freq}",
+        "peakNone": "Ambony indrindra —",
+        "pitchZone": "Haavon'ny feo",
+        "hz": "{value} Hz",
+        "khz": "{value} kHz"
+      },
+      "evidenceShowAll": "Asehoy ny porofo rehetra ({count})",
+      "retry": {
+        "button": "Andramo indray",
+        "hint": "Tsy afa-po? Apetraho indray ilay fanontaniana mba hahazoana valiny vaovao.",
+        "retriedNote": "Valiny natao indray eo ambany (Andramo indray)."
+      },
+      "terminal": {
+        "title": "mitsinjo · copilote",
+        "open": "Sokafy ny terminal an'ny copilote",
+        "close": "Afeno ny terminal an'ny copilote",
+        "toggle": "Copilote",
+        "welcome": "Manontania momba ny tanàna aseho. Avy amin'ny motera ny tarehimarika rehetra; miandry ny fankatoavanao ny fanovana.",
+        "attachments": "[{count, plural, one {rakitra #} other {rakitra #}}]",
+        "placeholder": "Manontania ny copilote…"
+      },
+      "control": {
+        "play": "Natomboka ny famakiana",
+        "pause": "Najanona vetivety ny famakiana",
+        "stop": "Najanona ny famakiana (miverina 00:00)",
+        "restart": "Naverina natomboka tamin'ny 00:00",
+        "seek": "Nafindra tamin'ny {hour} ny famantarana ora"
+      }
     },
     "gridDiagram": {
       "topologyLabel": "Drafitry ny tanàna: fikorianan'ny herinaratra avy amin'ny ivon-masoandro mankany amin'ny sehatra tsirairay",
@@ -500,7 +627,8 @@
         "open": "{sector}: Misokatra / Tapaka (0 kW)"
       },
       "zoomControls": "Fanalehibiazana ny kisary",
-      "zoomHint": "Ctrl + kodiarana na tsongoy mba hanalehibe · sintony mba hanetsika"
+      "zoomHint": "Ctrl + kodiarana na tsongoy mba hanalehibe · sintony mba hanetsika",
+      "onFire": "May"
     },
     "hardwareLink": {
       "title": "Modely ara-batana",
@@ -531,6 +659,23 @@
       "stopFollowing": "Atsahatra ny fanarahana",
       "cloudOn": "Rahona eo amin'ny jiro",
       "cloudOff": "Esorina ny rahona"
+    },
+    "fireAlert": {
+      "reportButton": "Hilaza afo",
+      "reportTitle": "Sehatra inona no may?",
+      "reportHint": "Tapaka avy hatrany amin'ny ora aseho ny sehatra (fitsipika fiarovana, tsy mila fankatoavana).",
+      "reportCancel": "Hidiana",
+      "alreadyBurning": "May",
+      "bannerTitle": "AFO: tapaka ny {sectors}",
+      "bannerDesc": "Natokana hatramin'ny {hour} ny herinaratra (0 kW), mialoha ny paikady, fetra na herinaratra vonjy aina rehetra. Mila ny fankatoavanao ny famerenana ny herinaratra.",
+      "simulatedTag": "Fanairana simulation",
+      "seeVillage": "Jereo ny tanàna",
+      "askCopilot": "Anontanio ny copilote",
+      "snackbarTitle": "Afo voalaza: {sector}",
+      "snackbarBody": "Tapaka tamin'ny {hour} ny herinaratra. Fanairana simulation.",
+      "dismiss": "Hidio ny filazana afo",
+      "notificationsLabel": "Filazana afo",
+      "onFireLabel": "May"
     }
   },
   "copilot": {
@@ -682,13 +827,15 @@
     "sectorCappedDesc": "Ny herinaratra ho an'ny {sector} dia noferana tamin'ny fetran'ny mpitantana teo anelanelan'ny {from} sy {to}.",
     "lifelineShortfallTitle": "Tsy voatazona ny herinaratra fototra",
     "lifelineShortfallDesc": "Nahazo latsaky ny fetra farany ilaina ny {sector} teo anelanelan'ny {from} sy {to}. Ny rano sy ny fahasalamana no tazonina voalohany.",
+    "fireIsolationTitle": "Afo: {sector} natokana",
+    "fireIsolationDesc": "Tapaka (0 kW) ny {sector} eo anelanelan'ny {from} sy {to} noho ny afo. Fitsipika fiarovana: tsy misy paikady, fetra na herinaratra vonjy aina manova izany.",
     "hoursRange": "{from} - {to}"
   },
   "overview": {
-    "subtitle": "Fahatakarana ny fisian'ny herinaratra sy ny fiantraikany eo amin'ny fiaraha-monina.",
+    "subtitle": "Izay atahorana anio, sy ny fanapahan-kevitra manova izany.",
     "runSimulation": "Handefa ny simulation",
     "openLive": "Hanokatra ny simulation mivantana",
-    "simulating": "Manao simulation...",
+    "openLiveHint": "Avereno ny andro ao amin’ny tanàna 3D: fandaharam-potoana, fanaraha-maso, copilote IA",
     "solarPeak": "Herin'ny masoandro farany ambony",
     "solarAvg": "Herin'ny masoandro salanisa",
     "batterySoc": "Tahiry faran'ny bateria",
@@ -697,11 +844,8 @@
     "energyBalanceTitle": "Fandanjalanjana angovo 24 ora",
     "energyBalanceDesc": "Famokarana, fikorianan'ny tahiry ary angovo voazara",
     "serviceAllocationTitle": "Fizarana amin'ny tolotra fiaraha-monina",
-    "serviceAllocationDesc": "Fizarana herinaratra amin'ny sehatra 5 ao an-tanàna",
-    "scenarioImpactTitle": "Fiantraikan'ny toe-javatra & Fampitandremana",
-    "scenarioImpactDesc": "Fampitandremana voakajy sy tombana amin'ny tambajotra",
     "previewTitle": "Endrika nomerikan'ny tambajotra",
-    "previewSubtitle": "Sary 2D/3D maneho ny famokarana, bateria sy tolotra",
+    "previewSubtitle": "Jereo ny herinaratra tonga amin’ny trano tsirairay, isan’ora.",
     "view3d": "Fijery 3D",
     "view2d": "Kisary 2D",
     "unservedEnergy": "Tsy voazara: {kwh}",
@@ -710,33 +854,56 @@
     "batteryCaption": "SoC ambany indrindra: {min} · Azo ampiasaina: {kwh}",
     "solarCaption": "Famokarana 24 ora: {kwh}",
     "solarDeltaBaseline": "{delta} raha oharina amin'ny fototra",
-    "emptyTitle": "Mbola tsy misy valin'ny simulation",
     "emptyDesc": "Alefaso ny simulation mba hanisana ny fizarana herinaratra sy hijerena ny fahafaham-po.",
     "solarGen": "Totalin'ny famokarana masoandro",
     "batteryNet": "Tahirin'ny bateria (fiandohana → farany)",
     "servedEnergy": "Totalin'ny angovo voazara",
     "unservedTotal": "Totalin'ny angovo tsy voazara",
-    "energyOverTimeTitle": "Angovo araka ny fotoana (24 ora)",
-    "energyOverTimeSubtitle": "Famokarana masoandro, fitakiana, angovo voazara ary tahirin'ny bateria",
     "energyOverTimeSummary": "Fivoaran'ny famokarana masoandro, fitakiana manontolo, angovo voazara amin'ny kW ary tahirin'ny bateria mandritra ny 24 ora.",
-    "clinicWarningInsight": "Miantraika amin'ny tolotra fototra ao amin'ny tobim-pahasalamana ny fizarana mitovy lenta. Mifindrà amin'ny Laharam-pahamehana fototra ao amin'ny Labo Paikady mba hiarovana ny aina.",
-    "schematicBadge": "SARY 2D",
     "chartTitle": "Famokarana sy Filàna 24h",
     "chartSubtitle": "Masoandro PV, filàna manontolo, herinaratra voazara ary SoC bateria",
     "emptyChartNotice": "Alefaso ny simulation hijerena ny firafitry ny herinaratra mandritra ny 24 ora.",
     "sectorsCount": "Sokajy {count}",
-    "badge3d": "KAMBANA NOMERIKA 3D",
     "quickPhasesLabel": "Dingana haingana",
     "phaseDawn": "06:00 Maraina",
     "phasePeak": "12:00 Masoandro mitataovovonana",
     "phaseEvening": "19:00 Hariva be mpampiasa",
     "phaseNight": "23:00 Alina",
-    "sheddingProtocolTitle": "Fomba fanapahan-jiro mandeha hoazy",
-    "sheddingProtocolDesc": "Manapaka voalohany ny tsenan'ny tanàna sy ny sekoly fototra rehefa latsaky ny 20% ny bateria, mba hiarovana ny vata fampangatsiahana fitsaboana.",
-    "compareStrategiesCta": "Ampitahao ao amin'ny Strategy Lab",
     "nodeMitsinjoBus": "KASARY: MITSINJO_BUS",
     "nodeCoordinates": "LAT -19.12° | LON 48.23°",
-    "viewModeLabel": "Fomba fijery"
+    "viewModeLabel": "Fomba fijery",
+    "incident": {
+      "pill": {
+        "empty": "Vonona hanao simulation",
+        "risk": "Olana · tolotra ilaina indrindra",
+        "safe": "Milamina ny zava-drehetra"
+      },
+      "title": {
+        "empty": "Inona no mitranga rehefa mihena ny masoandro?",
+        "safe": "Mbola misy herinaratra ny tolotra ilaina rehetra."
+      },
+      "riskTitle": "Maty jiro ny toeram-pitsaboana sy ny paompy rano amin’ny {hour}.",
+      "riskDesc": "Amin’ny {strategy}, tsy ampy {kwh} ny angovo ilaina amin’ity andro simulation ity. Fanapahan-kevitra iray monja no afaka manova izany.",
+      "safeDesc": "Amin’ny {strategy}, manana herinaratra tontolo andro ny toeram-pitsaboana sy ny paompy rano. Andramo ny fiovan’ny toetrandro mba hahitana izay atahorana.",
+      "emptyDesc": "Ataovy simulation ny andro iray ao an-tanàna ary jereo izay mitazona herinaratra rehefa lany ny bateria.",
+      "stats": {
+        "start": "Fiandohan’ny fahatapahana",
+        "hours": "Ora tsy misy herinaratra ilaina",
+        "missing": "Angovo ilaina tsy ampy",
+        "coverage": "Fandrakofana ilaina"
+      },
+      "hoursValue": "{hours} ora",
+      "askCopilot": "Anontanio ny copilote hoe nahoana",
+      "askCopilotSafe": "Anontanio ny copilote",
+      "showAt": "Jereo ny tanàna amin’ny {hour}",
+      "solarDrop": "Simulation fihenan’ny masoandro (−40%)",
+      "run": "Alefa ny simulation",
+      "ringsTitle": "Andro iray ihany, fanapahan-kevitra hafa",
+      "ringsDesc": "Ampahany amin’ny filan’ny toeram-pitsaboana sy ny rano omen’ny paikady tsirairay. Toetrandro mitovy, bateria mitovy: kajian’ny motera.",
+      "ringLabel": "Fandrakofana ilaina amin’ny {strategy}",
+      "ringCaption": "filana ilaina voavaly",
+      "ringHours": "{hours} ora tsy misy herinaratra"
+    }
   },
   "strategies": {
     "subtitle": "Fampitahana mifanila ny fomba fizarana herinaratra amin'ny toe-javatra mitovy",

@@ -13,6 +13,7 @@ import {
   scenarios,
   compareWorkflow,
   applyPatch,
+  activeFires,
   MAX_WORKFLOW_DAYS,
 } from '@mitsinjo/engine';
 
@@ -20,6 +21,16 @@ export type SimStatus = 'ready' | 'running' | 'complete' | 'modified' | 'error';
 export type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'stopped';
 /** Where the input comes from: a scenario edited in the app, or the physical scale model (PH). */
 export type InputSource = 'scenario' | 'device';
+
+/** One approved change (K4): the input and strategy just before it, to restore on undo. */
+export interface AppliedChange {
+  /** Id of the approved proposal. */
+  id: string;
+  before: { input: SimulationInput; strategy: StrategyId };
+}
+
+/** Approved changes kept for undo (oldest dropped first). */
+export const CHANGE_HISTORY_MAX = 20;
 
 /** What the scale-model bridge sends that the store needs to re-run the same engine call. */
 export type DeviceRun = Pick<BridgeState, 'scenarioId' | 'patch' | 'strategy' | 'simHour'> &
@@ -44,6 +55,8 @@ export interface SimulationState {
   source: InputSource;
   /** Real length of one simulated hour on the scale model (ms), from its `timeScale`; null = unknown. */
   deviceHourMs: number | null;
+  /** Approved changes of this session, oldest first. Cleared by loadScenario, reset and the scale model. */
+  changeHistory: AppliedChange[];
 
   // Actions
   loadScenario: (scenarioId: ScenarioId) => void;
@@ -54,6 +67,15 @@ export interface SimulationState {
   selectSector: (sector: SectorId | null) => void;
   setTimeIndex: (timeIndex: number) => void;
   applyProposal: (patch?: InputPatch, strategy?: StrategyId) => void;
+  /**
+   * Fire reported in a sector (M2-T2, safety exception): adds a fire event from the shown hour to the end of
+   * the day and re-runs the engine at once, no approval. A sector already burning at that hour is left as is.
+   */
+  reportFire: (sector: SectorId) => void;
+  /** applyProposal + records the state before it, so `undoLastChange` can restore it. */
+  approveChange: (id: string, patch?: InputPatch, strategy?: StrategyId) => void;
+  /** Restores the input and strategy from before the last approved change, re-runs the engine. Returns its id. */
+  undoLastChange: () => string | null;
   /** Follow the scale model: scenario + measured patch, its strategy and hour; runs the engine. */
   applyDeviceRun: (run: DeviceRun) => void;
   /** Stop following the scale model (the last input stays, editable). */
@@ -121,6 +143,7 @@ export const initialSimulationData = {
   error: null as string | null,
   source: 'scenario' as InputSource,
   deviceHourMs: null as number | null,
+  changeHistory: [] as AppliedChange[],
 };
 
 export function resetSimulationStore() {
@@ -128,6 +151,7 @@ export function resetSimulationStore() {
     ...initialSimulationData,
     input: cloneInput(scenarios[INITIAL_SCENARIO_ID].input),
     workflow: DEFAULT_WORKFLOW,
+    changeHistory: [],
   });
 }
 
@@ -168,6 +192,30 @@ function commitWorkflow(
   set({ ...modifiedState(), ...patch });
 }
 
+type SetState = (partial: Partial<SimulationState>) => void;
+type GetState = () => SimulationState;
+
+/** New input (and strategy) + engine re-run on every workflow day. Throws if the engine fails. */
+function commitInput(set: SetState, get: GetState, input: SimulationInput, strategy: StrategyId) {
+  set({ input, activeStrategy: strategy, status: 'running', error: null });
+  const workflowResults = compareWorkflow(input, get().workflow, ALL_STRATEGIES);
+  set({
+    workflowResults,
+    results: dayComparison(workflowResults, get().dayIndex),
+    status: 'complete',
+    error: null,
+  });
+}
+
+function failRun(set: SetState, err: unknown, fallback: string) {
+  set({
+    status: 'error',
+    error: err instanceof Error ? err.message : fallback,
+    isPlaying: false,
+    playbackStatus: 'idle',
+  });
+}
+
 export const useSimulationStore = create<SimulationState>((set, get) => ({
   ...initialSimulationData,
 
@@ -193,6 +241,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       workflowResults: {},
       dayIndex: 0,
       error: null,
+      changeHistory: [],
     });
   },
 
@@ -248,6 +297,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       workflowResults: {},
       dayIndex: 0,
       error: null,
+      changeHistory: [],
     });
   },
 
@@ -268,29 +318,45 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     try {
       const patched =
         patch && Object.keys(patch).length > 0 ? applyPatch(get().input, patch) : get().input;
-      const nextStrategy = strategy ?? get().activeStrategy;
-
-      set({
-        input: patched,
-        activeStrategy: nextStrategy,
-        status: 'running',
-        error: null,
-      });
-      const workflowResults = compareWorkflow(patched, get().workflow, ALL_STRATEGIES);
-      set({
-        workflowResults,
-        results: dayComparison(workflowResults, get().dayIndex),
-        status: 'complete',
-        error: null,
-      });
+      commitInput(set, get, patched, strategy ?? get().activeStrategy);
     } catch (err) {
-      set({
-        status: 'error',
-        error: err instanceof Error ? err.message : 'Failed to apply proposal',
-        isPlaying: false,
-        playbackStatus: 'idle',
-      });
+      failRun(set, err, 'Failed to apply proposal');
     }
+  },
+
+  reportFire: (sector: SectorId) => {
+    const { input, timeIndex, activeStrategy } = get();
+    if (activeFires(input.events, timeIndex).some((f) => f.sector === sector)) return;
+    const fire = { type: 'fire' as const, sector, startHour: timeIndex, durationH: 24 - timeIndex };
+    try {
+      commitInput(set, get, { ...input, events: [...input.events, fire] }, activeStrategy);
+    } catch (err) {
+      failRun(set, err, 'Failed to report the fire');
+    }
+  },
+
+  approveChange: (id: string, patch?: InputPatch, strategy?: StrategyId) => {
+    const { input, activeStrategy, changeHistory } = get();
+    const entry: AppliedChange = {
+      id,
+      before: { input: cloneInput(input), strategy: activeStrategy },
+    };
+    get().applyProposal(patch, strategy);
+    if (get().status !== 'complete') return;
+    set({ changeHistory: [...changeHistory, entry].slice(-CHANGE_HISTORY_MAX) });
+  },
+
+  undoLastChange: () => {
+    const { changeHistory } = get();
+    const last = changeHistory[changeHistory.length - 1];
+    if (!last) return null;
+    set({
+      input: cloneInput(last.before.input),
+      activeStrategy: last.before.strategy,
+      changeHistory: changeHistory.slice(0, -1),
+    });
+    get().run();
+    return last.id;
   },
 
   applyDeviceRun: ({ scenarioId, patch, strategy, simHour, scale }: DeviceRun) => {
@@ -307,6 +373,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         workflow: DEFAULT_WORKFLOW,
         dayIndex: 0,
         timeIndex: simHour,
+        changeHistory: [],
         isPlaying: false,
         playbackStatus: 'idle',
       });

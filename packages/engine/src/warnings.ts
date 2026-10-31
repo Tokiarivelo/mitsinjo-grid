@@ -1,4 +1,5 @@
 import { EPS } from './constants';
+import { effectiveSectorCaps, fireEvents } from './fire';
 import { computeProfileDemandKw } from './model/demand';
 import { type LifelineFloorsByHour, lifelineFloorsByHour } from './strategies/lifeline';
 import type { BatteryConfig, SectorId, SimulationInput, SimWarning, StepResult } from './schemas';
@@ -18,7 +19,8 @@ export function generateWarnings(
   const raw: RawWarning[] = [];
   const lifelineFloors =
     input && input.strategyParams?.lifeline?.enabled !== false
-      ? (floorsByHour ?? lifelineFloorsByHour(input.sectors, input.sectorCaps, steps.length))
+      ? (floorsByHour ??
+        lifelineFloorsByHour(input.sectors, effectiveSectorCaps(input), steps.length))
       : null;
 
   for (let t = 0; t < steps.length; t++) {
@@ -88,6 +90,18 @@ export function generateWarnings(
           raw.push({ code: 'LIFELINE_SHORTFALL', sector: secId, hour: t });
         }
       }
+    }
+  }
+
+  // 5c. FIRE_ISOLATION (F1): every hour a sector is cut for a fire
+  const fireHours = new Set<string>();
+  for (const fire of fireEvents(input?.events ?? [])) {
+    const end = Math.min(steps.length, fire.startHour + fire.durationH);
+    for (let t = fire.startHour; t < end; t++) {
+      const key = `${fire.sector}:${t}`;
+      if (fireHours.has(key)) continue;
+      fireHours.add(key);
+      raw.push({ code: 'FIRE_ISOLATION', sector: fire.sector, hour: t });
     }
   }
 

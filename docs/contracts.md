@@ -60,7 +60,8 @@ type ScenarioEvent =
       startHour: number;
       durationH: number;
       factor: number;
-    };
+    }
+  | { type: 'fire'; sector: SectorId; startHour: number; durationH: number }; // F1: sector at 0 kW, beats caps + floor
 interface SectorCap {
   sector: SectorId;
   maxKw: number; // ≥ 0
@@ -147,7 +148,8 @@ type WarningCode =
   | 'CURTAILMENT'
   | 'ANOMALY_TO_VERIFY'
   | 'SECTOR_CAPPED'
-  | 'LIFELINE_SHORTFALL';
+  | 'LIFELINE_SHORTFALL'
+  | 'FIRE_ISOLATION'; // sector cut by a fire event (one range per sector)
 interface SimWarning {
   code: WarningCode;
   sector?: SectorId;
@@ -198,6 +200,11 @@ Store (`useSimulationStore`): `workflow` (default `[{ weather: 'sunny' }]` = pla
 applies the bridge patch, sets the strategy and hour, one-day workflow, then `run()` → `source = 'device'`,
 `deviceHourMs = scale.timeScale × 1000` (null without `scale`); selectors `selectFollowsDevice`, `selectDeviceHourMs`;
 `releaseDevice()` and `loadScenario` set `source = 'scenario'`.
+
+Fire (M2): engine `activeFires(events, t): FireEvent[]`, `effectiveSectorCaps(input)` = caps + one 0 kW cap per fire.
+Store `reportFire(sector)` adds `{ type: 'fire', sector, startHour: timeIndex, durationH: 24 − timeIndex }` and re-runs at
+once (safety exception: no approval, not in `changeHistory`; no-op if that sector already burns). `BuildingSceneModel.onFire`
+= burning at the shown hour; `feederTone` → `critical-red`, 2D wire `cut`.
 
 3D `SceneModel.weather: WeatherId` (from `toSceneModel({ weather })`, default `sunny`): drives sky, clouds and rain only.
 
@@ -363,13 +370,34 @@ expected demand. `toHardwareCommand`: `duty = clamp(servedKw / feederNominalKw, 
 
 ## Copilot tools (LLM-facing; args validated with Zod server-side)
 
-| Tool                 | Args                                                                                    | Returns                                                                         |
-| -------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `get_grid_state`     | `{}`                                                                                    | `{ scenarioId, input summary, metrics of active strategy, resultId }`           |
-| `run_scenario`       | `{ scenarioId?, patch?: InputPatch, strategy }`                                         | `{ resultId, metrics, warnings }`                                               |
-| `compare_strategies` | `{ strategies?: StrategyId[] }` (on current input)                                      | `{ [strategy]: { resultId, metrics } }` (evidence includes lifelineCoveragePct) |
-| `get_sector_metrics` | `{ sector: SectorId, strategy?: StrategyId }` (default: active)                         | `SectorMetrics & { priority, hourly: {t,demandKw,servedKw}[] }`                 |
-| `propose_change`     | `{ patch?: InputPatch, strategy?: StrategyId, reason: string }` (≥ 1 of patch/strategy) | `{ proposalId }` — **not applied**; UI asks user                                |
+| Tool                 | Args                                                                                        | Returns                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `get_grid_state`     | `{ hourly?: boolean }`                                                                      | `{ scenarioId, input summary, metrics of active strategy, resultId, hourly?, highlights? }` |
+| `run_scenario`       | `{ scenarioId?, patch?: InputPatch, strategy }`                                             | `{ resultId, metrics, warnings }`                                                           |
+| `compare_strategies` | `{ strategies?: StrategyId[] }` (on current input)                                          | `{ [strategy]: { resultId, metrics } }` (evidence includes lifelineCoveragePct)             |
+| `get_sector_metrics` | `{ sector: SectorId, strategy?: StrategyId }` (default: active)                             | `SectorMetrics & { priority, hourly: {t,demandKw,servedKw}[] }`                             |
+| `propose_change`     | `{ patch?: InputPatch, strategy?: StrategyId, reason: string }` (≥ 1 of patch/strategy)     | `{ proposalId, impact: ChangeImpact }` — **not applied**; UI asks user                      |
+| `control_playback`   | `{ action: 'play'\|'pause'\|'stop'\|'restart'\|'seek', hour?: 0–23 }` (`seek` needs `hour`) | `{ status: 'applied_in_app', action, hour?, note }` + SSE `control`; view only              |
+
+`control_playback` is the one tool the app runs without approval: it only moves the 24 h playback / time cursor
+(`applyPlaybackControl` → store `play/pause/stop/restart/setTimeIndex`; seek pauses first). Inputs, strategy and
+results never change, so it is not a "mutation" in the `propose_change` sense.
+
+`get_grid_state({hourly:true})` adds `hourly: {t, solarKw, demandKw, socPct}[24]` (engine steps, rounded) and `highlights
+{ peakSolarKw, peakSolarHour, peakDemandKw, peakDemandHour, lowestSocPct, lowestSocHour }` (picked from the steps), also in
+evidence. Charts in answers must use these values.
+
+`ChangeImpact` (engine `changeImpact(before, after)`, schema `ChangeImpactSchema`): `{ beforeResultId, afterResultId,
+strategyBefore, strategyAfter, socMinPctBefore/After, unservedKwhBefore/After, sectors: Partial<Record<SectorId,
+{ servedKwhBefore, servedKwhAfter, servedKwhDelta, offHoursBefore, offHoursAfter }>> }`. `propose_change` computes it
+on the current input + active strategy vs the patched input + proposed strategy (`proposalImpact` in
+`lib/proposal-impact.ts`, shared with the dialog), rounds to 2 decimals, keeps only sectors that change, and emits the same numbers as `evidence` (`socMinPctBefore`, `<sector>_servedKwhDelta`, …).
+Unsafe patch → tool data also has `clinicGuard: ClinicGuardReason[]` (engine `clinicGuard(patch)`, schema
+`ClinicGuardReasonSchema` = `cap_zero | disconnected | floor_zero | lifeline_off`); the dialog recomputes it from the patch.
+Partial approval (K3, `features/copilot/utils/proposal-parts.ts`): `proposalPartIds(proposal)` = one id per dialog line
+(`strategy`, `priorities.<s>`, `sectorCaps.<i>`, `solarDropPct`, `dropWindow`, `demandMultiplier`, `batteryCapacityKwh`,
+`initialSocPct`, `minSocPct`, `lifeline.enabled`, `lifeline.kw.<s>`, `sectorLoads.<s>`), same order as `useProposalDiff`.
+`pickProposal(proposal, checkedIds): { patch?, strategy? }` keeps the checked lines plus patch fields with no line.
 
 ```ts
 interface InputPatch {
@@ -394,7 +422,42 @@ interface InputPatch {
 
 ## Copilot HTTP
 
-`POST /api/copilot` body `{ messages: {role:'user'|'assistant', content:string}[], input: SimulationInput }`
+`POST /api/copilot` body `{ messages: {role:'user'|'assistant', content:string, media?: {type, url, key?}[]}[] /*≤ 40: those not in the summary*/, input: SimulationInput, strategy?, model?, locale?, sessionId?, hour? /*0–23, shown hour: village image + "now" for caps (system note)*/, summary?: string /*≤ 4000*/, summarizedCount?: int /*payload messages before `messages`*/, retry?: boolean /*same question again; question not saved twice*/ }`.
+Client `ChatMessageData.retried?: boolean` = answer redone by Retry (kept on screen, left out of the payload)
 → `text/event-stream` events:
 `activity {tool, sector?, label}` (UI translates `tool`; `label` is English, logs only) · `delta {text}` · `evidence {resultId, fields: Record<string, number|string>}` ·
-`proposal {proposalId, patch?, strategy?, reason}` · `error {code, message}` · `done {}`.
+`proposal {proposalId, patch?, strategy?, reason, impact?: ChangeImpact}` · `error {code, reason?, message}` · `done {}` ·
+`model {model, modality, reason}` (modality `chat|reasoning|vision|image`; a second `model` event announces a switch to Wonder) · `image {imageUrl, caption}` ·
+`perception {kind:'segment', concept, count, boxCoverage, instances[], imageWidth, imageHeight, source, model, fallback?}` ·
+`control {action, hour?}` (playback command from `control_playback`; client applies it, `ChatMessageData.control` shows a cyan line) ·
+`summary {text, summarizedCount}` (history folded into the summary; client sends only later messages, session stores both).
+`error.code = PROVIDER_FALLBACK` carries `reason: 'spend_cap' | 'provider_error' | 'timeout'` (UI: amber note on that answer).
+
+Operator decision (chat message `role: 'decision'`, saved via `POST /api/copilot/sessions/:id`): `ProposalDecision
+{ proposalId, status: 'approved'|'rejected'|'undone', items: {id?, label, current, proposed}[] /*snapshot as shown, checked lines*/,
+skipped?: same[] /*lines unchecked (K3), not applied*/, patch?, strategy? /*what was applied*/ }`.
+Approved with `skipped` → the model text adds « Lines the operator left out (NOT applied): … ».
+Sent to the model as a user turn `[Operator decision] APPROVED|REJECTED|UNDID proposal <id>…`.
+Store (K4): `changeHistory: { id, before: { input, strategy } }[]` (≤ 20, oldest first). `approveChange(id, patch?, strategy?)` =
+`applyProposal` + records the state before it (only if the run succeeds); `undoLastChange(): id | null` restores it and re-runs.
+Cleared by `loadScenario`, `reset`, `applyDeviceRun`. Plain `applyProposal` (sector sliders) is not recorded; an undo also
+drops later slider edits (it restores the whole input). Session GET adds `summary?, summarizedCount?`.
+
+`POST /api/voice` multipart `{ audio: WAV ≤ 2 MB (≈ 60 s 16 kHz mono), locale?, sessionId? }` → `{ text, durationMs, source:
+'meta'|'mock', fallback? }`; 400 missing, 413 too big, 415 not WAV. Audio is not stored.
+
+Model-switch tools (Zod in `server/copilot/model-tools.ts`, results go back to the model):
+`generate_image {scene:'current_village'|'custom', prompt? /*custom*/, caption?}` → `{ok, model, caption, shownState?:{hour, sky, battery, sectors}}` + `image` event · `segment_image {concept}` →
+`{concept, count, boxCoverage, model, source, note}` + `perception` event · `escalate_deep_reasoning {reason}` → `{ok, model}` + `model` event.
+Invalid args or failure → `{error}`.
+
+## Perception (`server/perception`, Zod in `schemas.ts`)
+
+Observations, never energy values: any number must become an `InputPatch` proposal before the engine uses it.
+Every result carries `{ source: 'meta'|'mock', model, fallback?: 'provider_error'|'spend_cap'|'not_configured' }`.
+
+```ts
+Transcript { text; durationMs; turns: { startMs; endMs; text; speaker? }[] }
+VisionResult { summary; observations: { label; value: number|string|boolean; unit?; confidence /*0–1*/ }[] }
+SegmentResult { concept; imageWidth; imageHeight; instances: { box:{x1,y1,x2,y2}; confidence? }[]; count; boxCoverage /*0–1*/ }
+```

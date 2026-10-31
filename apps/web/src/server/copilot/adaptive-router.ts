@@ -1,6 +1,10 @@
 import 'server-only';
 
-export type CopilotModality = 'image' | 'reasoning' | 'chat';
+/**
+ * chat = Spark + tools · reasoning = Wonder + tools · vision = Spark + tools reading an attached image ·
+ * image = Muse Image only (explicit selection).
+ */
+export type CopilotModality = 'image' | 'reasoning' | 'chat' | 'vision';
 
 export interface RouteDecision {
   targetModel: string;
@@ -8,75 +12,69 @@ export interface RouteDecision {
   reason: string;
 }
 
-const IMAGE_REGEX =
-  // "visualize" / "schema" are left out: they usually mean a chart or the grid diagram.
-  /\b(image|picture|photo|illustration|dessin|dessine|dessiner|generate an? image|crée une image|génère une image|générer une image|sary|mamorona sary)\b/i;
+export interface RouteContext {
+  /** The latest user message carries an image (photo, sketch). */
+  hasImage?: boolean;
+}
 
-const DEEP_REASONING_REGEX =
-  /\b(wonder|deep analysis|analyse approfondie|en profondeur|audit complet|planifi|long-term|long terme|famakafakana lalina|compromis complexe)\b/i;
+export const DEFAULT_CHAT_MODEL = 'muse-spark-1.3';
+export const WONDER_MODEL = 'muse-wonder-1.0';
+export const IMAGE_MODEL = 'muse-image-1.0';
+
+/** Best Spark model the account exposes (Spark 1.3 reads images natively). */
+export function pickChatModel(availableModels: string[] = []): string {
+  return (
+    availableModels.find((m) => m === DEFAULT_CHAT_MODEL) ||
+    availableModels.find((m) => m.startsWith('muse-spark-') && !m.endsWith('-contributor')) ||
+    DEFAULT_CHAT_MODEL
+  );
+}
 
 /**
- * Automatically inspects the user's latest query to route to the optimal model and modality.
- * If user explicitly requested a specific model (not 'auto'), that model is honored.
+ * Starting model for a turn, from structure only (explicit choice, attached image). The wording is never
+ * parsed here: Spark reads the request and switches model itself through tool calls
+ * (`generate_image` → Muse Image, `segment_image` → SAM, `escalate_deep_reasoning` → Wonder).
  */
 export function detectAdaptiveRoute(
-  query: string,
   requestedModel?: string,
-  availableModels: string[] = []
+  availableModels: string[] = [],
+  context: RouteContext = {}
 ): RouteDecision {
   const normalizedModel = (requestedModel || 'auto').trim();
 
-  // Explicit user override
   if (normalizedModel !== 'auto' && normalizedModel !== '') {
-    if (normalizedModel === 'muse-image-1.0') {
+    if (normalizedModel === IMAGE_MODEL) {
       return {
-        targetModel: 'muse-image-1.0',
+        targetModel: IMAGE_MODEL,
         modality: 'image',
-        reason: 'User explicitly selected muse-image-1.0',
+        reason: `User explicitly selected ${IMAGE_MODEL}`,
       };
     }
-    if (normalizedModel === 'muse-wonder-1.0') {
+    if (normalizedModel === WONDER_MODEL) {
       return {
-        targetModel: 'muse-wonder-1.0',
+        targetModel: WONDER_MODEL,
         modality: 'reasoning',
-        reason: 'User explicitly selected muse-wonder-1.0',
+        reason: `User explicitly selected ${WONDER_MODEL}`,
       };
     }
     return {
       targetModel: normalizedModel,
-      modality: 'chat',
+      modality: context.hasImage ? 'vision' : 'chat',
       reason: `User explicitly selected ${normalizedModel}`,
     };
   }
 
-  // 1. Detect Image Generation request
-  if (IMAGE_REGEX.test(query)) {
-    const hasImageModel = availableModels.includes('muse-image-1.0');
+  const chatModel = pickChatModel(availableModels);
+  if (context.hasImage) {
     return {
-      targetModel: hasImageModel ? 'muse-image-1.0' : 'mock-image',
-      modality: 'image',
-      reason: 'Auto-detected image generation request from prompt',
+      targetModel: chatModel,
+      modality: 'vision',
+      reason: 'Attached image: vision-capable chat model with tools',
     };
   }
-
-  // 2. Detect Deep Reasoning (Wonder) request
-  if (DEEP_REASONING_REGEX.test(query) && availableModels.includes('muse-wonder-1.0')) {
-    return {
-      targetModel: 'muse-wonder-1.0',
-      modality: 'reasoning',
-      reason: 'Auto-detected deep reasoning request from prompt',
-    };
-  }
-
-  // 3. Standard Microgrid Copilot + Simulation Tools (Muse Spark)
-  const defaultSpark =
-    availableModels.find((m) => m === 'muse-spark-1.3') ||
-    availableModels.find((m) => m.startsWith('muse-spark-')) ||
-    'muse-spark-1.3';
-
   return {
-    targetModel: defaultSpark,
+    targetModel: chatModel,
     modality: 'chat',
-    reason: 'Standard microgrid operational advisory with tool calling',
+    reason: 'Chat model with tools; it switches model through tool calls when needed',
   };
 }

@@ -12,3 +12,4 @@ export * from './impact-banner';
 export * from './sector-icon';
 export * from './view-mode-toggle';
 export * from './theme-switcher';
+export * from './glass-panel';

@@ -1,9 +1,138 @@
 import 'server-only';
 
 import type { LlmProvider, ChatMessage, ToolDefinition, LlmTurn, ToolCall } from '../provider';
+import type { SectorId } from '@mitsinjo/engine';
+import { describeSegment } from '../model-tools';
+import { parseAppHour } from '../prompt';
 
 /** Model id reported (and accepted) when `LLM_PROVIDER=mock`. */
 export const MOCK_MODEL_ID = 'mock-deterministic-v1';
+
+/**
+ * Offline stand-ins for Spark's own tool choice (model-switch tools). Only the mock reads keywords:
+ * with Meta, Spark decides from the meaning of the request.
+ */
+const MOCK_IMAGE_WORDS =
+  /(génère une image|générer une image|crée une image|dessine|illustration|affiche|generate an? (image|picture)|draw|mamorona sary)/i;
+const MOCK_VILLAGE_NOW =
+  /(état du village|village actuel|village maintenant|montre(-moi)? le village|show (me )?the village|current village|village now)/i;
+const MOCK_COUNT_WORDS = /(combien|compte |compte-|count|how many|détecte|detect|ohatrinona)/i;
+const MOCK_SEGMENT_CONCEPTS: Array<{ match: RegExp; concept: string }> = [
+  { match: /fumée|smoke|setroka/i, concept: 'smoke' },
+  { match: /toit|roof|tafo/i, concept: 'roof' },
+  { match: /maison|house|trano/i, concept: 'house' },
+  { match: /arbre|tree|hazo/i, concept: 'tree' },
+];
+
+/** "Cut <sector> now" (K2). Power-switch wording ("turn off", "éteindre") keeps the hardware refusal. */
+const MOCK_CUT_WORDS = /\b(cut|coupe|couper|coupez|délest\w*|tapaho)\b/i;
+const MOCK_NOW_WORDS = /\b(now|maintenant|ankehitriny)\b/i;
+/** A time given in the request ("tonight", "18 h", "de 8 à 12"…): a cut without one starts now. */
+const MOCK_TIME_WORDS =
+  /\b(tonight|this evening|morning|from|until|between|ce soir|soir|matin|nuit|demain|jusqu|entre|de \d|à \d|\d{1,2}\s?(h|:00|am|pm))\b|\d{1,2}\s?h\b/i;
+/** "Don't cut…" is not a cut order. */
+const MOCK_NEGATION_WORDS = /\b(don't|do not|ne coupe[sz]? pas|sans couper|aza)\b/i;
+const MOCK_SECTOR_WORDS: Array<{ match: RegExp; sector: SectorId }> = [
+  { match: /market|marché|tsena/i, sector: 'market' },
+  { match: /school|école|sekoly/i, sector: 'school' },
+  { match: /industr|factory|usine|atelier|ozinina/i, sector: 'industry' },
+  { match: /\b(water|pump|eau|pompe|rano)\b/i, sector: 'water' },
+  { match: /household|foyer|ménage|tokantrano/i, sector: 'households' },
+  { match: /clinic|clinique|santé|health|toeram-pahasalamana/i, sector: 'health' },
+];
+/** "…, garde la clinique" / "keep the clinic" / "sauf l'école": sectors named after it are kept (K3). */
+const MOCK_KEEP_WORDS = /\b(garde[rz]?|keep|sauf|except|tazony|avelao)\b/i;
+
+/** Sectors a cut order names, in a fixed order, leaving out those after a "keep" word (K3). */
+export function mockCutSectors(query: string): SectorId[] {
+  const cutPart = query.split(MOCK_KEEP_WORDS)[0] ?? query;
+  return MOCK_SECTOR_WORDS.filter((s) => s.match.test(cutPart)).map((s) => s.sector);
+}
+
+/** Playback words need a timeline noun, or the order alone ("pause", "lecture"), so "lance une simulation" is not "play". */
+const MOCK_PLAYBACK_NOUN = /\b(lecture|animation|timeline|playback|journ|curseur|fandaharana)/i;
+const MOCK_PLAYBACK_ACTIONS: Array<{
+  match: RegExp;
+  action: 'play' | 'pause' | 'stop' | 'restart';
+}> = [
+  { match: /\b(restart|recommence\w*|redémarre\w*|averina|avereno)\b/i, action: 'restart' },
+  { match: /\b(pause|ampiato\w*)\b/i, action: 'pause' },
+  { match: /\b(stop|arrête\w*|arrêter|ajanony)\b/i, action: 'stop' },
+  { match: /\b(play|lance\w*|joue\w*|démarre\w*|start|alefaso|lecture)\b/i, action: 'play' },
+];
+/** "Go to 18:00" / "va à 18 h" / "mandehana amin'ny 18". */
+const MOCK_SEEK =
+  /\b(?:go to|jump to|move to|va à|aller à|passe à|avance à|mandehana amin'ny)\s*(\d{1,2})\s*(?:h\b|:00)?/i;
+
+/** Playback order the mock sends to control_playback, or null when the question is not one. */
+export function mockPlaybackCommand(
+  query: string
+): { action: 'play' | 'pause' | 'stop' | 'restart' | 'seek'; hour?: number } | null {
+  const seek = MOCK_SEEK.exec(query);
+  if (seek) {
+    const hour = Number(seek[1]);
+    return hour >= 0 && hour <= 23 ? { action: 'seek', hour } : null;
+  }
+  const words = query.trim().split(/\s+/).length;
+  if (!MOCK_PLAYBACK_NOUN.test(query) && words > 2) return null;
+  const hit = MOCK_PLAYBACK_ACTIONS.find((a) => a.match.test(query));
+  return hit ? { action: hit.action } : null;
+}
+
+const MOCK_PLAYBACK_DONE: Record<'en' | 'fr' | 'mg', Record<string, string>> = {
+  en: {
+    play: 'Playback started.',
+    pause: 'Playback paused.',
+    stop: 'Playback stopped, back to 00:00.',
+    restart: 'Playback restarted from 00:00.',
+    seek: 'Time cursor moved to {hour}.',
+    tail: 'Only the view moved; no setting changed.',
+  },
+  fr: {
+    play: 'Lecture lancée.',
+    pause: 'Lecture en pause.',
+    stop: 'Lecture arrêtée, retour à 00:00.',
+    restart: 'Lecture relancée depuis 00:00.',
+    seek: 'Curseur déplacé à {hour}.',
+    tail: "Seule la vue a changé ; aucun réglage n'a été modifié.",
+  },
+  mg: {
+    play: 'Natomboka ny famakiana.',
+    pause: 'Najanona kely ny famakiana.',
+    stop: "Najanona ny famakiana, miverina amin'ny 00:00.",
+    restart: "Naverina hatramin'ny 00:00 ny famakiana.",
+    seek: "Nafindra amin'ny {hour} ny ora.",
+    tail: 'Ny fijery ihany no niova; tsy nisy masontsivana novaina.',
+  },
+};
+
+/** One-line answer after control_playback ran. */
+export function playbackDoneAnswer(
+  action: string,
+  hour: number | undefined,
+  lang: 'en' | 'fr' | 'mg'
+): string {
+  const t = MOCK_PLAYBACK_DONE[lang];
+  const hh = `${String(hour ?? 0).padStart(2, '0')}:00`;
+  return `${(t[action] ?? t.play!).replace('{hour}', hh)} ${t.tail}`;
+}
+
+/** Same default as the loop when the client sends no hour. */
+const MOCK_DEFAULT_HOUR = 12;
+
+/** Hour from the loop's app-context system note, if any. */
+function appHourFrom(messages: ChatMessage[]): number | undefined {
+  for (const m of messages) {
+    if (m.role !== 'system') continue;
+    const hour = parseAppHour(m.content ?? '');
+    if (hour !== undefined) return hour;
+  }
+  return undefined;
+}
+
+function mockSegmentConcept(query: string): string {
+  return MOCK_SEGMENT_CONCEPTS.find((c) => c.match.test(query))?.concept ?? 'solar panel';
+}
 
 function isFrenchQuery(text: string): boolean {
   const q = text.toLowerCase();
@@ -28,12 +157,165 @@ function isFrenchQuery(text: string): boolean {
     q.includes('poème') ||
     q.includes('hier') ||
     q.includes('éteindre') ||
-    q.includes('couper')
+    q.includes('couper') ||
+    q.includes('maintenant') ||
+    q.includes('marché') ||
+    q.includes('combien') ||
+    q.includes('maison') ||
+    q.includes('génère') ||
+    q.includes('dessine')
   );
+}
+
+/** Chart answer built only from the `get_grid_state(hourly)` tool result (engine values, already rounded). */
+export function describeProfileChart(payload: Record<string, unknown>, fr: boolean): string {
+  const hourly = payload.hourly as {
+    t: number;
+    solarKw: number;
+    demandKw: number;
+    socPct: number;
+  }[];
+  const h = (payload.highlights ?? {}) as Record<string, number>;
+  const resultId = String(payload.resultId ?? '');
+  const chart = JSON.stringify({
+    type: 'line',
+    title: fr
+      ? 'Production solaire, charge et batterie (24 h)'
+      : '24 h solar production, load and battery',
+    xAxisKey: 'hour',
+    series: [
+      { key: 'solar', label: fr ? 'Solaire PV (kW)' : 'Solar PV (kW)' },
+      { key: 'demand', label: fr ? 'Charge totale (kW)' : 'Total load (kW)' },
+      { key: 'battery', label: fr ? 'SoC batterie (%)' : 'Battery SoC (%)' },
+    ],
+    data: hourly.map((p) => ({
+      hour: `${String(p.t).padStart(2, '0')}h`,
+      solar: p.solarKw,
+      demand: p.demandKw,
+      battery: p.socPct,
+    })),
+  });
+  const at = (hour: number | undefined) => `${String(hour ?? 0).padStart(2, '0')}:00`;
+  return fr
+    ? `### Ce qui s'est passé\nProfil simulé sur 24 h : production solaire, charge du village et état de charge de la batterie (moteur, ${resultId}).\n\n` +
+        `\`\`\`chart\n${chart}\n\`\`\`\n\n` +
+        `### Preuves calculées\n- Pointe solaire : ${h.peakSolarKw} kW à ${at(h.peakSolarHour)}\n- Pointe de charge : ${h.peakDemandKw} kW à ${at(h.peakDemandHour)}\n- SoC batterie le plus bas : ${h.lowestSocPct} % à ${at(h.lowestSocHour)}\n\n` +
+        `### Pourquoi c'est important\nLes heures où la charge dépasse le solaire vident la batterie : ce sont elles qui menacent les services essentiels.\n\n` +
+        `### Et ensuite\nTester une baisse d'ensoleillement pour voir la batterie descendre plus tôt.`
+    : `### What happened\nSimulated 24 h profile: solar production, village load and battery state of charge (engine, ${resultId}).\n\n` +
+        `\`\`\`chart\n${chart}\n\`\`\`\n\n` +
+        `### Computed evidence\n- Solar peak: ${h.peakSolarKw} kW at ${at(h.peakSolarHour)}\n- Load peak: ${h.peakDemandKw} kW at ${at(h.peakDemandHour)}\n- Lowest battery SoC: ${h.lowestSocPct}% at ${at(h.lowestSocHour)}\n\n` +
+        `### Why it matters\nHours where load exceeds solar drain the battery: those are the hours that threaten essential services.\n\n` +
+        `### Explore next\nSimulate a solar drop to see the battery fall earlier.`;
+}
+
+type ToolErrorKind = 'unclear_change' | 'out_of_bounds' | 'other';
+
+/** What kind of tool failure this is, from the tool's error text (never shown to the user). */
+export function toolErrorKind(toolName: string, error: string): ToolErrorKind {
+  if (
+    error.startsWith('Failed to apply patch') ||
+    /must be (less|greater) than|too_(big|small)|out of range/i.test(error)
+  ) {
+    return 'out_of_bounds';
+  }
+  if (toolName === 'propose_change') return 'unclear_change';
+  return 'other';
+}
+
+const TOOL_ERROR_TEXT: Record<
+  'en' | 'fr' | 'mg',
+  Record<ToolErrorKind, [string, string, string, string]>
+> = {
+  en: {
+    unclear_change: [
+      'I did not understand which change to make, so nothing was proposed.',
+      'Name the sector and, if you want, the time. Without a time, a cut starts at the hour shown in the app.',
+      'Every change goes through an approval card with its engine impact; nothing is applied without your click.',
+      'Try "Cut the market now" or "Limit the school to 2 kW from 18:00 to 22:00".',
+    ],
+    out_of_bounds: [
+      'The change you asked for is outside what the simulator accepts, so nothing was proposed.',
+      'One of the values is out of its allowed range (for example a negative power or an hour past 24).',
+      'The simulator refuses values a real microgrid could not run, to keep every result meaningful.',
+      'Ask again with a smaller value or another time range.',
+    ],
+    other: [
+      'The simulator could not compute this request.',
+      'One of the parameters was not understood.',
+      'No number is shown when the engine could not compute it.',
+      'Rephrase the question, or press Retry for a new answer.',
+    ],
+  },
+  fr: {
+    unclear_change: [
+      "Je n'ai pas compris quel changement appliquer : aucune proposition n'a été faite.",
+      "Précisez le secteur et, si vous voulez, l'heure. Sans heure, une coupure commence à l'heure affichée dans l'app.",
+      "Chaque changement passe par une carte d'approbation avec son impact calculé ; rien ne s'applique sans votre clic.",
+      "Essayez « Coupe le marché maintenant » ou « Limite l'école à 2 kW de 18 h à 22 h ».",
+    ],
+    out_of_bounds: [
+      "Le changement demandé sort de ce que le simulateur accepte : aucune proposition n'a été faite.",
+      'Une des valeurs est hors de sa plage (par exemple une puissance négative ou une heure après 24 h).',
+      "Le simulateur refuse les valeurs qu'un vrai micro-réseau ne pourrait pas appliquer, pour garder des résultats fiables.",
+      'Redemandez avec une valeur plus petite ou une autre plage horaire.',
+    ],
+    other: [
+      "Le simulateur n'a pas pu calculer cette demande.",
+      "Un des paramètres n'a pas été compris.",
+      "Aucun chiffre n'est affiché quand le moteur n'a pas pu le calculer.",
+      'Reformulez la question, ou appuyez sur Réessayer pour une nouvelle réponse.',
+    ],
+  },
+  mg: {
+    unclear_change: [
+      'Tsy azoko hoe inona no fanovana tianao: tsy nisy tolo-kevitra natao.',
+      "Lazao ny sehatra ary, raha tianao, ny ora. Raha tsy misy ora dia manomboka amin'ny ora aseho ao amin'ny app ny fanapahana.",
+      "Mandalo amin'ny karatra fankatoavana misy ny vokany voakajy ny fanovana rehetra; tsy misy ampiharina raha tsy tsindrianao.",
+      'Andramo « Tapaho ny tsena ankehitriny ».',
+    ],
+    out_of_bounds: [
+      'Mihoatra ny ekena ny simulateur ny fanovana nangatahinao: tsy nisy tolo-kevitra natao.',
+      'Misy sanda iray mivoaka ny fetrany (ohatra hery ratsy na ora mihoatra ny 24).',
+      'Lavin’ny simulateur ny sanda tsy azo ampiharina amin’ny tambajotra tena izy.',
+      'Angataho indray amin’ny sanda kely kokoa na ora hafa.',
+    ],
+    other: [
+      'Tsy afaka nanao kajy ity fangatahana ity ny simulateur.',
+      'Misy masontsivana iray tsy azo.',
+      'Tsy misy tarehimarika aseho raha tsy afaka nanao kajy ny motera.',
+      'Avereno amin’ny fomba hafa ny fanontaniana, na tsindrio Andramo indray.',
+    ],
+  },
+};
+
+const ERROR_HEADINGS: Record<'en' | 'fr' | 'mg', [string, string, string, string]> = {
+  en: ['What happened', 'Computed evidence', 'Why it matters', 'Explore next'],
+  fr: ["Ce qui s'est passé", 'Preuves calculées', "Pourquoi c'est important", 'Et ensuite'],
+  mg: ['Inona no nitranga', 'Porofo voakajy', 'Nahoana no zava-dehibe', "Dingan'ny hoavy"],
+};
+
+/**
+ * Plain answer when a tool failed (offline copilot): in the app language, per kind of failure.
+ * The raw validation error stays in the logs and the model's tool result, never in the chat.
+ */
+export function toolErrorAnswer(toolName: string, error: string, lang: 'en' | 'fr' | 'mg'): string {
+  const text = TOOL_ERROR_TEXT[lang][toolErrorKind(toolName, error)];
+  return ERROR_HEADINGS[lang].map((h, i) => `### ${h}\n${text[i]}`).join('\n\n');
 }
 
 export class MockLlmProvider implements LlmProvider {
   readonly name = 'mock';
+  /** App language; without it the language is guessed from the question. */
+  private readonly locale?: 'en' | 'fr' | 'mg';
+
+  constructor(options?: { locale?: 'en' | 'fr' | 'mg' }) {
+    this.locale = options?.locale;
+  }
+
+  private isFrench(text: string): boolean {
+    return this.locale ? this.locale === 'fr' : isFrenchQuery(text);
+  }
 
   async chat(
     messages: ChatMessage[],
@@ -54,10 +336,48 @@ export class MockLlmProvider implements LlmProvider {
     // Find the last user message
     const userMsg = [...messages].reverse().find((m) => m.role === 'user');
     const query = (userMsg?.content || '').toLowerCase();
-    const fr = isFrenchQuery(query);
+    const fr = this.isFrench(query);
     console.info(
       `[copilot:mock] Generating synthetic response for user query: "${userMsg?.content?.slice(0, 50).replace(/\n/g, ' ') || ''}..." (french: ${fr})`
     );
+
+    const playback = mockPlaybackCommand(query);
+    if (playback) {
+      return { toolCalls: [{ id: 'call_playback', name: 'control_playback', args: playback }] };
+    }
+
+    const hasImage = Boolean(userMsg?.media?.some((m) => m.type === 'image'));
+    if (hasImage && MOCK_COUNT_WORDS.test(query)) {
+      return {
+        toolCalls: [
+          {
+            id: 'call_segment',
+            name: 'segment_image',
+            args: { concept: mockSegmentConcept(query) },
+          },
+        ],
+      };
+    }
+    if (!hasImage && MOCK_VILLAGE_NOW.test(query)) {
+      return {
+        toolCalls: [
+          { id: 'call_village', name: 'generate_image', args: { scene: 'current_village' } },
+        ],
+      };
+    }
+    if (!hasImage && MOCK_IMAGE_WORDS.test(query)) {
+      return {
+        toolCalls: [
+          {
+            id: 'call_image',
+            name: 'generate_image',
+            args: {
+              prompt: `Rural Malagasy village with a solar microgrid: ${userMsg?.content ?? ''}`,
+            },
+          },
+        ],
+      };
+    }
 
     // Multimodal simulated response if user attached media
     if (userMsg?.media && userMsg.media.length > 0) {
@@ -68,12 +388,12 @@ export class MockLlmProvider implements LlmProvider {
           ? `### Analyse visuelle du micro-réseau\nJ'ai bien analysé votre ${mediaType} jointe relative à la configuration du micro-réseau.\n\n` +
             `**Constatations clés :**\n` +
             `- **Composants détectés :** Panneaux photovoltaïques, onduleur central et liaison batterie.\n` +
-            `- **Alignement simulation :** Les spécifications correspondent au modèle nominal de 45 kWc avec stockage 120 kWh.\n` +
+            `- **Alignement simulation :** À comparer avec la puissance PV et la batterie du scénario actif (demandez « état du réseau » pour les valeurs du moteur).\n` +
             `- **Recommandation :** Vous pouvez lancer une simulation avec une chute d'ensoleillement de 40% pour tester la résilience.`
           : `### Microgrid Visual Analysis\nI have inspected the attached ${hasVideo ? 'video' : 'image'} regarding your microgrid layout.\n\n` +
             `**Key Observations:**\n` +
             `- **Detected Components:** Solar PV array, centralized inverter, and battery storage link.\n` +
-            `- **Simulation Alignment:** Layout matches nominal 45 kWp PV and 120 kWh battery capacity.\n` +
+            `- **Simulation Alignment:** Compare with the PV power and battery of the active scenario (ask for the grid state to get the engine values).\n` +
             `- **Recommendation:** Run a stress simulation with a 40% solar drop to evaluate resilience.`,
       };
     }
@@ -86,52 +406,9 @@ export class MockLlmProvider implements LlmProvider {
       query.includes('courbe') ||
       query.includes('diagramme')
     ) {
-      const chartJson = JSON.stringify(
-        {
-          type: 'line',
-          title: fr
-            ? 'Évolution de la production solaire et de la charge (24h)'
-            : '24h Solar Production vs Demand Profile',
-          xAxisKey: 'hour',
-          series: [
-            { key: 'solar', label: fr ? 'Solaire PV (kW)' : 'Solar PV (kW)', color: '#f59e0b' },
-            {
-              key: 'demand',
-              label: fr ? 'Charge totale (kW)' : 'Total Load (kW)',
-              color: '#38bdf8',
-            },
-            {
-              key: 'battery',
-              label: fr ? 'SoC Batterie (%)' : 'Battery SoC (%)',
-              color: '#10b981',
-            },
-          ],
-          data: [
-            { hour: '00h', solar: 0, demand: 8, battery: 60 },
-            { hour: '04h', solar: 0, demand: 7, battery: 52 },
-            { hour: '08h', solar: 18, demand: 14, battery: 58 },
-            { hour: '12h', solar: 42, demand: 26, battery: 85 },
-            { hour: '16h', solar: 22, demand: 28, battery: 92 },
-            { hour: '20h', solar: 0, demand: 24, battery: 74 },
-            { hour: '23h', solar: 0, demand: 12, battery: 64 },
-          ],
-        },
-        null,
-        2
-      );
-
+      // Chart values come from the engine: ask for the 24 h series, build the chart from the result.
       return {
-        content: fr
-          ? `### Que s'est-il passé\nVoici le profil de génération solaire simulé sur 24 heures en comparaison avec la charge du village et l'état de charge de la batterie.\n\n` +
-            `\`\`\`chart\n${chartJson}\n\`\`\`\n\n` +
-            `### Preuves calculées\n- Production solaire de pointe : 42 kW à 12h00\n- Charge de pointe en soirée : 28 kW à 16h00\n- SoC batterie minimal : 52 % à 04h00\n\n` +
-            `### Pourquoi c'est important\nLa batterie maintient la couverture énergétique nocturne sans coupure pour les services vitaux.\n\n` +
-            `### Explorer ensuite\nTester une baisse d'ensoleillement de 40% pour observer la sollicitation accrue de la batterie.`
-          : `### What happened\nHere is the simulated 24-hour solar generation profile plotted against total village load and battery State of Charge.\n\n` +
-            `\`\`\`chart\n${chartJson}\n\`\`\`\n\n` +
-            `### Computed evidence\n- Solar peak production: 42 kW at 12:00\n- Evening peak load: 28 kW at 16:00\n- Minimum battery SoC: 52% at 04:00\n\n` +
-            `### Why it matters\nThe battery buffer reliably supports essential services throughout nocturnal deficit hours.\n\n` +
-            `### Explore next\nSimulate a 40% afternoon solar drop to inspect battery stress under constrained generation.`,
+        toolCalls: [{ id: 'call_chart_profile', name: 'get_grid_state', args: { hourly: true } }],
       };
     }
 
@@ -221,6 +498,29 @@ Run one of the preset scenarios (Baseline or Monsoon Cloud Cover) to inspect sim
       };
     }
 
+    // Cut the clinic tonight -> unsafe proposal, the dialog's clinic guard asks twice (M1-T2, K6)
+    if (
+      (query.includes('clinic') || query.includes('clinique')) &&
+      (query.includes('cut') || query.includes('coupe')) &&
+      (query.includes('tonight') || query.includes('ce soir'))
+    ) {
+      return {
+        content: '',
+        toolCalls: [
+          {
+            id: 'call_cap_clinic_tonight',
+            name: 'propose_change',
+            args: {
+              patch: { sectorCaps: [{ sector: 'health', maxKw: 0, fromHour: 18, toHour: 24 }] },
+              reason: fr
+                ? 'Proposition simulée : clinique à 0 kW ce soir (18h-24h). Attention, cela coupe les soins ; à confirmer deux fois.'
+                : 'Simulated proposal: clinic at 0 kW tonight (18:00-24:00). Warning, this cuts care; needs two confirmations.',
+            },
+          },
+        ],
+      };
+    }
+
     // Cut the market tonight -> Simulated cap proposal via propose_change (PY-T3)
     if (
       (query.includes('cut the market') ||
@@ -252,6 +552,40 @@ Run one of the preset scenarios (Baseline or Monsoon Cloud Cover) to inspect sim
       return {
         content: '',
         toolCalls: [capToolCall],
+      };
+    }
+
+    // Cut sectors now, or with no time given -> cap from the hour shown in the app to the end of the day (M1-T3, K2).
+    // Several sectors in one order -> one proposal, one cap per sector, approvable line by line (K3).
+    const nowSectors = mockCutSectors(query);
+    const cutNow =
+      MOCK_CUT_WORDS.test(query) &&
+      !MOCK_NEGATION_WORDS.test(query) &&
+      (MOCK_NOW_WORDS.test(query) || !MOCK_TIME_WORDS.test(query));
+    if (nowSectors.length > 0 && cutNow) {
+      const names = nowSectors.join(fr ? ' et ' : ' and ');
+      const fromHour = appHourFrom(messages) ?? MOCK_DEFAULT_HOUR;
+      return {
+        content: '',
+        toolCalls: [
+          {
+            id: 'call_cap_now',
+            name: 'propose_change',
+            args: {
+              patch: {
+                sectorCaps: nowSectors.map((sector) => ({
+                  sector,
+                  maxKw: 0,
+                  fromHour,
+                  toHour: 24,
+                })),
+              },
+              reason: fr
+                ? `Proposition simulée : ${names} à 0 kW maintenant, de ${fromHour}:00 à 24:00 (heure affichée dans l'app ; aucun actionneur physique).`
+                : `Simulated proposal: ${names} at 0 kW now, from ${fromHour}:00 to 24:00 (hour shown in the app; no physical actuator).`,
+            },
+          },
+        ],
       };
     }
 
@@ -515,41 +849,44 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
     }
 
     const lastUser = [...(allMessages || [])].reverse().find((m) => m.role === 'user');
-    const fr = isFrenchQuery(lastUser?.content || '');
+    const fr = this.isFrench((lastUser?.content || '').toLowerCase());
 
     const toolName = toolMsg.name || '';
     const err = payload.error as string | undefined;
 
-    if (err) {
-      if (fr) {
-        return {
-          content: `### What happened
-La modification de paramètres demandée a été rejetée en raison de contraintes de validation.
-
-### Computed evidence
-Erreur de validation : ${err}
-
-### Why it matters
-Les invariants physiques de la simulation imposent des limites valides (ex. baisse solaire comprise entre 0% et 90%).
-
-### Explore next
-Essayez de configurer le pourcentage de baisse solaire avec une valeur valide entre 0% et 90%.`,
-        };
-      }
-
+    if (toolName === 'segment_image' && !err) {
       return {
-        content: `### What happened
-The requested parameter patch was rejected by validation constraints.
-
-### Computed evidence
-Validation Error: ${err}
-
-### Why it matters
-Physical simulation invariants require valid bounds (e.g. solar drop percentage between 0% and 90%).
-
-### Explore next
-Try setting the solar drop percentage to a valid value between 0% and 90%.`,
+        content: describeSegment(
+          {
+            concept: String(payload.concept ?? ''),
+            count: Number(payload.count ?? 0),
+            boxCoverage: Number(payload.boxCoverage ?? 0),
+            model: String(payload.model ?? 'mock'),
+          },
+          fr ? 'fr' : 'en'
+        ),
       };
+    }
+    if (toolName === 'get_grid_state' && !err && Array.isArray(payload.hourly)) {
+      return { content: describeProfileChart(payload, fr) };
+    }
+    if (toolName === 'generate_image' && !err) {
+      return {
+        content: fr
+          ? "### Ce qui s'est passé\nIllustration générée par IA pour visualiser le micro-réseau simulé (aucun chiffre dans l'image).\n\n### Et ensuite\nVoulez-vous simuler une baisse solaire ou comparer les stratégies ?"
+          : '### What happened\nAI-generated illustration of the simulated microgrid (no numbers in the picture).\n\n### Explore next\nWould you like to simulate a solar drop or compare strategies?',
+      };
+    }
+
+    if (toolName === 'control_playback' && !err) {
+      const data = (payload.data as Record<string, unknown> | undefined) ?? payload;
+      const hour = typeof data.hour === 'number' ? data.hour : undefined;
+      return {
+        content: playbackDoneAnswer(String(data.action), hour, this.locale ?? (fr ? 'fr' : 'en')),
+      };
+    }
+    if (err) {
+      return { content: toolErrorAnswer(toolName, err, this.locale ?? (fr ? 'fr' : 'en')) };
     }
 
     const data = (payload.data as Record<string, unknown>) || payload;
@@ -825,9 +1162,9 @@ Test a simulated cloud cover event to observe battery discharge behavior.`,
   <g transform="translate(560, 250)">
     <rect width="160" height="90" rx="6" fill="#1e293b" stroke="#10b981" stroke-width="2"/>
     <rect x="15" y="20" width="130" height="25" rx="3" fill="#065f46"/>
-    <text x="80" y="37" fill="#6ee7b7" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle">BATTERIE 200 kWh</text>
+    <text x="80" y="37" fill="#6ee7b7" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle">BATTERIE</text>
     <circle cx="35" cy="65" r="6" fill="#10b981"/>
-    <text x="50" y="69" fill="#94a3b8" font-family="monospace" font-size="11">SOC: 60%</text>
+    <text x="50" y="69" fill="#94a3b8" font-family="monospace" font-size="11">SIMULATION</text>
   </g>
   <text x="40" y="50" fill="#38bdf8" font-family="monospace" font-size="16" font-weight="bold">MITSINJO MICROGRID — SIMULATION</text>
   <text x="40" y="75" fill="#94a3b8" font-family="sans-serif" font-size="13">${prompt.slice(0, 60)}</text>

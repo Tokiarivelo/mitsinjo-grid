@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { useSimulationStore, resetSimulationStore } from '@/stores';
 import { CopilotPage } from '../index';
 import { ToolActivity } from '../ui/tool-activity';
@@ -63,10 +63,14 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Computed evidence')).toBeInTheDocument();
     expect(screen.getByText('SIM-123456')).toBeInTheDocument();
-    expect(screen.getByText('Solar Peak Capacity (kW)')).toBeInTheDocument();
-    // Every tool result keeps its own evidence table (not just the last one).
+    // Fixed settings (solar peak capacity) are not evidence rows.
+    expect(screen.queryByText('Solar Peak Capacity (kW)')).toBeNull();
+    // The last tool result is shown; earlier ones are folded under "Show all evidence".
     expect(screen.getByText('SIM-abcdef')).toBeInTheDocument();
     expect(screen.getByText('12.5')).toBeInTheDocument();
+    const fold = screen.getByText('Show all evidence (1)').closest('details');
+    expect(fold).not.toHaveAttribute('open');
+    expect(fold).toHaveTextContent('Critical Coverage (%)');
     expect(screen.getByText('Why it matters')).toBeInTheDocument();
     expect(screen.getByText('Explore next')).toBeInTheDocument();
     expect(screen.getByText('MITSINJO REASONING CORE')).toBeInTheDocument();
@@ -142,6 +146,130 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
     expect(onReject).toHaveBeenCalledTimes(1);
   });
 
+  it('asks a second confirmation with a red warning when the clinic is cut (M1-T2)', () => {
+    const onApprove = vi.fn();
+    render(
+      <ConfirmProposalDialog
+        proposal={{
+          proposalId: 'PROP-K6',
+          patch: {
+            sectorCaps: [{ sector: 'health', maxKw: 0, fromHour: 18, toHour: 22 }],
+            lifeline: { kw: { health: 0 } },
+          },
+          reason: 'Cut the clinic tonight',
+        }}
+        onApprove={onApprove}
+        onReject={vi.fn()}
+      />
+    );
+
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Danger: this change cuts the clinic');
+    expect(alert).toHaveTextContent('Clinic capped at 0 kW');
+    expect(alert).toHaveTextContent('Clinic survival floor set to 0 kW.');
+
+    fireEvent.click(screen.getByRole('button', { name: /Approve & Apply Scenario/i }));
+    expect(onApprove).not.toHaveBeenCalled();
+    expect(alert).toHaveTextContent('Click again to confirm.');
+
+    fireEvent.click(screen.getByRole('button', { name: /Confirm: cut the clinic/i }));
+    expect(onApprove).toHaveBeenCalledTimes(1);
+  });
+
+  it('approves a safe change in one click, without the clinic warning (M1-T2)', () => {
+    const onApprove = vi.fn();
+    render(
+      <ConfirmProposalDialog
+        proposal={{
+          proposalId: 'PROP-SAFE',
+          patch: { sectorCaps: [{ sector: 'market', maxKw: 0, fromHour: 18, toHour: 22 }] },
+          reason: 'Cut the market tonight',
+        }}
+        onApprove={onApprove}
+        onReject={vi.fn()}
+      />
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Approve & Apply Scenario/i }));
+    expect(onApprove).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the engine before/after block with only the impact values (M1-T1)', () => {
+    render(
+      <ConfirmProposalDialog
+        proposal={{
+          proposalId: 'PROP-02',
+          patch: { sectorCaps: [{ sector: 'market', maxKw: 0, fromHour: 8, toHour: 12 }] },
+          reason: 'Cut the market this morning',
+          impact: {
+            beforeResultId: 'SIM-A',
+            afterResultId: 'SIM-B',
+            strategyBefore: 'proportional',
+            strategyAfter: 'proportional',
+            socMinPctBefore: 20,
+            socMinPctAfter: 24.5,
+            unservedKwhBefore: 3.2,
+            unservedKwhAfter: 9.4,
+            sectors: {
+              market: {
+                servedKwhBefore: 20,
+                servedKwhAfter: 14,
+                servedKwhDelta: -6,
+                offHoursBefore: 0,
+                offHoursAfter: 4,
+              },
+            },
+          },
+        }}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+      />
+    );
+
+    const block = within(screen.getByRole('region', { name: 'Engine calculation' }));
+    expect(block.getByText('SIM-B')).toBeInTheDocument();
+    for (const v of [
+      '20.0 kWh',
+      '14.0 kWh',
+      '-6.0 kWh',
+      '0 h',
+      '4 h',
+      '20.0%',
+      '24.5%',
+      '3.2 kWh',
+      '9.4 kWh',
+    ]) {
+      expect(block.getByText(v)).toBeInTheDocument();
+    }
+    expect(block.queryByText(/no change/i)).not.toBeInTheDocument();
+  });
+
+  it('says when the engine sees no change for a proposal (M1-T1)', () => {
+    render(
+      <ConfirmProposalDialog
+        proposal={{
+          proposalId: 'PROP-03',
+          strategy: 'balanced',
+          reason: 'Try balanced',
+          impact: {
+            beforeResultId: 'SIM-A',
+            afterResultId: 'SIM-A2',
+            strategyBefore: 'proportional',
+            strategyAfter: 'balanced',
+            socMinPctBefore: 20,
+            socMinPctAfter: 20,
+            unservedKwhBefore: 0,
+            unservedKwhAfter: 0,
+            sectors: {},
+          },
+        }}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+      />
+    );
+    expect(screen.getByText(/sees no change/i)).toBeInTheDocument();
+  });
+
   it('renders strategy switch in proposal dialog and applies it to store (P6-T9)', () => {
     expect(useSimulationStore.getState().activeStrategy).toBe('proportional');
 
@@ -160,7 +288,7 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
     );
 
     expect(screen.getByText('Dispatch Strategy')).toBeInTheDocument();
-    expect(screen.getByText('essential_first')).toBeInTheDocument();
+    expect(screen.getByText('Essential-First Priority')).toBeInTheDocument();
 
     const approveBtn = screen.getByRole('button', {
       name: /Approve & Apply Scenario/i,
@@ -244,6 +372,30 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
 
     // Store updates to complete
     expect(useSimulationStore.getState().status).toBe('complete');
+  });
+
+  it('ContextPanel rounds engine metrics with their unit (no float noise)', () => {
+    useSimulationStore.getState().run();
+    const { activeStrategy, results } = useSimulationStore.getState();
+    const result = results[activeStrategy]!;
+    useSimulationStore.setState({
+      results: {
+        ...results,
+        [activeStrategy]: {
+          ...result,
+          metrics: {
+            ...result.metrics,
+            servedKwh: 125.89999999999999,
+            socMinPct: 46.350877192982445,
+          },
+        },
+      },
+    });
+    render(<ContextPanel />);
+
+    expect(screen.getByText('125.9 kWh')).toBeInTheDocument();
+    expect(screen.getByText('46.4%')).toBeInTheDocument();
+    expect(screen.queryByText(/\d\.\d{3,}/)).toBeNull();
   });
 
   it('renders error state while keeping computed results available (P6-T8)', () => {

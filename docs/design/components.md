@@ -76,6 +76,63 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 
 - Props: open; proposal: {summary, changes: {field, from, to, unit}[]}; valid: boolean; validationErrors?; onApprove; onReject.
 - Modal (radius 20). Shows AI-proposed scenario diff validated against schema; Approve (primary) disabled if invalid; Reject (ghost). Never auto-applies. Label `AI-PROPOSED`.
+- Clinic guard (K6, `clinic-guard-warning.tsx`): unsafe patch → critical-red alert block above the engine block, Approve
+  turns `danger`; first click arms (border solid, label "Confirm: cut the clinic"), second click approves.
+- Layout follows the card width (`@container`): narrow (chat panel) → one diff column, Approve / Reject stacked full
+  width (≥ 44 px); wide → grid + buttons in a row. After a decision: `DecisionBadge` (Approved green / Rejected neutral),
+  no buttons, diff from the decision snapshot (`ProposalDiffList` muted).
+- Per-line approval (K3, `useProposalSelection`): 2+ lines → hint line + a checkbox per row (whole row is the label,
+  ≥ 44 px, `aria-label` « Apply: <setting> »), all checked at first; unchecked rows dim. Engine block and clinic guard
+  follow the checked lines (recomputed with `proposalImpact`); Approve reads « Approve selected (n) » when lines are
+  left out and is disabled when none is checked. `ProposalSkippedList` shows the left-out lines (« Not applied
+  (unchecked) », dimmed) on the decided card and on the decision message.
+
+## Chat extras (copilot)
+
+- `ProposalDecisionMessage`: posted after Approve / Reject / Undo, `role="status"`; green (approved) or neutral
+  (rejected, undone), title + one line, proposal id + time, the settings concerned. `onUndo` → secondary « Undo last
+  change » button (≥ 44 px, full width when narrow), only on the last approved change still applied.
+- Fallback note: amber `role="note"` above an answer that came from the offline copilot, text per reason.
+- `EvidenceTable`: one engine result (channel / value). Last one shown; earlier ones in a `<details>` « Show all
+  evidence (n) » (summary ≥ 44 px, chevron rotates when open).
+- `RetryAnswer`: secondary « Retry » (≥ 44 px, full width when narrow) under the last answer or error; on a redone
+  answer a muted note « Answer redone below (Retry). »
+- Follow-up suggestions (`SuggestedPrompts variant="compact"`): one horizontally scrollable line, hidden while answering.
+  `fires` prop: fire questions first, `tone: 'incident'` chips (flame, critical-red border), header « About the fire ».
+- Microphone: tap to record, tap to stop (spinner while transcribing); text lands in the input, editable. Errors
+  (unsupported, denied, failed, empty) show inline in amber, dismissible. Auto-scroll only while the reader is at the bottom.
+- Playback line: when the copilot ran `control_playback`, a cyan `role="status"` pill (clock icon) « Time cursor moved
+  to 18:00 » / « Playback paused »… above the answer.
+- `ChatComposer` (`useChatComposer` state): input + attach / sketch / mic / send; `variant` `card` (tab) or `terminal`
+  (`❯` prompt, short placeholder). `ModelPicker` `{models, value, onChange, size: md|sm|terminal}`: one select for both.
+- `CopilotTerminal`: full-screen glass chat (`GlassPanel`), same conversation as the tab via `CopilotProvider` /
+  `useSharedCopilot`; title bar (dots, title, AI badge, new session, close), model line, log, terminal composer.
+  Modals (lightbox, sketch) render outside the glass (`backdrop-filter` would trap `fixed`).
+
+## Fire alarm (`features/fire-alert`, M2-T2)
+
+- `ReportFireControl` (`variant` `hud` | `panel`): danger button « Report a fire » (Flame) → sector list (≥ 44 px rows,
+  burning ones disabled « On fire ») → `reportFire(sector)` at the shown hour, no approval. In every view's HUD (3D,
+  Topology, Circuit, full screen too) and at the top of the « Telemetry & Controls » deck.
+- `FireAlertBanner`: big red `role="alert"` card while a fire burns (flame pulse, « FIRE: <sectors> cut off », since when,
+  « Simulated alarm » tag, links « See the village » / « Ask the copilot »). Sticky at the top of every page (`FireAlertLayer`
+  in `AppShell`); `compact` one-line version inside the viewport (shows in full screen).
+- `FireSnackbars`: bottom right (above the mobile nav), one `role="alert"` card per fire that just started (reported or reached
+  on the timeline), hides after 10 s or on « × » (44 px); shows again if the fire ends and comes back.
+- 2D diagrams: burning sector card = 2 px critical-red border + glow + « On fire » flame badge; its wire shows the cut mark.
+
+## GlassPanel
+
+- Props: className (position / size); innerClassName; glow? (default on). Outer `relative isolate`, blurred
+  ai-violet → energy-cyan glow behind; inner `bg-surface/40 backdrop-blur-2xl` + `shadow-glass-glow` token, 28 px radius.
+- Used by the copilot terminal and the full-screen controls drawer. Content inside should not add its own opaque card.
+
+## TimelineScrubber
+
+- Props: timeIndex; onTimeChange; stepResult?; hasResults?; isPlaying; play/pause/stop/restart handlers;
+  followsDevice?; deviceHourMs?; compact?; onToggleCompact?.
+- `onToggleCompact` adds a minimize / expand button (`aria-expanded`). `compact` = one bar: transport, hour, slider
+  (slider on its own line on phones); no title, tick labels or hour telemetry.
 
 ## Button
 
@@ -97,6 +154,7 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 ## ConditionControlsGrid
 
 - Props: controls (from `useConditionControls(input, status, onPatch)`); fields? (subset, in order); showDescriptions?.
+- Columns follow its own width (`@container`: 1 → `@md` 2 → `@3xl` 3), so it fits narrow drawers; `SimControlsPanel` too.
 - Used by SimControlsPanel, AssumptionsInspector and StrategyParamsPanel; validation via `usePatchValidation`.
 
 ## StrategyParamsPanel / SectorRuleRow

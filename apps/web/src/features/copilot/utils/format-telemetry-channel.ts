@@ -20,6 +20,21 @@ export const KNOWN_CHANNELS = new Set([
   'socStartPct',
   'socEndPct',
   'socMinPct',
+  'lifelineCoveragePct',
+  // get_grid_state highlights
+  'peakSolarKw',
+  'peakDemandKw',
+  'lowestSocPct',
+  // propose_change impact (M1-T1)
+  'servedKwhBefore',
+  'servedKwhAfter',
+  'servedKwhDelta',
+  'offHoursBefore',
+  'offHoursAfter',
+  'socMinPctBefore',
+  'socMinPctAfter',
+  'unservedKwhBefore',
+  'unservedKwhAfter',
 ]);
 
 export interface TelemetryFormatTranslators {

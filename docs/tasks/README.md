@@ -22,6 +22,7 @@ Meta feature and carries external-API risk; 3D is local work and easy to time-bo
 | —   | PW WebGL context leak (3D flashes white during playback)     | `PW-webgl-context-leak.md` | ✅ fixed                 |
 | —   | PS Sector socle: live sector load + small factory            | `PS-sector-load.md`        | ✅ done                  |
 | —   | PH Physical scale model (hardware twin)                      | `PH-hardware-twin.md`      | ❌ stretch (in progress) |
+| —   | PM All Meta models: voice, vision, image, chat control, fire | `PM-meta-models.md`        | ❌ stretch (planned)     |
 
 ## Cut order if late
 

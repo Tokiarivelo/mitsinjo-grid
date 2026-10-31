@@ -1,43 +1,40 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-10-30 · **By:** Claude Code · **Branch:** `feat/hardware-twin` · **PR:** #30
+**Updated:** 2026-10-31 · **By:** Claude Code · **Branch:** `feat/meta-models` · **PR:** none yet · last commit ee7b654; fire alarm work below **uncommitted**
 
 ## State
 
-- **PL-T17 done:** survival floor sliders in Strategy Lab (`StrategyRulesSection`): on/off button
-  (`lifeline.enabled`) + 0–2 kW slider per connected sector (`lifeline.kw`); hidden + amber note when off.
-- Plan `docs/tasks/PH-hardware-twin.md` (physical scale model; study `docs/maquette-physique.md`, FR):
-  - **H1** engine: `solarProfile` patch, hardware Zod contracts, `scaleTelemetry`, `toHardwareCommand`.
-  - **H2** engine `dispatch/`: breaker, controller mode, flow level, `feederTone` shared with web 3D/2D.
-  - **H3** `apps/bridge`: `BridgeSession` (tested), embedded aedes MQTT broker, WebSocket, fake ESP32
-    (`make bridge`, `make bridge-sim`, `make test-bridge`).
-  - **H4-T1** web: `BridgeStateSchema` in engine; store `source` + `applyDeviceRun`/`releaseDevice`;
-    `features/hardware-link` (`useHardwareLink`, `HardwareLinkPanel` in /simulation Controls tab, shown only
-    when `NEXT_PUBLIC_BRIDGE_URL` is set). Verified live with bridge + fake device, dark/light, 1440 and 390 px.
-  - `docs/bridge.md` (FR): settings + deploy § 8. **H8-T0** live speed buttons (default 20 s/h). **H8-T1** `?bridge=`
-    link (tab session, `useBridgeTarget`). **H8-T2** `BRIDGE_TOKEN` (read-only without it), `MQTT_USERNAME/PASSWORD`.
-- **Scrubber fluide:** `useSmoothScrub` (thumb continu, glisse en lecture, horloge live en suivi maquette via
-  store `deviceHourMs`); boutons de lecture masqués quand `source === 'device'`. Guide env local/Vercel: `docs/setup/env.md`.
-- Checks: engine 202 ✓, bridge 21 ✓, web 459 ✓, typecheck ✓, lint ✓, i18n ✓, prettier ✓. Pre-existing: `sweep.test.ts`
-  perf budget fails under `make check` (parallel packages), passes alone; also on clean `main`.
+- Plan `docs/tasks/PM-meta-models.md`. Done: M1-T1…T5 (impact, clinic guard, "now", undo, per-line approval), M3-T1/T2 (voice).
+- **M1-T5** (K3): checkbox per proposal line (`useProposalSelection`, `utils/proposal-parts.ts`); engine block + clinic guard
+  follow the checked lines (`lib/proposal-impact.ts`, shared with `propose_change`); decision carries `skipped`; mock cuts
+  every sector named before « garde / keep / sauf ». Scenarios A88–A92.
+- **Fire alarm (M2-T1 ✓, M2-T2 ✓ except chat button, M2-T3 code only):** engine `fire` event (0 kW cap that beats caps +
+  floor, `FIRE_ISOLATION`, v0.4.0, `src/fire.ts`); store `reportFire`; `features/fire-alert` (auto snackbar, big sticky banner
+  in AppShell, compact banner in the viewport, « Report a fire » in every view HUD + the deck); 2D « On fire » card + cut wire;
+  3D `fire-effects.tsx` (flames, instanced smoke, light on high). Scenarios S83–S88.
+- Checks: tsc ✓, eslint ✓, prettier ✓, i18n ✓, web 687/687, engine 230/231 (sweep < 50 ms bench fails on this machine
+  with or without the change: 52–85 ms).
 
 ## Next task
 
-- PR #30 merged. Then H5 (hardware build + ESP32 firmware), H4-T2 (calibration panel).
+- `make e2e` when convenient.
+- Live check with a Meta key: does Spark call `control_playback` for "pause" / "go to 18:00"? Note it in docs/copilot.md.
+- Screenshots (design gate) not taken: M1-T5 card, fire banner/snackbar, 3D fire, 2D « On fire » (dark + light, 390 px);
+  measure 3D fps with a fire (`?perf=1`). Then commit the fire work.
+- Then M2-T4 (`get_incidents`, restore via `propose_change`, chat fire button) or **M1-T6** (4 eval cases).
 
 ## Decisions taken
 
-- Scale 1 W = 4 kW, 1 h = 20 s (live 60/20/10/5); displayed SoC always engine output; model battery = buffer only.
-- Bridge sends scenario + patch + strategy + hour; the web re-runs the engine (numbers never taken from the bridge).
-- Scrubber: store still gets whole hours; only the thumb is fractional (no extra engine/3D re-renders).
-- Panel hidden unless `?bridge=` link or `NEXT_PUBLIC_BRIDGE_URL`; bridge never on Vercel (needs a permanent process). Follow stops on "Stop following" / scenario load.
+- Clinic guard + decision lock are code; the model is only told. Summary carries no energy numbers. Audio not stored (WAV).
+- "Now" = app hour (system note). Undo restores the whole input (also later slider edits). History not kept on reopen.
+- `control_playback` is the only tool applied without approval: it moves the view, never inputs or results.
+- Full screen and overview incident screen built without mockup (stitch-map notes). Modals render outside `GlassPanel`.
+- K3: lines with no dialog row (solar profile, meter readings, shares, weights) always go with the patch. No ICU plural in
+  the approve label (test i18n only does `{x}`).
 
 ## Files touched this session
 
-- Engine: `schemas/{common,input,index,hardware}.ts`, `patch.ts`, `index.ts`, `dispatch/`, `hardware/`, tests
-- Bridge: `apps/bridge/**` (new, `access.ts`) · `pnpm-lock.yaml`
-- Web: `features/microgrid-3d/{types,utils/*}`, `features/strategy-lab/{ui/strategy-rules-section.tsx,__tests__}`,
-  `features/hardware-link/**`, `features/simulation/ui/simulation-page.tsx`, `stores/simulation.store.ts`,
-  `lib/env.ts`, `messages/{en,fr,mg}.json`, `features/simulation/{hooks/use-smooth-scrub.ts,ui/*}`, `stores/selectors.ts`
-- Docs/tooling: `maquette-physique.md`, `contracts.md`, `engine-spec.md`, `architecture.md`, `design/{stitch-map,
-screens/strategy-lab,screens/live-simulation}.md`, `tasks/*`, `setup/env.md`, `README.md`, `.env.example`, `Makefile`
+- Split previous work into 4 commits. M1-T5: copilot `proposal-diff-list`, `confirm-proposal-dialog`, `chat-message-item`,
+  `proposal-decision-message`, hooks `use-proposal-diff`, `use-proposal-selection` (new), `use-copilot`, utils `proposal-parts`
+  (new), `decisions`; `lib/proposal-impact.ts` (new); server `tools`, `prompt`, `providers/mock`; sessions route; messages ×3;
+  docs contracts, copilot, components, stitch-map, PM task.

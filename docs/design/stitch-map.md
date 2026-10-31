@@ -3,15 +3,15 @@
 Mockups are exported **once** to `design/stitch/` (committed) so agents read a local PNG (~1–2k tokens)
 instead of calling the Stitch MCP every time. Use the MCP only to generate, refresh or export.
 
-| Surface         | Route / scope         | Spec                       | Stitch screen id                 | Export                                          | Status   |
-| --------------- | --------------------- | -------------------------- | -------------------------------- | ----------------------------------------------- | -------- |
-| Live Simulation | /simulation           | screens/live-simulation.md | 2cf782dffaed4ee69a889c7f4cbcb003 | `design/stitch/live-simulation.png` (+ `.html`) | exported |
-| Overview        | /overview             | screens/overview.md        | 060970653b394197a26b4e4997703260 | `design/stitch/overview.png` (+ `.html`)        | checked  |
-| Strategy Lab    | /strategies           | screens/strategy-lab.md    | bfbfa25691fe45f2b5af82216ceb242c | `design/stitch/strategy-lab.png` (+ `.html`)    | checked  |
-| AI Copilot      | /copilot + side panel | screens/copilot.md         | b5ff63b413004edca491b83aadfe9f08 | `design/stitch/copilot.png` (+ `.html`)         | checked  |
-| Scenarios       | /scenarios            | screens/scenarios.md       | d0c1f73e58cb428989306f98803e2a11 | `design/stitch/scenarios.png` (+ `.html`)       | checked  |
-| App shell       | sidebar/header/panel  | shell.md                   | (from any screen)                | crop of `live-simulation.png`                   | exported |
-| UI kit          | components/ui         | components.md              | —                                | none (derive from screens)                      | —        |
+| Surface         | Route / scope         | Spec                       | Stitch screen id                 | Export                                          | Status                         |
+| --------------- | --------------------- | -------------------------- | -------------------------------- | ----------------------------------------------- | ------------------------------ |
+| Live Simulation | /simulation           | screens/live-simulation.md | 2cf782dffaed4ee69a889c7f4cbcb003 | `design/stitch/live-simulation.png` (+ `.html`) | exported                       |
+| Overview        | /overview             | screens/overview.md        | 060970653b394197a26b4e4997703260 | `design/stitch/overview.png` (+ `.html`)        | checked (built without mockup) |
+| Strategy Lab    | /strategies           | screens/strategy-lab.md    | bfbfa25691fe45f2b5af82216ceb242c | `design/stitch/strategy-lab.png` (+ `.html`)    | checked                        |
+| AI Copilot      | /copilot + side panel | screens/copilot.md         | b5ff63b413004edca491b83aadfe9f08 | `design/stitch/copilot.png` (+ `.html`)         | checked                        |
+| Scenarios       | /scenarios            | screens/scenarios.md       | d0c1f73e58cb428989306f98803e2a11 | `design/stitch/scenarios.png` (+ `.html`)       | checked                        |
+| App shell       | sidebar/header/panel  | shell.md                   | (from any screen)                | crop of `live-simulation.png`                   | exported                       |
+| UI kit          | components/ui         | components.md              | —                                | none (derive from screens)                      | —                              |
 
 Stitch project id: `4259585850792174155` (Design System asset: `assets/d762353e27224da2a6e34c396b0f78df`).
 Status values: `not generated` · `generated` · `exported` · `implemented` · `checked` (passed /design-check).
@@ -36,6 +36,7 @@ Status values: `not generated` · `generated` · `exported` · `implemented` · 
 - Overview: no telemetry strip (temp, RH, DNI, sync, grid V) — engine has no such fields (precedence 1).
 - Overview: no AI optimization panel — AI text lives only in copilot components; a computed InsightCard is used instead.
 - Overview: 2-column Bento Command Center (col-span-7 Left / col-span-5 Right). Docked 4-stat Energy Balance summary strip sits directly beneath the 3D digital twin viewport; 24h telemetry chart underneath; right column hosts Service Allocation hierarchy and computed Scenario Impact / Copilot insights. No fake weather telemetry (precedence 1).
+- Overview 2026-10-30: rebuilt as an "Incident" screen, built without mockup (old export = dashboard). Hackathon rules list "dashboards as the main feature" as an anti-project: KPI cards, 24h chart and sector list removed; hero alert + impact tiles + strategy rings + twin. Gate-out 1440/390 dark/light ✓, no overflow.
 - Strategy Lab: decision summary sits above the cards (read before comparing) instead of bottom-right; no "Recommended" ribbon — the summary's "Use this strategy" action plays that role.
 - Live Simulation 3D: look follows `design/reference/Mitsinjo Grid_ Village at Sunset.png` (stylized low-poly, not photoreal; no in-scene text such as the "École" sign, i18n rule). Golden-hour light by day, night by night: the reference's permanent sunset would hide the time-of-day signal.
 - Strategy Lab: no fixed-inputs tile strip; scenario, PV and battery are one line under the title (values from `input`).
@@ -58,3 +59,17 @@ Status values: `not generated` · `generated` · `exported` · `implemented` · 
 - Live Simulation scale-model panel 2026-10-30 (PH-H4): built without mockup, same card pattern as Weather Workflow;
   label–value rows (2 columns were too tight in the side panel). Checked with a live bridge at 1440×900 and 390×844,
   dark and light, no horizontal overflow.
+- Chat UX 2026-10-30: no mockup. Proposal card container-based (stacked buttons in the panel), decision lock + decision
+  message (battery-green), amber fallback note, one-line suggestions, mic inline errors. Panel header wraps.
+  Gate-out: /simulation copilot tab 1440 + 390, dark + light, no horizontal overflow.
+- M1-T2 2026-10-30: no mockup. Clinic guard block in ConfirmProposalDialog: critical-red/10 bg, critical-red border
+  (50 % → solid when armed), ShieldAlert icon, reason list; Approve button `danger`. Existing tokens only.
+- M1-T1 2026-10-30: no mockup. ConfirmProposalDialog gains an "Engine calculation" block (`proposal-impact.tsx`): energy-cyan border like Computed evidence, grid table Before / After / Change; on < sm the label takes its own line above the 3 values. Negative change `critical-red`, positive `battery-green`. Gate-out: dialog screenshots 1440 + 390, dark + light, no horizontal overflow.
+- Copilot voice spectrum 2026-10-30: built without mockup. Violet because the audio goes to an AI model (Meta Voice); bars updated by refs in `requestAnimationFrame` only while recording.
+- Full screen glass panels 2026-10-30: built without mockup. Copilot terminal (right) + controls drawer (left) as
+  `GlassPanel`, docked timeline as glass with a minimize bar; 2D diagram padded between panels and above the dock.
+  Checked 1440×900 (Circuit dark + light, 3D dark) and 390×844 (Circuit dark), no horizontal overflow.
+- M1-T5 2026-10-31: no mockup. Proposal card rows gain a checkbox (whole row is the label, ≥ 44 px) and a hint line;
+  « Not applied (unchecked) » list on decided cards. Same tokens as the existing diff rows.
+- Fire alarm 2026-10-31 (M2-T2/T3): no mockup. Red alert banner (page + compact in the viewport), snackbars bottom right,
+  « Report a fire » in the HUD and the deck, 2D « On fire » card, 3D flames + smoke. Critical-red tokens only. Not screenshotted yet.

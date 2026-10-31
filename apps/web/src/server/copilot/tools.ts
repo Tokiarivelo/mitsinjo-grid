@@ -13,7 +13,11 @@ import {
   compare,
   applyPatch,
   scenarios,
+  clinicGuard,
+  type ChangeImpact,
+  type StepResult,
 } from '@mitsinjo/engine';
+import { proposalImpact } from '@/lib/proposal-impact';
 import type { ToolDefinition } from './provider';
 
 function round2(val: number): number {
@@ -49,8 +53,57 @@ export function compactMetrics(m: Metrics) {
   };
 }
 
+export { compactImpact } from '@/lib/proposal-impact';
+
+/** Flat evidence fields for every number the approval dialog shows. */
+export function impactEvidence(impact: ChangeImpact): Record<string, number> {
+  const ev: Record<string, number> = {
+    socMinPctBefore: impact.socMinPctBefore,
+    socMinPctAfter: impact.socMinPctAfter,
+    unservedKwhBefore: impact.unservedKwhBefore,
+    unservedKwhAfter: impact.unservedKwhAfter,
+  };
+  for (const [id, s] of Object.entries(impact.sectors)) {
+    if (!s) continue;
+    ev[`${id}_servedKwhBefore`] = s.servedKwhBefore;
+    ev[`${id}_servedKwhAfter`] = s.servedKwhAfter;
+    ev[`${id}_servedKwhDelta`] = s.servedKwhDelta;
+    ev[`${id}_offHoursBefore`] = s.offHoursBefore;
+    ev[`${id}_offHoursAfter`] = s.offHoursAfter;
+  }
+  return ev;
+}
+
 // Zod argument schemas for the 5 tools
-export const GetGridStateSchema = z.object({});
+export const GetGridStateSchema = z.object({
+  /** Adds the 24 h solar / demand / battery series and their peak hours (for charts). */
+  hourly: z.boolean().optional(),
+});
+
+/** One hour of the engine run, rounded for the model (charts). */
+export interface HourlyPoint {
+  t: number;
+  solarKw: number;
+  demandKw: number;
+  socPct: number;
+}
+
+/** Engine hours where solar and demand peak and the battery is lowest (picked from the steps, no new math). */
+export function profileHighlights(steps: readonly StepResult[]) {
+  const pick = (better: (a: StepResult, b: StepResult) => boolean) =>
+    steps.reduce((best, s) => (better(s, best) ? s : best));
+  const solar = pick((a, b) => a.solarKw > b.solarKw);
+  const demand = pick((a, b) => a.demandKw > b.demandKw);
+  const soc = pick((a, b) => a.socPct < b.socPct);
+  return {
+    peakSolarKw: round2(solar.solarKw),
+    peakSolarHour: solar.t,
+    peakDemandKw: round2(demand.demandKw),
+    peakDemandHour: demand.t,
+    lowestSocPct: round2(soc.socPct),
+    lowestSocHour: soc.t,
+  };
+}
 
 export const RunScenarioSchema = z.object({
   scenarioId: z
@@ -76,6 +129,20 @@ export const GetSectorMetricsSchema = z.object({
   // Omitted → the user's active strategy (not always proportional).
   strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
 });
+
+/** Playback commands the chat may run directly: they move the time cursor only, never the inputs. */
+export const PLAYBACK_ACTIONS = ['play', 'pause', 'stop', 'restart', 'seek'] as const;
+export type PlaybackAction = (typeof PLAYBACK_ACTIONS)[number];
+
+export const ControlPlaybackSchema = z
+  .object({
+    action: z.enum(PLAYBACK_ACTIONS),
+    hour: z.number().int().min(0).max(23).optional(),
+  })
+  .refine((d) => d.action !== 'seek' || d.hour !== undefined, {
+    message: 'seek needs an hour from 0 to 23.',
+    path: ['hour'],
+  });
 
 export const ProposeChangeSchema = z
   .object({
@@ -131,10 +198,16 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'get_grid_state',
     description:
-      'Inspect the current microgrid simulation state, active scenario parameters, and summary metrics.',
+      'Inspect the current microgrid simulation state, active scenario parameters, and summary metrics. Set hourly=true to also get the 24 h solar, demand and battery series (use it for any chart: never invent chart values).',
     parameters: {
       type: 'object',
-      properties: {},
+      properties: {
+        hourly: {
+          type: 'boolean',
+          description:
+            'Include the 24 h series (solarKw, demandKw, socPct) and their peak / lowest hours.',
+        },
+      },
       additionalProperties: false,
     },
   },
@@ -244,6 +317,27 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     },
   },
   {
+    name: 'control_playback',
+    description:
+      'Run, pause, stop or restart the simulation playback, or move the time cursor to an hour (seek). ' +
+      'Applied at once in the app: it changes only what is shown, never the scenario inputs or the strategy ' +
+      '(use propose_change for those).',
+    parameters: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: [...PLAYBACK_ACTIONS] },
+        hour: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 23,
+          description: 'Target hour for seek (0-23).',
+        },
+      },
+      required: ['action'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'propose_change',
     description:
       'Propose a scenario parameter change or strategy switch to the human operator for review. Does NOT automatically apply changes.',
@@ -318,9 +412,28 @@ export interface ToolResult {
     patch?: InputPatch;
     strategy?: StrategyId;
     reason: string;
+    impact?: ChangeImpact;
   };
   evidence?: Record<string, number | string>;
+  /** control_playback: what the app runs on the client (time cursor / playback only). */
+  control?: { action: PlaybackAction; hour?: number };
 }
+
+/** Short, readable validation error for the model (no Zod JSON dump), with a fix hint when there is one. */
+export function invalidArgs(toolName: string, error: z.ZodError): string {
+  const issues = error.issues
+    .map((i) => `${i.path.length > 0 ? i.path.join('.') : 'args'}: ${i.message}`)
+    .join('; ');
+  const hint = toolName === 'propose_change' ? ` ${PROPOSE_CHANGE_HINT}` : '';
+  return `Invalid args for ${toolName}: ${issues}.${hint}`;
+}
+
+/** Sent back to the model when propose_change has no change in it, so it can call again correctly. */
+export const PROPOSE_CHANGE_HINT =
+  'Call propose_change again with a patch (or a strategy) and a reason. ' +
+  'To cut a sector "now" or with no time given: ' +
+  '{"patch":{"sectorCaps":[{"sector":"households","maxKw":0,"fromHour":<app hour>,"toHour":24}]},"reason":"..."}. ' +
+  `Sectors: ${SECTOR_IDS.join(', ')}.`;
 
 export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext): ToolResult {
   switch (toolName) {
@@ -329,12 +442,21 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       if (!parsed.success) {
         return {
           toolName,
-          error: `Invalid args for get_grid_state: ${parsed.error.message}`,
+          error: invalidArgs('get_grid_state', parsed.error),
         };
       }
       const strategy: StrategyId = ctx.activeStrategy || 'proportional';
       const result = simulate(ctx.input, strategy);
       const metrics = compactMetrics(result.metrics);
+      const highlights = parsed.data.hourly ? profileHighlights(result.steps) : undefined;
+      const hourly: HourlyPoint[] | undefined = parsed.data.hourly
+        ? result.steps.map((s) => ({
+            t: s.t,
+            solarKw: round2(s.solarKw),
+            demandKw: round2(s.demandKw),
+            socPct: round2(s.socPct),
+          }))
+        : undefined;
 
       return {
         toolName,
@@ -351,11 +473,13 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
           strategy,
           resultId: result.id,
           metrics,
+          ...(hourly && { hourly, highlights }),
         },
         evidence: {
           ...extractNumericMetrics(metrics),
           solarPeakKw: ctx.input.solar.peakKw,
           batteryCapacityKwh: ctx.input.battery.capacityKwh,
+          ...highlights,
         },
       };
     }
@@ -365,7 +489,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       if (!parsed.success) {
         return {
           toolName,
-          error: `Invalid args for run_scenario: ${parsed.error.message}`,
+          error: invalidArgs('run_scenario', parsed.error),
         };
       }
       let baseInput = ctx.input;
@@ -409,7 +533,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       if (!parsed.success) {
         return {
           toolName,
-          error: `Invalid args for compare_strategies: ${parsed.error.message}`,
+          error: invalidArgs('compare_strategies', parsed.error),
         };
       }
       const strats: readonly StrategyId[] =
@@ -449,7 +573,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       if (!parsed.success) {
         return {
           toolName,
-          error: `Invalid args for get_sector_metrics: ${parsed.error.message}`,
+          error: invalidArgs('get_sector_metrics', parsed.error),
         };
       }
       const sectorId = parsed.data.sector;
@@ -487,12 +611,32 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       };
     }
 
+    case 'control_playback': {
+      const parsed = ControlPlaybackSchema.safeParse(rawArgs);
+      if (!parsed.success) {
+        return { toolName, error: invalidArgs('control_playback', parsed.error) };
+      }
+      const control = {
+        action: parsed.data.action,
+        ...(parsed.data.action === 'seek' && { hour: parsed.data.hour }),
+      };
+      return {
+        toolName,
+        control,
+        data: {
+          status: 'applied_in_app',
+          ...control,
+          note: 'Only playback / the time cursor changed. Scenario inputs, strategy and results are unchanged.',
+        },
+      };
+    }
+
     case 'propose_change': {
       const parsed = ProposeChangeSchema.safeParse(rawArgs);
       if (!parsed.success) {
         return {
           toolName,
-          error: `Invalid args for propose_change: ${parsed.error.message}`,
+          error: invalidArgs('propose_change', parsed.error),
         };
       }
       // Generate deterministic proposal id based on patch, strategy & reason
@@ -507,15 +651,36 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       }
       const proposalId = `PROP-${Math.abs(hash).toString(16).toUpperCase().padStart(6, '0').slice(0, 6)}`;
 
+      // Engine before/after (K1): current input + strategy vs patched input + proposed strategy.
+      const currentStrategy: StrategyId = ctx.activeStrategy ?? 'proportional';
+      let computed: ReturnType<typeof proposalImpact>;
+      try {
+        computed = proposalImpact(
+          ctx.input,
+          currentStrategy,
+          parsed.data.patch,
+          parsed.data.strategy
+        );
+      } catch (err) {
+        return {
+          toolName,
+          error: `Failed to apply patch: ${err instanceof Error ? err.message : String(err)}`,
+        };
+      }
+      const { impact, afterResultId } = computed;
+      const clinicReasons = clinicGuard(parsed.data.patch);
+
       const proposal = {
         proposalId,
         patch: parsed.data.patch,
         strategy: parsed.data.strategy,
         reason: parsed.data.reason,
+        impact,
       };
 
       return {
         toolName,
+        resultId: afterResultId,
         proposal,
         data: {
           proposalId,
@@ -523,7 +688,11 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
           patch: parsed.data.patch,
           strategy: parsed.data.strategy,
           reason: parsed.data.reason,
+          impact,
+          // K6: coded safety rule; the UI shows a red warning and asks a second confirmation.
+          ...(clinicReasons.length > 0 && { clinicGuard: clinicReasons }),
         },
+        evidence: impactEvidence(impact),
       };
     }
 

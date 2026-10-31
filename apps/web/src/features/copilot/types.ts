@@ -1,4 +1,4 @@
-import type { InputPatch, StrategyId } from '@mitsinjo/engine';
+import type { ChangeImpact, InputPatch, StrategyId } from '@mitsinjo/engine';
 
 export interface CopilotEvidence {
   resultId: string;
@@ -10,6 +10,8 @@ export interface CopilotProposal {
   patch?: InputPatch;
   strategy?: StrategyId;
   reason: string;
+  /** Engine before/after, computed server-side (absent on proposals saved before M1-T1). */
+  impact?: ChangeImpact;
 }
 
 /** Tool activity shown while the copilot works; translated in the UI. */
@@ -20,6 +22,34 @@ export interface CopilotActivity {
 
 /** i18n keys under `features.copilot` for copilot errors (raw server text is never shown). */
 export type CopilotErrorKey = 'errorProviderFallback' | 'errorRateLimited' | 'errorGeneric';
+
+/** Why an answer came from the offline (deterministic) copilot; `unknown` when the server gave no reason. */
+export type FallbackReason = 'spend_cap' | 'provider_error' | 'timeout' | 'unknown';
+
+/** One changed setting of a proposal: label, value before, value proposed (already translated). */
+export interface ProposalDiffItem {
+  /** Line id (`proposalPartIds`): checkbox key for partial approval. Absent on decisions saved before K3. */
+  id?: string;
+  label: string;
+  current: string;
+  proposed: string;
+}
+
+/** `undone` = an approved change the operator later undid (K4); the input is back to before it. */
+export type ProposalDecisionStatus = 'approved' | 'rejected' | 'undone';
+
+/** Operator decision on a proposal, posted in the chat and sent to the model as context. */
+export interface ProposalDecision {
+  proposalId: string;
+  status: ProposalDecisionStatus;
+  /** Settings as shown when the operator decided (snapshot: the simulation changes after approval). */
+  items: ProposalDiffItem[];
+  /** Lines the operator unchecked (K3): shown, never applied. */
+  skipped?: ProposalDiffItem[];
+  /** What was applied (the checked part when lines were skipped). */
+  patch?: InputPatch;
+  strategy?: StrategyId;
+}
 
 export interface MessageSections {
   whatHappened?: string;
@@ -35,6 +65,10 @@ export interface ChatMediaItem {
   name?: string;
   caption?: string;
   size?: number;
+  /** R2 object key: the URL is re-signed from it when a saved session is reopened. */
+  key?: string;
+  /** Image drawn by the copilot (shown in the AI image block, not as an attachment). */
+  generated?: boolean;
 }
 
 export interface ChatChartSeries {
@@ -63,11 +97,14 @@ export interface ChatSessionSummary {
 
 export interface ChatSessionDetail extends ChatSessionSummary {
   messages: ChatMessageData[];
+  /** Conversation summary (auto-compaction) and how many payload messages it covers. */
+  summary?: string;
+  summarizedCount?: number;
 }
 
 export interface ChatMessageData {
   id: string;
-  role: 'user' | 'assistant' | 'error';
+  role: 'user' | 'assistant' | 'error' | 'decision';
   content: string;
   sections?: MessageSections;
   evidence?: CopilotEvidence[]; // one entry per tool result, in call order
@@ -80,5 +117,19 @@ export interface ChatMessageData {
   chart?: ChatChartData;
   detectedModel?: string;
   errorKey?: CopilotErrorKey;
+  /** Set when this answer fell back to the offline copilot. */
+  fallbackReason?: FallbackReason;
+  /** Only on `role: 'decision'`. */
+  decision?: ProposalDecision;
+  /** Playback command the copilot ran (time cursor only), shown as a small line on the answer. */
+  control?: PlaybackControl;
+  /** Answer the operator asked to redo (Retry): kept on screen, no longer sent to the model. */
+  retried?: boolean;
   timestamp?: string;
+}
+
+/** `control_playback` tool → client: playback or time cursor only, never the scenario inputs. */
+export interface PlaybackControl {
+  action: 'play' | 'pause' | 'stop' | 'restart' | 'seek';
+  hour?: number;
 }

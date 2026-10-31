@@ -24,6 +24,8 @@ export interface ChatMessage {
 export interface LlmTurn {
   content?: string | null;
   toolCalls?: ToolCall[];
+  /** Token counts reported by the API, for the spend guard. */
+  usage?: { inputTokens: number; outputTokens: number };
 }
 
 export interface LlmImageResult {

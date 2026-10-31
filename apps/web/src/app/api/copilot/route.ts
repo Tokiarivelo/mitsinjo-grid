@@ -11,8 +11,15 @@ import {
   isCopilotModel,
   DEFAULT_META_MODEL,
 } from '@/server/copilot/providers/meta';
-import { saveMessage } from '@/server/db/neon';
-import type { CopilotEvidence, CopilotProposal, ChatChartData } from '@/features/copilot/types';
+import { saveMessage, saveSessionSummary, isNeonConfigured } from '@/server/db/neon';
+import { COPILOT_PAYLOAD_MAX } from '@/features/copilot/utils/history';
+import type {
+  CopilotEvidence,
+  CopilotProposal,
+  ChatChartData,
+  ChatMediaItem,
+} from '@/features/copilot/types';
+import { storeGeneratedImage } from '@/server/storage/media';
 
 // In-memory rate limiter: max 30 requests per minute per client
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -56,13 +63,19 @@ const RequestBodySchema = z.object({
             z.object({
               type: z.enum(['image', 'video']),
               url: z.string().min(1),
+              /** R2 key of an uploaded file (re-signed when the session is reopened). */
+              key: z.string().max(300).optional(),
             })
           )
           .optional(),
       })
     )
-    .min(1),
+    .min(1)
+    .max(COPILOT_PAYLOAD_MAX),
   input: SimulationInputSchema,
+  /** Summary of the turns before `messages` (auto-compaction), and how many messages it covers. */
+  summary: z.string().max(4000).optional(),
+  summarizedCount: z.number().int().min(0).optional(),
   strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
   model: z
     .string()
@@ -71,7 +84,14 @@ const RequestBodySchema = z.object({
     .optional(),
   locale: z.enum(['en', 'fr', 'mg']).optional(),
   sessionId: z.string().max(64).optional(),
+  /** Hour shown in the app (timeline or scale model), 0–23. */
+  hour: z.number().int().min(0).max(23).optional(),
+  /** Retry: the last question again because the operator was not satisfied with the answer. */
+  retry: z.boolean().optional(),
 });
+
+/** Chat budget (40 s) + slow tools (image up to 45 s) + Wonder extra time. */
+export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
   const ip =
@@ -151,6 +171,9 @@ export async function POST(req: NextRequest) {
       let collectedProposal: CopilotProposal | undefined = undefined;
       const collectedEvidence: CopilotEvidence[] = [];
       let collectedChart: ChatChartData | undefined = undefined;
+      const sessionId = parsed.data.sessionId;
+      // Generated image → R2 in the background; awaited only when the session is saved.
+      let generatedImage: Promise<ChatMediaItem | null> | undefined;
 
       const emit = (event: string, data: Record<string, unknown>) => {
         if (event === 'delta') {
@@ -161,8 +184,19 @@ export async function POST(req: NextRequest) {
           collectedEvidence.push(data as unknown as CopilotEvidence);
         } else if (event === 'proposal') {
           collectedProposal = data as unknown as CopilotProposal;
+        } else if (event === 'summary' && sessionId && typeof data.text === 'string') {
+          void saveSessionSummary(sessionId, {
+            summary: data.text,
+            summarizedCount: Number(data.summarizedCount) || 0,
+          }).catch(() => {});
         } else if (event === 'chart') {
           collectedChart = data as unknown as ChatChartData;
+        } else if (event === 'image' && sessionId && typeof data.imageUrl === 'string') {
+          generatedImage = storeGeneratedImage(data.imageUrl, {
+            sessionId,
+            caption: typeof data.caption === 'string' ? data.caption : undefined,
+            keepInline: !isNeonConfigured(),
+          });
         }
 
         const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -184,6 +218,11 @@ export async function POST(req: NextRequest) {
           locale: parsed.data.locale || 'fr',
           requestedModel: parsed.data.model,
           availableModels,
+          budgetKey: parsed.data.sessionId,
+          hour: parsed.data.hour,
+          retry: parsed.data.retry,
+          summary: parsed.data.summary,
+          summarizedCount: parsed.data.summarizedCount,
         });
       } catch (err) {
         emit('error', {
@@ -194,7 +233,8 @@ export async function POST(req: NextRequest) {
       } finally {
         if (parsed.data.sessionId) {
           const lastUser = parsed.data.messages[parsed.data.messages.length - 1];
-          if (lastUser && lastUser.role === 'user') {
+          // A retry asks the same question again: it is already saved.
+          if (lastUser && lastUser.role === 'user' && !parsed.data.retry) {
             await saveMessage(parsed.data.sessionId, {
               id: `user-${Date.now()}`,
               role: 'user',
@@ -203,10 +243,12 @@ export async function POST(req: NextRequest) {
                 id: `m-${idx}`,
                 url: m.url,
                 type: m.type,
+                key: m.key,
               })),
             }).catch(() => {});
           }
-          if (streamedAssistantContent.trim()) {
+          const image = generatedImage ? await generatedImage : null;
+          if (streamedAssistantContent.trim() || image) {
             await saveMessage(parsed.data.sessionId, {
               id: `assistant-${Date.now()}`,
               role: 'assistant',
@@ -215,6 +257,7 @@ export async function POST(req: NextRequest) {
               evidence: collectedEvidence.length > 0 ? collectedEvidence : undefined,
               proposal: collectedProposal,
               chart: collectedChart,
+              media: image ? [image] : undefined,
             }).catch(() => {});
           }
         }

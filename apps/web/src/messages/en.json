@@ -42,7 +42,7 @@
   "routes": {
     "overview": {
       "title": "Overview",
-      "subtitle": "System balance, critical metrics and active scenario"
+      "subtitle": "What is at stake today, and the decision that changes it."
     },
     "simulation": {
       "title": "Live Simulation",
@@ -123,6 +123,8 @@
       "timelineTitle": "24h Timeline Scrubber",
       "timelineSubtitle": "Scrub through 24-hour simulation steps to inspect live hourly power flows",
       "timelineScrubberLabel": "Hour of day scrubber",
+      "timelineMinimize": "Minimize the timeline",
+      "timelineExpand": "Expand the timeline",
       "stepBackward": "Step backward 1 hour",
       "stepForward": "Step forward 1 hour",
       "startPlayback": "Start timeline playback",
@@ -255,6 +257,12 @@
         "disconnect": "Disconnect",
         "connectAria": "Connect {sector} to the grid",
         "disconnectAria": "Disconnect {sector} from the grid"
+      },
+      "fsControls": {
+        "title": "Simulation controls",
+        "toggle": "Controls",
+        "open": "Show the simulation controls",
+        "close": "Hide the simulation controls"
       }
     },
     "strategyLab": {
@@ -343,13 +351,30 @@
         "batteryCapacityKwh": "Battery Storage Capacity (kWh)",
         "socStartPct": "Initial Battery SoC (%)",
         "socEndPct": "Final Battery SoC (%)",
-        "socMinPct": "Minimum Battery SoC (%)"
+        "socMinPct": "Minimum Battery SoC (%)",
+        "servedKwhBefore": "Served energy before (kWh)",
+        "servedKwhAfter": "Served energy after (kWh)",
+        "servedKwhDelta": "Served energy change (kWh)",
+        "offHoursBefore": "Hours without power before (h)",
+        "offHoursAfter": "Hours without power after (h)",
+        "socMinPctBefore": "Minimum battery SoC before (%)",
+        "socMinPctAfter": "Minimum battery SoC after (%)",
+        "unservedKwhBefore": "Unserved energy before (kWh)",
+        "unservedKwhAfter": "Unserved energy after (kWh)",
+        "lifelineCoveragePct": "Lifeline coverage (%)",
+        "peakSolarKw": "Solar output peak (kW)",
+        "peakDemandKw": "Demand peak (kW)",
+        "lowestSocPct": "Lowest battery SoC (%)"
       },
       "errorTitle": "Simulation Advisory Notice",
       "errorFallbackNote": "Deterministic simulation results remain fully available and active.",
       "proposalTitle": "PROPOSED SCENARIO MODIFICATION",
       "proposalReason": "Justification",
       "proposalApprove": "Approve & Apply Scenario",
+      "proposalApproveSelected": "Approve selected ({count})",
+      "proposalLinesHint": "Uncheck a line to leave it out. Only checked lines are applied; the engine calculation follows your choice.",
+      "proposalLineToggle": "Apply: {label}",
+      "proposalSkippedTitle": "Not applied (unchecked)",
       "proposalReject": "Reject",
       "diffSolarDrop": "Solar Drop",
       "diffDropWindow": "Drop Window",
@@ -362,6 +387,7 @@
       "diffLifelineStatus": "Lifeline Status",
       "diffLifelineFloor": "Lifeline Floor",
       "noCap": "None (uncapped)",
+      "capStartsNow": "{range} · starts now",
       "contextPanelAria": "Active simulation context",
       "contextTitle": "ACTIVE CONTEXT (COMPUTED)",
       "contextActiveScenario": "Active Baseline",
@@ -383,6 +409,11 @@
       "demand": "demand",
       "minReserve": "min reserve",
       "suggestedPromptsHeader": "SUGGESTED EXPLORATION PROMPTS",
+      "suggestedIncidentHeader": "About the fire",
+      "promptFireImpact": "Fire at {sector}: what does it change for the village right now?",
+      "promptFireEssential": "Fire at {sector}: are the clinic and the water pump still supplied?",
+      "promptFireEnergy": "Fire at {sector}: where does its energy go while it is isolated?",
+      "promptFireRestore": "Fire at {sector}: once it is out, how do we safely bring its power back?",
       "promptWhyClinic": "Why is the clinic receiving less energy?",
       "promptCompareStrategies": "Compare the two allocation strategies",
       "promptSolarDrop40": "What happens if solar production drops by 40%?",
@@ -397,7 +428,6 @@
       "modelAuto": "✦ Auto (Adaptive)",
       "voiceInput": "Voice input",
       "voiceListening": "Listening...",
-      "voiceNotSupported": "Voice recognition not supported in this browser",
       "readAloud": "Read response aloud",
       "stopAudio": "Stop audio",
       "imageGeneratedBadge": "Generated Visual",
@@ -443,10 +473,107 @@
         "compare_strategies": "Running strategy comparison",
         "get_sector_metrics": "Reviewing {sector} sector data",
         "propose_change": "Preparing a proposal for your review",
-        "default": "Reviewing computed results"
+        "segment_image": "Detecting objects on the photo",
+        "generate_image": "Generating a picture",
+        "escalate_deep_reasoning": "Switching to deep reasoning",
+        "default": "Reviewing computed results",
+        "compact_history": "Summarizing the earlier conversation",
+        "control_playback": "Controlling playback"
       },
       "unknownValue": "Unknown",
-      "chartType": "{type} chart"
+      "chartType": "{type} chart",
+      "impactTitle": "Engine calculation",
+      "impactSubtitle": "Simulated day, current settings vs after approval",
+      "impactColBefore": "Before",
+      "impactColAfter": "After",
+      "impactColChange": "Change",
+      "impactServed": "{sector}: served energy",
+      "impactOffHours": "{sector}: hours without power",
+      "impactSocMin": "Minimum battery charge",
+      "impactUnserved": "Unserved energy (village)",
+      "impactHours": "{count} h",
+      "impactNoChange": "The engine sees no change in served energy or hours without power for this proposal.",
+      "clinicGuard": {
+        "title": "Danger: this change cuts the clinic",
+        "reasons": {
+          "cap_zero": "Clinic capped at 0 kW: vaccines and care lose power.",
+          "disconnected": "Clinic disconnected from the grid.",
+          "floor_zero": "Clinic survival floor set to 0 kW.",
+          "lifeline_off": "Survival floors turned off for every sector, the clinic included."
+        },
+        "secondConfirm": "Approving needs a second confirmation.",
+        "armed": "Click again to confirm. Reject to keep the clinic powered.",
+        "confirmAgain": "Confirm: cut the clinic"
+      },
+      "decision": {
+        "approvedBadge": "Approved",
+        "rejectedBadge": "Rejected",
+        "approvedTitle": "Change approved and applied to the simulation",
+        "approvedBody": "Metrics, charts and the 3D village now use these settings.",
+        "rejectedTitle": "Proposal rejected",
+        "rejectedBody": "Nothing changed in the simulation.",
+        "undoneBadge": "Undone",
+        "undoneTitle": "Change undone",
+        "undoneBody": "The simulation is back to the settings it had before this change.",
+        "undoLast": "Undo last change"
+      },
+      "fallback": {
+        "spend_cap": "AI budget for this session is used up: this answer comes from the offline copilot. Engine numbers stay valid.",
+        "provider_error": "The Meta model returned an error: this answer comes from the offline copilot. Engine numbers stay valid.",
+        "timeout": "The Meta model took too long: this answer comes from the offline copilot. Engine numbers stay valid.",
+        "unknown": "Part of this answer comes from the offline copilot. Engine numbers stay valid."
+      },
+      "generatedImageAlt": "Generated microgrid picture",
+      "generatedVideoTitle": "Simulation video",
+      "attachmentAlt": "Attachment",
+      "mediaVideo": "Video",
+      "mediaImage": "Image",
+      "modelRoleChat": "copilot + tools",
+      "modelRoleReasoning": "deep reasoning",
+      "modelRoleImage": "images",
+      "closeSessions": "Close saved conversations",
+      "noValue": "None",
+      "dropWindowValue": "{from}:00–{to}:00 ({hours} h)",
+      "loadDisconnected": "Not connected",
+      "diffSectorLoad": "Load",
+      "voice": {
+        "stop": "Stop recording",
+        "transcribing": "Transcribing your voice…",
+        "unsupported": "This browser cannot record audio. Type your message instead.",
+        "denied": "Microphone access was refused. Allow it in the browser, or type your message.",
+        "failed": "Could not transcribe the recording. Try again or type your message.",
+        "empty": "Nothing was heard. Try again closer to the microphone.",
+        "dismiss": "Dismiss",
+        "spectrumTitle": "Voice spectrum",
+        "spectrumAria": "Live frequency spectrum of the microphone, from 80 Hz to 8 kHz",
+        "peak": "Peak {freq}",
+        "peakNone": "Peak —",
+        "pitchZone": "Voice pitch",
+        "hz": "{value} Hz",
+        "khz": "{value} kHz"
+      },
+      "evidenceShowAll": "Show all evidence ({count})",
+      "retry": {
+        "button": "Retry",
+        "hint": "Not satisfied? Ask the same question again for a new answer.",
+        "retriedNote": "Answer redone below (Retry)."
+      },
+      "terminal": {
+        "title": "mitsinjo · copilot",
+        "open": "Open the copilot terminal",
+        "close": "Hide the copilot terminal",
+        "toggle": "Copilot",
+        "welcome": "Ask about the village you are looking at. Every number comes from the engine; changes wait for your approval.",
+        "attachments": "[{count, plural, one {# file} other {# files}}]",
+        "placeholder": "Ask the copilot…"
+      },
+      "control": {
+        "play": "Playback started",
+        "pause": "Playback paused",
+        "stop": "Playback stopped (back to 00:00)",
+        "restart": "Playback restarted from 00:00",
+        "seek": "Time cursor moved to {hour}"
+      }
     },
     "gridDiagram": {
       "topologyLabel": "Village plan: power flow from the solar hub to each sector",
@@ -500,7 +627,8 @@
         "open": "{sector}: Open / Cut (0 kW)"
       },
       "zoomControls": "Diagram zoom",
-      "zoomHint": "Ctrl + scroll or pinch to zoom · drag to pan"
+      "zoomHint": "Ctrl + scroll or pinch to zoom · drag to pan",
+      "onFire": "On fire"
     },
     "hardwareLink": {
       "title": "Physical scale model",
@@ -531,6 +659,23 @@
       "stopFollowing": "Stop following",
       "cloudOn": "Cloud over the lamp",
       "cloudOff": "Remove the cloud"
+    },
+    "fireAlert": {
+      "reportButton": "Report a fire",
+      "reportTitle": "Which sector is on fire?",
+      "reportHint": "The sector is cut off at once at the shown hour (safety rule, no approval).",
+      "reportCancel": "Close",
+      "alreadyBurning": "On fire",
+      "bannerTitle": "FIRE: {sectors} cut off",
+      "bannerDesc": "Power isolated since {hour} (0 kW), ahead of every strategy, cap or survival floor. Restoring power will need your approval.",
+      "simulatedTag": "Simulated alarm",
+      "seeVillage": "See the village",
+      "askCopilot": "Ask the copilot",
+      "snackbarTitle": "Fire reported: {sector}",
+      "snackbarBody": "Power cut at {hour}. Simulated alarm.",
+      "dismiss": "Dismiss the fire notice",
+      "notificationsLabel": "Fire notifications",
+      "onFireLabel": "On fire"
     }
   },
   "copilot": {
@@ -682,13 +827,15 @@
     "sectorCappedDesc": "{sector} power intake was capped by operator limit between {from} and {to}.",
     "lifelineShortfallTitle": "Survival power not held",
     "lifelineShortfallDesc": "{sector} received less than its survival minimum between {from} and {to}. Water and health are kept on first.",
+    "fireIsolationTitle": "Fire: {sector} isolated",
+    "fireIsolationDesc": "{sector} is cut off (0 kW) between {from} and {to} because of a fire. Safety rule: no strategy, cap or survival floor overrides it.",
     "hoursRange": "{from} - {to}"
   },
   "overview": {
-    "subtitle": "Understand energy availability and community impact.",
+    "subtitle": "What is at stake today, and the decision that changes it.",
     "runSimulation": "Run simulation",
     "openLive": "Open live simulation",
-    "simulating": "Simulating...",
+    "openLiveHint": "Play the day in the 3D village: timeline, controls, AI copilot",
     "solarPeak": "Peak Solar PV",
     "solarAvg": "Avg Solar PV",
     "batterySoc": "Battery End SoC",
@@ -697,11 +844,8 @@
     "energyBalanceTitle": "24h Energy Balance",
     "energyBalanceDesc": "Cumulative generation, storage flows, and served energy",
     "serviceAllocationTitle": "Community Service Allocation",
-    "serviceAllocationDesc": "Energy coverage across 5 village sectors",
-    "scenarioImpactTitle": "Scenario Impact & Alerts",
-    "scenarioImpactDesc": "Computed alerts and grid health assessment",
     "previewTitle": "Village Grid Digital Twin",
-    "previewSubtitle": "Schematic 2D/3D status of generation, battery, and sector nodes",
+    "previewSubtitle": "See power reach each building, hour by hour.",
     "view3d": "3D Preview",
     "view2d": "2D Schematic",
     "unservedEnergy": "Unserved: {kwh}",
@@ -710,33 +854,56 @@
     "batteryCaption": "Min SoC: {min} · Usable: {kwh}",
     "solarCaption": "24h Generation: {kwh}",
     "solarDeltaBaseline": "{delta} vs baseline",
-    "emptyTitle": "No simulation results yet",
     "emptyDesc": "Run the simulation to calculate energy distribution and inspect community coverage.",
     "solarGen": "Total Solar Generation",
     "batteryNet": "Battery SoC (start → end)",
     "servedEnergy": "Total Served Energy",
     "unservedTotal": "Total Unserved Energy",
-    "energyOverTimeTitle": "Energy Over Time (24h)",
-    "energyOverTimeSubtitle": "Solar generation, demand, served power, and battery state of charge",
     "energyOverTimeSummary": "24-hour timeline of solar generation, total community demand, served energy in kW and battery state of charge percentage.",
-    "clinicWarningInsight": "Proportional shedding impacts essential health clinic services. Switch to Essential-First in Strategy Lab to preserve life-critical loads.",
-    "schematicBadge": "2D SCHEMATIC",
     "chartTitle": "24h Generation vs Demand",
     "chartSubtitle": "Solar PV, total community demand, served power, and battery SoC",
     "emptyChartNotice": "Run the simulation to view 24h energy curves.",
     "sectorsCount": "{count} sectors",
-    "badge3d": "3D DIGITAL TWIN",
     "quickPhasesLabel": "Quick Phases",
     "phaseDawn": "06:00 Dawn",
     "phasePeak": "12:00 Solar Peak",
     "phaseEvening": "19:00 Evening Peak",
     "phaseNight": "23:00 Night",
-    "sheddingProtocolTitle": "Automated shedding protocol",
-    "sheddingProtocolDesc": "Microgrid prioritization isolates Village Market & Primary School when battery reserve drops below 20%, preserving healthcare cold chain and life-support lines.",
-    "compareStrategiesCta": "Compare Strategies in Strategy Lab",
     "nodeMitsinjoBus": "NODE: MITSINJO_BUS",
     "nodeCoordinates": "LAT -19.12° | LON 48.23°",
-    "viewModeLabel": "Preview mode"
+    "viewModeLabel": "Preview mode",
+    "incident": {
+      "pill": {
+        "empty": "Ready to simulate",
+        "risk": "Incident · essential services",
+        "safe": "All clear"
+      },
+      "title": {
+        "empty": "What happens when the sun drops?",
+        "safe": "Every essential service stays on."
+      },
+      "riskTitle": "The clinic and the water pump go dark at {hour}.",
+      "riskDesc": "With {strategy}, {kwh} of essential energy is missing on this simulated day. One decision can change that.",
+      "safeDesc": "With {strategy}, the clinic and the water pump are fully supplied all day. Try a weather shock to see what is at stake.",
+      "emptyDesc": "Simulate a day in the village and see who keeps power when the battery runs low.",
+      "stats": {
+        "start": "Outage starts",
+        "hours": "Hours without essential power",
+        "missing": "Essential energy missing",
+        "coverage": "Essential coverage"
+      },
+      "hoursValue": "{hours} h",
+      "askCopilot": "Ask the copilot why",
+      "askCopilotSafe": "Ask the copilot",
+      "showAt": "See the village at {hour}",
+      "solarDrop": "Simulate a solar drop (−40%)",
+      "run": "Run simulation",
+      "ringsTitle": "Same day, different decision",
+      "ringsDesc": "Share of clinic and water demand served by each strategy. Same weather, same battery: computed by the engine.",
+      "ringLabel": "Essential coverage with {strategy}",
+      "ringCaption": "essential needs met",
+      "ringHours": "{hours} h without power"
+    }
   },
   "strategies": {
     "subtitle": "Side-by-side comparison of allocation algorithms under identical conditions",

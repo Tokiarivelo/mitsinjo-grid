@@ -1,18 +1,34 @@
 'use client';
 
-import { CheckCircle2, XCircle, SlidersHorizontal, ArrowRight } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle2, XCircle, SlidersHorizontal } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
-import { useSimulationStore } from '@/stores';
 import { cn } from '@/lib/utils';
-import { resolveLifelineKw, type SectorId } from '@mitsinjo/engine';
-import { fmtKw } from '@/lib/format';
-import type { CopilotProposal } from '../types';
+import type {
+  CopilotProposal,
+  ProposalDecision,
+  ProposalDecisionStatus,
+  ProposalDiffItem,
+} from '../types';
+import { useProposalDiff } from '../hooks/use-proposal-diff';
+import { useProposalSelection } from '../hooks/use-proposal-selection';
+import type { PartialApproval } from '../utils/proposal-parts';
+import { ProposalImpact } from './proposal-impact';
+import { ClinicGuardWarning } from './clinic-guard-warning';
+import { DECISION_ICON } from './proposal-decision-message';
+import { ProposalDiffList, ProposalSkippedList } from './proposal-diff-list';
 
 export interface ConfirmProposalDialogProps {
   proposal: CopilotProposal;
-  onApprove: () => void;
-  onReject: () => void;
+  /**
+   * Called with the checked settings as shown (snapshot taken before the change is applied). When the
+   * operator unchecked lines (K3), `partial` holds what to apply and the lines left out.
+   */
+  onApprove: (items: ProposalDiffItem[], partial?: PartialApproval) => void;
+  onReject: (items: ProposalDiffItem[]) => void;
+  /** Set once the operator decided: the card locks, its buttons go away, values as decided. */
+  decision?: ProposalDecision;
   className?: string;
 }
 
@@ -20,210 +36,154 @@ export function ConfirmProposalDialog({
   proposal,
   onApprove,
   onReject,
+  decision,
   className,
 }: ConfirmProposalDialogProps) {
-  const tCopilot = useTranslations('features.copilot');
-  const tSectors = useTranslations('sectors');
-  const tPriorities = useTranslations('priorities');
-  const tCommon = useTranslations('common');
-  const currentInput = useSimulationStore((s) => s.input);
-  const currentStrategy = useSimulationStore((s) => s.activeStrategy);
+  const t = useTranslations('features.copilot');
+  const liveItems = useProposalDiff(proposal);
+  // After approval the simulation already holds the new values: show the snapshot instead.
+  const items = decision?.items ?? liveItems;
 
-  const patch = proposal.patch;
+  // K3: one checkbox per line; impact and clinic guard follow the checked lines.
+  const selection = useProposalSelection(proposal, liveItems);
+  const nothingChecked = selection.checkedItems.length === 0;
 
-  // Build diff list
-  const diffItems: { label: string; current: string; proposed: string }[] = [];
+  // K6: the rule runs here in code, whatever the model said. Unsafe → first click arms, second click approves.
+  const clinicReasons = selection.clinicReasons;
+  const needsSecondConfirm = clinicReasons.length > 0;
+  const [armed, setArmed] = useState(false);
+  const open = decision === undefined;
+  const impact = open ? selection.impact : proposal.impact;
 
-  if (proposal.strategy !== undefined) {
-    diffItems.push({
-      label: tCopilot('diffDispatchPolicy'),
-      current: currentStrategy,
-      proposed: proposal.strategy,
-    });
-  }
+  const toggleLine = (id: string) => {
+    setArmed(false);
+    selection.toggle(id);
+  };
 
-  if (patch?.priorities !== undefined) {
-    for (const [secId, prio] of Object.entries(patch.priorities)) {
-      if (prio) {
-        const currentSecPrio = currentInput.sectors.find((s) => s.id === secId)?.priority;
-        diffItems.push({
-          label: `${tSectors(secId as SectorId)} ${tCopilot('diffPriorityLabel')}`,
-          current: currentSecPrio ? tPriorities(currentSecPrio) : tCopilot('unknownValue'),
-          proposed: tPriorities(prio),
-        });
-      }
+  const handleApprove = () => {
+    if (nothingChecked) return;
+    if (needsSecondConfirm && !armed) {
+      setArmed(true);
+      return;
     }
-  }
-
-  if (patch?.sectorCaps !== undefined && patch.sectorCaps.length > 0) {
-    for (const cap of patch.sectorCaps) {
-      const existingCap = currentInput.sectorCaps?.find((c) => c.sector === cap.sector);
-      const existingStr = existingCap
-        ? tCommon('capRange', {
-            maxKw: existingCap.maxKw,
-            from: existingCap.fromHour,
-            to: existingCap.toHour,
-          })
-        : tCopilot('noCap');
-      diffItems.push({
-        label: `${tSectors(cap.sector)} ${tCopilot('diffCapLabel')}`,
-        current: existingStr,
-        proposed: tCommon('capRange', { maxKw: cap.maxKw, from: cap.fromHour, to: cap.toHour }),
-      });
+    if (selection.skippedItems.length === 0) {
+      onApprove(selection.checkedItems);
+      return;
     }
-  }
-
-  if (patch?.solarDropPct !== undefined) {
-    diffItems.push({
-      label: tCopilot('diffSolarDrop'),
-      current: '0%',
-      proposed: `${patch.solarDropPct}%`,
+    onApprove(selection.checkedItems, {
+      pick: selection.pick,
+      skipped: selection.skippedItems,
     });
-  }
-  if (patch?.dropStartHour !== undefined || patch?.dropDurationH !== undefined) {
-    const start = patch?.dropStartHour ?? 12;
-    const dur = patch?.dropDurationH ?? 2;
-    diffItems.push({
-      label: tCopilot('diffDropWindow'),
-      current: 'None',
-      proposed: `${start}:00 - ${start + dur}:00 (${dur}h)`,
-    });
-  }
-  if (patch?.demandMultiplier !== undefined) {
-    diffItems.push({
-      label: tCopilot('diffDemandMultiplier'),
-      current: `${currentInput.demandMultiplier}x`,
-      proposed: `${patch.demandMultiplier}x`,
-    });
-  }
-  if (patch?.batteryCapacityKwh !== undefined) {
-    diffItems.push({
-      label: tCopilot('diffBatteryCapacity'),
-      current: `${currentInput.battery.capacityKwh} kWh`,
-      proposed: `${patch.batteryCapacityKwh} kWh`,
-    });
-  }
-  if (patch?.initialSocPct !== undefined) {
-    diffItems.push({
-      label: tCopilot('diffInitialSoc'),
-      current: `${currentInput.battery.initialSocPct}%`,
-      proposed: `${patch.initialSocPct}%`,
-    });
-  }
-  if (patch?.minSocPct !== undefined) {
-    diffItems.push({
-      label: tCopilot('diffMinSoc'),
-      current: `${currentInput.battery.minSocPct}%`,
-      proposed: `${patch.minSocPct}%`,
-    });
-  }
-  if (patch?.lifeline !== undefined) {
-    if (patch.lifeline.enabled !== undefined) {
-      const currentEnabled = currentInput.strategyParams?.lifeline?.enabled !== false;
-      diffItems.push({
-        label: tCopilot('diffLifelineStatus'),
-        current: currentEnabled ? tCommon('enabled') : tCommon('disabled'),
-        proposed: patch.lifeline.enabled ? tCommon('enabled') : tCommon('disabled'),
-      });
-    }
-    if (patch.lifeline.kw !== undefined) {
-      for (const [secId, kw] of Object.entries(patch.lifeline.kw)) {
-        if (kw !== undefined) {
-          const sector = secId as SectorId;
-          // Unset floors use the engine default, never 0.
-          const currentKw = resolveLifelineKw(
-            sector,
-            currentInput.sectors.find((s) => s.id === sector)?.lifelineKw
-          );
-          diffItems.push({
-            label: `${tSectors(sector)} ${tCopilot('diffLifelineFloor')}`,
-            current: fmtKw(currentKw, 2),
-            proposed: fmtKw(kw, 2),
-          });
-        }
-      }
-    }
-  }
+  };
 
   return (
     <div
-      role="dialog"
+      role={open ? 'dialog' : 'group'}
       aria-labelledby={`proposal-title-${proposal.proposalId}`}
-      aria-modal="false"
+      aria-modal={open ? 'false' : undefined}
       tabIndex={-1}
       onKeyDown={(e) => {
-        if (e.key === 'Escape') {
+        if (open && e.key === 'Escape') {
           e.stopPropagation();
-          onReject();
+          onReject(items);
         }
       }}
       className={cn(
-        'bg-surface-elevated border-2 border-ai-violet/40 rounded-xl p-5 shadow-[0_0_24px_-4px_rgba(182,160,255,0.18)] flex flex-col gap-4 text-xs font-sans animate-in fade-in duration-200',
+        '@container bg-surface-elevated border-2 rounded-xl p-3 @md:p-5 flex flex-col gap-3 @md:gap-4 text-xs font-sans animate-in fade-in duration-200',
+        open ? 'border-ai-violet/40 shadow-lg shadow-ai-violet/10' : 'border-border/60',
         className
       )}
     >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border/60">
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal className="h-4 w-4 text-ai-violet" aria-hidden="true" />
+        <div className="flex items-center gap-2 min-w-0">
+          <SlidersHorizontal className="h-4 w-4 shrink-0 text-ai-violet" aria-hidden="true" />
           <span
             id={`proposal-title-${proposal.proposalId}`}
-            className="font-display text-sm font-semibold text-text-primary tracking-wide uppercase"
+            className="font-display text-xs @md:text-sm font-semibold text-text-primary tracking-wide uppercase"
           >
-            {tCopilot('proposalTitle')}
+            {t('proposalTitle')}
           </span>
         </div>
-        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-ai-violet/15 text-ai-violet border border-ai-violet/40 font-semibold tracking-wider">
-          {proposal.proposalId}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {decision && <DecisionBadge status={decision.status} />}
+          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-ai-violet/15 text-ai-violet border border-ai-violet/40 font-semibold tracking-wider">
+            {proposal.proposalId}
+          </span>
+        </div>
       </div>
 
       {/* Justification reason */}
-      <div className="p-2.5 rounded bg-surface border border-border/50 text-text-secondary leading-relaxed">
+      <div className="p-2.5 rounded bg-surface border border-border/50 leading-relaxed">
         <span className="text-[10px] font-mono text-text-muted uppercase block mb-1">
-          {tCopilot('proposalReason')}
+          {t('proposalReason')}
         </span>
         <p className="text-text-primary font-medium">{proposal.reason}</p>
       </div>
 
-      {/* Parameter Diff Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 font-mono">
-        {diffItems.map((item, idx) => (
-          <div
-            key={idx}
-            className="p-2.5 rounded-lg bg-surface border border-border/40 flex flex-col justify-between"
-          >
-            <span className="text-[10px] text-text-muted uppercase truncate">{item.label}</span>
-            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap text-xs">
-              <span className="line-through text-text-muted/70">{item.current}</span>
-              <ArrowRight className="h-3 w-3 text-energy-cyan shrink-0" aria-hidden="true" />
-              <span className="text-secondary font-semibold bg-energy-cyan/10 px-1.5 py-0.5 rounded border border-energy-cyan/30 text-energy-cyan">
-                {item.proposed}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+      {open && selection.selectable && (
+        <p className="text-[11px] text-text-secondary">{t('proposalLinesHint')}</p>
+      )}
+      <ProposalDiffList
+        items={items}
+        tone={open ? 'active' : 'muted'}
+        selection={open && selection.selectable ? { ...selection, toggle: toggleLine } : undefined}
+      />
+      <ProposalSkippedList items={decision?.skipped} />
 
-      {/* Actions */}
-      <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border/40">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={onReject}
-          icon={<XCircle className="h-3.5 w-3.5" aria-hidden="true" />}
-        >
-          {tCopilot('proposalReject')}
-        </Button>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={onApprove}
-          icon={<CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />}
-        >
-          {tCopilot('proposalApprove')}
-        </Button>
-      </div>
+      {open && needsSecondConfirm && <ClinicGuardWarning reasons={clinicReasons} armed={armed} />}
+
+      {/* Engine before/after (K1) */}
+      {impact && <ProposalImpact impact={impact} />}
+
+      {/* Actions: a short list when the card is narrow, one row when wide. Gone once decided. */}
+      {open && (
+        <div className="flex flex-col-reverse @md:flex-row @md:justify-end gap-2 pt-3 border-t border-border/40">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => onReject(items)}
+            icon={<XCircle className="h-3.5 w-3.5" aria-hidden="true" />}
+            className="w-full @md:w-auto min-h-11 justify-center"
+          >
+            {t('proposalReject')}
+          </Button>
+          <Button
+            variant={needsSecondConfirm ? 'danger' : 'primary'}
+            size="sm"
+            onClick={handleApprove}
+            disabled={nothingChecked}
+            icon={<CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />}
+            className="w-full @md:w-auto min-h-11 justify-center text-center"
+          >
+            {armed
+              ? t('clinicGuard.confirmAgain')
+              : selection.skippedItems.length > 0
+                ? t('proposalApproveSelected', { count: selection.checkedItems.length })
+                : t('proposalApprove')}
+          </Button>
+        </div>
+      )}
     </div>
+  );
+}
+
+/** "Approved" / "Rejected" chip: color + icon + text. */
+export function DecisionBadge({ status }: { status: ProposalDecisionStatus }) {
+  const t = useTranslations('features.copilot');
+  const approved = status === 'approved';
+  const Icon = DECISION_ICON[status];
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-semibold uppercase tracking-wider border',
+        approved
+          ? 'bg-battery-green/10 text-battery-green border-battery-green/40'
+          : 'bg-surface text-text-secondary border-border'
+      )}
+    >
+      <Icon className="h-3 w-3" aria-hidden="true" />
+      {t(`decision.${status}Badge`)}
+    </span>
   );
 }

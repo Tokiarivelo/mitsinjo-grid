@@ -73,8 +73,29 @@ export const DemandSpikeEventSchema = BaseDemandSpikeEventSchema.refine(
 );
 export type DemandSpikeEvent = z.infer<typeof DemandSpikeEventSchema>;
 
+/**
+ * Fire in a sector (F1, safety): the sector gets 0 kW from startHour for durationH hours, whatever the
+ * strategy, sector caps or lifeline floor say. Reported by an operator or a sensor, applied at once.
+ */
+const BaseFireEventSchema = z.object({
+  type: z.literal('fire'),
+  sector: SectorIdSchema,
+  startHour: z.number().int().min(0).max(23),
+  durationH: z.number().int().min(1).max(24),
+});
+
+export const FireEventSchema = BaseFireEventSchema.refine((e) => e.startHour + e.durationH <= 24, {
+  message: 'startHour + durationH must be <= 24',
+  path: ['durationH'],
+});
+export type FireEvent = z.infer<typeof FireEventSchema>;
+
 export const ScenarioEventSchema = z
-  .discriminatedUnion('type', [BaseSolarDropEventSchema, BaseDemandSpikeEventSchema])
+  .discriminatedUnion('type', [
+    BaseSolarDropEventSchema,
+    BaseDemandSpikeEventSchema,
+    BaseFireEventSchema,
+  ])
   .refine((e) => e.startHour + e.durationH <= 24, {
     message: 'startHour + durationH must be <= 24',
     path: ['durationH'],

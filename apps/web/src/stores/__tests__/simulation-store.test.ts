@@ -154,6 +154,58 @@ describe('useSimulationStore & selectors (P4-T1)', () => {
     expect(selectInput(updated).events.some((e) => e.type === 'solar_drop')).toBe(true);
   });
 
+  describe('approved change history (M1-T4)', () => {
+    it('approve then undo restores the initial input and strategy', () => {
+      const initial = structuredClone(selectInput(useSimulationStore.getState()));
+      const store = useSimulationStore.getState();
+      store.approveChange('p1', { solarDropPct: 40 }, 'essential_first');
+
+      let state = useSimulationStore.getState();
+      expect(state.changeHistory.map((c) => c.id)).toEqual(['p1']);
+      expect(state.activeStrategy).toBe('essential_first');
+      expect(state.input).not.toEqual(initial);
+
+      expect(state.undoLastChange()).toBe('p1');
+      state = useSimulationStore.getState();
+      expect(state.input).toEqual(initial);
+      expect(state.activeStrategy).toBe('proportional');
+      expect(state.changeHistory).toEqual([]);
+      expect(selectStatus(state)).toBe('complete');
+    });
+
+    it('undoes changes last-first and returns null when nothing is left', () => {
+      const store = useSimulationStore.getState();
+      store.approveChange('p1', { solarDropPct: 40 });
+      const afterFirst = structuredClone(useSimulationStore.getState().input);
+      store.approveChange('p2', { solarDropPct: 70 });
+
+      expect(useSimulationStore.getState().undoLastChange()).toBe('p2');
+      expect(useSimulationStore.getState().input).toEqual(afterFirst);
+      expect(useSimulationStore.getState().undoLastChange()).toBe('p1');
+      expect(useSimulationStore.getState().undoLastChange()).toBeNull();
+    });
+
+    it('plain applyProposal is not recorded; loadScenario and reset clear the history', () => {
+      const store = useSimulationStore.getState();
+      store.applyProposal({ solarDropPct: 40 });
+      expect(useSimulationStore.getState().changeHistory).toEqual([]);
+
+      store.approveChange('p1', { solarDropPct: 40 });
+      store.reset();
+      expect(useSimulationStore.getState().changeHistory).toEqual([]);
+
+      store.approveChange('p2', { solarDropPct: 40 });
+      store.loadScenario('baseline');
+      expect(useSimulationStore.getState().changeHistory).toEqual([]);
+    });
+
+    it('a failed change is not recorded', () => {
+      const store = useSimulationStore.getState();
+      store.approveChange('bad', { solarDropPct: 500 } as never);
+      expect(useSimulationStore.getState().changeHistory).toEqual([]);
+    });
+  });
+
   it('controls simulation playback with play, pause, stop, and restart', () => {
     const store = useSimulationStore.getState();
     expect(selectIsPlaying(store)).toBe(false);
