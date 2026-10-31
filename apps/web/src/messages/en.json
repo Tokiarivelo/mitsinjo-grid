@@ -123,6 +123,8 @@
       "timelineTitle": "24h Timeline Scrubber",
       "timelineSubtitle": "Scrub through 24-hour simulation steps to inspect live hourly power flows",
       "timelineScrubberLabel": "Hour of day scrubber",
+      "timelineMinimize": "Minimize the timeline",
+      "timelineExpand": "Expand the timeline",
       "stepBackward": "Step backward 1 hour",
       "stepForward": "Step forward 1 hour",
       "startPlayback": "Start timeline playback",
@@ -255,6 +257,12 @@
         "disconnect": "Disconnect",
         "connectAria": "Connect {sector} to the grid",
         "disconnectAria": "Disconnect {sector} from the grid"
+      },
+      "fsControls": {
+        "title": "Simulation controls",
+        "toggle": "Controls",
+        "open": "Show the simulation controls",
+        "close": "Hide the simulation controls"
       }
     },
     "strategyLab": {
@@ -539,6 +547,15 @@
         "button": "Retry",
         "hint": "Not satisfied? Ask the same question again for a new answer.",
         "retriedNote": "Answer redone below (Retry)."
+      },
+      "terminal": {
+        "title": "mitsinjo · copilot",
+        "open": "Open the copilot terminal",
+        "close": "Hide the copilot terminal",
+        "toggle": "Copilot",
+        "welcome": "Ask about the village you are looking at. Every number comes from the engine; changes wait for your approval.",
+        "attachments": "[{count, plural, one {# file} other {# files}}]",
+        "placeholder": "Ask the copilot…"
       }
     },
     "gridDiagram": {

@@ -1,37 +1,17 @@
 'use client';
 
-import {
-  useCallback,
-  useState,
-  useRef,
-  useEffect,
-  type KeyboardEvent,
-  type ClipboardEvent,
-  type DragEvent,
-} from 'react';
-import {
-  Send,
-  Sparkles,
-  Bot,
-  AlertTriangle,
-  Mic,
-  MicOff,
-  Loader2,
-  Paperclip,
-  Edit3,
-  X,
-  Play,
-  History,
-  Plus,
-  Trash2,
-} from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Sparkles, Bot, AlertTriangle, X, History, Plus, Trash2 } from 'lucide-react';
 import { useAppLocale, useTranslations } from '@/lib/i18n';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useCopilot } from '../hooks/use-copilot';
+import { EnsureCopilot, useSharedCopilot } from '../hooks/copilot-context';
+import { useChatComposer } from '../hooks/use-chat-composer';
+import { useStickToBottom } from '../hooks/use-stick-to-bottom';
+import { ChatComposer } from './chat-composer';
+import { ModelPicker } from './model-picker';
 import { useVoiceInput } from '../hooks/use-voice-input';
-import { VoiceSpectrum } from './voice-spectrum';
 import { useSimulationStore } from '@/stores/simulation.store';
 import type { ChatMediaItem } from '../types';
 import { ChatMessageItem } from './chat-message-item';
@@ -41,19 +21,21 @@ import { ContextPanel } from './context-panel';
 import { MediaLightboxModal, type ActiveMedia } from './media-lightbox-modal';
 import { CanvasSketchDialog } from './canvas-sketch-dialog';
 
-/** i18n key describing each Meta model's job in the picker. */
-const MODEL_ROLE_KEYS: Record<string, 'modelRoleChat' | 'modelRoleReasoning' | 'modelRoleImage'> = {
-  'muse-spark-1.3': 'modelRoleChat',
-  'muse-wonder-1.0': 'modelRoleReasoning',
-  'muse-image-1.0': 'modelRoleImage',
-};
-
 export interface CopilotWorkspaceProps {
   mode?: 'full' | 'panel';
   className?: string;
 }
 
-export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceProps) {
+/** Copilot chat (page or panel). Joins the shared conversation when a `CopilotProvider` is above. */
+export function CopilotWorkspace(props: CopilotWorkspaceProps) {
+  return (
+    <EnsureCopilot>
+      <WorkspaceView {...props} />
+    </EnsureCopilot>
+  );
+}
+
+function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
   const tCopilot = useTranslations('features.copilot');
   const tCommon = useTranslations('common');
 
@@ -77,124 +59,34 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
     sendMessage,
     approveProposal,
     rejectProposal,
-  } = useCopilot();
+    undoableProposalId,
+    undoLastChange,
+    retryableId,
+    retryLastAnswer,
+  } = useSharedCopilot();
 
-  const [input, setInput] = useState('');
-  const [attachedMedia, setAttachedMedia] = useState<ChatMediaItem[]>([]);
   const [activeLightboxMedia, setActiveLightboxMedia] = useState<ActiveMedia | null>(null);
   const [isSketchOpen, setIsSketchOpen] = useState(false);
-  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showSessionsDrawer, setShowSessionsDrawer] = useState(false);
 
   const { locale } = useAppLocale();
-  // Transcribed speech goes into the input, editable before sending.
-  const appendTranscript = useCallback(
-    (text: string) => setInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text)),
-    []
-  );
-  const voice = useVoiceInput({ locale, sessionId, onText: appendTranscript });
-  const isListening = voice.status === 'recording';
-  const isTranscribing = voice.status === 'transcribing';
-
-  const chatScrollRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  // Follow new text only while the reader is at the bottom; scrolling up to read stops it.
-  const stickToBottomRef = useRef(true);
   const lastMessage = messages.at(-1);
   const answerStarted = lastMessage?.role === 'assistant' && lastMessage.content.length > 0;
-
-  useEffect(() => {
-    const el = chatScrollRef.current;
-    if (el && stickToBottomRef.current) el.scrollTop = el.scrollHeight;
-  }, [messages, toolActivity, pending]);
-
-  const handleChatScroll = () => {
-    const el = chatScrollRef.current;
-    if (!el) return;
-    stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-  };
-
-  const handleAddFiles = (files: FileList | File[]) => {
-    Array.from(files).forEach((file) => {
-      const isImage = file.type.startsWith('image/');
-      const isVideo = file.type.startsWith('video/');
-      if (!isImage && !isVideo) return;
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setAttachedMedia((prev) => [
-            ...prev,
-            {
-              id: `media-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-              url: reader.result as string,
-              type: isVideo ? 'video' : 'image',
-              name: file.name,
-              size: file.size,
-            },
-          ]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handlePaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
-    if (e.clipboardData.files && e.clipboardData.files.length > 0) {
-      handleAddFiles(e.clipboardData.files);
-    }
-  };
-
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDraggingOver(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleAddFiles(e.dataTransfer.files);
-    }
-  };
-
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDraggingOver(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDraggingOver(false);
-  };
-
-  const handleRemoveMedia = (id: string) => {
-    setAttachedMedia((prev) => prev.filter((item) => item.id !== id));
-  };
+  const chatRef = useRef<HTMLDivElement>(null);
+  const chatScroll = useStickToBottom(chatRef, [messages, toolActivity, pending]);
 
   const send = (prompt: string, media?: ChatMediaItem[]) => {
-    stickToBottomRef.current = true;
+    chatScroll.stick();
     sendMessage(prompt, media);
   };
-
-  const handleSend = () => {
-    if ((!input.trim() && attachedMedia.length === 0) || pending) return;
-    send(input, attachedMedia);
-    setInput('');
-    setAttachedMedia([]);
-  };
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  const composer = useChatComposer({ onSend: send, pending });
+  const voice = useVoiceInput({ locale, sessionId, onText: composer.appendText });
 
   const isFull = mode === 'full';
 
-  const formatModelLabel = (m: string) => {
-    if (m === 'auto') return tCopilot('modelAuto');
-    const role = MODEL_ROLE_KEYS[m];
-    return role ? `${m} (${tCopilot(role)})` : m;
-  };
-
   return (
-    <div className={cn('flex-1 flex flex-col min-h-0', className)}>
+    // Wide /copilot: the workspace fills the main area so the chat scrolls inside it.
+    <div className={cn('flex-1 flex flex-col min-h-0', isFull && 'xl:h-full', className)}>
       {/* Header Area (Full Mode) */}
       {isFull ? (
         <div className="px-4 sm:px-6 lg:px-8 py-3.5 sm:py-5 border-b border-border/70 bg-surface/80 backdrop-blur-md sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
@@ -243,30 +135,11 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
               </button>
             </div>
 
-            {/* Meta Model & Mode Selector */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface-elevated border border-border/70 text-xs font-mono">
-              <span className="text-[10px] text-text-muted font-semibold uppercase">
-                {tCopilot('modelSelectorLabel')}
-              </span>
-              {availableModels.length > 1 ? (
-                <select
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  aria-label={tCopilot('modelSelectorLabel')}
-                  className="bg-transparent text-energy-cyan font-medium border-none focus:outline-none cursor-pointer text-xs"
-                >
-                  {availableModels.map((m) => (
-                    <option key={m} value={m} className="bg-surface text-text-primary">
-                      {formatModelLabel(m)}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <span className="text-energy-cyan font-medium text-xs">
-                  {formatModelLabel(selectedModel || 'auto')}
-                </span>
-              )}
-            </div>
+            <ModelPicker
+              models={availableModels}
+              value={selectedModel}
+              onChange={setSelectedModel}
+            />
 
             <StatusBadge variant="simulated" label={tCommon('simulatedData')} size="sm" />
           </div>
@@ -284,30 +157,12 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
           </div>
 
           <div className="flex flex-wrap items-center gap-2 min-w-0">
-            {/* Panel Mode Selector */}
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-elevated border border-border text-[11px] font-mono min-w-0 max-w-full">
-              <span className="text-[9px] text-text-muted uppercase font-semibold">
-                {tCopilot('modelSelectorLabel')}
-              </span>
-              {availableModels.length > 1 ? (
-                <select
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  aria-label={tCopilot('modelSelectorLabel')}
-                  className="min-w-0 max-w-full truncate bg-transparent text-energy-cyan font-medium border-none focus:outline-none cursor-pointer text-[11px]"
-                >
-                  {availableModels.map((m) => (
-                    <option key={m} value={m} className="bg-surface text-text-primary">
-                      {formatModelLabel(m)}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <span className="text-energy-cyan font-medium text-[11px]">
-                  {formatModelLabel(selectedModel || 'auto')}
-                </span>
-              )}
-            </div>
+            <ModelPicker
+              models={availableModels}
+              value={selectedModel}
+              onChange={setSelectedModel}
+              size="sm"
+            />
 
             <StatusBadge variant="simulated" label={tCommon('simulatedData')} size="sm" />
           </div>
@@ -400,11 +255,15 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
 
           {/* Chat Stream Canvas */}
           <div
-            ref={chatScrollRef}
-            onScroll={handleChatScroll}
+            ref={chatRef}
+            onScroll={chatScroll.onScroll}
             role="log"
             aria-live="polite"
-            className="flex-1 overflow-y-auto overscroll-contain space-y-5 pr-1.5 min-h-[300px]"
+            className={cn(
+              // Always a bounded scroller: unbounded, it grew with the chat and trapped the wheel.
+              'flex-1 overflow-y-auto md:overscroll-contain space-y-5 pr-1.5 min-h-[300px] max-h-[65dvh]',
+              isFull && 'xl:max-h-none'
+            )}
           >
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-12 text-center max-w-lg mx-auto">
@@ -435,6 +294,13 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
                   proposalDecision={m.proposal ? decisions[m.proposal.proposalId] : undefined}
                   onApproveProposal={approveProposal}
                   onRejectProposal={rejectProposal}
+                  onRetry={m.id === retryableId ? retryLastAnswer : undefined}
+                  onUndo={
+                    m.decision?.status === 'approved' &&
+                    m.decision.proposalId === undoableProposalId
+                      ? undoLastChange
+                      : undefined
+                  }
                   onMediaClick={(media) => setActiveLightboxMedia(media)}
                 />
               ))
@@ -473,197 +339,12 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
             />
           )}
 
-          {/* Query Input Dock with Drag & Drop */}
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={cn(
-              'p-3 rounded-xl bg-surface-elevated/60 border shadow-md transition-colors',
-              isDraggingOver
-                ? 'border-energy-cyan bg-energy-cyan/5 ring-2 ring-energy-cyan/30'
-                : 'border-border'
-            )}
-          >
-            {/* Hidden native file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,video/*"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files) {
-                  handleAddFiles(e.target.files);
-                  e.target.value = '';
-                }
-              }}
-            />
-
-            {/* Attached Media Tray */}
-            {attachedMedia.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2 p-2 rounded-lg bg-surface border border-border/80">
-                {attachedMedia.map((med) => (
-                  <div
-                    key={med.id}
-                    className="relative group flex items-center gap-2 p-1 pr-2 rounded-lg bg-surface-elevated border border-border text-xs"
-                  >
-                    {med.type === 'video' ? (
-                      <div className="w-10 h-10 rounded bg-black flex items-center justify-center shrink-0">
-                        <Play className="h-4 w-4 text-white" />
-                      </div>
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={med.url}
-                        alt={med.name || 'attachment'}
-                        className="w-10 h-10 rounded object-cover shrink-0 bg-surface"
-                      />
-                    )}
-                    <div className="min-w-0 max-w-[120px]">
-                      <span className="block truncate text-[11px] font-medium text-text-primary">
-                        {med.name ||
-                          (med.type === 'video' ? tCopilot('mediaVideo') : tCopilot('mediaImage'))}
-                      </span>
-                      <span className="block text-[9px] font-mono text-text-muted uppercase">
-                        {med.type}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveMedia(med.id)}
-                      aria-label={tCopilot('removeAttachment')}
-                      className="p-1 rounded-full text-text-muted hover:text-critical-red hover:bg-critical-red/10 transition-colors cursor-pointer"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {isListening && voice.analyser && (
-              <VoiceSpectrum analyser={voice.analyser} className="mb-2" />
-            )}
-
-            {(voice.error || isTranscribing) && (
-              <p
-                role={voice.error ? 'alert' : 'status'}
-                className={cn(
-                  'mb-2 flex items-start justify-between gap-2 px-2.5 py-1.5 rounded-md text-[11px] border',
-                  voice.error
-                    ? 'bg-warning-amber/10 border-warning-amber/40 text-text-primary'
-                    : 'bg-surface border-border text-text-secondary'
-                )}
-              >
-                <span>
-                  {voice.error ? tCopilot(`voice.${voice.error}`) : tCopilot('voice.transcribing')}
-                </span>
-                {voice.error && (
-                  <button
-                    type="button"
-                    onClick={voice.clearError}
-                    aria-label={tCopilot('voice.dismiss')}
-                    className="shrink-0 text-text-muted hover:text-text-primary cursor-pointer"
-                  >
-                    <X className="h-3 w-3" aria-hidden="true" />
-                  </button>
-                )}
-              </p>
-            )}
-
-            <div className="relative flex flex-col gap-2">
-              <textarea
-                rows={2}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onPaste={handlePaste}
-                placeholder={
-                  isDraggingOver ? tCopilot('dragDropHint') : tCopilot('inputPlaceholder')
-                }
-                disabled={pending}
-                aria-label={tCopilot('inputAria')}
-                className="w-full resize-none p-2.5 text-xs font-sans text-text-primary bg-surface border border-border rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-violet focus-visible:ring-offset-1 focus-visible:ring-offset-canvas placeholder:text-text-muted disabled:opacity-50"
-              />
-              <div className="flex items-center justify-between gap-2 text-[11px] text-text-muted">
-                <span className="hidden sm:inline">{tCopilot('shiftEnterHint')}</span>
-                <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
-                  {/* File upload button */}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={pending}
-                    aria-label={tCopilot('attachMedia')}
-                    title={tCopilot('attachMedia')}
-                    className="min-h-10 min-w-10 flex items-center justify-center rounded-lg border border-border bg-surface text-text-muted hover:text-text-primary hover:border-border/80 transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
-
-                  {/* Canvas sketch button */}
-                  <button
-                    type="button"
-                    onClick={() => setIsSketchOpen(true)}
-                    disabled={pending}
-                    aria-label={tCopilot('sketchCanvas')}
-                    title={tCopilot('sketchCanvas')}
-                    className="min-h-10 min-w-10 flex items-center justify-center rounded-lg border border-border bg-surface text-text-muted hover:text-energy-cyan hover:border-energy-cyan/60 transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
-
-                  {/* Voice input button */}
-                  <button
-                    type="button"
-                    onClick={voice.toggle}
-                    disabled={pending || isTranscribing}
-                    aria-pressed={isListening}
-                    aria-label={
-                      isListening
-                        ? tCopilot('voice.stop')
-                        : isTranscribing
-                          ? tCopilot('voice.transcribing')
-                          : tCopilot('voiceInput')
-                    }
-                    title={isListening ? tCopilot('voice.stop') : tCopilot('voiceInput')}
-                    className={cn(
-                      'min-h-10 min-w-10 px-2 justify-center rounded-lg border text-xs transition-all cursor-pointer flex items-center gap-1.5',
-                      isListening
-                        ? 'bg-critical-red/20 border-critical-red text-critical-red animate-pulse'
-                        : 'bg-surface border-border text-text-muted hover:text-text-primary hover:border-border/80'
-                    )}
-                  >
-                    {isListening ? (
-                      <>
-                        <MicOff className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span className="text-[10px] font-mono font-medium">
-                          {tCopilot('voiceListening')}
-                        </span>
-                      </>
-                    ) : isTranscribing ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Mic className="h-3.5 w-3.5" aria-hidden="true" />
-                    )}
-                  </button>
-
-                  {/* Send Button */}
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleSend}
-                    disabled={(!input.trim() && attachedMedia.length === 0) || pending}
-                    aria-label={tCopilot('sendButton')}
-                    icon={<Send className="h-3 w-3" aria-hidden="true" />}
-                    className="min-h-10 bg-ai-violet hover:bg-ai-violet/90 text-surface font-semibold"
-                  >
-                    {tCopilot('sendButton')}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ChatComposer
+            composer={composer}
+            voice={voice}
+            pending={pending}
+            onOpenSketch={() => setIsSketchOpen(true)}
+          />
         </section>
 
         {/* Right / Context Column (Full view only) */}
@@ -681,7 +362,7 @@ export function CopilotWorkspace({ mode = 'full', className }: CopilotWorkspaceP
       <CanvasSketchDialog
         isOpen={isSketchOpen}
         onClose={() => setIsSketchOpen(false)}
-        onAttach={(media) => setAttachedMedia((prev) => [...prev, media])}
+        onAttach={composer.addMedia}
       />
     </div>
   );

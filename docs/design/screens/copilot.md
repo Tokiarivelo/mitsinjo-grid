@@ -20,6 +20,10 @@ Route: /copilot (full view); same component is the CopilotPanel (360px) elsewher
 
 In panel mode: single column, no context column.
 
+Scroll: the message list is its own scroller (`role="log"`, max 65dvh, follows new text while at the bottom). On wide
+screens (`xl`) `/copilot` fills the main area: the list takes the free height, input stays docked at the bottom, the
+context column scrolls on its own. Below `md` the list lets the swipe pass on to the page at its ends.
+
 ## Header
 
 "Mitsinjo Copilot"; subtitle "Understand the simulation. Explore the trade-offs."; `AI EXPLANATION` StatusBadge variant ai.

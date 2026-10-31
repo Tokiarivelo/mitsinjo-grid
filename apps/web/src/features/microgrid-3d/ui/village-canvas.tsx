@@ -171,7 +171,8 @@ export function VillageCanvas({
   return (
     <div
       ref={htmlPortal}
-      className={cn('relative', className)}
+      // `isolate`: drei labels use z-index up to 16 777 271; keep them under the HUD and the copilot terminal.
+      className={cn('relative isolate', className)}
       style={{ width: '100%', height: '100%' }}
     >
       {perfEnabled && perf && (

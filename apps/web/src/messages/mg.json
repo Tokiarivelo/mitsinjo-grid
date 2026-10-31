@@ -123,6 +123,8 @@
       "timelineTitle": "Fikarohana Ora 24h",
       "timelineSubtitle": "Zahao ny fikorianan ny herinaratra isan ora mandritra ny 24 ora",
       "timelineScrubberLabel": "Fisafidianana ny ora",
+      "timelineMinimize": "Ahenao ny fikarohana ora",
+      "timelineExpand": "Halehibeazo ny fikarohana ora",
       "stepBackward": "Mihemotra 1 ora",
       "stepForward": "Mandroso 1 ora",
       "startPlayback": "Alefaso ny fizotry ny fotoana",
@@ -255,6 +257,12 @@
         "disconnect": "Esory",
         "connectAria": "Ampifandraiso amin'ny tamba-jotra {sector}",
         "disconnectAria": "Esory amin'ny tamba-jotra {sector}"
+      },
+      "fsControls": {
+        "title": "Fanaraha-maso ny simulation",
+        "toggle": "Fanaraha-maso",
+        "open": "Asehoy ny fanaraha-maso ny simulation",
+        "close": "Afeno ny fanaraha-maso ny simulation"
       }
     },
     "strategyLab": {
@@ -539,6 +547,15 @@
         "button": "Andramo indray",
         "hint": "Tsy afa-po? Apetraho indray ilay fanontaniana mba hahazoana valiny vaovao.",
         "retriedNote": "Valiny natao indray eo ambany (Andramo indray)."
+      },
+      "terminal": {
+        "title": "mitsinjo · copilote",
+        "open": "Sokafy ny terminal an'ny copilote",
+        "close": "Afeno ny terminal an'ny copilote",
+        "toggle": "Copilote",
+        "welcome": "Manontania momba ny tanàna aseho. Avy amin'ny motera ny tarehimarika rehetra; miandry ny fankatoavanao ny fanovana.",
+        "attachments": "[{count, plural, one {rakitra #} other {rakitra #}}]",
+        "placeholder": "Manontania ny copilote…"
       }
     },
     "gridDiagram": {

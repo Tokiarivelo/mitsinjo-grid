@@ -110,7 +110,7 @@ export function AssumptionsInspector({
           controls={controls}
           fields={INSPECTOR_FIELDS}
           showDescriptions={false}
-          className="sm:grid-cols-2 lg:grid-cols-2"
+          className="@3xl:grid-cols-2"
         />
       </div>
 

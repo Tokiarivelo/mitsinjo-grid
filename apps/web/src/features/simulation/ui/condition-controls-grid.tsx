@@ -20,21 +20,24 @@ export function ConditionControlsGrid({
   const shown = fields ? fields.flatMap((f) => controls.filter((c) => c.field === f)) : controls;
 
   return (
-    <div className={cn('grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3', className)}>
-      {shown.map((c) => (
-        <SimControl
-          key={c.field}
-          label={c.label}
-          value={c.value}
-          unit={c.unit}
-          min={c.min}
-          max={c.max}
-          step={c.step}
-          onChange={c.onChange}
-          error={c.error}
-          description={showDescriptions ? c.description : undefined}
-        />
-      ))}
+    // Columns follow the box width (container query), not the screen: the grid also lives in narrow drawers.
+    <div className="@container">
+      <div className={cn('grid grid-cols-1 @md:grid-cols-2 @3xl:grid-cols-3 gap-3', className)}>
+        {shown.map((c) => (
+          <SimControl
+            key={c.field}
+            label={c.label}
+            value={c.value}
+            unit={c.unit}
+            min={c.min}
+            max={c.max}
+            step={c.step}
+            onChange={c.onChange}
+            error={c.error}
+            description={showDescriptions ? c.description : undefined}
+          />
+        ))}
+      </div>
     </div>
   );
 }

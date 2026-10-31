@@ -77,6 +77,12 @@ html.light,
   --spacing-header: 68px;
   --spacing-copilot: 360px;
 
+  /* Glass terminal (copilot over the full-screen village): rim light + violet glow under the glass. */
+  --shadow-glass-glow:
+    inset 0 1px 0 color-mix(in srgb, var(--color-text-primary) 14%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-ai-violet) 28%, transparent),
+    0 24px 80px -24px color-mix(in srgb, var(--color-ai-violet) 65%, transparent);
+
   --duration-fast: 150ms;
   --duration-panel: 220ms;
 }

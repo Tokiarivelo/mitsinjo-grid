@@ -66,13 +66,13 @@ export function SimControlsPanel({
   return (
     <div
       className={cn(
-        'flex flex-col gap-4 p-5 rounded-card bg-surface border border-border shadow-sm',
+        '@container flex flex-col gap-4 p-5 rounded-card bg-surface border border-border shadow-sm',
         className
       )}
     >
       {/* Header: Controls Title, Status Badge, Run & Reset Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col @xl:flex-row @xl:items-center justify-between gap-3 pb-3 border-b border-border/60">
+        <div className="flex flex-wrap items-center gap-2">
           <Sliders className="h-4 w-4 text-energy-cyan" aria-hidden="true" />
           <h3 className="font-display text-sm font-semibold text-text-primary tracking-tight">
             {tSim('controlsTitle')}
@@ -127,7 +127,7 @@ export function SimControlsPanel({
             </span>
           )}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 @md:grid-cols-3 @3xl:grid-cols-5 gap-2">
           {input.sectors.map((sec) => {
             const cap = input.sectorCaps?.find((c) => c.sector === sec.id);
             return (
@@ -155,7 +155,7 @@ export function SimControlsPanel({
         <label className="text-xs font-semibold text-text-primary font-sans block mb-2">
           {tSim('selectStrategy')}
         </label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 @2xl:grid-cols-3 gap-2">
           {(['proportional', 'essential_first', 'balanced'] as const).map((strat) => {
             const isSelected = activeStrategy === strat;
             const stratName =

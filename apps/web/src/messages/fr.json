@@ -123,6 +123,8 @@
       "timelineTitle": "Curseur Temporel 24h",
       "timelineSubtitle": "Parcourez les 24 heures pour inspecter les flux de puissance en direct",
       "timelineScrubberLabel": "Curseur de l heure du jour",
+      "timelineMinimize": "Réduire le curseur temporel",
+      "timelineExpand": "Agrandir le curseur temporel",
       "stepBackward": "Reculer d une heure",
       "stepForward": "Avancer d une heure",
       "startPlayback": "Démarrer la lecture",
@@ -255,6 +257,12 @@
         "disconnect": "Débrancher",
         "connectAria": "Raccorder {sector} au réseau",
         "disconnectAria": "Débrancher {sector} du réseau"
+      },
+      "fsControls": {
+        "title": "Contrôles de simulation",
+        "toggle": "Contrôles",
+        "open": "Afficher les contrôles de simulation",
+        "close": "Masquer les contrôles de simulation"
       }
     },
     "strategyLab": {
@@ -539,6 +547,15 @@
         "button": "Réessayer",
         "hint": "Pas satisfait ? Reposez la même question pour une nouvelle réponse.",
         "retriedNote": "Réponse refaite plus bas (Réessayer)."
+      },
+      "terminal": {
+        "title": "mitsinjo · copilote",
+        "open": "Ouvrir le terminal du copilote",
+        "close": "Masquer le terminal du copilote",
+        "toggle": "Copilote",
+        "welcome": "Posez une question sur le village affiché. Chaque chiffre vient du moteur ; les changements attendent votre approbation.",
+        "attachments": "[{count, plural, one {# fichier} other {# fichiers}}]",
+        "placeholder": "Demandez au copilote…"
       }
     },
     "gridDiagram": {

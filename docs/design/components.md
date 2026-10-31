@@ -95,6 +95,24 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 - Follow-up suggestions (`SuggestedPrompts variant="compact"`): one horizontally scrollable line, hidden while answering.
 - Microphone: tap to record, tap to stop (spinner while transcribing); text lands in the input, editable. Errors
   (unsupported, denied, failed, empty) show inline in amber, dismissible. Auto-scroll only while the reader is at the bottom.
+- `ChatComposer` (`useChatComposer` state): input + attach / sketch / mic / send; `variant` `card` (tab) or `terminal`
+  (`❯` prompt, short placeholder). `ModelPicker` `{models, value, onChange, size: md|sm|terminal}`: one select for both.
+- `CopilotTerminal`: full-screen glass chat (`GlassPanel`), same conversation as the tab via `CopilotProvider` /
+  `useSharedCopilot`; title bar (dots, title, AI badge, new session, close), model line, log, terminal composer.
+  Modals (lightbox, sketch) render outside the glass (`backdrop-filter` would trap `fixed`).
+
+## GlassPanel
+
+- Props: className (position / size); innerClassName; glow? (default on). Outer `relative isolate`, blurred
+  ai-violet → energy-cyan glow behind; inner `bg-surface/40 backdrop-blur-2xl` + `shadow-glass-glow` token, 28 px radius.
+- Used by the copilot terminal and the full-screen controls drawer. Content inside should not add its own opaque card.
+
+## TimelineScrubber
+
+- Props: timeIndex; onTimeChange; stepResult?; hasResults?; isPlaying; play/pause/stop/restart handlers;
+  followsDevice?; deviceHourMs?; compact?; onToggleCompact?.
+- `onToggleCompact` adds a minimize / expand button (`aria-expanded`). `compact` = one bar: transport, hour, slider
+  (slider on its own line on phones); no title, tick labels or hour telemetry.
 
 ## Button
 
@@ -116,6 +134,7 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 ## ConditionControlsGrid
 
 - Props: controls (from `useConditionControls(input, status, onPatch)`); fields? (subset, in order); showDescriptions?.
+- Columns follow its own width (`@container`: 1 → `@md` 2 → `@3xl` 3), so it fits narrow drawers; `SimControlsPanel` too.
 - Used by SimControlsPanel, AssumptionsInspector and StrategyParamsPanel; validation via `usePatchValidation`.
 
 ## StrategyParamsPanel / SectorRuleRow
