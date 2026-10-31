@@ -8,5 +8,5 @@ export {
   type VisionStatus,
 } from './hooks/use-vision-detection';
 export { useVisionSession } from './hooks/use-vision-session';
-export { fitWithin, prepareVisionImage, VISION_MAX_SIDE } from './utils/prepare-image';
+export { prepareVisionImage } from './utils/prepare-image';
 export { categoryHint } from './utils/labels';

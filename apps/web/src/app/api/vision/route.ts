@@ -4,10 +4,11 @@ import { type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getPerceptionClient } from '@/server/perception';
 import { runVisionPipeline } from '@/server/perception/vision-pipeline';
+import { prepareVisionImage } from '@/server/perception/prepare-image';
 import { hostVisionImage } from '@/server/storage/media';
 
-/** The client resizes to ≤ 1280 px before upload; 4 MB leaves room for an unresized phone photo. */
-export const MAX_VISION_BYTES = 4_000_000;
+/** The browser sends the photo as picked (the server rotates and resizes it); 12 MB fits a phone photo. */
+export const MAX_VISION_BYTES = 12_000_000;
 const IMAGE_TYPES = /^image\/(jpeg|png|webp)$/;
 
 const FieldsSchema = z.object({ sessionId: z.string().max(64).optional() });
@@ -29,17 +30,18 @@ export async function POST(req: NextRequest) {
   }
   const image = form.get('image');
   if (!(image instanceof Blob) || image.size === 0) return json({ error: 'Missing image' }, 400);
-  if (image.size > MAX_VISION_BYTES) return json({ error: 'Image too large (max 4 MB)' }, 413);
+  if (image.size > MAX_VISION_BYTES) return json({ error: 'Image too large (max 12 MB)' }, 413);
   if (!IMAGE_TYPES.test(image.type)) return json({ error: 'Image must be JPEG, PNG or WebP' }, 415);
   const fields = FieldsSchema.safeParse({ sessionId: form.get('sessionId') ?? undefined });
   if (!fields.success) return json({ error: 'Invalid fields' }, 400);
 
-  const bytes = Buffer.from(await image.arrayBuffer());
   const perception = getPerceptionClient(fields.data.sessionId);
+  // Upright, ≤ 1280 px JPEG: the picture Muse and SAM see matches the one the page shows, in every browser.
+  const photo = await prepareVisionImage(Buffer.from(await image.arrayBuffer()), image.type);
   // Meta: one R2 upload, then a short link for Muse and every SAM call (base64 when R2 is off).
   const visionImage = perception.callsMeta
-    ? await hostVisionImage(bytes, image.type)
-    : { url: `data:${image.type};base64,${bytes.toString('base64')}` };
+    ? await hostVisionImage(photo.buffer, photo.contentType)
+    : { url: `data:${photo.contentType};base64,${photo.buffer.toString('base64')}` };
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({

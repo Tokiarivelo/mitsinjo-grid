@@ -3,10 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@/lib/i18n';
 import type { ApplianceDetection } from '@/lib/vision';
 import { categoryHint } from '../utils/labels';
-import { fitWithin } from '../utils/prepare-image';
-
-vi.mock('../utils/prepare-image', async (orig) => ({
-  ...(await orig<typeof import('../utils/prepare-image')>()),
+vi.mock('../utils/prepare-image', () => ({
   prepareVisionImage: vi.fn(async () => new Blob([new Uint8Array(4)], { type: 'image/jpeg' })),
 }));
 
@@ -37,14 +34,6 @@ beforeEach(() => {
 });
 afterEach(() => {
   global.fetch = originalFetch;
-});
-
-describe('fitWithin', () => {
-  it('fits the longest side to 1280 px, never upscales', () => {
-    expect(fitWithin(4000, 3000)).toEqual({ width: 1280, height: 960 });
-    expect(fitWithin(900, 1600)).toEqual({ width: 720, height: 1280 });
-    expect(fitWithin(640, 480)).toEqual({ width: 640, height: 480 });
-  });
 });
 
 describe('categoryHint', () => {
