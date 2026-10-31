@@ -10,7 +10,11 @@ the engine catalog gives power (never the AI). Sidebar + MobileNav entry « Vill
   selected line, « 3D model » block (every object, scenery included, PV-T10), AI note (« power from the engine catalog »), « Change photo ».
   « 3D model »: title + badge (violet « AI shape » = Spark recipe; grey « Outline shape » = fallback + one-line why (Meta did not answer / AI shape unusable) + « Try the AI shape again »), viewer
   `h-60 sm:h-72` on `bg-canvas-sunken` (orbit + zoom, no pan), « Drag to turn · pinch or scroll to zoom ». Loading: spinner line +
-  skeleton. No WebGL: note, photo stays the reference. One Spark call per object per photo (kept on reselect). V5 adds « Insert ».
+  skeleton. No WebGL: note, photo stays the reference. One Spark call per object per photo (kept on reselect).
+  « Add to the simulation » (PV-T11/T12, under the 3D block, `ApplianceInsertPanel`): toggle « AI estimate » (violet) / « Manual »
+  (cyan), note, fields name · type · sector · power per unit (catalog range under it, red when out) · quantity (1 column on
+  mobile and lg aside, 2 on sm / xl), engine preview line, cyan « Insert into simulation » (« Update » + « Remove » once in),
+  green status « In the simulation: strategies re-computed. ». Scenery: note « no load by default ». List row chip « In simulation ».
 - Right column (lg 380 px, under on mobile): the aside, then the live village preview (`GridSchematicPreview stacked`,
   3D / 2D toggle, store input + active result + hour), so the current village state stays visible while editing.
 - Every object has its own outline colour, repeated as its row border in « Objects found »; scenery (house, car, tree…) has a lighter

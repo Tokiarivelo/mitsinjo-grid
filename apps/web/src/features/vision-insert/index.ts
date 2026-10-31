@@ -22,3 +22,9 @@ export { ObjectShapePanel, type ObjectShapePanelProps } from './ui/object-shape-
 export { recipeMesh, silhouetteMesh, SILHOUETTE_DEPTH } from './utils/object-geometry';
 export { usePhotoZoom, stepZoom, photoWidth, ZOOM_STEPS } from './hooks/use-photo-zoom';
 export { ZoomControls } from './ui/zoom-controls';
+export {
+  useApplianceDraft,
+  type ApplianceDraftState,
+  type DraftSource,
+} from './hooks/use-appliance-draft';
+export { ApplianceInsert } from './ui/appliance-insert';

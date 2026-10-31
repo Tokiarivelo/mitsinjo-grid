@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useTranslations } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { SectorIcon } from '@/components/ui/sector-icon';
+import { FIELD_CLASS } from '@/components/ui/field';
 import { DEFAULT_CAP, validateSectorCap, type SectorCapError } from '../utils/sector-caps';
 
 type CapValues = Omit<SectorCap, 'sector'>;
@@ -18,10 +19,6 @@ export interface SectorRuleRowProps {
   /** Valid cap, or null to remove the sector limit. */
   onCapChange: (cap: CapValues | null) => void;
 }
-
-const FIELD_CLASS =
-  'w-full min-h-11 bg-surface-elevated text-text-primary border border-border rounded-control px-3 text-sm font-mono ' +
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-canvas';
 
 /** One sector: priority tier and optional power cap. Invalid caps stay as a draft with an error. */
 export function SectorRuleRow({ sector, cap, onPriorityChange, onCapChange }: SectorRuleRowProps) {

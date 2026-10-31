@@ -57,6 +57,8 @@ export interface DetectionCanvasProps {
   identifyFailed?: boolean;
   /** The operator corrected an object's box. Absent = no « Adjust the box » button. */
   onAdjustBox?: (id: string, box: NormBox) => void;
+  /** Objects whose load line is in the simulation (« In simulation » chip). */
+  inSimulationIds?: readonly string[];
 }
 
 /**
@@ -77,6 +79,7 @@ export function DetectionCanvas({
   identifyingIds = [],
   identifyFailed,
   onAdjustBox,
+  inSimulationIds,
 }: DetectionCanvasProps) {
   const t = useTranslations('features.visionInsert');
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -385,6 +388,11 @@ export function DetectionCanvas({
                         <span className="inline-flex items-center gap-1 text-text-secondary">
                           <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                           {t('identifying')}
+                        </span>
+                      )}
+                      {inSimulationIds?.includes(d.id) && (
+                        <span className="rounded border border-battery-green/60 px-1 py-px text-[10px] uppercase tracking-wide text-battery-green">
+                          {t('inSimBadge')}
                         </span>
                       )}
                       {d.manual && (

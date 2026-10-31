@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type DragEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { ImagePlus, ScanSearch, Sparkles } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { GridSchematicPreview } from '@/features/overview';
@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 import { useDetectionLabel } from '../hooks/use-object-name';
 import { shapeKey, useObjectShape } from '../hooks/use-object-shape';
 import { useVisionSession } from '../hooks/use-vision-session';
+import { applianceIdFor, photoKey } from '../utils/appliance-draft';
+import { ApplianceInsert } from './appliance-insert';
 import { DetectionCanvas } from './detection-canvas';
 import { ObjectShapePanel } from './object-shape-panel';
 import { SelectedAppliance } from './selected-appliance';
@@ -21,8 +23,8 @@ export const SAMPLE_ROOM_URL = '/samples/vision-room.jpg';
 
 /**
  * /village — Village editor (PV): add a photo, see the objects found, pick one, next to the current village.
- * The selected appliance gets its 3D model (PV-T10: Spark recipe or outline fallback, once per object).
- * Editing and « Insert into simulation » come next (PV-T11, T12).
+ * The selected object gets its 3D model (PV-T10: Spark recipe or outline fallback, once per object) and
+ * its load line: AI estimate or manual values, then « Insert into simulation » (PV-T11, T12).
  */
 export function VillageEditorPage() {
   const t = useTranslations('features.visionInsert');
@@ -48,6 +50,11 @@ export function VillageEditorPage() {
   // Every object (appliances and scenery), once the vision model has named a drawn shape.
   const shapeTarget = selected && !vision.identifyingIds.includes(selected.id) ? selected : null;
   const targetKey = shapeTarget ? shapeKey(shapeTarget) : null;
+  const photo = useMemo(() => (imageUrl ? photoKey(imageUrl) : ''), [imageUrl]);
+  const inSimulationIds = useMemo(() => {
+    const ids = new Set((input.appliances ?? []).map((a) => a.id));
+    return vision.detections.filter((d) => ids.has(applianceIdFor(photo, d.id))).map((d) => d.id);
+  }, [input.appliances, vision.detections, photo]);
 
   // New photo: object ids start again, so kept shapes no longer apply.
   useEffect(() => clearShapes(), [imageUrl, clearShapes]);
@@ -191,6 +198,7 @@ export function VillageEditorPage() {
                 identifyingIds={vision.identifyingIds}
                 identifyFailed={vision.identifyFailed}
                 onAdjustBox={vision.adjustBox}
+                inSimulationIds={inSimulationIds}
               />
             </section>
           )}
@@ -213,6 +221,14 @@ export function VillageEditorPage() {
                   onRetry={retryShape}
                 />
               )}
+              {shapeTarget && (
+                <ApplianceInsert
+                  key={applianceIdFor(photo, shapeTarget.id)}
+                  detection={shapeTarget}
+                  name={nameOf(shapeTarget)}
+                  photo={photo}
+                />
+              )}
               <p className="flex items-start gap-1.5 text-xs text-text-muted">
                 <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-ai-violet" aria-hidden="true" />
                 {t('nextStepNote')}
@@ -230,7 +246,7 @@ export function VillageEditorPage() {
               </button>
             </aside>
           )}
-          {/* Current village state (store): where inserted appliances will show (V4). */}
+          {/* Current village state (store): inserted appliances change its loads at once. */}
           <GridSchematicPreview
             input={input}
             result={result}

@@ -333,6 +333,7 @@ TIME_SCALE_PRESETS                                   // [60, 20, 10, 5] s per si
 // Appliances (PV)
 APPLIANCE_CATALOG: Record<ApplianceCategory, ApplianceSpec> // read-only
 applianceProfileKw(appliance: Appliance): number[]  // 24 kW: watts × quantity × duty / 1000
+applianceSummary(appliance): { peakKw, dailyKwh }  // insert preview (PV-T11): max hour, sum of 24 h
 sectorApplianceKw(appliances?): Partial<Record<SectorId, number[]>> // summed per sector
 ```
 
@@ -498,7 +499,9 @@ Shared Zod (client + server): `@/lib/vision` (`NormBoxSchema`, `ApplianceDetecti
 `ApplianceDetection.label` = English name from the model (also SAM's text prompt) or the operator's text; `labels?: { fr?, mg? }` =
 same name translated by the model in the same call; the page shows `localLabel(d, locale)` (switching language needs no new call).
 `ApplianceDetection` adds `kind?: 'appliance'|'scenery'` (absent = appliance) and `scenery?: 'building'|'vehicle'|'tree'|'plant'|'person'|'animal'|'water'|'other'`;
-scenery is outlined and selectable but has no load (`category: 'other'`, never inserted). Appliances come first in the list.
+scenery is outlined and selectable, no load until the operator inserts it (`category: 'other'` by default, PV-T11).
+Vision lines in the store: `Appliance.id = vision-<photoKey(photo)>-<detection id>` (≤ 64; `photoKey` = FNV-1a of the photo data URL),
+inserted / updated / removed with `applyProposal({ appliances })` (whole list, immediate re-run). Appliances come first in the list.
 `manual?: true` = object the operator drew (PV-T8), listed after the AI ones, ≤ 30 per photo. `adjusted?: true` = box corrected by
 the operator (`useVisionSession.adjustBox(id, box)`, per photo; wins over later model answers, outline dropped). Multipart field `regions?` =
 JSON `VisionRegion[]` (1–10, `{ id, points: [x,y][] (3–400, 0–1, closed polygon), hint? ≤ 40 }`) → identify only those shapes:

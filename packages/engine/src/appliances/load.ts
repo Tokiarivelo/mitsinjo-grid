@@ -12,6 +12,18 @@ export function applianceProfileKw(appliance: Appliance): number[] {
   return out;
 }
 
+/** Preview of one line before insertion (PV-T11): highest hourly load (kW) and energy over the day (kWh). */
+export function applianceSummary(appliance: Appliance): { peakKw: number; dailyKwh: number } {
+  const profile = applianceProfileKw(appliance);
+  let peakKw = 0;
+  let dailyKwh = 0;
+  for (const kw of profile) {
+    if (kw > peakKw) peakKw = kw;
+    dailyKwh += kw; // 1 h steps: kW × 1 h
+  }
+  return { peakKw, dailyKwh };
+}
+
 /** Sum of appliance profiles per sector (kW per hour). Sectors without appliances are absent. */
 export function sectorApplianceKw(appliances: readonly Appliance[] = []): SectorApplianceKw {
   const bySector: Partial<Record<SectorId, number[]>> = {};

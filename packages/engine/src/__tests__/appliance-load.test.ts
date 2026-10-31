@@ -3,6 +3,7 @@ import {
   APPLIANCE_CATALOG,
   ApplianceSchema,
   applianceProfileKw,
+  applianceSummary,
   applyPatch,
   compare,
   computeInputHash,
@@ -29,6 +30,22 @@ const fridge: Appliance = {
 
 const withAppliances = (input: SimulationInput, appliances: Appliance[]) =>
   applyPatch(input, { appliances });
+
+describe('applianceSummary (PV-T11)', () => {
+  it('peak = highest hour, daily = sum of the 24 hourly kW (1 h steps), scales with quantity', () => {
+    const one = applianceSummary(fridge);
+    const p = applianceProfileKw(fridge);
+    expect(one.peakKw).toBeCloseTo(Math.max(...p), 12);
+    expect(one.dailyKwh).toBeCloseTo(
+      p.reduce((a, b) => a + b, 0),
+      12
+    );
+    const three = applianceSummary({ ...fridge, quantity: 3 });
+    expect(three.dailyKwh).toBeCloseTo(one.dailyKwh * 3, 12);
+    const off = applianceSummary({ ...fridge, hourlyDuty: new Array(24).fill(0) });
+    expect(off).toEqual({ peakKw: 0, dailyKwh: 0 });
+  });
+});
 
 describe('applianceProfileKw (PV-T2)', () => {
   it('= watts × quantity × catalog duty / 1000', () => {

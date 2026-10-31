@@ -109,14 +109,21 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
       calls, < 15 k triangles); `ObjectShapePanel` in the /village aside, every object (scenery too, user request), one Spark call per object per photo.
       Chat dialog keeps detection only. Screens 1440 + 390, dark + light checked.)_
       **Done when** both modes render in dark/light, 1440 and 390 px, within `docs/performance.md` budgets.
-- [ ] **PV-T11** Edit panel: name, category, sector, watts (catalog bounds), quantity, usage hours preview
+- [x] **PV-T11** Edit panel: name, category, sector, watts (catalog bounds), quantity, usage hours preview
       (engine curve, chart), scale/color (visual only). Copilot tool `edit_appliance` proposes the same
       fields (confirmed via `confirm-proposal-dialog`). **Done when** hook `use-appliance-draft` is tested.
+      _(Done 2026-10-31, user request « every object usable in the simulation, charge by hand or by AI »: `ApplianceInsertPanel`
+      AI estimate / manual, name, type, sector, watts (catalog bounds), quantity, engine preview `applianceSummary`; scenery
+      can be inserted too (`other`). Not done: usage-hours chart, scale/colour, copilot tool `edit_appliance` → PV-T11b.)_
 
 ### V5 — Insert into the simulation
 
-- [ ] **PV-T12** **Insert into simulation** → store `applyProposal({ appliances })`, immediate re-run.
+- [x] **PV-T12** **Insert into simulation** → store `applyProposal({ appliances })`, immediate re-run.
       **Done when** strategies and metrics update and the copilot can explain the change with evidence.
+      _(`ApplianceInsert`: insert / update / remove, id `vision-<photoKey>-<det>`, « In simulation » chip. The copilot receives the
+      input with each question; whether it explains the change with evidence is not checked yet.)_
+- [ ] **PV-T11b** Rest of PV-T11: usage-hours chart (engine curve), scale / colour (visual only), copilot tool
+      `edit_appliance` proposing the same fields (confirmed via `confirm-proposal-dialog`).
 - [ ] **PV-T13** 3D village: appliance markers near their sector building (GLB thumbnail or stylized icon)
       with tag `name · quantity × W`; 2D diagram and settings list show the same; remove/edit from the list.
       **Done when** an appliance list of 30 stays within the scene budget (`make scene-audit`).
