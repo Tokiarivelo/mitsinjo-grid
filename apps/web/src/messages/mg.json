@@ -30,7 +30,9 @@
     "lightTheme": "Mazava",
     "zoomIn": "Hanalehibe",
     "zoomOut": "Hanamainty",
-    "resetZoom": "Averina amin'ny habeny"
+    "resetZoom": "Averina amin'ny habeny",
+    "collapseSidebar": "Akatony ny lisitra eo an-daniny",
+    "expandSidebar": "Sokafy ny lisitra eo an-daniny"
   },
   "nav": {
     "overview": "Topimaso",

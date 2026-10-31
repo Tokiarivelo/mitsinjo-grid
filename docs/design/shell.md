@@ -26,6 +26,9 @@ Zones: Sidebar | Header over Workspace | optional CopilotPanel. Tokens: see toke
 
 - Active item: brighter surface (surface-hover), 2px energy-cyan left edge, text-primary.
 - Footer: sim status (StatusBadge), `SIMULATED DATA` badge, Settings and Docs links.
+- Fold (xl+): « Collapse sidebar » button (panel icon, 44 px) in the brand row → 64 px icon rail: brand and footer hidden
+  (theme + language stay in the header), nav icons centred, name as tooltip and for screen readers; « Expand sidebar » unfolds.
+  Choice kept in this browser (`localStorage mitsinjo_sidebar_collapsed`, `useSidebarCollapsed`). Mobile drawer unchanged.
 
 ## Header (68px, canvas-raised, border-bottom; "instrument panel")
 

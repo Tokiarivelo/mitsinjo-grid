@@ -30,7 +30,9 @@
     "lightTheme": "Clair",
     "zoomIn": "Zoomer",
     "zoomOut": "Dézoomer",
-    "resetZoom": "Réinitialiser le zoom"
+    "resetZoom": "Réinitialiser le zoom",
+    "collapseSidebar": "Réduire le menu latéral",
+    "expandSidebar": "Agrandir le menu latéral"
   },
   "nav": {
     "overview": "Aperçu",
