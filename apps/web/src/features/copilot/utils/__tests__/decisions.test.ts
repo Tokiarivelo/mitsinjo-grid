@@ -34,4 +34,18 @@ describe('proposal decisions', () => {
       'UNDID proposal P. The simulation input is back to what it was before that change.'
     );
   });
+
+  it('a partial approval names the lines left out as not applied (K3)', () => {
+    const text = decisionToModelText({
+      proposalId: 'P',
+      status: 'approved',
+      items: [{ label: 'Market cap', current: 'None', proposed: '0 kW' }],
+      skipped: [{ label: 'Industry cap', current: 'None', proposed: '0 kW' }],
+      patch: { sectorCaps: [{ sector: 'market', maxKw: 0, fromHour: 14, toHour: 24 }] },
+    });
+    expect(text).toContain('APPROVED proposal P');
+    expect(text).toContain('"sector":"market"');
+    expect(text).not.toContain('"sector":"industry"');
+    expect(text).toContain('left out (NOT applied): Industry cap → 0 kW');
+  });
 });

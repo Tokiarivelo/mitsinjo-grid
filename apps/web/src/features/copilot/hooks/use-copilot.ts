@@ -19,6 +19,7 @@ import { parseMessageSections } from '../utils/parse-sections';
 import { COPILOT_PAYLOAD_MAX } from '../utils/history';
 import { decisionToModelText, proposalDecisions } from '../utils/decisions';
 import { applyPlaybackControl, parsePlaybackControl } from '../utils/apply-playback-control';
+import type { PartialApproval } from '../utils/proposal-parts';
 
 class CopilotHttpError extends Error {
   constructor(readonly key: CopilotErrorKey) {
@@ -562,20 +563,28 @@ export function useCopilot() {
 
   /** Applies (or not) this message's own proposal, once, and posts the decision in the chat. */
   const decideProposal = useCallback(
-    (status: ProposalDecisionStatus, message: ChatMessageData, items: ProposalDiffItem[]) => {
+    (
+      status: ProposalDecisionStatus,
+      message: ChatMessageData,
+      items: ProposalDiffItem[],
+      partial?: PartialApproval
+    ) => {
       const proposal = message.proposal;
       if (!proposal || decisions[proposal.proposalId]) return;
+      // K3: only the checked lines are applied (and recorded) when the operator left some out.
+      const { patch, strategy } = partial?.pick ?? proposal;
       if (status === 'approved') {
         const sim = useSimulationStore.getState();
-        sim.approveChange(proposal.proposalId, proposal.patch, proposal.strategy);
+        sim.approveChange(proposal.proposalId, patch, strategy);
         if (useSimulationStore.getState().status !== 'complete') return;
       }
       postDecision({
         proposalId: proposal.proposalId,
         status,
         items,
-        ...(proposal.patch && { patch: proposal.patch }),
-        ...(proposal.strategy && { strategy: proposal.strategy }),
+        ...(partial && partial.skipped.length > 0 && { skipped: partial.skipped }),
+        ...(patch && { patch }),
+        ...(strategy && { strategy }),
       });
     },
     [decisions, postDecision]
@@ -596,8 +605,8 @@ export function useCopilot() {
   }, [decisions, postDecision, undoableProposalId]);
 
   const approveProposal = useCallback(
-    (message: ChatMessageData, items: ProposalDiffItem[]) =>
-      decideProposal('approved', message, items),
+    (message: ChatMessageData, items: ProposalDiffItem[], partial?: PartialApproval) =>
+      decideProposal('approved', message, items, partial),
     [decideProposal]
   );
 

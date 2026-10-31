@@ -22,17 +22,24 @@ describe('useProposalDiff', () => {
     );
     expect(result.current).toEqual([
       {
+        id: 'strategy',
         label: 'Dispatch Strategy',
         current: 'Proportional Allocation',
         proposed: 'Essential-First Priority',
       },
       {
+        id: 'sectorCaps.0',
         label: 'Local Market & Artisans Capacity Cap',
         current: 'None (uncapped)',
         proposed: '0 kW (18:00–22:00)',
       },
-      { label: 'Drop Window', current: 'None', proposed: '13:00–15:00 (2 h)' },
-      { label: 'Health Clinic Load', current: '1×', proposed: 'Not connected' },
+      { id: 'dropWindow', label: 'Drop Window', current: 'None', proposed: '13:00–15:00 (2 h)' },
+      {
+        id: 'sectorLoads.health',
+        label: 'Health Clinic Load',
+        current: '1×',
+        proposed: 'Not connected',
+      },
     ]);
   });
 

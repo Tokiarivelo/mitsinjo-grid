@@ -13,11 +13,11 @@ import {
   compare,
   applyPatch,
   scenarios,
-  changeImpact,
   clinicGuard,
   type ChangeImpact,
   type StepResult,
 } from '@mitsinjo/engine';
+import { proposalImpact } from '@/lib/proposal-impact';
 import type { ToolDefinition } from './provider';
 
 function round2(val: number): number {
@@ -53,33 +53,7 @@ export function compactMetrics(m: Metrics) {
   };
 }
 
-/**
- * Engine impact of a proposal, rounded for display. Keeps only sectors whose served energy
- * or off hours change, so the dialog and the evidence list the same numbers.
- */
-export function compactImpact(impact: ChangeImpact): ChangeImpact {
-  const sectors: ChangeImpact['sectors'] = {};
-  for (const [id, s] of Object.entries(impact.sectors)) {
-    if (!s) continue;
-    const delta = round2(s.servedKwhDelta);
-    if (delta === 0 && s.offHoursAfter === s.offHoursBefore) continue;
-    sectors[id as keyof ChangeImpact['sectors']] = {
-      servedKwhBefore: round2(s.servedKwhBefore),
-      servedKwhAfter: round2(s.servedKwhAfter),
-      servedKwhDelta: delta,
-      offHoursBefore: s.offHoursBefore,
-      offHoursAfter: s.offHoursAfter,
-    };
-  }
-  return {
-    ...impact,
-    socMinPctBefore: round2(impact.socMinPctBefore),
-    socMinPctAfter: round2(impact.socMinPctAfter),
-    unservedKwhBefore: round2(impact.unservedKwhBefore),
-    unservedKwhAfter: round2(impact.unservedKwhAfter),
-    sectors,
-  };
-}
+export { compactImpact } from '@/lib/proposal-impact';
 
 /** Flat evidence fields for every number the approval dialog shows. */
 export function impactEvidence(impact: ChangeImpact): Record<string, number> {
@@ -679,20 +653,21 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
 
       // Engine before/after (K1): current input + strategy vs patched input + proposed strategy.
       const currentStrategy: StrategyId = ctx.activeStrategy ?? 'proportional';
-      let patchedInput = ctx.input;
-      if (parsed.data.patch) {
-        try {
-          patchedInput = applyPatch(ctx.input, parsed.data.patch);
-        } catch (err) {
-          return {
-            toolName,
-            error: `Failed to apply patch: ${err instanceof Error ? err.message : String(err)}`,
-          };
-        }
+      let computed: ReturnType<typeof proposalImpact>;
+      try {
+        computed = proposalImpact(
+          ctx.input,
+          currentStrategy,
+          parsed.data.patch,
+          parsed.data.strategy
+        );
+      } catch (err) {
+        return {
+          toolName,
+          error: `Failed to apply patch: ${err instanceof Error ? err.message : String(err)}`,
+        };
       }
-      const before = simulate(ctx.input, currentStrategy);
-      const after = simulate(patchedInput, parsed.data.strategy ?? currentStrategy);
-      const impact = compactImpact(changeImpact(before, after));
+      const { impact, afterResultId } = computed;
       const clinicReasons = clinicGuard(parsed.data.patch);
 
       const proposal = {
@@ -705,7 +680,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
 
       return {
         toolName,
-        resultId: after.id,
+        resultId: afterResultId,
         proposal,
         data: {
           proposalId,

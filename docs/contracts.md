@@ -383,10 +383,14 @@ evidence. Charts in answers must use these values.
 `ChangeImpact` (engine `changeImpact(before, after)`, schema `ChangeImpactSchema`): `{ beforeResultId, afterResultId,
 strategyBefore, strategyAfter, socMinPctBefore/After, unservedKwhBefore/After, sectors: Partial<Record<SectorId,
 { servedKwhBefore, servedKwhAfter, servedKwhDelta, offHoursBefore, offHoursAfter }>> }`. `propose_change` computes it
-on the current input + active strategy vs the patched input + proposed strategy, rounds to 2 decimals, keeps only
-sectors that change, and emits the same numbers as `evidence` (`socMinPctBefore`, `<sector>_servedKwhDelta`, …).
+on the current input + active strategy vs the patched input + proposed strategy (`proposalImpact` in
+`lib/proposal-impact.ts`, shared with the dialog), rounds to 2 decimals, keeps only sectors that change, and emits the same numbers as `evidence` (`socMinPctBefore`, `<sector>_servedKwhDelta`, …).
 Unsafe patch → tool data also has `clinicGuard: ClinicGuardReason[]` (engine `clinicGuard(patch)`, schema
 `ClinicGuardReasonSchema` = `cap_zero | disconnected | floor_zero | lifeline_off`); the dialog recomputes it from the patch.
+Partial approval (K3, `features/copilot/utils/proposal-parts.ts`): `proposalPartIds(proposal)` = one id per dialog line
+(`strategy`, `priorities.<s>`, `sectorCaps.<i>`, `solarDropPct`, `dropWindow`, `demandMultiplier`, `batteryCapacityKwh`,
+`initialSocPct`, `minSocPct`, `lifeline.enabled`, `lifeline.kw.<s>`, `sectorLoads.<s>`), same order as `useProposalDiff`.
+`pickProposal(proposal, checkedIds): { patch?, strategy? }` keeps the checked lines plus patch fields with no line.
 
 ```ts
 interface InputPatch {
@@ -423,7 +427,9 @@ Client `ChatMessageData.retried?: boolean` = answer redone by Retry (kept on scr
 `error.code = PROVIDER_FALLBACK` carries `reason: 'spend_cap' | 'provider_error' | 'timeout'` (UI: amber note on that answer).
 
 Operator decision (chat message `role: 'decision'`, saved via `POST /api/copilot/sessions/:id`): `ProposalDecision
-{ proposalId, status: 'approved'|'rejected'|'undone', items: {label, current, proposed}[] /*snapshot as shown*/, patch?, strategy? }`.
+{ proposalId, status: 'approved'|'rejected'|'undone', items: {id?, label, current, proposed}[] /*snapshot as shown, checked lines*/,
+skipped?: same[] /*lines unchecked (K3), not applied*/, patch?, strategy? /*what was applied*/ }`.
+Approved with `skipped` → the model text adds « Lines the operator left out (NOT applied): … ».
 Sent to the model as a user turn `[Operator decision] APPROVED|REJECTED|UNDID proposal <id>…`.
 Store (K4): `changeHistory: { id, before: { input, strategy } }[]` (≤ 20, oldest first). `approveChange(id, patch?, strategy?)` =
 `applyProposal` + records the state before it (only if the run succeeds); `undoLastChange(): id | null` restores it and re-runs.

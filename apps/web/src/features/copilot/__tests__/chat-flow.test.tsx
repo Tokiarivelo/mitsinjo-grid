@@ -5,6 +5,7 @@ import { CopilotWorkspace } from '../ui/copilot-workspace';
 import { ConfirmProposalDialog } from '../ui/confirm-proposal-dialog';
 import type { CopilotProposal } from '../types';
 import type { SectorCap } from '@mitsinjo/engine';
+import { proposalImpact } from '@/lib/proposal-impact';
 
 /** Fake `/api/copilot` stream: the given SSE events, then done. */
 function sse(events: [string, Record<string, unknown>][]) {
@@ -111,6 +112,65 @@ describe('Copilot chat flow (decisions, fallback note)', () => {
         fetchMock.mock.calls.some(([, init]) => String(init?.body).includes('"status":"undone"'))
       ).toBe(true)
     );
+  });
+
+  it('partial approval applies only the checked lines (M1-T5, K3)', async () => {
+    const caps: SectorCap[] = [
+      { sector: 'market', maxKw: 0, fromHour: 8, toHour: 18 },
+      { sector: 'school', maxKw: 0, fromHour: 8, toHour: 18 },
+    ];
+    const { input, activeStrategy } = useSimulationStore.getState();
+    const { impact } = proposalImpact(input, activeStrategy, { sectorCaps: caps });
+    const fetchMock = mockApi([
+      ['proposal', { proposalId: 'PROP-TWO', patch: { sectorCaps: caps }, reason: 'r', impact }],
+    ]);
+    render(<CopilotWorkspace mode="panel" />);
+    await ask('Cut the market and the school');
+
+    // Both lines checked: the server's impact lists both sectors.
+    expect(await screen.findByText('Primary School: served energy')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Apply: Primary School Capacity Cap' }));
+
+    // Impact follows the checked lines only.
+    expect(screen.queryByText('Primary School: served energy')).toBeNull();
+    expect(screen.getByText('Local Market & Artisans: served energy')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve selected (1)' }));
+
+    expect(useSimulationStore.getState().input.sectorCaps).toEqual([caps[0]]);
+    expect((await screen.findAllByText('Not applied (unchecked)')).length).toBeGreaterThan(0);
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([, init]) => String(init?.body).includes('"skipped"'))
+      ).toBe(true)
+    );
+  });
+
+  it('unchecking the clinic cut drops the second confirmation (K3 + K6)', async () => {
+    mockApi([
+      [
+        'proposal',
+        {
+          proposalId: 'PROP-CLN',
+          patch: {
+            sectorCaps: [
+              { sector: 'market', maxKw: 0, fromHour: 18, toHour: 22 },
+              { sector: 'health', maxKw: 0, fromHour: 18, toHour: 22 },
+            ],
+          },
+          reason: 'r',
+        },
+      ],
+    ]);
+    render(<CopilotWorkspace mode="panel" />);
+    await ask('Cut the market and the clinic');
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Apply: Health Clinic Capacity Cap' })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Approve selected (1)' }));
+    expect(useSimulationStore.getState().input.sectorCaps?.map((c) => c.sector)).toEqual([
+      'market',
+    ]);
   });
 
   it('Retry asks the same question again without the unsatisfying answer', async () => {

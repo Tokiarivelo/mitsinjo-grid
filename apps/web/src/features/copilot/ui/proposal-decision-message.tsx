@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import type { ProposalDecision, ProposalDecisionStatus } from '../types';
-import { ProposalDiffList } from './proposal-diff-list';
+import { ProposalDiffList, ProposalSkippedList } from './proposal-diff-list';
 
 export interface ProposalDecisionMessageProps {
   decision: ProposalDecision;
@@ -59,6 +59,7 @@ export function ProposalDecisionMessage({
         </div>
       </div>
       <ProposalDiffList items={decision.items} tone="muted" />
+      <ProposalSkippedList items={decision.skipped} />
       {onUndo && (
         <div className="flex @md:justify-end pt-2 border-t border-border/40">
           <Button

@@ -5,6 +5,14 @@ import { z } from 'zod';
 import { getSession, saveMessage, deleteSession } from '@/server/db/neon';
 import { hydrateMessageMedia } from '@/server/storage/media';
 
+/** One line of a decision card, as shown (`id` = `proposalPartIds` line id). */
+const DecisionItemSchema = z.object({
+  id: z.string().max(64).optional(),
+  label: z.string(),
+  current: z.string(),
+  proposed: z.string(),
+});
+
 const SaveMessageSchema = z.object({
   id: z.string(),
   role: z.enum(['user', 'assistant', 'error', 'decision']),
@@ -17,9 +25,9 @@ const SaveMessageSchema = z.object({
     .object({
       proposalId: z.string().max(64),
       status: z.enum(['approved', 'rejected', 'undone']),
-      items: z
-        .array(z.object({ label: z.string(), current: z.string(), proposed: z.string() }))
-        .max(40),
+      items: z.array(DecisionItemSchema).max(40),
+      /** Lines left out of a partial approval (K3). */
+      skipped: z.array(DecisionItemSchema).max(40).optional(),
       patch: z.record(z.unknown()).optional(),
       strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
     })

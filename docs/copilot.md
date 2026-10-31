@@ -87,6 +87,9 @@ between rounds → mock finishes (no `LOOP_ERROR`). The UI shows an amber note o
   values as decided) and posts a decision message (saved with the session, sent to the model as a user turn).
   The decision card of the last approved change still applied shows « Undo last change » (store `undoLastChange`):
   the input goes back to before it, the card badge turns « Undone » and an `undone` decision is posted. Not kept on reopen.
+- **Several orders, one proposal** (K3): the prompt asks for one `propose_change` holding every order in one patch.
+  The dialog has a checkbox per line; only checked lines are applied (`pickProposal`), the engine block is recomputed
+  for them, and the decision carries `skipped` lines, told to the model as « left out (NOT applied) ».
 - **Retry**: the last answer (or error) shows « Retry »: the same question is sent again with `retry: true`, the old answer
   stays on screen (« Answer redone below »), marked `retried` and left out of the payload; the question is not saved twice.
 - **Tool errors**: invalid args go back to the model as one readable line (`invalidArgs`, no Zod JSON); an empty
@@ -128,3 +131,5 @@ result also carries `clinicGuard` so the model can say it.
 15. "va à 18 h" / "pause la lecture" → `control_playback` (`seek 18` / `pause`), SSE `control`, one-line answer, no
     proposal. Mock: needs a timeline word (lecture, animation, timeline…) or a 1–2 word order, so "lance une
     simulation…" stays a scenario run.
+16. "Coupe le marché et l'école, garde la clinique" (app hour 14) → one `propose_change`, market + school caps
+    `14 → 24`, no clinic cap. Mock: every sector named before a keep word (garde, keep, sauf, tazony).

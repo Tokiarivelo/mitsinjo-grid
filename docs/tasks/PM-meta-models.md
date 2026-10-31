@@ -87,7 +87,7 @@ puissance, branchement (`sectorLoads`), plancher de survie, priorités, stratég
       « Coupe le marché maintenant » → `fromHour` = heure courante.
 - [x] **M1-T4** (K4) Historique des changements approuvés + « Annuler le dernier » (store).
       **Done when** test du store : approuver puis annuler = entrée initiale.
-- [ ] **M1-T5** (K3, coupable) Plusieurs changements dans une proposition, cases à cocher par ligne.
+- [x] **M1-T5** (K3, coupable) Plusieurs changements dans une proposition, cases à cocher par ligne.
       **Done when** approbation partielle n'applique que les lignes cochées (test).
 - [ ] **M1-T6** Évals : ajouter 4 cas à `eval.cases.ts` (coupure maintenant, limite 2 kW, couper la clinique →
       double confirmation, « c'est fait ? » → jamais d'affirmation d'application).

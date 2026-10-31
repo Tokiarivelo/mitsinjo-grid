@@ -141,6 +141,18 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
     expect(fullText).not.toMatch(/Invalid args|validation/i);
   });
 
+  it('K3: "coupe le marché et l\'école, garde la clinique" → one proposal, one cap per sector, clinic kept', async () => {
+    const { events } = await runEvalPrompt("Coupe le marché et l'école, garde la clinique", 14);
+    const proposals = events.filter((e) => e.name === 'proposal');
+    expect(proposals).toHaveLength(1);
+    const caps = (proposals[0]?.data as { patch?: { sectorCaps?: { sector: string }[] } })?.patch
+      ?.sectorCaps;
+    expect(caps).toEqual([
+      { sector: 'market', maxKw: 0, fromHour: 14, toHour: 24 },
+      { sector: 'school', maxKw: 0, fromHour: 14, toHour: 24 },
+    ]);
+  });
+
   it('a cut with a time is not turned into "now"; "don\'t cut" is not a cut', async () => {
     const tonight = await runEvalPrompt('Coupe la clinique ce soir', 15);
     const caps = (

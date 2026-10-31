@@ -21,7 +21,12 @@ export function decisionToModelText(d: ProposalDecision): string {
     ...(d.strategy && { strategy: d.strategy }),
   });
   if (d.status === 'approved') {
-    return `[Operator decision] APPROVED proposal ${d.proposalId}. It is now applied to the simulation input. Change: ${change}`;
+    // K3: the operator may approve only some lines; the model must not claim the others.
+    const skipped =
+      d.skipped && d.skipped.length > 0
+        ? ` Lines the operator left out (NOT applied): ${d.skipped.map((s) => `${s.label} → ${s.proposed}`).join('; ')}.`
+        : '';
+    return `[Operator decision] APPROVED proposal ${d.proposalId}. It is now applied to the simulation input. Change: ${change}${skipped}`;
   }
   if (d.status === 'undone') {
     return `[Operator decision] UNDID proposal ${d.proposalId}. The simulation input is back to what it was before that change. Change removed: ${change}`;

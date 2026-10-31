@@ -35,11 +35,20 @@ const MOCK_NEGATION_WORDS = /\b(don't|do not|ne coupe[sz]? pas|sans couper|aza)\
 const MOCK_SECTOR_WORDS: Array<{ match: RegExp; sector: SectorId }> = [
   { match: /market|marché|tsena/i, sector: 'market' },
   { match: /school|école|sekoly/i, sector: 'school' },
-  { match: /industry|factory|usine|atelier|ozinina/i, sector: 'industry' },
+  { match: /industr|factory|usine|atelier|ozinina/i, sector: 'industry' },
   { match: /\b(water|pump|eau|pompe|rano)\b/i, sector: 'water' },
   { match: /household|foyer|ménage|tokantrano/i, sector: 'households' },
   { match: /clinic|clinique|santé|health|toeram-pahasalamana/i, sector: 'health' },
 ];
+/** "…, garde la clinique" / "keep the clinic" / "sauf l'école": sectors named after it are kept (K3). */
+const MOCK_KEEP_WORDS = /\b(garde[rz]?|keep|sauf|except|tazony|avelao)\b/i;
+
+/** Sectors a cut order names, in a fixed order, leaving out those after a "keep" word (K3). */
+export function mockCutSectors(query: string): SectorId[] {
+  const cutPart = query.split(MOCK_KEEP_WORDS)[0] ?? query;
+  return MOCK_SECTOR_WORDS.filter((s) => s.match.test(cutPart)).map((s) => s.sector);
+}
+
 /** Playback words need a timeline noun, or the order alone ("pause", "lecture"), so "lance une simulation" is not "play". */
 const MOCK_PLAYBACK_NOUN = /\b(lecture|animation|timeline|playback|journ|curseur|fandaharana)/i;
 const MOCK_PLAYBACK_ACTIONS: Array<{
@@ -546,13 +555,15 @@ Run one of the preset scenarios (Baseline or Monsoon Cloud Cover) to inspect sim
       };
     }
 
-    // Cut a sector now, or with no time given -> cap from the hour shown in the app to the end of the day (M1-T3, K2)
-    const nowSector = MOCK_SECTOR_WORDS.find((s) => s.match.test(query))?.sector;
+    // Cut sectors now, or with no time given -> cap from the hour shown in the app to the end of the day (M1-T3, K2).
+    // Several sectors in one order -> one proposal, one cap per sector, approvable line by line (K3).
+    const nowSectors = mockCutSectors(query);
     const cutNow =
       MOCK_CUT_WORDS.test(query) &&
       !MOCK_NEGATION_WORDS.test(query) &&
       (MOCK_NOW_WORDS.test(query) || !MOCK_TIME_WORDS.test(query));
-    if (nowSector && cutNow) {
+    if (nowSectors.length > 0 && cutNow) {
+      const names = nowSectors.join(fr ? ' et ' : ' and ');
       const fromHour = appHourFrom(messages) ?? MOCK_DEFAULT_HOUR;
       return {
         content: '',
@@ -561,10 +572,17 @@ Run one of the preset scenarios (Baseline or Monsoon Cloud Cover) to inspect sim
             id: 'call_cap_now',
             name: 'propose_change',
             args: {
-              patch: { sectorCaps: [{ sector: nowSector, maxKw: 0, fromHour, toHour: 24 }] },
+              patch: {
+                sectorCaps: nowSectors.map((sector) => ({
+                  sector,
+                  maxKw: 0,
+                  fromHour,
+                  toHour: 24,
+                })),
+              },
               reason: fr
-                ? `Proposition simulée : ${nowSector} à 0 kW maintenant, de ${fromHour}:00 à 24:00 (heure affichée dans l'app ; aucun actionneur physique).`
-                : `Simulated proposal: ${nowSector} at 0 kW now, from ${fromHour}:00 to 24:00 (hour shown in the app; no physical actuator).`,
+                ? `Proposition simulée : ${names} à 0 kW maintenant, de ${fromHour}:00 à 24:00 (heure affichée dans l'app ; aucun actionneur physique).`
+                : `Simulated proposal: ${names} at 0 kW now, from ${fromHour}:00 to 24:00 (hour shown in the app; no physical actuator).`,
             },
           },
         ],

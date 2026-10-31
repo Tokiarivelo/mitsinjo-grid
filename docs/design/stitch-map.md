@@ -69,3 +69,5 @@ Status values: `not generated` · `generated` · `exported` · `implemented` · 
 - Full screen glass panels 2026-10-30: built without mockup. Copilot terminal (right) + controls drawer (left) as
   `GlassPanel`, docked timeline as glass with a minimize bar; 2D diagram padded between panels and above the dock.
   Checked 1440×900 (Circuit dark + light, 3D dark) and 390×844 (Circuit dark), no horizontal overflow.
+- M1-T5 2026-10-31: no mockup. Proposal card rows gain a checkbox (whole row is the label, ≥ 44 px) and a hint line;
+  « Not applied (unchecked) » list on decided cards. Same tokens as the existing diff rows.

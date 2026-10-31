@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { CheckCircle2, XCircle, SlidersHorizontal } from 'lucide-react';
-import { clinicGuard } from '@mitsinjo/engine';
 import { useTranslations } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -13,15 +12,20 @@ import type {
   ProposalDiffItem,
 } from '../types';
 import { useProposalDiff } from '../hooks/use-proposal-diff';
+import { useProposalSelection } from '../hooks/use-proposal-selection';
+import type { PartialApproval } from '../utils/proposal-parts';
 import { ProposalImpact } from './proposal-impact';
 import { ClinicGuardWarning } from './clinic-guard-warning';
 import { DECISION_ICON } from './proposal-decision-message';
-import { ProposalDiffList } from './proposal-diff-list';
+import { ProposalDiffList, ProposalSkippedList } from './proposal-diff-list';
 
 export interface ConfirmProposalDialogProps {
   proposal: CopilotProposal;
-  /** Called with the settings as shown (snapshot taken before the change is applied). */
-  onApprove: (items: ProposalDiffItem[]) => void;
+  /**
+   * Called with the checked settings as shown (snapshot taken before the change is applied). When the
+   * operator unchecked lines (K3), `partial` holds what to apply and the lines left out.
+   */
+  onApprove: (items: ProposalDiffItem[], partial?: PartialApproval) => void;
   onReject: (items: ProposalDiffItem[]) => void;
   /** Set once the operator decided: the card locks, its buttons go away, values as decided. */
   decision?: ProposalDecision;
@@ -40,18 +44,36 @@ export function ConfirmProposalDialog({
   // After approval the simulation already holds the new values: show the snapshot instead.
   const items = decision?.items ?? liveItems;
 
+  // K3: one checkbox per line; impact and clinic guard follow the checked lines.
+  const selection = useProposalSelection(proposal, liveItems);
+  const nothingChecked = selection.checkedItems.length === 0;
+
   // K6: the rule runs here in code, whatever the model said. Unsafe → first click arms, second click approves.
-  const clinicReasons = clinicGuard(proposal.patch);
+  const clinicReasons = selection.clinicReasons;
   const needsSecondConfirm = clinicReasons.length > 0;
   const [armed, setArmed] = useState(false);
   const open = decision === undefined;
+  const impact = open ? selection.impact : proposal.impact;
+
+  const toggleLine = (id: string) => {
+    setArmed(false);
+    selection.toggle(id);
+  };
 
   const handleApprove = () => {
+    if (nothingChecked) return;
     if (needsSecondConfirm && !armed) {
       setArmed(true);
       return;
     }
-    onApprove(items);
+    if (selection.skippedItems.length === 0) {
+      onApprove(selection.checkedItems);
+      return;
+    }
+    onApprove(selection.checkedItems, {
+      pick: selection.pick,
+      skipped: selection.skippedItems,
+    });
   };
 
   return (
@@ -99,12 +121,20 @@ export function ConfirmProposalDialog({
         <p className="text-text-primary font-medium">{proposal.reason}</p>
       </div>
 
-      <ProposalDiffList items={items} tone={open ? 'active' : 'muted'} />
+      {open && selection.selectable && (
+        <p className="text-[11px] text-text-secondary">{t('proposalLinesHint')}</p>
+      )}
+      <ProposalDiffList
+        items={items}
+        tone={open ? 'active' : 'muted'}
+        selection={open && selection.selectable ? { ...selection, toggle: toggleLine } : undefined}
+      />
+      <ProposalSkippedList items={decision?.skipped} />
 
       {open && needsSecondConfirm && <ClinicGuardWarning reasons={clinicReasons} armed={armed} />}
 
       {/* Engine before/after (K1) */}
-      {proposal.impact && <ProposalImpact impact={proposal.impact} />}
+      {impact && <ProposalImpact impact={impact} />}
 
       {/* Actions: a short list when the card is narrow, one row when wide. Gone once decided. */}
       {open && (
@@ -122,10 +152,15 @@ export function ConfirmProposalDialog({
             variant={needsSecondConfirm ? 'danger' : 'primary'}
             size="sm"
             onClick={handleApprove}
+            disabled={nothingChecked}
             icon={<CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />}
             className="w-full @md:w-auto min-h-11 justify-center text-center"
           >
-            {armed ? t('clinicGuard.confirmAgain') : t('proposalApprove')}
+            {armed
+              ? t('clinicGuard.confirmAgain')
+              : selection.skippedItems.length > 0
+                ? t('proposalApproveSelected', { count: selection.checkedItems.length })
+                : t('proposalApprove')}
           </Button>
         </div>
       )}

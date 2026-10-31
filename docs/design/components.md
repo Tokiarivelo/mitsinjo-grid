@@ -81,6 +81,11 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 - Layout follows the card width (`@container`): narrow (chat panel) → one diff column, Approve / Reject stacked full
   width (≥ 44 px); wide → grid + buttons in a row. After a decision: `DecisionBadge` (Approved green / Rejected neutral),
   no buttons, diff from the decision snapshot (`ProposalDiffList` muted).
+- Per-line approval (K3, `useProposalSelection`): 2+ lines → hint line + a checkbox per row (whole row is the label,
+  ≥ 44 px, `aria-label` « Apply: <setting> »), all checked at first; unchecked rows dim. Engine block and clinic guard
+  follow the checked lines (recomputed with `proposalImpact`); Approve reads « Approve selected (n) » when lines are
+  left out and is disabled when none is checked. `ProposalSkippedList` shows the left-out lines (« Not applied
+  (unchecked) », dimmed) on the decided card and on the decision message.
 
 ## Chat extras (copilot)
 

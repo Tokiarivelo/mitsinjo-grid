@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useTranslations } from '@/lib/i18n';
 import type { ChatMessageData, ProposalDecision, ProposalDiffItem } from '../types';
+import type { PartialApproval } from '../utils/proposal-parts';
 import { ConfirmProposalDialog } from './confirm-proposal-dialog';
 import { ProposalDecisionMessage } from './proposal-decision-message';
 import { MarkdownRenderer } from './markdown-renderer';
@@ -27,7 +28,11 @@ import { fmtHour } from '@/lib/format';
 
 export interface ChatMessageItemProps {
   message: ChatMessageData;
-  onApproveProposal?: (message: ChatMessageData, items: ProposalDiffItem[]) => void;
+  onApproveProposal?: (
+    message: ChatMessageData,
+    items: ProposalDiffItem[],
+    partial?: PartialApproval
+  ) => void;
   onRejectProposal?: (message: ChatMessageData, items: ProposalDiffItem[]) => void;
   /** Decision already taken on this message's proposal (locks the card). */
   proposalDecision?: ProposalDecision;
@@ -483,7 +488,7 @@ export function ChatMessageItem({
           <ConfirmProposalDialog
             proposal={proposal}
             decision={proposalDecision}
-            onApprove={(items) => onApproveProposal(message, items)}
+            onApprove={(items, partial) => onApproveProposal(message, items, partial)}
             onReject={(items) => onRejectProposal(message, items)}
           />
         )}

@@ -28,6 +28,8 @@ export type FallbackReason = 'spend_cap' | 'provider_error' | 'timeout' | 'unkno
 
 /** One changed setting of a proposal: label, value before, value proposed (already translated). */
 export interface ProposalDiffItem {
+  /** Line id (`proposalPartIds`): checkbox key for partial approval. Absent on decisions saved before K3. */
+  id?: string;
   label: string;
   current: string;
   proposed: string;
@@ -42,6 +44,9 @@ export interface ProposalDecision {
   status: ProposalDecisionStatus;
   /** Settings as shown when the operator decided (snapshot: the simulation changes after approval). */
   items: ProposalDiffItem[];
+  /** Lines the operator unchecked (K3): shown, never applied. */
+  skipped?: ProposalDiffItem[];
+  /** What was applied (the checked part when lines were skipped). */
   patch?: InputPatch;
   strategy?: StrategyId;
 }

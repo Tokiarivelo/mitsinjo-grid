@@ -9,10 +9,12 @@ import { useTranslations } from '@/lib/i18n';
 import { useSimulationStore } from '@/stores';
 import { fmtKw } from '@/lib/format';
 import type { CopilotProposal, ProposalDiffItem } from '../types';
+import { proposalPartIds } from '../utils/proposal-parts';
 
 /**
  * Settings a proposal changes, each as "current → proposed", translated.
  * Current values are read from the simulation now, so snapshot the list before applying the change.
+ * Each row carries its `proposalPartIds` id (same order), so the dialog can approve lines one by one (K3).
  */
 export function useProposalDiff(proposal: CopilotProposal): ProposalDiffItem[] {
   const t = useTranslations('features.copilot');
@@ -25,7 +27,7 @@ export function useProposalDiff(proposal: CopilotProposal): ProposalDiffItem[] {
   const timeIndex = useSimulationStore((s) => s.timeIndex);
 
   const patch = proposal.patch;
-  const items: ProposalDiffItem[] = [];
+  const items: Omit<ProposalDiffItem, 'id'>[] = [];
   const pct = (v: number) => `${v}%`;
 
   if (proposal.strategy !== undefined) {
@@ -149,5 +151,6 @@ export function useProposalDiff(proposal: CopilotProposal): ProposalDiffItem[] {
     });
   }
 
-  return items;
+  const ids = proposalPartIds(proposal);
+  return items.map((item, i) => ({ ...item, id: ids[i] }));
 }
