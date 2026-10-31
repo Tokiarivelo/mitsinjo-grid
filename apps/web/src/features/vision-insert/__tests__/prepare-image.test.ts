@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { canvasReadable, prepareVisionImage, resetCanvasCheck } from '../utils/prepare-image';
+import { looksBlank, prepareVisionImage } from '../utils/prepare-image';
 
 const ORIGINAL = new Blob([new Uint8Array(500)], { type: 'image/jpeg' });
 const RESIZED = new Blob([new Uint8Array(50)], { type: 'image/jpeg' });
 
-/** Fake 2D context: `readBack` is what getImageData returns for the 2-pixel probe. */
+/** Fake 2D context: `readBack` is what getImageData returns for the drawn photo. */
 function stubCanvas(readBack: number[]) {
   const ctx = {
     fillStyle: '',
@@ -21,9 +21,10 @@ function stubCanvas(readBack: number[]) {
   return ctx;
 }
 
-const RED_BLUE = [255, 0, 0, 255, 0, 0, 255, 255];
-/** What Firefox fingerprinting protection reads back: a blank (white) canvas. */
-const BLANK = [255, 255, 255, 255, 255, 255, 255, 255];
+/** A real photo: varied pixels. */
+const PHOTO = Array.from({ length: 400 }, (_, i) => (i * 37) % 256);
+/** What Firefox fingerprinting protection reads back: one flat colour. */
+const BLANK = Array.from({ length: 400 }, (_, i) => (i % 4 === 3 ? 255 : 254));
 
 function stubImage(width: number, height: number) {
   vi.stubGlobal(
@@ -39,7 +40,6 @@ function stubImage(width: number, height: number) {
 
 describe('prepareVisionImage (PV)', () => {
   beforeEach(() => {
-    resetCanvasCheck();
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({ blob: async () => ORIGINAL }))
@@ -50,29 +50,26 @@ describe('prepareVisionImage (PV)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('canvasReadable: true when pixels read back, false when blanked by privacy protection', () => {
-    stubCanvas(RED_BLUE);
-    expect(canvasReadable()).toBe(true);
-    resetCanvasCheck();
-    stubCanvas(BLANK);
-    expect(canvasReadable()).toBe(false);
+  it('looksBlank: flat colour → true, a photo → false', () => {
+    expect(looksBlank(BLANK)).toBe(true);
+    expect(looksBlank(PHOTO)).toBe(false);
+    expect(looksBlank([])).toBe(true);
   });
 
   it('large photo + readable canvas → resized JPEG', async () => {
-    stubCanvas(RED_BLUE);
+    stubCanvas(PHOTO);
     stubImage(4000, 3000);
     expect(await prepareVisionImage('data:image/jpeg;base64,AA')).toBe(RESIZED);
   });
 
   it('regression: blank canvas (Firefox protection) → original photo, never a blank image', async () => {
-    const ctx = stubCanvas(BLANK);
+    stubCanvas(BLANK);
     stubImage(4000, 3000);
     expect(await prepareVisionImage('data:image/jpeg;base64,AA')).toBe(ORIGINAL);
-    expect(ctx.drawImage).not.toHaveBeenCalled();
   });
 
   it('photo already ≤ 1280 px → original bytes, no re-encoding', async () => {
-    const ctx = stubCanvas(RED_BLUE);
+    const ctx = stubCanvas(PHOTO);
     stubImage(1024, 768);
     expect(await prepareVisionImage('data:image/jpeg;base64,AA')).toBe(ORIGINAL);
     expect(ctx.drawImage).not.toHaveBeenCalled();

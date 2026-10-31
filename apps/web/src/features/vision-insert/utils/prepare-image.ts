@@ -17,42 +17,27 @@ async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   return (await fetch(dataUrl)).blob();
 }
 
-let canvasCheck: boolean | null = null;
-
 /**
- * True when pixels drawn on a canvas read back unchanged. Firefox with fingerprinting protection
- * (`privacy.resistFingerprinting`, strict mode) returns a blank image instead: resizing would send
- * an empty photo and the model would find nothing.
+ * True when every sampled pixel has the same colour: what Firefox fingerprinting protection
+ * (`privacy.resistFingerprinting`, strict mode) gives back from a canvas instead of the drawn photo.
+ * A real photo is never one flat colour.
  */
-export function canvasReadable(): boolean {
-  if (canvasCheck !== null) return canvasCheck;
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = 2;
-    canvas.height = 1;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return (canvasCheck = false);
-    ctx.fillStyle = 'rgb(255,0,0)';
-    ctx.fillRect(0, 0, 1, 1);
-    ctx.fillStyle = 'rgb(0,0,255)';
-    ctx.fillRect(1, 0, 1, 1);
-    const [r1, g1, b1, , r2, g2, b2] = ctx.getImageData(0, 0, 2, 1).data;
-    canvasCheck = r1 === 255 && g1 === 0 && b1 === 0 && r2 === 0 && g2 === 0 && b2 === 255;
-  } catch {
-    canvasCheck = false;
+export function looksBlank(data: ArrayLike<number>, samples = 4096): boolean {
+  const pixels = Math.floor(data.length / 4);
+  if (pixels === 0) return true;
+  const step = Math.max(1, Math.floor(pixels / samples));
+  const [r, g, b] = [data[0], data[1], data[2]];
+  for (let p = step; p < pixels; p += step) {
+    const i = p * 4;
+    if (data[i] !== r || data[i + 1] !== g || data[i + 2] !== b) return false;
   }
-  return canvasCheck;
-}
-
-/** Test hook: forget the cached canvas check. */
-export function resetCanvasCheck() {
-  canvasCheck = null;
+  return true;
 }
 
 /**
  * Attached image (data URL) → Blob for upload, longest side ≤ VISION_MAX_SIDE when the browser can resize.
- * The original bytes are sent when the photo already fits, or the canvas cannot be read back (privacy
- * protection), or drawing fails (old browser, tests).
+ * The original bytes are sent when the photo already fits, when the resized image reads back blank
+ * (privacy protection), or when drawing fails (old browser, tests).
  */
 export async function prepareVisionImage(dataUrl: string): Promise<Blob> {
   try {
@@ -61,15 +46,17 @@ export async function prepareVisionImage(dataUrl: string): Promise<Blob> {
     await img.decode();
     const original = await dataUrlToBlob(dataUrl);
     const fits = Math.max(img.naturalWidth, img.naturalHeight) <= VISION_MAX_SIDE;
-    if ((fits && SENDABLE.test(original.type)) || !canvasReadable()) return original;
+    if (fits && SENDABLE.test(original.type)) return original;
 
     const { width, height } = fitWithin(img.naturalWidth, img.naturalHeight);
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return original;
     ctx.drawImage(img, 0, 0, width, height);
+    // Privacy protection blanks the read-back: send the photo as picked rather than an empty image.
+    if (looksBlank(ctx.getImageData(0, 0, width, height).data)) return original;
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, 'image/jpeg', 0.85)
     );
