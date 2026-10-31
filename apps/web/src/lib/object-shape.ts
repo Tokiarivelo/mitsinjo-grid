@@ -19,10 +19,11 @@ export const RECIPE_SHAPES = ['box', 'cylinder', 'sphere', 'cone'] as const;
 export const MAX_RECIPE_PARTS = 12;
 /** A part may stick out of the object box by this much (handles, feet) before the recipe counts as poor. */
 export const RECIPE_BOUND = 0.6;
-/** Smallest body part (volume, share of the object box) for a recipe to be usable. */
-export const MIN_BODY_VOLUME = 0.08;
-/** Width / height ratio of the recipe vs the photo box may differ by this factor at most. */
-export const MAX_ASPECT_GAP = 2.5;
+/**
+ * Smallest total volume of all parts (share of the object box) for a fitted recipe to be usable.
+ * Low on purpose: a lamp post or a pole is mostly empty space around a thin cylinder.
+ */
+export const MIN_FILL_VOLUME = 0.005;
 
 const coord = z.number().min(-RECIPE_BOUND).max(RECIPE_BOUND);
 const extent = z.number().min(0.01).max(1);
@@ -66,8 +67,6 @@ export const SHAPE_FALLBACK_REASONS = [
   'spend_cap',
   'malformed',
   'no_body',
-  'out_of_bounds',
-  'proportions',
 ] as const;
 export type ShapeFallbackReason = (typeof SHAPE_FALLBACK_REASONS)[number];
 
@@ -84,26 +83,52 @@ export const ObjectShapeSchema = z.object({
 export type ObjectShape = z.infer<typeof ObjectShapeSchema>;
 
 const volume = (p: RecipePart) => p.size[0] * p.size[1] * p.size[2];
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /**
- * Why a recipe would look wrong, or null when it is usable: no part big enough to be the body,
- * a part far outside the object box, or proportions that contradict the photo.
- * `boxAspect` = width / height of the object on the photo, in pixels (0 or less = not checked).
+ * Repairs a Spark recipe instead of rejecting it (thin objects like lamp posts came back « poor »):
+ * - parts are stretched and re-centred so together they fill the object box on each axis
+ *   (fixes parts drawn too small, off-centre or sticking out);
+ * - width / height come from the photo box (`boxAspect` = its width / height in pixels, 0 = keep the
+ *   model's), depth keeps the model's ratio to height. Largest side stays 1.
  */
-export function recipeIssue(
-  recipe: ObjectRecipe,
-  boxAspect: number
-): Exclude<ShapeFallbackReason, 'provider_error' | 'spend_cap' | 'malformed'> | null {
-  if (!recipe.parts.some((p) => volume(p) >= MIN_BODY_VOLUME)) return 'no_body';
-  const outside = recipe.parts.some((p) =>
-    p.at.some((c, i) => Math.abs(c) + p.size[i]! / 2 > 0.5 + RECIPE_BOUND / 2)
-  );
-  if (outside) return 'out_of_bounds';
-  if (boxAspect > 0) {
-    const gap = recipe.proportions.w / recipe.proportions.h / boxAspect;
-    if (gap > MAX_ASPECT_GAP || gap < 1 / MAX_ASPECT_GAP) return 'proportions';
+export function fitRecipe(recipe: ObjectRecipe, boxAspect: number): ObjectRecipe {
+  const lo = [Infinity, Infinity, Infinity];
+  const hi = [-Infinity, -Infinity, -Infinity];
+  for (const p of recipe.parts) {
+    for (let i = 0; i < 3; i++) {
+      lo[i] = Math.min(lo[i]!, p.at[i]! - p.size[i]! / 2);
+      hi[i] = Math.max(hi[i]!, p.at[i]! + p.size[i]! / 2);
+    }
   }
-  return null;
+  const span = lo.map((l, i) => Math.max(0.01, hi[i]! - l));
+  const mid = lo.map((l, i) => (l + hi[i]!) / 2);
+  const parts = recipe.parts.map((p) => ({
+    ...p,
+    at: p.at.map((c, i) =>
+      clamp((c - mid[i]!) / span[i]!, -RECIPE_BOUND, RECIPE_BOUND)
+    ) as RecipePart['at'],
+    size: p.size.map((v, i) => clamp(v / span[i]!, 0.01, 1)) as RecipePart['size'],
+  }));
+  const { h, d } = recipe.proportions;
+  const w = boxAspect > 0 && Number.isFinite(boxAspect) ? h * boxAspect : recipe.proportions.w;
+  const max = Math.max(w, h, d);
+  return {
+    proportions: {
+      w: clamp(w / max, 0.01, 1),
+      h: clamp(h / max, 0.01, 1),
+      d: clamp(d / max, 0.01, 1),
+    },
+    parts,
+  };
+}
+
+/** Why a (fitted) recipe would look wrong, or null when it is usable: parts with almost no volume. */
+export function recipeIssue(
+  recipe: ObjectRecipe
+): Exclude<ShapeFallbackReason, 'provider_error' | 'spend_cap' | 'malformed'> | null {
+  const fill = recipe.parts.reduce((s, p) => s + volume(p), 0);
+  return fill < MIN_FILL_VOLUME ? 'no_body' : null;
 }
 
 /** Part that carries the photo: the one marked `front`, else the biggest. */

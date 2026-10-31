@@ -65,4 +65,6 @@ export interface ShapeSubject {
   category: ApplianceCategory;
   /** Set for scenery (no load): building, tree, vehicle… */
   scenery?: SceneryType;
+  /** Width / height of the object on the photo, in pixels (thin pole ≈ 0.1, wide car ≈ 2). */
+  aspect?: number;
 }

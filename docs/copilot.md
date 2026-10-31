@@ -42,11 +42,13 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
   `mask-outline.ts` decodes it with `@meta-sam/parser` (SAM License, `THIRD_PARTY_NOTICES.md`) into a simplified SVG path in
   image fractions (≤ 160 points) set on each SAM instance and carried to the matched detection. Unreadable mask → no outline. Never throws: missing key, spend cap or API error → deterministic mock with `fallback` set.
   `describeShape` (PV-T9, `shape.ts` + `object-shape.ts`): **Meta models only** (no photo→3D model on the Meta API, checked
-  2026-10-31). One Spark call on a crop around the selected object (same crop helper as regions), JSON schema `ObjectRecipe`
+  2026-10-31). One Spark call on a square crop around the selected object (`shape-crop.ts`: 1.6× its long side, upscaled to
+  ≥ 640 px so a 20 px lamp post is readable, outside lightly dimmed), told the box width / height ratio, JSON schema `ObjectRecipe`
   (≤ 12 parts box / cylinder / sphere / cone, `at` + `size` in object fractions, `#rrggbb`, main body `front: true` gets the photo),
-  20 s timeout. `parseRecipe` is lenient (clamps, drops bad parts, grey for bad colours); `recipeIssue` (shared) rejects a recipe
-  with no body part (≥ 8 % volume), parts > 0.3 outside the box, or w/h more than 2.5× off the photo box. Meta failure, spend cap,
-  timeout, unreadable or poor recipe → `silhouette` mode (the browser extrudes the SAM outline, else the box; no extra call).
+  20 s timeout. `parseRecipe` is lenient (clamps, drops bad parts, grey for bad colours); `fitRecipe` (shared) repairs instead of
+  rejecting: parts stretched to fill the object box, w/h taken from the photo box (thin poles were rejected before);
+  `recipeIssue` only refuses a near-empty recipe (< 0.5 % volume). Meta failure, spend cap,
+  timeout, unreadable or empty recipe → `silhouette` mode (the browser extrudes the SAM outline, else the box; no extra call).
   Every object is modelled, scenery too (`scenery` sent with the target; silhouette depth per scenery type).
   Mock: fixed recipes (fridge, TV, fan, lamp; house, tree, plant, car, person, animal, water; else a box), not checked.
   Image generation stays in `providers/meta.ts` (`/responses`, model `META_IMAGE_MODEL`).

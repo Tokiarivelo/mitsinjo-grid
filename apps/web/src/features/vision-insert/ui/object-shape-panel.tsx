@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Box, Loader2, Move3d, Sparkles } from 'lucide-react';
+import { Box, Loader2, Move3d, RotateCcw, Sparkles } from 'lucide-react';
 import { useWebGLAvailable } from '@/features/microgrid-3d';
 import { useTranslations } from '@/lib/i18n';
 import type { ApplianceDetection } from '@/lib/vision';
@@ -22,6 +22,8 @@ export interface ObjectShapePanelProps extends ObjectShapeState {
   /** Name shown to the operator (page language). */
   label: string;
   imageUrl: string;
+  /** Ask Spark again (outline fallback only). */
+  onRetry?: () => void;
 }
 
 /**
@@ -34,6 +36,7 @@ export function ObjectShapePanel({
   detection,
   label,
   imageUrl,
+  onRetry,
 }: ObjectShapePanelProps) {
   const t = useTranslations('features.visionInsert');
   const webgl = useWebGLAvailable();
@@ -87,7 +90,25 @@ export function ObjectShapePanel({
       )}
 
       {ready && shape.mode === 'silhouette' && (
-        <p className="text-xs text-text-muted">{t('model3dOutlineNote')}</p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="min-w-0 flex-1 text-xs text-text-muted">
+            {t(
+              shape.reason === 'provider_error' || shape.reason === 'spend_cap'
+                ? 'model3dOfflineNote'
+                : 'model3dOutlineNote'
+            )}
+          </p>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-3 text-xs font-medium text-text-primary hover:bg-surface-hover cursor-pointer"
+            >
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+              {t('model3dRetry')}
+            </button>
+          )}
+        </div>
       )}
       {ready && webgl && (
         <p className="flex items-center gap-1.5 text-xs text-text-muted">

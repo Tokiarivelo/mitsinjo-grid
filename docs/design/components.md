@@ -106,7 +106,9 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 - `ChatComposer` (`useChatComposer` state): input + attach / sketch / mic / send; `variant` `card` (tab) or `terminal`;
   an attached image chip has « Find appliances » (scan icon, ≥ 40 px) → `VisionDialog`.
 - `DetectionCanvas` (`features/vision-insert`, PV-T7): photo + SVG overlay (`viewBox 0 0 1`, one path per detection: SAM
-  outline or box). Cyan = found, brighter on hover/focus with a label chip, amber = selected. Pointer: hover/tap on the
+  outline or box). Each object its own colour (`utils/mark-color`: golden-angle hue + 3 lightness steps, `--mark` from
+  `--theme-mark-s/l` per theme), same colour on its list row border; hover/focus = stronger fill + label chip, selected = thicker
+  stroke + fill and tinted row. Pointer: hover/tap on the
   photo; keyboard + screen readers: the « Appliances found (n) » list below (buttons ≥ 44 px, focus = same highlight).
   States: loading (dimmed photo + status), refining (outlines coming), ready, empty, error + retry. Violet « AI perception ·
   to verify » tag; demo note when the mock answered. Category shown only when it differs from the label.

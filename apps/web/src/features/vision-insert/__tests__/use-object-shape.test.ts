@@ -94,6 +94,35 @@ describe('useObjectShape (PV-T9)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 
+  it('retry asks Spark again for the same object, skipping the kept answer', async () => {
+    fetchMock.mockImplementation(async () => new Response(JSON.stringify(recipeShape)));
+    const { result } = renderHook(() => useObjectShape());
+    await act(() => result.current.requestShape('data:image/png;base64,AA', target));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await act(async () => result.current.retry());
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+  });
+
+  it('a box adjusted by hand is a new request; the flag is not sent', async () => {
+    fetchMock.mockImplementation(async () => new Response(JSON.stringify(recipeShape)));
+    const { result } = renderHook(() => useObjectShape());
+    await act(() => result.current.requestShape('data:image/png;base64,AA', target));
+    const moved = { ...target, box: { ...target.box, w: 0.1 }, adjusted: true as const };
+    await act(() => result.current.requestShape('data:image/png;base64,AA', moved));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const body = (fetchMock.mock.calls[1] as [string, RequestInit])[1].body as FormData;
+    expect(JSON.parse(body.get('target') as string)).toEqual({ ...target, box: moved.box });
+    // SAM refining an unadjusted box: same key, no new call.
+    await act(() =>
+      result.current.requestShape('data:image/png;base64,AA', {
+        ...target,
+        box: { ...target.box, x: 0.11 },
+      })
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('reset goes back to idle', async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify(recipeShape)));
     const { result } = renderHook(() => useObjectShape());

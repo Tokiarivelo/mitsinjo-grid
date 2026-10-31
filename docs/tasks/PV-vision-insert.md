@@ -99,7 +99,7 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
 - [x] **PV-T9** 3D shape with Meta models only (user change 2026-10-31: no fal.ai; the Meta API has no photo→3D model).
       `POST /api/vision/shape` → `server/perception/object-shape.ts`: one Spark call on a crop of the object returns an
       `ObjectRecipe` (≤ 12 primitive parts, colours, main body carries the photo); Meta failure, spend cap, 20 s timeout,
-      unreadable or poor recipe (`recipeIssue`) → `silhouette` mode (SAM outline, else box, extruded in the browser).
+      empty recipe (`recipeIssue`, after `fitRecipe` stretches it to the photo box) → `silhouette` mode (SAM outline, else box, extruded in the browser).
       Hook `useObjectShape` (network failure → silhouette too). **Done when** tests cover recipe, each fallback and the
       mock recipes; no error is ever shown. _(Nothing stored: no GLB, crop sent inline.)_
 - [x] **PV-T10** `object-editor-3d.tsx`: R3F viewer (orbit, auto-fit, lazy-loaded) of the `useObjectShape` result:

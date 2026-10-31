@@ -37,7 +37,13 @@ export function VillageEditorPage() {
   const timeIndex = useSimulationStore(selectTimeIndex);
   const setTimeIndex = useSimulationStore((s) => s.setTimeIndex);
   const nameOf = useDetectionLabel();
-  const { requestShape, reset: resetShape, clear: clearShapes, ...objectShape } = useObjectShape();
+  const {
+    requestShape,
+    retry: retryShape,
+    reset: resetShape,
+    clear: clearShapes,
+    ...objectShape
+  } = useObjectShape();
   const selected = vision.selected;
   // Every object (appliances and scenery), once the vision model has named a drawn shape.
   const shapeTarget = selected && !vision.identifyingIds.includes(selected.id) ? selected : null;
@@ -50,9 +56,17 @@ export function VillageEditorPage() {
       resetShape();
       return;
     }
-    const { id, label, category, scenery, box } = shapeTarget;
-    void requestShape(imageUrl, { id, label, category, ...(scenery ? { scenery } : {}), box });
-    // Keyed on the object (id, name, category): a SAM box refinement does not pay for a new recipe.
+    const { id, label, category, scenery, box, adjusted } = shapeTarget;
+    void requestShape(imageUrl, {
+      id,
+      label,
+      category,
+      ...(scenery ? { scenery } : {}),
+      box,
+      ...(adjusted ? { adjusted } : {}),
+    });
+    // Keyed on the object (id, name, category, box once adjusted by hand): a SAM box refinement
+    // does not pay for a new recipe.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageUrl, targetKey, requestShape, resetShape]);
 
@@ -196,6 +210,7 @@ export function VillageEditorPage() {
                   detection={shapeTarget}
                   label={nameOf(shapeTarget)}
                   imageUrl={imageUrl}
+                  onRetry={retryShape}
                 />
               )}
               <p className="flex items-start gap-1.5 text-xs text-text-muted">

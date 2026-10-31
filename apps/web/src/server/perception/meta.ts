@@ -278,7 +278,7 @@ export class MetaPerceptionBackend implements PerceptionBackend {
   ): Promise<PerceptionCall<ShapeResult>> {
     const { content, model, usage } = await this.visionJson(
       SHAPE_SYSTEM_PROMPT,
-      shapeQuestion(target.label),
+      shapeQuestion(target.label, target.aspect),
       imageUrl,
       SHAPE_JSON_SCHEMA,
       signal

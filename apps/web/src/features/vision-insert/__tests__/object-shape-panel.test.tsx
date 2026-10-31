@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@/lib/i18n';
 import type { ObjectShape } from '@/lib/object-shape';
@@ -18,7 +18,11 @@ const fridge: ApplianceDetection = {
   category: 'fridge',
   box: { x: 0.1, y: 0.1, w: 0.2, h: 0.5 },
 };
-const shape = (mode: ObjectShape['mode'], id = 'det-1'): ObjectShape => ({
+const shape = (
+  mode: ObjectShape['mode'],
+  id = 'det-1',
+  reason: NonNullable<ObjectShape['reason']> = 'no_body'
+): ObjectShape => ({
   detectionId: id,
   mode,
   ...(mode === 'recipe'
@@ -28,7 +32,7 @@ const shape = (mode: ObjectShape['mode'], id = 'det-1'): ObjectShape => ({
           parts: [{ shape: 'box', at: [0, 0, 0], size: [1, 1, 1], color: '#eeeeee' }],
         },
       }
-    : { reason: 'proportions' }),
+    : { reason }),
   source: 'meta',
   model: 'muse-spark-1.3',
 });
@@ -62,13 +66,29 @@ describe('ObjectShapePanel (PV-T10)', () => {
     expect(screen.getByText('Drag to turn · pinch or scroll to zoom')).toBeTruthy();
   });
 
-  it('silhouette: outline badge and why', async () => {
-    renderPanel({ shape: shape('silhouette') });
+  it('silhouette: outline badge, why, and a retry button', async () => {
+    const onRetry = vi.fn();
+    renderPanel({ shape: shape('silhouette'), onRetry });
     expect(screen.getByText('Outline shape')).toBeTruthy();
     expect(
-      screen.getByText("The AI shape was not usable: built from the object's outline.")
+      screen.getByText("The AI shape could not be built: shown from the object's outline.")
     ).toBeTruthy();
     expect((await screen.findByText('viewer')).getAttribute('data-mode')).toBe('silhouette');
+    fireEvent.click(screen.getByRole('button', { name: 'Try the AI shape again' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('silhouette because Meta did not answer: says so; recipe mode has no retry', () => {
+    const { unmount } = renderPanel({
+      shape: shape('silhouette', 'det-1', 'provider_error'),
+      onRetry: () => {},
+    });
+    expect(
+      screen.getByText("The Meta model did not answer: shown from the object's outline.")
+    ).toBeTruthy();
+    unmount();
+    renderPanel({ onRetry: () => {} });
+    expect(screen.queryByRole('button', { name: 'Try the AI shape again' })).toBeNull();
   });
 
   it('a shape for another object counts as still loading (no stale model)', () => {

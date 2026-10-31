@@ -76,7 +76,18 @@ describe('DetectionCanvas (PV-T7)', () => {
     expect(screen.getByRole('button', { name: /Fridge/ }).getAttribute('aria-pressed')).toBe(
       'true'
     );
-    expect(path('det-1').getAttribute('class')).toContain('stroke-solar-amber');
+    expect(path('det-1').getAttribute('stroke-width')).toBe('4');
+    expect(path('det-1').getAttribute('class')).toContain('fill-(--mark)/35');
+  });
+
+  it('each object has its own colour, shared by its photo box and its list border', () => {
+    const { path } = setup();
+    const hue = (el: Element) => (el as HTMLElement).style.getPropertyValue('--mark-h');
+    expect(hue(path('det-1'))).not.toBe(hue(path('det-2')));
+    const row = screen.getByRole('button', { name: /TV\s*Television/ });
+    expect(hue(row)).toBe(hue(path('det-2')));
+    expect(row.getAttribute('class')).toContain('border-(--mark)');
+    expect(path('det-2').getAttribute('class')).toContain('stroke-(--mark)');
   });
 
   it('empty result: message, no overlay', () => {
@@ -112,7 +123,7 @@ describe('DetectionCanvas (PV-T7)', () => {
     expect(container.querySelectorAll('path[data-detection]')).toHaveLength(1);
   });
 
-  it('scenery (house, car…) is outlined in grey, tagged « No load », still selectable', () => {
+  it('scenery (house, car…) is outlined with a lighter fill, tagged « No load », still selectable', () => {
     const house: ApplianceDetection = {
       id: 'det-3',
       label: 'Stone house',
@@ -122,8 +133,8 @@ describe('DetectionCanvas (PV-T7)', () => {
       box: { x: 0.2, y: 0.2, w: 0.5, h: 0.4 },
     };
     const { path, onSelect } = setup({ detections: [fridge, house] });
-    expect(path('det-3').getAttribute('class')).toContain('stroke-text-secondary');
-    expect(path('det-1').getAttribute('class')).toContain('stroke-energy-cyan');
+    expect(path('det-3').getAttribute('class')).toContain('fill-(--mark)/5');
+    expect(path('det-1').getAttribute('class')).toContain('fill-(--mark)/10');
     const item = screen.getByRole('button', { name: /Stone house\s*Building\s*No load/ });
     fireEvent.click(item);
     expect(onSelect).toHaveBeenCalledWith('det-3');

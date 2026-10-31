@@ -2,7 +2,7 @@ import { APPLIANCE_CATEGORIES } from '@mitsinjo/engine';
 import { SCENERY_TYPES } from '@/lib/vision';
 import { describe, expect, it } from 'vitest';
 import { ObjectRecipeSchema, recipeIssue } from '@/lib/object-shape';
-import { mockRecipe, parseRecipe, shapeQuestion } from '../shape';
+import { mockRecipe, parseRecipe, SHAPE_SYSTEM_PROMPT, shapeQuestion } from '../shape';
 
 const reply = (o: unknown) => JSON.stringify(o);
 
@@ -57,6 +57,12 @@ describe('parseRecipe (PV-T9)', () => {
   it('quotes the label safely and never asks for energy values', () => {
     expect(shapeQuestion('my "big" fridge')).toContain("'big'");
   });
+
+  it('tells Spark how wide the object is on the photo, and how thin objects look', () => {
+    expect(shapeQuestion('lamp post', 0.192)).toContain('0.19 times as wide as it is high');
+    expect(shapeQuestion('lamp post')).not.toContain('times as wide');
+    expect(SHAPE_SYSTEM_PROMPT).toMatch(/lamp post is a tall thin cylinder/);
+  });
 });
 
 describe('mockRecipe', () => {
@@ -64,7 +70,7 @@ describe('mockRecipe', () => {
     for (const c of APPLIANCE_CATEGORIES) {
       const r = mockRecipe(c);
       expect(ObjectRecipeSchema.safeParse(r).success).toBe(true);
-      expect(recipeIssue(r, 0)).toBeNull();
+      expect(recipeIssue(r)).toBeNull();
     }
   });
 
@@ -72,7 +78,7 @@ describe('mockRecipe', () => {
     for (const s of SCENERY_TYPES) {
       const r = mockRecipe('other', s);
       expect(ObjectRecipeSchema.safeParse(r).success).toBe(true);
-      expect(recipeIssue(r, 0)).toBeNull();
+      expect(recipeIssue(r)).toBeNull();
     }
     expect(mockRecipe('other', 'building').parts.length).toBeGreaterThan(1);
     expect(mockRecipe('other', 'building')).not.toEqual(mockRecipe('other'));

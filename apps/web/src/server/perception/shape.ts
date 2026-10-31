@@ -21,12 +21,23 @@ export const SHAPE_SYSTEM_PROMPT = [
   '(at between -0.5 and 0.5, size between 0.01 and 1); axis of a cylinder or cone (x, y or z, default y);',
   'color = the colour seen, #rrggbb. Put the main body first and mark it front = true: the photo goes on its front face.',
   'Add only the details that make the object recognisable (doors, handles, screen, legs, blades, stand).',
+  'Together the parts must fill the whole object from its lowest to its highest point and side to side.',
+  'Thin objects stay thin: a lamp post is a tall thin cylinder (size about 0.1 wide, 1 high) plus its arm and lamp head at the top;',
+  'a pole, antenna or mast the same. Never shrink the whole object to a small part in the middle.',
   'Buildings, trees, vehicles and other scenery follow the same rules. Never give watts, kW or any energy value.',
 ].join(' ');
 
-/** User turn; the label is the detection name (from a model or typed by the operator), quoted. */
-export function shapeQuestion(label: string): string {
-  return `Build the 3D recipe of the "${label.slice(0, 40).replace(/"/g, "'")}" in the middle of this crop.`;
+/**
+ * User turn; the label is the detection name (from a model or typed by the operator), quoted.
+ * `aspect` = width / height of the object on the photo, so thin or wide objects keep their shape.
+ */
+export function shapeQuestion(label: string, aspect?: number): string {
+  const name = label.slice(0, 40).replace(/"/g, "'");
+  const seen =
+    aspect && aspect > 0 && Number.isFinite(aspect)
+      ? ` On the photo it is ${aspect.toFixed(2)} times as wide as it is high.`
+      : '';
+  return `Build the 3D recipe of the "${name}" in the clear rectangle in the middle of this crop.${seen}`;
 }
 
 const vec3 = { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 };

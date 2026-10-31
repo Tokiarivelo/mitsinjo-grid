@@ -19,6 +19,9 @@
   --theme-ai-violet: #b6a0ff;
   --theme-warning-amber: #ffcb70;
   --theme-critical-red: #ff7185;
+  /* Per-object mark colours (vision boxes): hue per object, saturation + lightness per theme. */
+  --theme-mark-s: 85%;
+  --theme-mark-l: 64%;
 }
 
 html.light,
@@ -42,6 +45,8 @@ html.light,
   --theme-ai-violet: #7c3aed;
   --theme-warning-amber: #d97706;
   --theme-critical-red: #dc2626;
+  --theme-mark-s: 80%;
+  --theme-mark-l: 40%;
 }
 
 @theme {
@@ -85,6 +90,13 @@ html.light,
 
   --duration-fast: 150ms;
   --duration-panel: 220ms;
+}
+
+/* One object's colour: `--mark-h` (hue) and `--mark-dl` (lightness step) set inline per object. */
+[data-mark] {
+  --mark: hsl(
+    var(--mark-h, 190) var(--theme-mark-s) calc(var(--theme-mark-l) + var(--mark-dl, 0%))
+  );
 }
 
 html,

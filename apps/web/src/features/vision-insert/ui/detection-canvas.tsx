@@ -24,6 +24,7 @@ import {
 } from '@/lib/vision';
 import type { VisionStatus } from '../hooks/use-vision-detection';
 import { categoryHint } from '../utils/labels';
+import { markStyle } from '../utils/mark-color';
 import { useDetectionLabel, useObjectName } from '../hooks/use-object-name';
 import { useEdgeMap } from '../hooks/use-edge-map';
 import { useShapeEditor } from '../hooks/use-shape-editor';
@@ -193,7 +194,7 @@ export function DetectionCanvas({
               className="absolute inset-0 h-full w-full"
               aria-hidden="true"
             >
-              {detections.map((d) => {
+              {detections.map((d, index) => {
                 // The box being corrected is drawn by the editor layer.
                 if (d.id === adjusting?.id) return null;
                 const selected = d.id === selectedId;
@@ -202,21 +203,21 @@ export function DetectionCanvas({
                   <path
                     key={d.id}
                     data-detection={d.id}
+                    data-mark=""
+                    style={markStyle(index)}
                     d={d.outline ?? boxPath(d.box)}
                     vectorEffect="non-scaling-stroke"
-                    strokeWidth={selected || hot ? 3 : 2}
+                    strokeWidth={selected ? 4 : hot ? 3 : 2}
                     strokeDasharray={d.manual ? '6 4' : undefined}
                     className={cn(
-                      'cursor-pointer transition-colors',
+                      'cursor-pointer stroke-(--mark) transition-[fill,stroke-width]',
                       selected
-                        ? 'fill-solar-amber/25 stroke-solar-amber'
-                        : !isAppliance(d)
-                          ? hot
-                            ? 'fill-text-secondary/25 stroke-text-secondary'
-                            : 'fill-text-secondary/5 stroke-text-secondary'
-                          : hot
-                            ? 'fill-energy-cyan/30 stroke-energy-cyan'
-                            : 'fill-energy-cyan/10 stroke-energy-cyan'
+                        ? 'fill-(--mark)/35'
+                        : hot
+                          ? 'fill-(--mark)/25'
+                          : isAppliance(d)
+                            ? 'fill-(--mark)/10'
+                            : 'fill-(--mark)/5'
                     )}
                     onPointerEnter={() => setActiveId(d.id)}
                     onPointerLeave={() => setActiveId((id) => (id === d.id ? null : id))}
@@ -355,24 +356,26 @@ export function DetectionCanvas({
             {t('listTitle', { count: detections.length })}
           </h4>
           <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-            {detections.map((d) => {
+            {detections.map((d, index) => {
               const selected = d.id === selectedId;
               return (
                 <li key={d.id} className="flex items-stretch gap-1.5">
                   <button
                     type="button"
                     aria-pressed={selected}
+                    data-mark=""
+                    style={markStyle(index)}
                     onClick={() => onSelect(d.id)}
                     onMouseEnter={() => setActiveId(d.id)}
                     onMouseLeave={() => setActiveId((id) => (id === d.id ? null : id))}
                     onFocus={() => setActiveId(d.id)}
                     onBlur={() => setActiveId((id) => (id === d.id ? null : id))}
                     className={cn(
-                      'flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors cursor-pointer',
+                      'flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border-2 border-(--mark) px-3 py-2 text-left text-sm text-text-primary transition-colors cursor-pointer',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan',
                       selected
-                        ? 'border-solar-amber/60 bg-solar-amber/10 text-text-primary'
-                        : 'border-border bg-surface text-text-primary hover:bg-surface-hover'
+                        ? 'bg-(--mark)/15 ring-2 ring-(--mark)/40'
+                        : 'bg-surface hover:bg-(--mark)/10'
                     )}
                   >
                     <span className="min-w-0 truncate font-medium">{nameOf(d)}</span>

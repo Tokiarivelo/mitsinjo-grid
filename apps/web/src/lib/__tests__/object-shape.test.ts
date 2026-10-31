@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  fitRecipe,
   frontPartIndex,
   ObjectRecipeSchema,
   recipeIssue,
@@ -36,22 +37,56 @@ describe('pathToRings (shared)', () => {
   });
 });
 
-describe('recipeIssue (PV-T9)', () => {
-  it('accepts a fridge recipe that matches a tall photo box', () => {
-    expect(recipeIssue(fridge, 0.5)).toBeNull();
-    expect(recipeIssue(fridge, 0)).toBeNull();
+describe('fitRecipe + recipeIssue (PV-T9)', () => {
+  // What Spark sends for a lamp post: thin parts, nothing near 8 % of the box, head sticking out.
+  const lampPost: ObjectRecipe = {
+    proportions: { w: 0.3, h: 1, d: 0.3 },
+    parts: [
+      {
+        shape: 'cylinder',
+        at: [0, -0.05, 0],
+        size: [0.1, 0.8, 0.1],
+        color: '#555555',
+        front: true,
+      },
+      { shape: 'box', at: [0.2, 0.4, 0], size: [0.4, 0.04, 0.05], color: '#555555' },
+      { shape: 'cone', at: [0.4, 0.38, 0], size: [0.2, 0.1, 0.2], color: '#eeeeaa' },
+    ],
+  };
+
+  it('keeps a thin lamp post (was rejected) and stretches its parts to fill the box', () => {
+    const fit = fitRecipe(lampPost, 0.19);
+    expect(recipeIssue(fit)).toBeNull();
+    expect(ObjectRecipeSchema.safeParse(fit).success).toBe(true);
+    for (let i = 0; i < 3; i++) {
+      const lo = Math.min(...fit.parts.map((p) => p.at[i]! - p.size[i]! / 2));
+      const hi = Math.max(...fit.parts.map((p) => p.at[i]! + p.size[i]! / 2));
+      expect(lo).toBeCloseTo(-0.5, 5);
+      expect(hi).toBeCloseTo(0.5, 5);
+    }
   });
 
-  it('rejects a recipe with only tiny parts, parts far outside, or wrong proportions', () => {
-    const tiny = { ...fridge, parts: [{ ...fridge.parts[1]! }] };
-    expect(recipeIssue(tiny, 0.5)).toBe('no_body');
-    const far: ObjectRecipe = {
+  it('takes width / height from the photo box, depth stays relative to height', () => {
+    const fit = fitRecipe(fridge, 2);
+    expect(fit.proportions.w).toBe(1);
+    expect(fit.proportions.h).toBeCloseTo(0.5);
+    expect(fit.proportions.d).toBeCloseTo(0.25);
+    // No photo aspect → the model's proportions.
+    expect(fitRecipe(fridge, 0).proportions).toEqual(fridge.proportions);
+  });
+
+  it('a fitting fridge stays the same; only an almost empty recipe is refused', () => {
+    const body = { ...fridge, parts: [fridge.parts[0]!] };
+    expect(fitRecipe(body, 0.5)).toEqual(body);
+    expect(recipeIssue(fitRecipe(fridge, 0.5))).toBeNull();
+    const wire: ObjectRecipe = {
       ...fridge,
-      parts: [fridge.parts[0]!, { ...fridge.parts[1]!, at: [0.6, 0, 0], size: [0.5, 0.1, 0.1] }],
+      parts: [
+        { shape: 'box', at: [0, 0, 0], size: [1, 0.01, 0.01], color: '#888888' },
+        { shape: 'box', at: [0, 0.4, 0], size: [0.01, 0.2, 1], color: '#888888' },
+      ],
     };
-    expect(recipeIssue(far, 0.5)).toBe('out_of_bounds');
-    // Recipe says tall and narrow, the photo shows a wide object.
-    expect(recipeIssue(fridge, 2)).toBe('proportions');
+    expect(recipeIssue(fitRecipe(wire, 0))).toBe('no_body');
   });
 
   it('schema refuses bad colours and out-of-range values', () => {

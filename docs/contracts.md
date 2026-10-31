@@ -509,11 +509,11 @@ kind / category / box; drawn outline kept until SAM sends one. Failure → `iden
 `POST /api/vision/shape` (PV-T9) multipart `{ image (same rules and normalization as /api/vision, shared
 `server/perception/vision-request.ts`), target: JSON ShapeTarget { id, label, category, scenery?, box }, sessionId? }` → JSON
 `ObjectShape { detectionId, mode: 'recipe'|'silhouette', recipe? /*recipe only*/, reason? /*silhouette only: 'provider_error'|
-'spend_cap'|'malformed'|'no_body'|'out_of_bounds'|'proportions'*/, source, model, fallback? }`; 400 missing / invalid target.
+'spend_cap'|'malformed'|'no_body'*/, source, model, fallback? }`; 400 missing / invalid target.
 `ObjectRecipe { proportions: {w,h,d} (largest = 1), parts: { shape: 'box'|'cylinder'|'sphere'|'cone', at: [x,y,z] (−0.6…0.6),
 size: [x,y,z] (0.01–1), axis?: 'x'|'y'|'z', color: '#rrggbb', front?: true }[] (1–12) }`: object centred, x right, y up, z to the camera,
-in fractions of its own size. Shared Zod + `recipeIssue`, `frontPartIndex`, `silhouetteRings` in `@/lib/object-shape`; no power value.
-Client: `useObjectShape().requestShape(photo, target, sessionId?)` → `{ status: 'idle'|'loading'|'ready', shape? }`; a network or
+in fractions of its own size. Shared Zod + `fitRecipe`, `recipeIssue`, `frontPartIndex`, `silhouetteRings` in `@/lib/object-shape`; no power value.
+Client: `useObjectShape().requestShape(photo, target & { adjusted? }, sessionId?, force?)` + `retry()` (box in the cache key once adjusted) → `{ status: 'idle'|'loading'|'ready', shape? }`; a network or
 HTTP failure also ends in `silhouette` (`reason: 'provider_error'`), never an error state. Answers kept per `shapeKey` (id, label,
 category) until `clear()` (new photo); offline silhouettes are not kept. Viewer geometry: `features/vision-insert/utils/object-geometry.ts`. Nothing is stored (crop sent inline).
 SSE parsing for every client stream: `@/lib/sse` (`parseSseChunk`, `readSseStream`).

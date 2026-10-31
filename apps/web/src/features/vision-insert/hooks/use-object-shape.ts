@@ -21,9 +21,23 @@ const offlineSilhouette = (detectionId: string): ObjectShape => ({
   model: 'none',
 });
 
-/** Same object again (id, name, category) → same shape: a reselect costs no Spark call. */
-export const shapeKey = (t: Pick<ShapeTarget, 'id' | 'label' | 'category' | 'scenery'>) =>
-  `${t.id}|${t.label}|${t.category}|${t.scenery ?? ''}`;
+/** Object to model; `adjusted` = the operator corrected its box, so the box is part of the key. */
+export type ShapeRequest = ShapeTarget & { adjusted?: true };
+
+/**
+ * Same object again (id, name, category) → same shape: a reselect or a SAM box refinement costs no
+ * Spark call. A box corrected by hand (« Adjust the box ») is a new key: the recipe follows the new box.
+ */
+export const shapeKey = (
+  t: Pick<ShapeRequest, 'id' | 'label' | 'category' | 'scenery' | 'adjusted'> & {
+    box?: ShapeTarget['box'];
+  }
+) => {
+  const base = `${t.id}|${t.label}|${t.category}|${t.scenery ?? ''}`;
+  if (!t.adjusted || !t.box) return base;
+  const { x, y, w, h } = t.box;
+  return `${base}|${[x, y, w, h].map((v) => v.toFixed(4)).join(',')}`;
+};
 
 /**
  * 3D shape of the selected object (PV-T9): asks `/api/vision/shape` for a Spark recipe; any failure ends
@@ -34,14 +48,16 @@ export function useObjectShape() {
   const [state, setState] = useState<ObjectShapeState>(IDLE);
   const abortRef = useRef<AbortController | null>(null);
   const cacheRef = useRef(new Map<string, ObjectShape>());
+  const lastRef = useRef<{ image: string; target: ShapeRequest; sessionId?: string } | null>(null);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
   const requestShape = useCallback(
-    async (imageDataUrl: string, target: ShapeTarget, sessionId?: string) => {
+    async (imageDataUrl: string, target: ShapeRequest, sessionId?: string, force = false) => {
       abortRef.current?.abort();
+      lastRef.current = { image: imageDataUrl, target, ...(sessionId ? { sessionId } : {}) };
       const key = shapeKey(target);
-      const cached = cacheRef.current.get(key);
+      const cached = force ? undefined : cacheRef.current.get(key);
       if (cached) {
         setState({ status: 'ready', shape: cached });
         return;
@@ -84,6 +100,12 @@ export function useObjectShape() {
     []
   );
 
+  /** « Try the AI shape again »: same object, cache skipped (Spark answers vary). */
+  const retry = useCallback(() => {
+    const last = lastRef.current;
+    if (last) void requestShape(last.image, last.target, last.sessionId, true);
+  }, [requestShape]);
+
   const reset = useCallback(() => {
     abortRef.current?.abort();
     setState(IDLE);
@@ -92,9 +114,10 @@ export function useObjectShape() {
   /** New photo: forget every kept shape (ids repeat across photos). */
   const clear = useCallback(() => {
     cacheRef.current.clear();
+    lastRef.current = null;
     abortRef.current?.abort();
     setState(IDLE);
   }, []);
 
-  return { ...state, requestShape, reset, clear };
+  return { ...state, requestShape, retry, reset, clear };
 }
