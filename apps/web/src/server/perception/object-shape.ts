@@ -1,6 +1,7 @@
 import 'server-only';
 
 import {
+  MAX_RECIPE_PARTS,
   SHAPE_TIMEOUT_MS,
   fitRecipe,
   frontPartIndex,
@@ -29,6 +30,8 @@ import {
 } from './shape-colors';
 import { conceptOf, fetchOutlineForBox } from './outline';
 import { applyConstraints, buildGraph } from './object-graph';
+import { deduceHiddenSides } from './hidden-sides';
+import { enforcePartBudget } from './mask-geometry';
 import { cropForShape, cropRectForShape } from './shape-crop';
 import { extractSwatches } from './photo-swatches';
 import { withLatheBody } from './lathe-body';
@@ -452,6 +455,25 @@ export async function runObjectShape(
       if (issue) {
         console.info(`[vision] 3D recipe for "${target.label}" rejected (${issue}), silhouette`);
         return silhouette(issue, source);
+      }
+      // PR-2.16: hidden-side deduction from the fitted recipe (rule-based, pre-S4): back
+      // facade, gable-end windows, sedan rear door. Needs a photo (nothing measured means
+      // nothing to deduce from); newcomers carry no budget protection, so the visible model
+      // never loses a part to a hidden one. The graph pass below stamps them inferred.
+      if (finalKit && photo) {
+        const deduced = deduceHiddenSides(finalKit.archetype, recipe, {
+          yaw: recipe.yaw ?? 0,
+          colors: finalKit.colors,
+          room: MAX_RECIPE_PARTS - recipe.parts.length,
+        });
+        if (deduced.length > 0) {
+          const before = recipe.parts.length;
+          const kept = enforcePartBudget([...recipe.parts, ...deduced], recipe.parts);
+          recipe = applyConstraints(finalKit.archetype, { ...recipe, parts: kept.parts });
+          console.info(
+            `[vision] 3D hidden sides for "${target.label}": +${recipe.parts.length - before} part(s)`
+          );
+        }
       }
       // PR-2.15: dimension statuses from the final measurements, never the LLM. Template and
       // fit values read estimated, a single view never measures depth, the box-fit scale is
