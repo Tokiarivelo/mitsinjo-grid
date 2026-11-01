@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { silhouetteRings, type ObjectRecipe } from '@/lib/object-shape';
 import {
   recipeMesh,
+  ROOF_OVERHANG,
   roundedBox,
+  SPHERE_SEGMENTS,
   silhouetteDepth,
   silhouetteMesh,
   silhouetteSize,
@@ -59,7 +61,7 @@ describe('recipeMesh (PV-T10)', () => {
     expect(Object.keys(body.attributes).sort()).toEqual(['color', 'normal', 'position', 'uv']);
   });
 
-  it('stays light: 12 round parts under 15 k triangles', () => {
+  it('stays light: 12 round parts within 5 k triangles (PR-1.3)', () => {
     const many: ObjectRecipe = {
       ...fridge,
       parts: Array.from({ length: 12 }, () => ({
@@ -69,7 +71,7 @@ describe('recipeMesh (PV-T10)', () => {
         color: '#808080',
       })),
     };
-    expect(triangleCount(recipeMesh(many))).toBeLessThan(15_000);
+    expect(triangleCount(recipeMesh(many))).toBeLessThanOrEqual(5_000);
   });
 });
 
@@ -185,6 +187,54 @@ describe('unitPrism (PF-T3)', () => {
     // Rounded walls (PR-1.2: 300 triangles) + the 8-triangle prism.
     expect(body.getAttribute('position').count).toBe(3 * (2 * 6 * 25 + 8));
     expect(bounds(body).max.y).toBeCloseTo(0.4, 6);
+  });
+
+  it('a gable roof overhangs the walls on every side, the ridge stays at its height (PR-1.3)', () => {
+    const roof: ObjectRecipe = {
+      proportions: { w: 1, h: 0.8, d: 0.6 },
+      parts: [{ shape: 'prism', at: [0, 0.25, 0], size: [1, 0.5, 1], color: '#6e6a62' }],
+    };
+    const b = bounds(recipeMesh(roof));
+    expect(b.max.x - b.min.x).toBeCloseTo(1 + 2 * ROOF_OVERHANG, 6);
+    expect(b.max.z - b.min.z).toBeCloseTo(0.6 + 2 * ROOF_OVERHANG, 6);
+    expect(b.max.y).toBeCloseTo(0.4, 6);
+    expect(b.max.y - b.min.y).toBeCloseTo(0.4, 6);
+  });
+});
+
+describe('round parts (PR-1.3)', () => {
+  const one = (shape: 'sphere' | 'cylinder' | 'cone'): ObjectRecipe => ({
+    proportions: { w: 1, h: 1, d: 1 },
+    parts: [{ shape, at: [0, 0, 0], size: [1, 1, 1], color: '#808080' }],
+  });
+  /** Distinct normals on the curved surface (y ≈ 0 band of the side): many = smooth, few = facets. */
+  const sideNormals = (g: THREE.BufferGeometry) => {
+    const pos = g.getAttribute('position');
+    const n = g.getAttribute('normal');
+    const set = new Set<string>();
+    for (let i = 0; i < pos.count; i++)
+      if (Math.abs(n.getY(i)) < 0.9) set.add(`${n.getX(i).toFixed(3)},${n.getZ(i).toFixed(3)}`);
+    return set.size;
+  };
+  // Smooth shading: one normal per vertex column, not per face (flat would repeat each face normal).
+  it.each(['sphere', 'cylinder', 'cone'] as const)('%s is smooth-shaded', (shape) => {
+    const g = recipeMesh(one(shape));
+    const pos = g.getAttribute('position');
+    const n = g.getAttribute('normal');
+    // On a smooth surface the normal points away from the axis through the vertex.
+    let aligned = 0;
+    let side = 0;
+    for (let i = 0; i < pos.count; i++) {
+      const r = Math.hypot(pos.getX(i), pos.getZ(i));
+      if (r < 0.2 || Math.abs(n.getY(i)) > 0.9) continue;
+      side++;
+      const cos =
+        (pos.getX(i) * n.getX(i) + pos.getZ(i) * n.getZ(i)) /
+        (r * Math.hypot(n.getX(i), n.getZ(i)));
+      if (cos > 0.999) aligned++;
+    }
+    expect(aligned / side).toBeGreaterThan(0.99);
+    expect(sideNormals(g)).toBeGreaterThanOrEqual(SPHERE_SEGMENTS[0]);
   });
 });
 

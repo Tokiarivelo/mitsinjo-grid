@@ -87,7 +87,8 @@ them after mount (re-targeting races React root unmounts and can leave a label e
   uniform per frame); they keep the frame loop running only while motion is allowed.
 - Object 3D viewer (/village, PR-1.1): studio light = one `RoomEnvironment` pre-filtered once per canvas
   (PMREM, 256² faces, disposed on unmount) + 2 directional lights; `frameloop="demand"` keeps it idle.
-  Rounded boxes (PR-1.2): 300 triangles each, plain 12-triangle box under 0.005 radius; ≤ 5 k triangles per object.
+  Rounded boxes (PR-1.2): 300 triangles each, plain 12-triangle box under 0.005 radius; spheres 18 × 12 (396 triangles, PR-1.3);
+  ≤ 5 k triangles per object.
 - Charts in a hidden tab are not mounted (Recharts can't measure a `display:none` parent).
 
 ## 6. Loading & navigation

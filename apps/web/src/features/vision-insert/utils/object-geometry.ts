@@ -51,6 +51,13 @@ export function silhouetteDepth(d: Pick<ApplianceDetection, 'category' | 'scener
 
 /** Curve segments of round parts (≤ 12 parts × ~1 k triangles: far under the scene budget). */
 export const ROUND_SEGMENTS = 24;
+/** Sphere segments (PR-1.3): 396 triangles, smooth normals; 12 spheres stay under 5 k. */
+export const SPHERE_SEGMENTS = [18, 12] as const;
+/**
+ * Roof overhang (PR-1.3), object units: each gable prism reaches past the walls on every side — eaves on
+ * the slopes, verge over the front and back — so the roof reads as a roof, not a wedge on a box.
+ */
+export const ROOF_OVERHANG = 0.03;
 /**
  * Unit gable prism (PF-T3): triangle (base at y −0.5, ridge at x `apex − 0.5`, y 0.5) extruded along z.
  * Non-indexed with flat normals and empty UVs, the same attributes as the other primitives so they merge.
@@ -132,7 +139,7 @@ function unitPart(shape: RecipePart['shape'], apex?: number): THREE.BufferGeomet
     case 'cone':
       return new THREE.ConeGeometry(0.5, 1, ROUND_SEGMENTS).toNonIndexed();
     case 'sphere':
-      return new THREE.SphereGeometry(0.5, ROUND_SEGMENTS, ROUND_SEGMENTS * 0.75).toNonIndexed();
+      return new THREE.SphereGeometry(0.5, ...SPHERE_SEGMENTS).toNonIndexed();
   }
 }
 
@@ -158,7 +165,8 @@ export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
       // Round parts turn to their axis before taking the part's own x / y / z extent.
       if (p.axis === 'x') g.rotateZ(Math.PI / 2);
       else if (p.axis === 'z') g.rotateX(Math.PI / 2);
-      g.scale(sx, sy, sz);
+      const eave = p.shape === 'prism' ? 2 * ROOF_OVERHANG : 0;
+      g.scale(sx + eave, sy, sz + eave);
     }
     g.translate(p.at[0] * dims[0], p.at[1] * dims[1], p.at[2] * dims[2]);
     // Measured yaw (PF-T5): turned like on the photo.
