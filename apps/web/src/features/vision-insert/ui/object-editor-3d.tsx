@@ -7,7 +7,13 @@ import * as THREE from 'three';
 import { TOKEN_HEX } from '@/features/microgrid-3d/utils/scene-palette';
 import { silhouetteRings, type ObjectShape } from '@/lib/object-shape';
 import type { ApplianceDetection } from '@/lib/vision';
-import { recipeMesh, silhouetteDepth, silhouetteMesh } from '../utils/object-geometry';
+import {
+  photoMaskRings,
+  recipeMesh,
+  silhouetteDepth,
+  silhouetteMesh,
+} from '../utils/object-geometry';
+import { photoMaskTexture } from '../utils/photo-mask';
 
 export interface ObjectEditor3dProps {
   shape: ObjectShape;
@@ -54,6 +60,12 @@ function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
     },
     [mesh]
   );
+  // Photo shown inside the SAM outline only: sky and road around the object are cut (PF-T1).
+  const mask = useMemo(() => {
+    const rings = photoMaskRings(detection);
+    return rings ? photoMaskTexture(rings, photoAspect) : null;
+  }, [detection, photoAspect]);
+  useEffect(() => () => mask?.dispose(), [mask]);
   const vertexColors = shape.mode === 'recipe';
   // Ground under the object (shadow sits on it), from the real geometry.
   const floorY = useMemo(() => {
@@ -81,7 +93,14 @@ function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
       </mesh>
       <mesh geometry={mesh.front}>
         {/* Photo as taken: unlit and not tone-mapped (ACES greys bright colours like a beige fridge). */}
-        <meshBasicMaterial map={texture} toneMapped={false} side={THREE.DoubleSide} />
+        <meshBasicMaterial
+          key={mask ? 'masked' : 'plain'}
+          map={texture}
+          alphaMap={mask ?? undefined}
+          alphaTest={mask ? 0.5 : 0}
+          toneMapped={false}
+          side={THREE.DoubleSide}
+        />
       </mesh>
     </group>
   );

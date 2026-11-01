@@ -3,7 +3,7 @@
 **Why (user, 2026-11-01):** for `det-4` « stone cottages row » (Bourton-on-the-Water, box x 0.18 y 0.10 w 0.82 h 0.58),
 the 3D model does not look like the photo: one box with a black stepped roof, a grey bar across the front, and the whole
 photo (sky, roofs, cars) squashed onto the walls.
-**Status:** ❌ planned. **Depends on:** PV-T9b (kit), PV-T10 (viewer), SAM outlines (M2).
+**Status:** 🟡 PF-T1 done (`recipeMesh` projects the photo on every front face, `photo-mask.ts`, `decalWidth`; decals kept, they show the photo too). **Depends on:** PV-T9b (kit), PV-T10 (viewer), SAM outlines (M2).
 **Rule kept:** Meta models only. All math is pure, seeded TS and deterministic (same photo → same model), with tests.
 It runs on the server on a ≤ 256 px copy of the crop, inside the 60 s budget (target < 300 ms).
 
@@ -33,7 +33,7 @@ photo crop ─┬─ SAM mask M(x,y) ──┬─ colours (k-means Lab per band)
 
 ## Tasks
 
-- [ ] **PF-T1 Quick fixes (no new math).**
+- [x] **PF-T1 Quick fixes (no new math).**
       (a) Projected photo: map the photo onto **every front-facing face of all parts** by orthographic projection of
       the whole model onto the box (`u = box.x + (x − minX)/W·box.w`, the same for `v`), not just the main part. Roof slabs
       then show the photo's roofs, and walls show the walls.

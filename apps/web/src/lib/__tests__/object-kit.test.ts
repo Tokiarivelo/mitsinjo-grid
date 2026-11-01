@@ -1,6 +1,7 @@
 import { APPLIANCE_CATEGORIES } from '@mitsinjo/engine';
 import { describe, expect, it } from 'vitest';
 import {
+  decalWidth,
   defaultArchetype,
   KIT_ARCHETYPES,
   kitToRecipe,
@@ -49,5 +50,14 @@ describe('kitToRecipe (PV-T9b)', () => {
     expect(ObjectKitSchema.safeParse({ ...kit('tree'), colors: { main: 'red' } }).success).toBe(
       false
     );
+  });
+});
+
+describe('decalWidth (PF-T1)', () => {
+  it('never lets 8 windows overlap (regression: grey bar on the cottage row)', () => {
+    const w = decalWidth(8, 0.76, 0.11);
+    expect(w).toBeLessThan(0.76 / 7);
+    expect(decalWidth(3, 0.76, 0.11)).toBe(0.11);
+    expect(decalWidth(1, 0.76, 0.11)).toBe(0.11);
   });
 });

@@ -106,6 +106,10 @@ const part = (
 const spread = (n: number, span: number) =>
   Array.from({ length: n }, (_, i) => (n === 1 ? 0 : -span / 2 + (span * i) / (n - 1)));
 
+/** Width of `n` decals over `span`: at most `max`, and ≤ 70 % of their pitch so they never overlap. */
+export const decalWidth = (n: number, span: number, max: number) =>
+  n <= 1 ? max : Math.min(max, (0.7 * span) / (n - 1));
+
 type Template = (k: ObjectKit) => RecipePart[];
 
 const TEMPLATES: Record<KitArchetype, Template> = {
@@ -162,10 +166,10 @@ const TEMPLATES: Record<KitArchetype, Template> = {
       part('box', [0, 0.4, 0], [0.42, 0.12, 0.48], c.secondary),
       ...(d?.chimney ? [part('box', [0.3, 0.38, 0], [0.08, 0.24, 0.1], c.main)] : []),
       ...spread(windows, 0.76).map((x) =>
-        part('box', [x, -0.06, 0.505], [0.11, 0.14, 0.02], c.accent)
+        part('box', [x, -0.06, 0.505], [decalWidth(windows, 0.76, 0.11), 0.14, 0.02], c.accent)
       ),
       ...spread(doors, 0.5).map((x) =>
-        part('box', [x, -0.36, 0.505], [0.1, 0.28, 0.02], c.secondary)
+        part('box', [x, -0.36, 0.505], [decalWidth(doors, 0.5, 0.1), 0.28, 0.02], c.secondary)
       ),
     ];
   },
@@ -179,7 +183,7 @@ const TEMPLATES: Record<KitArchetype, Template> = {
       ...Array.from({ length: floors }, (_, f) => {
         const y = -0.5 + ((f + 0.6) * bodyH) / floors;
         return spread(windows, 0.8).map((x) =>
-          part('box', [x, y, 0.505], [0.08, 0.1, 0.02], c.accent)
+          part('box', [x, y, 0.505], [decalWidth(windows, 0.8, 0.08), 0.1, 0.02], c.accent)
         );
       }).flat(),
     ].slice(0, 12);

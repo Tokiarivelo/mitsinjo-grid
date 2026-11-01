@@ -1,12 +1,12 @@
 import type { ApplianceCategory } from '@mitsinjo/engine';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { frontPartIndex, type ObjectRecipe, type RecipePart } from '@/lib/object-shape';
-import type { ApplianceDetection, NormBox, SceneryType } from '@/lib/vision';
+import type { ObjectRecipe, RecipePart } from '@/lib/object-shape';
+import { pathToRings, type ApplianceDetection, type NormBox, type SceneryType } from '@/lib/vision';
 
 /**
  * Geometry of the 3D object editor (PV-T10). Pure (three.js only, no React): a Spark recipe → one merged,
- * vertex-coloured mesh + a photo plane on its front part; the silhouette fallback → the outline extruded
+ * vertex-coloured mesh + the photo projected onto every front-facing face (PF-T1); the silhouette fallback → the outline extruded
  * + a photo cap. Object centred at the origin, largest side = 1 scene unit. Photo UVs point into the
  * whole photo (the detection box), so one texture serves every object of the photo.
  */
@@ -51,6 +51,8 @@ export function silhouetteDepth(d: Pick<ApplianceDetection, 'category' | 'scener
 export const ROUND_SEGMENTS = 24;
 /** Gap between a surface and the photo laid on it (avoids z-fighting). */
 const PHOTO_GAP = 0.003;
+/** A face takes the photo when its normal points this much towards the camera (z): fronts, not tops. */
+export const FRONT_MIN_NZ = 0.35;
 
 export interface PhotoMesh {
   /** Part bodies (vertex colours for a recipe, plain for a silhouette). */
@@ -95,8 +97,31 @@ function unitPart(shape: RecipePart['shape']): THREE.BufferGeometry {
 }
 
 const color = new THREE.Color();
+const ab = new THREE.Vector3();
+const ac = new THREE.Vector3();
 
-/** Recipe → merged coloured body + photo plane on the front of its main part. */
+/** Triangles of a non-indexed geometry whose face normal z is above `minNz` (position only). */
+export function frontFacing(g: THREE.BufferGeometry, minNz = FRONT_MIN_NZ): THREE.BufferGeometry {
+  const pos = g.getAttribute('position');
+  const kept: number[] = [];
+  const v = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()] as const;
+  for (let t = 0; t + 2 < pos.count; t += 3) {
+    v.forEach((p, k) => p.fromBufferAttribute(pos, t + k));
+    const n = ab.subVectors(v[1], v[0]).cross(ac.subVectors(v[2], v[0]));
+    const len = n.length();
+    if (len > 0 && n.z / len > minNz) v.forEach((p) => kept.push(p.x, p.y, p.z));
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(kept, 3));
+  return out;
+}
+
+/**
+ * Recipe → merged coloured body + the photo projected onto it (PF-T1). The photo is a camera projection
+ * along z of the whole model onto the detection box: every face turned to the camera (walls, the front
+ * of roof slabs, a lamp head) shows the part of the photo in front of it, not the whole box squashed on
+ * one part. Faces hidden behind others are covered by the depth test.
+ */
 export function recipeMesh(recipe: ObjectRecipe, box: NormBox): PhotoMesh {
   const dims = [recipe.proportions.w, recipe.proportions.h, recipe.proportions.d] as const;
   const parts = recipe.parts.map((p) => {
@@ -113,23 +138,31 @@ export function recipeMesh(recipe: ObjectRecipe, box: NormBox): PhotoMesh {
     g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     return g;
   });
+  const fronts = parts.map((g) => frontFacing(g));
   const body = mergeGeometries(parts) ?? new THREE.BufferGeometry();
+  const front = (fronts.length && mergeGeometries(fronts)) || new THREE.BufferGeometry();
   parts.forEach((g) => g.dispose());
+  fronts.forEach((g) => g.dispose());
 
-  const main = recipe.parts[frontPartIndex(recipe)]!;
-  const w = main.size[0] * dims[0];
-  const h = main.size[1] * dims[1];
-  const cx = main.at[0] * dims[0];
-  const cy = main.at[1] * dims[1];
-  const front = new THREE.PlaneGeometry(w, h);
-  front.translate(cx, cy, main.at[2] * dims[2] + (main.size[2] * dims[2]) / 2 + PHOTO_GAP);
-  setPhotoUv(front, box, {
-    minX: cx - w / 2,
-    maxX: cx + w / 2,
-    minY: cy - h / 2,
-    maxY: cy + h / 2,
-  });
+  body.computeBoundingBox();
+  const b = body.boundingBox;
+  if (b && !b.isEmpty() && front.getAttribute('position')) {
+    front.translate(0, 0, PHOTO_GAP);
+    setPhotoUv(front, box, { minX: b.min.x, maxX: b.max.x, minY: b.min.y, maxY: b.max.y });
+  }
   return { body, front };
+}
+
+/**
+ * The object's SAM outline as rings in photo fractions (0–1, y down), for the photo mask; null without an
+ * outline (box moved by the operator, mock) — then nothing is masked.
+ */
+export function photoMaskRings(
+  d: Pick<ApplianceDetection, 'outline'>
+): Array<Array<readonly [number, number]>> | null {
+  if (!d.outline) return null;
+  const rings = pathToRings(d.outline).filter((r) => r.length >= 3);
+  return rings.length ? rings : null;
 }
 
 /** Width and height of the object (largest = 1) from its box on a photo of `photoAspect` (w / h, pixels). */
