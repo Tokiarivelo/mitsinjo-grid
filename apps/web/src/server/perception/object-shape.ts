@@ -16,6 +16,7 @@ import type { PhotoForRegions } from './region';
 import { measurePerspective, type Perspective } from './perspective';
 import { measureRepetition, type GrayGrid, type Repetition } from './repetition';
 import { measureRoof, type RoofMeasure } from './roofline';
+import { confidence, mixColors, mixNumber, mixRecipe, pickCount } from './fusion';
 import { fitSilhouette } from './silhouette-fit';
 import { EDGE_COLUMNS, sampleObjectGray, sampleObjectPixels } from './shape-colors';
 import { cropForShape } from './shape-crop';
@@ -40,8 +41,8 @@ export function withMeasuredRoof(
 
 /**
  * Kit + houses in the row and windows per house (PF-T4), houses only (a flat building's window columns
- * are not houses). Units: the measured gables when ≥ 2 (seen directly), else the edge period, else
- * Spark's count. Windows: measured per house × units (≤ 8), else Spark's.
+ * are not houses). Units: the measured gables when ≥ 2 (seen directly), else the edge period when
+ * trusted (PF-T7, `R(P)` confidence ≥ ½) or Spark has no count, else Spark's count. Windows: measured per house × units (≤ 8), else Spark's.
  */
 export function withMeasuredRepetition(
   kit: ObjectKit,
@@ -51,7 +52,15 @@ export function withMeasuredRepetition(
   const repetition = measureRepetition(grid, kit.roof?.eave ?? 0.4);
   const gables = kit.roof?.gables.length ?? 0;
   const units =
-    gables >= 2 ? gables : repetition.units >= 2 ? repetition.units : kit.details?.units;
+    gables >= 2
+      ? gables
+      : repetition.units >= 2
+        ? pickCount(
+            repetition.units,
+            kit.details?.units,
+            confidence.repetition(repetition.strength)
+          )
+        : kit.details?.units;
   const details = { ...kit.details };
   if (units) details.units = units;
   if (repetition.windowsPerUnit) {
@@ -173,7 +182,13 @@ export async function runObjectShape(
       let built = found.recipe;
       let finalKit = found.kit;
       const px = found.kit ? await pixels : null;
-      const colors = found.kit && px ? measureKitColors(px, found.kit.archetype) : null;
+      const measuredColors = found.kit && px ? measureKitColors(px, found.kit.archetype) : null;
+      const conf = { colors: px ? confidence.colors(px.y.length) : 0, yaw: 0, fit: 0 };
+      // PF-T7: measured colours mixed with Spark's by mask coverage.
+      const colors =
+        found.kit && measuredColors
+          ? mixColors(measuredColors, found.kit.colors, conf.colors)
+          : null;
       if (found.kit && colors) {
         console.info(
           `[vision] 3D colours measured for "${target.label}" (${px!.y.length} px${target.outline ? ', outline' : ''}): ${colors.main} ${colors.secondary} ${colors.accent}`
@@ -209,6 +224,9 @@ export async function runObjectShape(
         );
       }
       const rings = target.outline ? pathToRings(target.outline).filter((r) => r.length >= 3) : [];
+      conf.yaw = persp ? confidence.perspective(persp.inliers) : 0;
+      // Spark gives no yaw: its prior is « facing the camera ».
+      const yaw0 = persp ? mixNumber(persp.yaw, 0, conf.yaw) : 0;
       const fit =
         finalKit && rings.length
           ? fitSilhouette({
@@ -216,16 +234,18 @@ export async function runObjectShape(
               rings,
               box: target.box,
               aspect,
-              yaw0: persp?.yaw ?? 0,
+              yaw0,
               canYaw: STRAIGHT.includes(finalKit.archetype),
             })
           : null;
+      const start = fitRecipe(built, aspect, yaw0);
+      conf.fit = fit ? confidence.fit(fit.iou) : 0;
+      const recipe = fit ? mixRecipe(fit.recipe, start, conf.fit) : start;
       if (fit) {
         console.info(
-          `[vision] 3D fit for "${target.label}": iou=${fit.iou} (start ${fit.iouStart}, ${fit.evals} evals)${finalKit?.details?.units ? ` units=${finalKit.details.units}` : ''} yaw=${Math.round(((fit.recipe.yaw ?? 0) * 180) / Math.PI)}°`
+          `[vision] 3D fit for "${target.label}": iou=${fit.iou} (start ${fit.iouStart}, ${fit.evals} evals) units=${finalKit?.details?.units ?? 1} yaw=${Math.round(((recipe.yaw ?? 0) * 180) / Math.PI)}° · confidence colours ${conf.colors}, yaw ${conf.yaw}, fit ${conf.fit}`
         );
       }
-      const recipe = fit?.recipe ?? fitRecipe(built, aspect, persp?.yaw ?? 0);
       const issue = recipeIssue(recipe);
       if (issue) {
         console.info(`[vision] 3D recipe for "${target.label}" rejected (${issue}), silhouette`);

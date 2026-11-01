@@ -16,7 +16,7 @@
 
 ## Next task
 
-- **3D fidelity (priority, user)**: plan `docs/tasks/PV-shape-fidelity.md`; PF-T1 (photo + SAM mask), PF-T2 (colours), PF-T3 (roofline → `prism` gables), PF-T4 (houses / windows, `repetition.ts`), PF-T5 (yaw), PF-T6 (fit, `silhouette-fit.ts`, `fit.iou`) done → PF-T7 fusion next.
+- **3D fidelity (priority, user)**: plan `docs/tasks/PV-shape-fidelity.md`; PF-T1 (photo + SAM mask), PF-T2 (colours), PF-T3 (roofline → `prism` gables), PF-T4 (houses / windows, `repetition.ts`), PF-T5 (yaw), PF-T6 (fit, `fit.iou`), PF-T7 (`fusion.ts` confidences) done → PF-T8 (SAM 3D explore, 1 h) next.
 - **Free placement** (user: « Sector » too static): plan `docs/tasks/PV-free-placement.md` (position + feeder, PP-T1…T8).
 - **PV-T14** copilot tools report `appliances`; then **PV-T11b** (usage-hours chart, `edit_appliance`). Not done: screenshots, `make e2e`.
 
@@ -35,6 +35,6 @@
 
 - PF-T3: `roofline.ts`, `withMeasuredRoof`, `KitRoof`, `prism`/`apex`, `unitPrism`, V57. Docs: contracts, copilot, PV-shape-fidelity.
 - PF-T4: `perception/repetition.ts`, `sampleObjectGray`, `withMeasuredRepetition`, `details.units`, V58.
-- PF-T6: `silhouette-fit.ts`, `nelder-mead.ts`, `ObjectShape.fit`, panel « match », V61.
+- PF-T6: `silhouette-fit.ts`, `nelder-mead.ts`, `ObjectShape.fit`, panel « match », V61. PF-T7: `fusion.ts`, V62.
 - Photo removed from 3D (V55/V59 rewritten); AI materials: `RECIPE_MATERIALS`, `kit.materials`, `surface-look.ts`, panel line, V60.
 - PF-T5: `perception/perspective.ts`, `measuredYaw`, `recipe.yaw`, `fitRecipe(…, yaw)`, `recipeMesh` rotateY, test fixture `render-facade.ts`, V59.
