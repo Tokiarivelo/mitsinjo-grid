@@ -5,6 +5,7 @@ import {
   fitRecipe,
   frontPartIndex,
   recipeIssue,
+  type DimStatus,
   type ObjectRecipe,
   type ObjectShape,
   type ShapeStep,
@@ -27,7 +28,7 @@ import {
   sampleObjectRgb,
 } from './shape-colors';
 import { conceptOf, fetchOutlineForBox } from './outline';
-import { applyConstraints } from './object-graph';
+import { applyConstraints, buildGraph } from './object-graph';
 import { cropForShape, cropRectForShape } from './shape-crop';
 import { extractSwatches } from './photo-swatches';
 import { withLatheBody } from './lathe-body';
@@ -250,12 +251,14 @@ export async function runObjectShape(
           `[vision] 3D colours measured for "${target.label}" (${px!.y.length} px${target.outline ? ', outline' : ''}): ${colors.main} ${colors.secondary} ${colors.accent}`
         );
       }
+      let roofMeasured = false;
       if (found.kit) {
         const { kit, measure } = withMeasuredRoof(
           colors ? { ...found.kit, colors } : found.kit,
           shaped,
           aspect
         );
+        roofMeasured = !!measure;
         if (measure) {
           console.info(
             `[vision] 3D roof measured for "${target.label}": ${measure.roof.gables.length} gables, pitch ${measure.pitch}°, eave ${measure.roof.eave}`
@@ -449,6 +452,39 @@ export async function runObjectShape(
       if (issue) {
         console.info(`[vision] 3D recipe for "${target.label}" rejected (${issue}), silhouette`);
         return silhouette(issue, source);
+      }
+      // PR-2.15: dimension statuses from the final measurements, never the LLM. Template and
+      // fit values read estimated, a single view never measures depth, the box-fit scale is
+      // estimated (metric scale arrives with free placement).
+      if (finalKit) {
+        const graph = buildGraph(finalKit.archetype, recipe, {
+          outline: !!shaped.outline,
+          photo: !!photo,
+          ...(partMasks?.length ? { masks: partMasks } : {}),
+          ...(photo
+            ? {
+                geom: {
+                  photoW: photo.width,
+                  photoH: photo.height,
+                  box: shaped.box,
+                  crop: cropRectForShape(photo.width, photo.height, shaped.box),
+                },
+              }
+            : {}),
+        });
+        const template: DimStatus = photo ? 'estimated' : 'unknown';
+        recipe = {
+          ...recipe,
+          parts: recipe.parts.map((p, i) => ({ ...p, status: graph.nodes[i]!.status })),
+          dimStatus: {
+            ...(finalKit.archetype === 'house'
+              ? { eave: roofMeasured ? ('measured' as const) : template }
+              : {}),
+            depth: template,
+            yaw: conf.yaw > 0 ? ('measured' as const) : template,
+            scale: template,
+          },
+        };
       }
       if (photo) {
         try {

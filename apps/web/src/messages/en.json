@@ -864,7 +864,22 @@
         "foliage": "leaves",
         "water": "water"
       },
-      "model3dFit": "Matches the photo outline: {pct}"
+      "model3dFit": "Matches the photo outline: {pct}",
+      "model3dDims": "Dimensions: {list}",
+      "model3dParts": "Parts: {list}",
+      "model3dDimStatus": {
+        "measured": "measured",
+        "estimated": "estimated",
+        "inferred": "inferred",
+        "unknown": "unknown"
+      },
+      "model3dDim": {
+        "eave": "roof",
+        "depth": "depth",
+        "yaw": "orientation",
+        "scale": "scale"
+      },
+      "model3dHiddenNote": "Some parts are hidden in the photo: they are inferred, not measured."
     }
   },
   "copilot": {

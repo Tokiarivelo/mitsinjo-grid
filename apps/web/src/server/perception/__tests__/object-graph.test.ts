@@ -50,8 +50,17 @@ describe('buildGraph (PR-2.14)', () => {
   });
 
   it('statuses: measured, estimated, inferred, unknown', () => {
+    // On measured structure (outline), template parts are derived, not guessed.
     const plain = buildGraph('house', houseRecipe(), { outline: true });
     expect(plain.nodes.map((n) => n.status)).toEqual([
+      'inferred',
+      'inferred',
+      'inferred',
+      'inferred',
+    ]);
+    // Photo but nothing measured: pure priors.
+    const priors = buildGraph('house', houseRecipe(), { photo: true });
+    expect(priors.nodes.map((n) => n.status)).toEqual([
       'estimated',
       'estimated',
       'estimated',
@@ -71,7 +80,7 @@ describe('buildGraph (PR-2.14)', () => {
     };
     const statuses = buildGraph('house', twin, { outline: true }).nodes.map((n) => n.status);
     expect(statuses[4]).toBe('inferred');
-    expect(statuses[2]).toBe('estimated');
+    expect(statuses[2]).toBe('inferred');
   });
 
   it('outline-derived bodies read measured, template lathes estimated', () => {
@@ -121,7 +130,7 @@ describe('buildGraph (PR-2.14)', () => {
         },
       ],
     };
-    expect(buildGraph('tank', tank, { outline: true }).nodes[0]!.status).toBe('estimated');
+    expect(buildGraph('tank', tank, { outline: true }).nodes[0]!.status).toBe('inferred');
   });
 });
 

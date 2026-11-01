@@ -1,11 +1,12 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-01 (PR-2.14 done, PR-2.15 new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-01 (PR-2.15 done, PR-2.16 new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
-- Committed through `6b38a6d` (PR-0.8). Uncommitted: PR-2.14. Standing: commit each, unsigned fallback, always continue.
+- Committed through PR-2.14. Uncommitted: PR-2.15. Standing: commit each, unsigned fallback, always continue.
 - User ordered: do ALL planned tasks, then a full image-recognition + imagined-3D investigation.
+- **PR-2.15 done:** DimStatus on parts + recipe (pipeline stamping), panel Dim/Parts lines (fr/en/mg), report Status col. Goldens identical + Status (car M1 I11).
 - **PR-2.14 done:** `object-graph.ts` — graph (parents + 4 statuses), constraint pass after wheels/panels/chimney/fit (rescore on fix), Viol column in report (0 everywhere). Goldens identical.
 - **PR-0.8 done:** landmark term (0.35/0.3/0.2/0.15); live-car e2e 0.95, 90 → 91; goldens identical.
 - **PR-2.12/2.13 done:** shared yaw gates (0.3/1.05), house backs mirror ≤ 17°; loop pass clean (mean 93).
@@ -17,8 +18,8 @@
 
 ## Next task
 
-- **Commit** PR-2.14 (`feat(web)`), then **PR-2.15 dimension status** (status on recipe, panel shows measured/estimated…, hidden-under-photo note, FR/EN/MG; test: i18n + status shown).
-- Then 2.16 hidden sides → 2.17 openings → 2.18 edits (+ pass), S3/S4 as unblocked, PR-5.1/5.2 docs.
+- **Commit** PR-2.15 (`feat(web)`), then **PR-2.16 hidden-side deduction** (graph + yaw → inferred backs/windows/far slope; test: house backs already ship? extend to vehicles/openings).
+- Then 2.17 openings → 2.18 edits (+ pass), S3/S4 as unblocked, PR-5.1/5.2 docs.
 - Blocked on Meta (probe when reached): PR-0.4, PR-0.5, PR-0.6-live, PR-3.1, PR-3.4, PR-4.x.
 - Free placement PP-T1…T8. PV-T14 + PV-T11b.
 

@@ -35,12 +35,26 @@ describe('shape report (PR-0.3)', () => {
 
   it('writes one row per object, the means and the next object to fix', () => {
     const rows: ReportRow[] = [
-      { name: 'fridge', score: score({ score: 97 }), parts: 3, ms: 40, violations: 0 },
-      { name: 'car', score: score({ score: 60, edgeF1: 0.4 }), parts: 7, ms: 80, violations: 2 },
+      {
+        name: 'fridge',
+        score: score({ score: 97 }),
+        parts: 3,
+        ms: 40,
+        violations: 0,
+        statusCounts: { measured: 1, estimated: 1, inferred: 1, unknown: 0 },
+      },
+      {
+        name: 'car',
+        score: score({ score: 60, edgeF1: 0.4 }),
+        parts: 7,
+        ms: 80,
+        violations: 2,
+        statusCounts: { measured: 0, estimated: 0, inferred: 5, unknown: 2 },
+      },
     ];
     const md = reportMarkdown(rows, '2026-11-01');
     expect(md).toContain('| car | 60 | 0.9 ✓ | 0.4 ✗ |');
-    expect(md).toContain('| 80 | 2 | edgeF1 |');
+    expect(md).toContain('| 80 | 2 | I5 U2 | edgeF1 |');
     expect(md).toContain('| **mean** | 79 |');
     expect(md).toContain('**Next:** car (score 60) — edgeF1');
   });
@@ -76,12 +90,15 @@ describe.runIf(process.env.SHAPE_REPORT)('make shape-report', () => {
       const recipe = shape.recipe!;
       const s = await scoreRecipe(photo, target, recipe);
       if (!s) continue;
+      const statusCounts = { measured: 0, estimated: 0, inferred: 0, unknown: 0 };
+      for (const p of recipe.parts) statusCounts[p.status ?? 'unknown'] += 1;
       rows.push({
         name: c.name,
         score: s.score,
         parts: recipe.parts.length,
         ms,
         violations: checkConstraints(c.prior.archetype, recipe),
+        statusCounts,
       });
       recipes.push({ name: c.name, recipe });
       sheet.push({

@@ -3,6 +3,7 @@ import 'server-only';
 import type { KitArchetype } from '@/lib/object-kit';
 import {
   frontPartIndex,
+  type DimStatus,
   type ObjectRecipe,
   type PartMask,
   type RecipePart,
@@ -11,13 +12,6 @@ import { isChimneyStack } from './mask-chimney';
 import { isWheelPart, PART_MIRROR_MIN_Z, roofTopAbove, type MaskMapGeom } from './mask-geometry';
 import { vehicleShell } from './mask-panels';
 import { buildLandmarks } from './score-shape';
-
-/**
- * How a graph node's placement was determined (PR-2.14; surfaced in PR-2.15): measured from the
- * photo (outline bodies, mask-matched parts), estimated from the fitted template, inferred without
- * direct measurement (mirrored far sides), or unknown (no photo evidence at all).
- */
-export type DimStatus = 'measured' | 'estimated' | 'inferred' | 'unknown';
 
 export interface GraphNode {
   index: number;
@@ -36,6 +30,8 @@ export interface GraphEvidence {
   outline?: boolean;
   masks?: ReadonlyArray<PartMask>;
   geom?: MaskMapGeom;
+  /** A photo was available at all (without one every template prior reads unknown). */
+  photo?: boolean;
 }
 
 /** Thin face plate (glass, door, decal): a box ≤ 0.05 deep that is not the main body. */
@@ -92,7 +88,7 @@ export function buildGraph(
       measured.add(lm.part);
     }
   }
-  const hasEvidence = !!evidence?.outline || (evidence?.masks?.length ?? 0) > 0;
+  const measuredStructure = !!evidence?.outline || (evidence?.masks?.length ?? 0) > 0;
   const roofs = recipe.parts.filter(
     (p) =>
       p !== main &&
@@ -130,8 +126,11 @@ export function buildGraph(
       recipe.parts.some((q) => q !== p && q.at[2] > 0 && isMirrorTwin(p, q))
     ) {
       status = 'inferred';
+    } else if (measuredStructure) {
+      // Template part placed on measured structure (fitted body, outline): derived, not guessed.
+      status = 'inferred';
     } else {
-      status = hasEvidence ? 'estimated' : 'unknown';
+      status = evidence?.photo ? 'estimated' : 'unknown';
     }
     return { index: i, parent, status };
   });

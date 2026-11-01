@@ -864,7 +864,22 @@
         "foliage": "ravina",
         "water": "rano"
       },
-      "model3dFit": "Mifanaraka amin'ny sisin'ny sary: {pct}"
+      "model3dFit": "Mifanaraka amin'ny sisin'ny sary: {pct}",
+      "model3dDims": "Habe: {list}",
+      "model3dParts": "Ampahany: {list}",
+      "model3dDimStatus": {
+        "measured": "voarefy",
+        "estimated": "tombanana",
+        "inferred": "heverina",
+        "unknown": "tsy fantatra"
+      },
+      "model3dDim": {
+        "eave": "tafo",
+        "depth": "halalana",
+        "yaw": "fihodinana",
+        "scale": "refy"
+      },
+      "model3dHiddenNote": "Misy ampahany miafina amin'ny sary: heverina fa tsy voarefy."
     }
   },
   "copilot": {

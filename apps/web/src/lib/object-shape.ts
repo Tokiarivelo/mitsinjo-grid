@@ -77,11 +77,21 @@ const unitPoint = z.tuple([z.number().min(-0.5).max(0.5), z.number().min(-0.5).m
 /** Lathe profile point: [radius 0–0.5, height −0.5–0.5], revolved around y. */
 const unitProfilePoint = z.tuple([z.number().min(0).max(0.5), z.number().min(-0.5).max(0.5)]);
 
+/**
+ * How a part or dimension was determined (PR-2.14, stored PR-2.15): measured from the photo
+ * (outline, masks), estimated from the fitted template, inferred without direct measurement
+ * (mirrored far sides), or unknown (no photo evidence). Computed, never from the LLM.
+ */
+export const DimStatusSchema = z.enum(['measured', 'estimated', 'inferred', 'unknown']);
+export type DimStatus = z.infer<typeof DimStatusSchema>;
+
 export const RecipePartSchema = z
   .object({
     shape: z.enum(RECIPE_SHAPES),
     at: z.tuple([coord, coord, coord]),
     size: z.tuple([extent, extent, extent]),
+    /** How this part's placement was determined (PR-2.15); absent on older shapes. */
+    status: DimStatusSchema.optional(),
     /** Axis of a cylinder or cone (default `y`). */
     axis: z.enum(['x', 'y', 'z']).optional(),
     /** Prism only: x of the ridge, share of the part width from its left edge (default 0.5). */
@@ -118,6 +128,15 @@ export const ObjectRecipeSchema = z.object({
   yaw: z.number().min(-MAX_YAW).max(MAX_YAW).optional(),
   /** One tileable 64 px photo swatch per material (PR-1.5), base64 data URL (≤ 8 kB each). */
   swatches: z.record(RecipeMaterialSchema, z.string()).optional(),
+  /** How the key dims were determined (PR-2.15); eave on houses only, absent on older shapes. */
+  dimStatus: z
+    .object({
+      eave: DimStatusSchema.optional(),
+      depth: DimStatusSchema.optional(),
+      yaw: DimStatusSchema.optional(),
+      scale: DimStatusSchema.optional(),
+    })
+    .optional(),
 });
 export type ObjectRecipe = z.infer<typeof ObjectRecipeSchema>;
 

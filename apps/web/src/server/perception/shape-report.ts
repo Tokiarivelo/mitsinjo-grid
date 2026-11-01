@@ -21,6 +21,25 @@ export interface ReportRow {
   ms: number;
   /** Coherence violations of the shipped recipe (PR-2.14); always 0 when clean. */
   violations: number;
+  /** Part dimension statuses, non-zero counts (PR-2.15). */
+  statusCounts: { measured: number; estimated: number; inferred: number; unknown: number };
+}
+
+/** Compact counts cell: `M1 I11` (zeros omitted). */
+function statusCell(c: ReportRow['statusCounts']): string {
+  return (
+    (
+      [
+        ['M', c.measured],
+        ['E', c.estimated],
+        ['I', c.inferred],
+        ['U', c.unknown],
+      ] as const
+    )
+      .filter(([, n]) => n > 0)
+      .map(([k, n]) => `${k}${n}`)
+      .join(' ') || '—'
+  );
 }
 
 type Metric = 'iou' | 'edgeF1' | 'deltaE';
@@ -51,21 +70,21 @@ export function reportMarkdown(rows: ReportRow[], date: string): string {
     '',
     `Stop criteria: IoU ≥ ${STOP.iou} · edge F1 ≥ ${STOP.edgeF1} · ΔE ≤ ${STOP.deltaE}. Sheet: \`contact-sheet.png\` (photo | flat | ¾).`,
     '',
-    '| Object | Score | IoU | Edge F1 | ΔE | Parts | ms | Viol | Worst |',
-    '| ------ | ----- | --- | ------- | -- | ----- | -- | ---- | ----- |',
+    '| Object | Score | IoU | Edge F1 | ΔE | Parts | ms | Viol | Status | Worst |',
+    '| ------ | ----- | --- | ------- | -- | ----- | -- | ---- | ------ | ----- |',
   ];
   for (const r of rows) {
     const s = r.score;
     const w = worstMetric(s);
     lines.push(
       `| ${r.name} | ${s.score} | ${s.iou} ${ok(s.iou >= STOP.iou)} | ${s.edgeF1} ${ok(s.edgeF1 >= STOP.edgeF1)} | ` +
-        `${s.deltaE} ${ok(s.deltaE <= STOP.deltaE)} | ${r.parts} | ${Math.round(r.ms)} | ${r.violations} | ${w.gap > 0 ? w.metric : '—'} |`
+        `${s.deltaE} ${ok(s.deltaE <= STOP.deltaE)} | ${r.parts} | ${Math.round(r.ms)} | ${r.violations} | ${statusCell(r.statusCounts)} | ${w.gap > 0 ? w.metric : '—'} |`
     );
   }
   const avg = (f: (s: ModelScore) => number) => mean(rows.map((r) => f(r.score)));
   lines.push(
     `| **mean** | ${Math.round(avg((s) => s.score))} | ${avg((s) => s.iou).toFixed(2)} | ` +
-      `${avg((s) => s.edgeF1).toFixed(2)} | ${avg((s) => s.deltaE).toFixed(1)} | | | | |`,
+      `${avg((s) => s.edgeF1).toFixed(2)} | ${avg((s) => s.deltaE).toFixed(1)} | | | | | |`,
     ''
   );
   const worst = rows.reduce<ReportRow | null>(

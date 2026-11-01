@@ -864,7 +864,22 @@
         "foliage": "feuillage",
         "water": "eau"
       },
-      "model3dFit": "Correspond au contour de la photo : {pct}"
+      "model3dFit": "Correspond au contour de la photo : {pct}",
+      "model3dDims": "Dimensions : {list}",
+      "model3dParts": "Pièces : {list}",
+      "model3dDimStatus": {
+        "measured": "mesuré",
+        "estimated": "estimé",
+        "inferred": "inféré",
+        "unknown": "inconnu"
+      },
+      "model3dDim": {
+        "eave": "toiture",
+        "depth": "profondeur",
+        "yaw": "orientation",
+        "scale": "échelle"
+      },
+      "model3dHiddenNote": "Des parties sont cachées sur la photo : elles sont inférées, pas mesurées."
     }
   },
   "copilot": {

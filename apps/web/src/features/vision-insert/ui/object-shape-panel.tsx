@@ -7,10 +7,12 @@ import {
   Check,
   Circle,
   Eye,
+  EyeOff,
   Layers,
   Loader2,
   Move3d,
   RotateCcw,
+  Ruler,
   Sparkles,
   Target,
 } from 'lucide-react';
@@ -20,6 +22,8 @@ import { useTranslations } from '@/lib/i18n';
 import {
   SHAPE_STEPS,
   SHAPE_TIMEOUT_MS,
+  type DimStatus,
+  type ObjectRecipe,
   type ObjectShape,
   type ShapeStep,
 } from '@/lib/object-shape';
@@ -52,6 +56,64 @@ const NOTE_KEY: Record<NonNullable<ObjectShape['reason']>, string> = {
 
 /** `http_429` → `HTTP 429`; other causes as sent. */
 const causeText = (detail: string) => detail.replace(/^http_/, 'HTTP ');
+
+const DIM_ORDER = ['eave', 'depth', 'yaw', 'scale'] as const;
+const DIM_STATUS_ORDER: ReadonlyArray<DimStatus> = ['measured', 'estimated', 'inferred', 'unknown'];
+
+/**
+ * « Dimensions : mesuré — toiture · estimé — profondeur… » + hidden-parts note (PR-2.15):
+ * which key dims the photo measured, estimated or inferred. Unknown dims show in dev only;
+ * parts hidden under the photo (inferred) always earn their note.
+ */
+function DimStatusLine({ recipe }: { recipe: ObjectRecipe }) {
+  const t = useTranslations('features.visionInsert');
+  const dims = recipe.dimStatus;
+  if (!dims) return null;
+  const showUnknown = process.env.NODE_ENV === 'development';
+  const groups = DIM_STATUS_ORDER.map((status) => ({
+    status,
+    dims: DIM_ORDER.filter((d) => dims[d] === status && (status !== 'unknown' || showUnknown)),
+  })).filter((g) => g.dims.length > 0);
+  const partGroups = DIM_STATUS_ORDER.map((status) => ({
+    status,
+    count: recipe.parts.filter((p) => p.status === status).length,
+  })).filter((g) => g.count > 0 && (g.status !== 'unknown' || showUnknown));
+  const hidden = recipe.parts.some((p) => p.status === 'inferred');
+  if (groups.length === 0 && partGroups.length === 0 && !hidden) return null;
+  return (
+    <>
+      {groups.length > 0 && (
+        <p className="flex items-start gap-1.5 text-xs text-text-secondary">
+          <Ruler className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+          {t('model3dDims', {
+            list: groups
+              .map(
+                (g) =>
+                  `${t(`model3dDimStatus.${g.status}`)} — ${g.dims.map((d) => t(`model3dDim.${d}`)).join(', ')}`
+              )
+              .join(' · '),
+          })}
+        </p>
+      )}
+      {partGroups.length > 0 && (
+        <p className="flex items-start gap-1.5 text-xs text-text-secondary">
+          <Box className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+          {t('model3dParts', {
+            list: partGroups
+              .map((g) => `${t(`model3dDimStatus.${g.status}`)} : ${g.count}`)
+              .join(' · '),
+          })}
+        </p>
+      )}
+      {hidden && (
+        <p className="flex items-start gap-1.5 text-xs text-text-muted">
+          <EyeOff className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+          {t('model3dHiddenNote')}
+        </p>
+      )}
+    </>
+  );
+}
 
 /** Live list of the server steps (crop → Spark → fit), current one spinning with its seconds. */
 function ShapeSteps({ step, seconds }: { step: ShapeStep; seconds: number }) {
@@ -339,6 +401,7 @@ export function ObjectShapePanel({
           })}
         </p>
       )}
+      {ready && shape.mode === 'recipe' && shape.recipe && <DimStatusLine recipe={shape.recipe} />}
       {ready && webgl && (
         <p className="flex items-center gap-1.5 text-xs text-text-muted">
           <Move3d className="h-3 w-3 shrink-0" aria-hidden="true" />

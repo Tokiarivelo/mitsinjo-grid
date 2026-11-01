@@ -341,6 +341,11 @@ describe('withMaskPanels (PR-2.7)', () => {
     };
     const plain = await runObjectShape(spark, photo, 'data:full', target);
     expect(plain.mode).toBe('recipe');
+    // No locator masks: every part stamped, wheels inferred (outline evidence), never measured.
+    expect(plain.recipe!.parts.every((p) => p.status !== undefined)).toBe(true);
+    const plainWheels = plain.recipe!.parts.filter((p) => p.shape === 'cylinder');
+    expect(plainWheels.length).toBeGreaterThan(0);
+    expect(plainWheels.every((p) => p.status === 'inferred')).toBe(true);
     // Two window masks splitting the shell side (self-consistent: thirds of its span).
     const box = target.box;
     const geom: MaskMapGeom = {
@@ -447,5 +452,13 @@ describe('withMaskPanels (PR-2.7)', () => {
       `[test] car landmarks: ${withLm.score.landmark}, score ${withoutLm.score.score} → ${withLm.score.score}`
     );
     expect(withLm.score.score).toBeGreaterThanOrEqual(withoutLm.score.score - 2);
+    // Statuses (PR-2.15): every part stamped, measured glass, template dims estimated.
+    expect(measured.recipe!.parts.every((p) => p.status !== undefined)).toBe(true);
+    const glass = measured.recipe!.parts.filter(
+      (p) => p.shape === 'box' && p.size[2] === 0.02 && p.at[2]! > 0
+    );
+    expect(glass.length).toBeGreaterThan(0);
+    expect(glass.every((p) => p.status === 'measured')).toBe(true);
+    expect(measured.recipe!.dimStatus).toMatchObject({ depth: 'estimated', scale: 'estimated' });
   });
 });

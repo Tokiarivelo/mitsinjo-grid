@@ -215,4 +215,50 @@ describe('ObjectShapePanel (PV-T10)', () => {
     // Validated already: no second validate button on the views tab.
     expect(screen.queryByRole('button', { name: 'Validate & Generate 3D model' })).toBeNull();
   });
+
+  it('statuses (PR-2.15): dims grouped by status + hidden note for inferred parts', () => {
+    const s = shape('recipe');
+    s.recipe = {
+      proportions: { w: 1, h: 0.6, d: 0.5 },
+      parts: [
+        {
+          shape: 'box',
+          at: [0, 0, 0],
+          size: [1, 1, 1],
+          color: '#aaaaaa',
+          front: true,
+          status: 'estimated',
+        },
+        {
+          shape: 'box',
+          at: [0, 0, 0.505],
+          size: [0.1, 0.1, 0.02],
+          color: '#2222bb',
+          status: 'measured',
+        },
+        {
+          shape: 'box',
+          at: [0, 0, -0.505],
+          size: [0.1, 0.1, 0.02],
+          color: '#2222bb',
+          status: 'inferred',
+        },
+      ],
+      dimStatus: { eave: 'measured', depth: 'estimated', yaw: 'estimated', scale: 'estimated' },
+    };
+    renderPanel({ shape: s });
+    expect(
+      screen.getByText('Dimensions: measured — roof · estimated — depth, orientation, scale')
+    ).toBeTruthy();
+    expect(screen.getByText('Parts: measured : 1 · estimated : 1 · inferred : 1')).toBeTruthy();
+    expect(
+      screen.getByText('Some parts are hidden in the photo: they are inferred, not measured.')
+    ).toBeTruthy();
+  });
+
+  it('no statuses: no dims line, no hidden note', () => {
+    renderPanel({ shape: shape('recipe') });
+    expect(screen.queryByText(/Dimensions:/)).toBeNull();
+    expect(screen.queryByText(/hidden in the photo/)).toBeNull();
+  });
 });
