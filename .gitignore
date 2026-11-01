@@ -20,6 +20,8 @@ next-env.d.ts
 # ── Tests & coverage ──────────────────────────
 coverage/
 test-results/
+# Live 3D captures: user photos, not shareable (PR-0.4; the report skips missing ones)
+apps/web/src/server/perception/__fixtures__/shape/real/
 playwright-report/
 blob-report/
 playwright/.cache/

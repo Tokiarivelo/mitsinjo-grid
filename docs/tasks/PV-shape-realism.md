@@ -53,6 +53,9 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
       contact sheet (sharp composite). Gitignored output.
 - [ ] **PR-0.4 Capture.** `make shape-capture PHOTO=… ID=…`: one live run that saves crop, SAM outline, Spark kit and
       part masks as JSON fixtures, so the loop replays offline (no API cost per iteration).
+      Machinery done 2026-11-01 (`shape-capture.ts`: kit hook, crop remap, write/read/offline rescore, all tested;
+      fixtures in gitignored `__fixtures__/shape/real/`): no live fixture yet — Meta too slow on 2026-11-01
+      (SAM aborts, Spark > 150 s, 5 attempts). Re-run the command when Meta is back, then tick this box.
 - [ ] **PR-0.6 Spark critic** (user, 2026-11-01: the Meta model must help the render match the selected box).
       Crop | `renderFlat` PNG side by side + kit + scores → Spark → kit JSON patch → re-fit, keep if `scoreModel`
       rises. Live: 1 round when score < 70 and ≥ 20 s left; offline on captures: ≤ 3 rounds. Mock: no patch.

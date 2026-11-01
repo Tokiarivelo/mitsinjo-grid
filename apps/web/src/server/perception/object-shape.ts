@@ -104,6 +104,8 @@ export interface ObjectShapeOptions {
   onStep?: (step: ShapeStep) => void;
   /** Whether to render the 6 canonical 2D imagined views (defaults to false so core math stays in budget). */
   withViews?: boolean;
+  /** Observes Spark's kit answer when present (PR-0.4 capture; routes leave this unset). */
+  onKit?: (kit: ObjectKit) => void;
 }
 
 /**
@@ -122,7 +124,7 @@ export async function runObjectShape(
   photo: PhotoForRegions | null,
   fullImageUrl: string,
   target: ShapeTarget,
-  { signal, timeoutMs = SHAPE_TIMEOUT_MS, onStep, withViews }: ObjectShapeOptions = {}
+  { signal, timeoutMs = SHAPE_TIMEOUT_MS, onStep, withViews, onKit }: ObjectShapeOptions = {}
 ): Promise<ObjectShape> {
   const base = { detectionId: target.id };
   const silhouette = (
@@ -172,6 +174,7 @@ export async function runObjectShape(
       signal ? AbortSignal.any([signal, timeout]) : timeout
     );
     const seconds = ((Date.now() - started) / 1000).toFixed(1);
+    if (found.kit) onKit?.(found.kit);
     const source = {
       source: found.source,
       model: found.model,

@@ -1,31 +1,29 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-01 (PR-0.7 6-angle preview + validation, tree canopy, typecheck/lint green) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-01 (PR-0.4 machinery, Meta outage, S2 next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
-- Plan `docs/tasks/PV-vision-insert.md`: PV-T1…T13 done. Plan `docs/tasks/PV-shape-realism.md`: PR-0.1…PR-1.6, PR-3.2…3.3, **PR-0.7** done.
-- **PR-0.7 (user):** `POST /api/vision/views` renders the archetype template (measured colours, box proportions, no Spark) at 6 angles; panel shows a carousel first, « Validate & Generate 3D » builds the model; after build, tabs Model | 6 views (`shape.imaginedViews`, `withViews` in shape route).
-- **Quality:** tree template = 5-sphere multi-tier canopy; tree score 88 → 89, car steady 92, mean 90 (IoU 0.96, edge F1 0.84, ΔE 3.3). Views are score-neutral (rendered from the recipe).
-- **Fixes:** shape-route no-watts test now strips base64 PNGs (false `kw` match) + asserts 6 views; `ImaginedViewsResponseSchema` added; hook caches previews per `shapeKey`.
-- **Checks:** `make typecheck` ✓, `make lint` ✓, `make check-i18n` ✓, `make format-check` ✓, `make test-shape` ✓ (5/5), `make shape-report` ✓. Touched-area tests green (panel, hook, views, shape-route). Full parallel suite flakes on image-heavy tests (timeouts, 1 GB free RAM: model-score, golden-shape fail in different runs, all pass alone). Engine 264/264 ✓.
+- `18f20a4` committed (PR-0.7, unsigned: sandbox blocks GPG). Tree has PR-0.4 machinery uncommitted.
+- **PR-0.4 machinery done, box open:** `shape-capture.ts` (`onKit` hook, `cropRectForShape`, remap, write/read/`rescoreCapture`), `make shape-capture PHOTO=… ID=…`, fixtures in gitignored `__fixtures__/shape/real/`. Unit tests green (round-trip + offline rescore iou > 0.6).
+- **Meta outage 2026-11-01:** SAM aborts, Spark > 150 s (5 attempts, capture refuses mock/silhouette correctly). No live fixture yet; re-run when Meta is back. PR-0.5/PR-0.6-live also blocked on this.
+- Scores unchanged (crop refactor is behaviour-identical, `test-shape` 5/5).
 
 ## Next task
 
-- **Commit** this branch (staged + unstaged 6-angle work from two agents; e2e does not cover /village, manual V68–V69).
-- **3D realism:** `docs/tasks/PV-shape-realism.md` → PR-0.4 Capture / PR-0.6 Spark critic; then S2 (PR-2.1 `extrude`, PR-2.2 profile body); S4 (Muse Image multi-view → hull) is the structural fix for « toy look ».
-- **Free placement**: `docs/tasks/PV-free-placement.md` (PP-T1…T8). **PV-T14** copilot tools report `appliances`; then **PV-T11b** (usage-hours chart).
+- **Commit** PR-0.4 machinery, then **S2 shape (no live dependency, attacks « toy look »)**: `docs/tasks/PV-shape-realism.md` → **PR-2.1 `extrude`** (polygon slab + bevel, raster support) then **PR-2.2 profile body** (SAM outline extruded for vehicle/cabinet/machine).
+- Then S2 rest (lathe, part masks, wheels/windows, fit v2), PR-0.6 Spark critic, S4 bet.
+- **Free placement**: `docs/tasks/PV-free-placement.md` (PP-T1…T8). **PV-T14** + **PV-T11b**.
 
 ## Decisions taken
 
-- Preview renders the template, not Muse Image views (cheap, offline, score-neutral); S4 stays the real multi-view bet.
-- Preview colours measured on the crop (fallback neutral greys); proportions from the detection box.
-- Views tab forced before the 3D exists (validation flow); user tab choice respected once built, reset per object.
-- No `window.__*` hooks; peer-session messaging unavailable (unsupported_intent), continued solo.
+- Capture refuses mock/silhouette (a fixture must be a real recipe); live runner gets 150 s (routes keep 60 s).
+- `cropRectForShape` pure in `shape-crop.ts`, `cropForShape` delegates (identical bytes, proven by test).
+- Fixture = `<id>.capture.json` (target, kit, recipe, remapped cropTarget, empty partMasks slot) + `<id>.crop.jpg` (exact bytes Spark saw).
+- `__fixtures__/shape/real/` gitignored (user photos, plan-anticipated); report skips missing ones.
 
 ## Files touched this session
 
-- `app/api/vision/views/route.ts` (measured colours), `lib/object-shape.ts` (views response schema).
-- `hooks/use-object-shape.ts` (`requestViews` + cache), `ui/object-shape-panel.tsx` (tabs + validation), `ui/village-editor-page.tsx` (wiring).
-- Tests: `use-object-shape.test.ts`, `object-shape-panel.test.tsx`, `shape-route.test.ts`; i18n `model3dViewsLoading` en/fr/mg.
-- Docs: `contracts.md`, `PV-shape-realism.md` (PR-0.7 + loop row), `test-scenarios/06-village.md` (V68–V69).
+- New: `server/perception/shape-capture.ts`, `__tests__/shape-capture.test.ts`.
+- `server/perception/object-shape.ts` (`onKit`), `server/perception/shape-crop.ts` (rect refactor).
+- `Makefile` (`shape-capture`), `.gitignore` (real/), `docs/tasks/PV-shape-realism.md` (PR-0.4 note).
