@@ -30,7 +30,6 @@
   Units = gables (≥ 2) > roof-band edge period > Spark; never on a flat `building`; 12-part budget trims windows first.
 - Perspective: model turned by yaw (no homography); dead zone 6°.
 - No photo on the 3D model (user, 2026-11-01): `recipeMesh` / `silhouetteMesh` return one geometry; `photo-mask.ts` removed.
-- Free placement: visual `position` separate from the feeder `sector`; engine sectors stay 6 (plan only).
 
 ## Files touched this session
 
