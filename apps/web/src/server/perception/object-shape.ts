@@ -8,8 +8,11 @@ import {
   type ShapeStep,
   type ShapeTarget,
 } from '@/lib/object-shape';
+import { kitToRecipe } from '@/lib/object-kit';
 import type { PerceptionClient } from './client';
+import { measureKitColors, type ObjectPixels } from './color-measure';
 import type { PhotoForRegions } from './region';
+import { sampleObjectPixels } from './shape-colors';
 import { cropForShape } from './shape-crop';
 
 export { SHAPE_TIMEOUT_MS };
@@ -23,7 +26,8 @@ export interface ObjectShapeOptions {
 
 /**
  * Selected object → its 3D shape (PV-T9), Meta models only. One Spark call on a crop around the object
- * returns a parts recipe, fitted to the photo box (`fitRecipe`). Fallbacks → `silhouette` mode, built in
+ * returns a kit → parts recipe, fitted to the photo box (`fitRecipe`). Colours are measured on the photo
+ * pixels inside the SAM outline while Spark thinks (PF-T2), and replace Spark's guessed colours. Fallbacks → `silhouette` mode, built in
  * the browser from the SAM outline (no extra call), with a precise `reason`: `timeout` (past
  * `SHAPE_TIMEOUT_MS`), `provider_error` + `detail` (`http_429`…), `spend_cap`, `malformed`, `no_body`.
  * Mock mode: fixed recipe per category, not checked. Never throws.
@@ -53,6 +57,13 @@ export async function runObjectShape(
         console.warn('[vision] shape crop failed, sending the whole photo:', err);
       }
     }
+    // Pixels sampled in parallel with Spark (sharp, a few ms); a failure only keeps Spark's colours.
+    const pixels: Promise<ObjectPixels | null> = photo
+      ? sampleObjectPixels(photo, target.box, target.outline).catch((err) => {
+          console.warn('[vision] colour sample failed:', err instanceof Error ? err.message : err);
+          return null;
+        })
+      : Promise.resolve(null);
     onStep?.('model');
     const started = Date.now();
     const timeout = AbortSignal.timeout(timeoutMs);
@@ -83,7 +94,16 @@ export async function runObjectShape(
     onStep?.('fit');
     if (!found.recipe) return silhouette('malformed', source);
     if (found.source === 'meta') {
-      const recipe = fitRecipe(found.recipe, aspect);
+      let built = found.recipe;
+      const px = found.kit ? await pixels : null;
+      const colors = found.kit && px ? measureKitColors(px, found.kit.archetype) : null;
+      if (found.kit && colors) {
+        built = kitToRecipe({ ...found.kit, colors });
+        console.info(
+          `[vision] 3D colours measured for "${target.label}" (${px!.y.length} px${target.outline ? ', outline' : ''}): ${colors.main} ${colors.secondary} ${colors.accent}`
+        );
+      }
+      const recipe = fitRecipe(built, aspect);
       const issue = recipeIssue(recipe);
       if (issue) {
         console.info(`[vision] 3D recipe for "${target.label}" rejected (${issue}), silhouette`);

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ObjectKitSchema } from '@/lib/object-kit';
 import { ObjectRecipeSchema } from '@/lib/object-shape';
 import { ApplianceDetectionSchema } from '@/lib/vision';
 
@@ -98,6 +99,8 @@ export type SegmentResult = z.infer<typeof SegmentResultSchema>;
 /** Spark's 3D recipe of one object (PV-T9); null when the reply was not usable. */
 export const ShapeResultSchema = PerceptionSourceSchema.extend({
   recipe: ObjectRecipeSchema.nullable(),
+  /** Spark's kit behind `recipe` (Meta only): the server rebuilds the recipe with measured colours (PF-T2). */
+  kit: ObjectKitSchema.optional(),
 });
 export type ShapeResult = z.infer<typeof ShapeResultSchema>;
 

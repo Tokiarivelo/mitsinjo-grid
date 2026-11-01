@@ -52,6 +52,9 @@ export const ObjectRecipeSchema = z.object({
 export type ObjectRecipe = z.infer<typeof ObjectRecipeSchema>;
 
 /** What the browser sends to `/api/vision/shape` about the selected object. */
+/** Longest SAM outline sent with a shape request (characters). */
+export const SHAPE_OUTLINE_MAX = 20_000;
+
 export const ShapeTargetSchema = z.object({
   id: z.string().min(1).max(64),
   label: z.string().min(1).max(40),
@@ -59,6 +62,8 @@ export const ShapeTargetSchema = z.object({
   /** Scenery type (house, tree, car…): every object can be modelled, not only appliances. */
   scenery: SceneryTypeSchema.optional(),
   box: NormBoxSchema,
+  /** SAM outline (photo fractions path): colours are measured inside it (PF-T2). Too long → not sent. */
+  outline: z.string().max(SHAPE_OUTLINE_MAX).optional(),
 });
 export type ShapeTarget = z.infer<typeof ShapeTargetSchema>;
 

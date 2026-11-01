@@ -294,7 +294,11 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     const kit = parseKit(content, hint);
     if (!kit) console.info(`[vision] ${model} gave no usable 3D kit: ${content.slice(0, 300)}`);
     else console.info(`[vision] 3D kit from ${model}: ${kit.archetype}`);
-    return { model, usage, result: { recipe: kit ? kitToRecipe(kit) : null } };
+    return {
+      model,
+      usage,
+      result: { recipe: kit ? kitToRecipe(kit) : null, ...(kit ? { kit } : {}) },
+    };
   }
 
   async segmentImage(

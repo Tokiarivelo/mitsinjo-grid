@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  SHAPE_OUTLINE_MAX,
   ObjectShapeSchema,
   ShapeStepEventSchema,
   type ObjectShape,
@@ -104,6 +105,9 @@ export function useObjectShape() {
             category: target.category,
             ...(target.scenery ? { scenery: target.scenery } : {}),
             box: target.box,
+            ...(target.outline && target.outline.length <= SHAPE_OUTLINE_MAX
+              ? { outline: target.outline }
+              : {}),
           })
         );
         if (sessionId) form.append('sessionId', sessionId);

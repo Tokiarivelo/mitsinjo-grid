@@ -18,8 +18,8 @@
 
 ## Next task
 
+- **3D fidelity (priority, user)**: plan `docs/tasks/PV-shape-fidelity.md`; PF-T1 (photo projected + SAM mask) and PF-T2 (measured colours) done → PF-T3 roofline next.
 - **Free placement** (user: « Sector » too static): plan `docs/tasks/PV-free-placement.md` (position + feeder, PP-T1…T8).
-- **3D fidelity** (cottage row looks wrong): plan `docs/tasks/PV-shape-fidelity.md` (PF-T1 quick fixes first).
 - **PV-T14** copilot tools report `appliances`; then **PV-T11b** (usage-hours chart, `edit_appliance`).
 - Screenshots not taken: /village insert form, colours, viewer (dark + light, 1440 / 390). `make e2e` when convenient.
 

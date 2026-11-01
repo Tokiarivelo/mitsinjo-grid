@@ -5,6 +5,7 @@ import type { ObjectRecipe, ShapeTarget } from '@/lib/object-shape';
 vi.mock('server-only', () => ({}));
 import { runObjectShape, SHAPE_TIMEOUT_MS } from '../object-shape';
 import type { ShapeResult } from '../schemas';
+import { kitToRecipe, type ObjectKit } from '@/lib/object-kit';
 
 const target: ShapeTarget = {
   id: 'det-1',
@@ -166,5 +167,58 @@ describe('runObjectShape (PV-T9)', () => {
       reason: 'provider_error',
       detail: 'http_429',
     });
+  });
+});
+
+/** Street photo 200×100: sky (rows 0–29), roof (30–54), stone walls with dark windows (55–99). */
+async function street() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">
+    <rect width="200" height="30" fill="#96beef"/>
+    <rect y="30" width="200" height="25" fill="#6e5f55"/>
+    <rect y="55" width="200" height="45" fill="#c8aa78"/>
+    ${[20, 60, 100, 140].map((x) => `<rect x="${x}" y="65" width="16" height="14" fill="#1e232d"/>`).join('')}
+  </svg>`;
+  const buffer = await sharp(Buffer.from(svg)).png().toBuffer();
+  return { buffer, width: 200, height: 100 };
+}
+const hexRgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const near = (a: string, b: string, tol = 12) =>
+  hexRgb(a).every((v, i) => Math.abs(v - hexRgb(b)[i]!) <= tol);
+
+describe('runObjectShape measured colours (PF-T2)', () => {
+  const cottage: ShapeTarget = {
+    id: 'det-4',
+    label: 'stone cottages row',
+    category: 'other',
+    scenery: 'building',
+    box: { x: 0, y: 0, w: 1, h: 1 },
+    // SAM outline: the cottages only, the sky above is outside.
+    outline: 'M0 0.3L1 0.3L1 1L0 1Z',
+  };
+  const guessed: ObjectKit = {
+    archetype: 'house',
+    proportions: { w: 1, h: 0.5, d: 0.4 },
+    colors: { main: '#202020', secondary: '#000000', accent: '#ff8800' },
+    details: { windows: 4 },
+  };
+
+  it('replaces Spark colours with the photo ones, sky cut by the outline (regression: black roof)', async () => {
+    const p = client(meta(kitToRecipe(guessed), { kit: guessed }));
+    const out = await runObjectShape(p, await street(), 'data:full', cottage);
+    expect(out.mode).toBe('recipe');
+    const colors = new Set(out.recipe!.parts.map((x) => x.color));
+    const walls = out.recipe!.parts.find((x) => x.front)!.color;
+    expect(near(walls, '#c8aa78')).toBe(true);
+    // Roof slabs = measured roof colour; no part keeps the guessed black / orange, none is sky blue.
+    expect([...colors].some((c) => near(c, '#6e5f55'))).toBe(true);
+    expect([...colors].some((c) => c === '#000000' || c === '#ff8800')).toBe(false);
+    expect([...colors].some((c) => near(c, '#96beef', 20))).toBe(false);
+    expect(out).not.toHaveProperty('kit');
+  });
+
+  it('no photo (crop impossible) → Spark colours kept', async () => {
+    const p = client(meta(kitToRecipe(guessed), { kit: guessed }));
+    const out = await runObjectShape(p, null, 'data:full', cottage);
+    expect(out.recipe!.parts.some((x) => x.color === '#000000')).toBe(true);
   });
 });

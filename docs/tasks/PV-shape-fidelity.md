@@ -3,7 +3,7 @@
 **Why (user, 2026-11-01):** for `det-4` « stone cottages row » (Bourton-on-the-Water, box x 0.18 y 0.10 w 0.82 h 0.58),
 the 3D model does not look like the photo: one box with a black stepped roof, a grey bar across the front, and the whole
 photo (sky, roofs, cars) squashed onto the walls.
-**Status:** 🟡 PF-T1 done (`recipeMesh` projects the photo on every front face, `photo-mask.ts`, `decalWidth`; decals kept, they show the photo too). **Depends on:** PV-T9b (kit), PV-T10 (viewer), SAM outlines (M2).
+**Status:** 🟡 PF-T1, PF-T2 done (`recipeMesh` projects the photo on every front face, `photo-mask.ts`, `decalWidth`; `color-measure.ts` + `shape-colors.ts`, target `outline`). Next: PF-T3.
 **Rule kept:** Meta models only. All math is pure, seeded TS and deterministic (same photo → same model), with tests.
 It runs on the server on a ≤ 256 px copy of the crop, inside the 60 s budget (target < 300 ms).
 
@@ -40,7 +40,7 @@ photo crop ─┬─ SAM mask M(x,y) ──┬─ colours (k-means Lab per band)
       (b) Mask the photo with the SAM outline (rasterised polygon → `alphaMap`, `alphaTest`), so sky and road vanish.
       (c) Templates: window width ≤ 0.7 × pitch, and **no decals on a face that carries the photo** (the photo already shows them).
       Test: UV of a roof vertex lands in the box's top band; 8 windows never overlap.
-- [ ] **PF-T2 Measured colours.** Server: pixels inside the mask, in CIELAB. **k-means** (k = 4, k-means++ init with a
+- [x] **PF-T2 Measured colours.** Server: pixels inside the mask, in CIELAB. **k-means** (k = 4, k-means++ init with a
       seeded PRNG, 10 iterations), then assign roles by vertical position: the top-band cluster = `secondary` (roof), the
       largest middle cluster = `main` (walls), the darkest small cluster = `accent` (glass). The LLM colours become a
       fallback only when the mask covers fewer than 2 % of pixels. Metric: ΔE2000 to a hand-picked colour < 10 on the golden set.

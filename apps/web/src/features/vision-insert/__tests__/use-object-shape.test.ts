@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ObjectShape, ShapeTarget } from '@/lib/object-shape';
+import { SHAPE_OUTLINE_MAX, type ObjectShape, type ShapeTarget } from '@/lib/object-shape';
 vi.mock('../utils/prepare-image', () => ({
   prepareVisionImage: vi.fn(async () => new Blob([new Uint8Array(4)], { type: 'image/jpeg' })),
 }));
@@ -59,6 +59,31 @@ describe('useObjectShape (PV-T9)', () => {
     const body = init.body as FormData;
     expect(JSON.parse(body.get('target') as string)).toEqual(target);
     expect(body.get('sessionId')).toBe('s1');
+  });
+
+  it('sends the SAM outline for the colour measure, not one past the limit (PF-T2)', async () => {
+    fetchMock.mockImplementation(async () => sse(recipeShape));
+    const { result } = renderHook(() => useObjectShape());
+    const outline = 'M0.1 0.1L0.3 0.1L0.3 0.7Z';
+    await act(() =>
+      result.current.requestShape('data:image/png;base64,AA', { ...target, outline })
+    );
+    const sent = (i: number) =>
+      JSON.parse(
+        ((fetchMock.mock.calls[i] as [string, RequestInit])[1].body as FormData).get(
+          'target'
+        ) as string
+      );
+    expect(sent(0)).toEqual({ ...target, outline });
+    const huge = `M0 0${'L0.5 0.5'.repeat(SHAPE_OUTLINE_MAX / 8 + 1)}Z`;
+    await act(() =>
+      result.current.requestShape('data:image/png;base64,AA', {
+        ...target,
+        id: 'det-9',
+        outline: huge,
+      })
+    );
+    expect(sent(1)).not.toHaveProperty('outline');
   });
 
   it('falls back to the silhouette on a network error, an HTTP error or a bad reply', async () => {

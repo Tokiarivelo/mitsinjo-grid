@@ -71,6 +71,7 @@ export function VillageEditorPage() {
         category: shapeTarget.category,
         ...(shapeTarget.scenery ? { scenery: shapeTarget.scenery } : {}),
         box: shapeTarget.box,
+        ...(shapeTarget.outline ? { outline: shapeTarget.outline } : {}),
         ...(shapeTarget.adjusted ? { adjusted: shapeTarget.adjusted } : {}),
       }
     : null;
