@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-01 (PF-T3 roofline, PF-T4 repetition) · **By:** Claude Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-01 (PF-T3 roofline, PF-T4 repetition, PF-T5 perspective) · **By:** Claude Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
@@ -18,7 +18,7 @@
 
 ## Next task
 
-- **3D fidelity (priority, user)**: plan `docs/tasks/PV-shape-fidelity.md`; PF-T1 (photo + SAM mask), PF-T2 (colours), PF-T3 (roofline → `prism` gables), PF-T4 (houses / windows per row, `repetition.ts`) done → PF-T5 perspective next.
+- **3D fidelity (priority, user)**: plan `docs/tasks/PV-shape-fidelity.md`; PF-T1 (photo + SAM mask), PF-T2 (colours), PF-T3 (roofline → `prism` gables), PF-T4 (houses / windows, `repetition.ts`), PF-T5 (yaw, `perspective.ts`) done → PF-T6 fit by optimisation next.
 - **Free placement** (user: « Sector » too static): plan `docs/tasks/PV-free-placement.md` (position + feeder, PP-T1…T8).
 - **PV-T14** copilot tools report `appliances`; then **PV-T11b** (usage-hours chart, `edit_appliance`).
 - Not done: screenshots (/village insert, viewer; dark + light, 1440 / 390), `make e2e`.
@@ -30,11 +30,12 @@
 - Appliance id `vision-<photoKey>-<det id>`. Insert applies directly (removable at once).
 - Roof = measured only (SAM outline skyline, segmented LSQ + BIC); pitched `building` → `house`; flat / no outline → stepped roof.
   Units = gables (≥ 2) > roof-band edge period > Spark; never on a flat `building`; 12-part budget trims windows first.
+- Perspective: model turned by yaw (no homography); camera projection paints both facades; dead zone 6°.
 - Free placement: visual `position` separate from the feeder `sector`; engine sectors stay 6 (plan only).
 
 ## Files touched this session
 
-- PF-T3: `perception/roofline.ts` (+test), `object-shape.ts` (`withMeasuredRoof`), `lib/object-{kit,shape}.ts` (`KitRoof`, `prism`, `apex`),
-  `utils/object-geometry.ts` (`unitPrism`), contracts, PV-shape-fidelity, scenario V57.
-- PF-T4: `perception/repetition.ts` (+test), `shape-colors.ts` (`sampleObjectGray`), `withMeasuredRepetition`, `details.units`, V58.
+- PF-T3: `roofline.ts`, `withMeasuredRoof`, `KitRoof`, `prism`/`apex`, `unitPrism`, V57. Docs: contracts, copilot, PV-shape-fidelity.
+- PF-T4: `perception/repetition.ts`, `sampleObjectGray`, `withMeasuredRepetition`, `details.units`, V58.
+- PF-T5: `perception/perspective.ts`, `measuredYaw`, `recipe.yaw`, `fitRecipe(…, yaw)`, `recipeMesh` rotateY, test fixture `render-facade.ts`, V59.
 - Earlier: shape (`lib/object-*`, `server/perception/*`, `api/vision/shape`, `use-object-shape`, `ui/object-*`); boxes: `utils/stacking.ts`, `detection-canvas`, `draw-overlay`, `globals.css`, `village-editor-page`; docs: copilot, contracts, PV task, PV-free-placement (new), tasks README; messages ×3; scenarios V47–V54.

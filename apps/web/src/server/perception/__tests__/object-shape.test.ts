@@ -5,6 +5,8 @@ import type { ObjectRecipe, ShapeTarget } from '@/lib/object-shape';
 vi.mock('server-only', () => ({}));
 import { runObjectShape, SHAPE_TIMEOUT_MS } from '../object-shape';
 import type { ShapeResult } from '../schemas';
+import type { GrayGrid } from '../repetition';
+import { turned } from './fixtures/render-facade';
 import { kitToRecipe, type ObjectKit } from '@/lib/object-kit';
 
 const target: ShapeTarget = {
@@ -315,5 +317,56 @@ describe('runObjectShape repetition (PF-T4)', () => {
       target
     );
     expect(out.recipe!.parts.some((p) => p.shape === 'prism')).toBe(false);
+  });
+});
+
+describe('runObjectShape perspective (PF-T5)', () => {
+  async function photoOf(grid: GrayGrid) {
+    const raw = Buffer.from(Array.from(grid.gray, (v) => Math.round(v * 255)));
+    const buffer = await sharp(raw, {
+      raw: { width: grid.width, height: grid.height, channels: 1 },
+    })
+      .png()
+      .toBuffer();
+    return { buffer, width: grid.width, height: grid.height };
+  }
+  const cabinet: ObjectKit = {
+    archetype: 'cabinet',
+    proportions: { w: 1, h: 0.5, d: 0.4 },
+    colors: { main: '#cccccc', secondary: '#888888', accent: '#222222' },
+  };
+  const whole: ShapeTarget = {
+    id: 'det-9',
+    label: 'shop front',
+    category: 'other',
+    box: { x: 0, y: 0, w: 1, h: 1 },
+  };
+
+  it('a facade turned 30° → recipe turned ≈ 30°', async () => {
+    const out = await runObjectShape(
+      client(meta(kitToRecipe(cabinet), { kit: cabinet })),
+      await photoOf(turned(30)),
+      'data:full',
+      whole
+    );
+    expect(Math.abs(((out.recipe!.yaw ?? 0) * 180) / Math.PI - 30)).toBeLessThan(8);
+  });
+
+  it('a tree is never turned, a facade facing the camera neither', async () => {
+    const tree: ObjectKit = { ...cabinet, archetype: 'tree' };
+    const a = await runObjectShape(
+      client(meta(kitToRecipe(tree), { kit: tree })),
+      await photoOf(turned(30)),
+      'data:full',
+      whole
+    );
+    expect(a.recipe).not.toHaveProperty('yaw');
+    const b = await runObjectShape(
+      client(meta(kitToRecipe(cabinet), { kit: cabinet })),
+      await photoOf(turned(0)),
+      'data:full',
+      whole
+    );
+    expect(b.recipe).not.toHaveProperty('yaw');
   });
 });

@@ -179,6 +179,8 @@ export function recipeMesh(recipe: ObjectRecipe, box: NormBox): PhotoMesh {
     else if (p.axis === 'z') g.rotateX(Math.PI / 2);
     g.scale(p.size[0] * dims[0], p.size[1] * dims[1], p.size[2] * dims[2]);
     g.translate(p.at[0] * dims[0], p.at[1] * dims[1], p.at[2] * dims[2]);
+    // Measured yaw (PF-T5): turned like on the photo, so the projection below paints both facades.
+    if (recipe.yaw) g.rotateY(recipe.yaw);
     color.set(p.color).convertSRGBToLinear();
     const count = g.getAttribute('position').count;
     const colors = new Float32Array(count * 3);

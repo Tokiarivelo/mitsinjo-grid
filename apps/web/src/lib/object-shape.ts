@@ -26,6 +26,9 @@ export const RECIPE_BOUND = 0.6;
  */
 export const MIN_FILL_VOLUME = 0.005;
 
+/** Largest measured yaw (60°). */
+export const MAX_YAW = Math.PI / 3;
+
 const coord = z.number().min(-RECIPE_BOUND).max(RECIPE_BOUND);
 const extent = z.number().min(0.01).max(1);
 
@@ -51,6 +54,8 @@ export const ObjectRecipeSchema = z.object({
   /** Real proportions of the object, largest side = 1. */
   proportions: z.object({ w: extent, h: extent, d: extent }),
   parts: z.array(RecipePartSchema).min(1).max(MAX_RECIPE_PARTS),
+  /** Measured turn of the front away from the camera (PF-T5), radians, + = right end farther. */
+  yaw: z.number().min(-MAX_YAW).max(MAX_YAW).optional(),
 });
 export type ObjectRecipe = z.infer<typeof ObjectRecipeSchema>;
 
@@ -120,8 +125,10 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
  *   (fixes parts drawn too small, off-centre or sticking out);
  * - width / height come from the photo box (`boxAspect` = its width / height in pixels, 0 = keep the
  *   model's), depth keeps the model's ratio to height. Largest side stays 1.
+ * - `yaw` (PF-T5): the box shows the front foreshortened plus the side, `w·cos + d·sin = aspect·h`, so the
+ *   true front width is solved from it (≥ 30 % of the box width; the depth shrinks when it cannot fit).
  */
-export function fitRecipe(recipe: ObjectRecipe, boxAspect: number): ObjectRecipe {
+export function fitRecipe(recipe: ObjectRecipe, boxAspect: number, yaw = 0): ObjectRecipe {
   const lo = [Infinity, Infinity, Infinity];
   const hi = [-Infinity, -Infinity, -Infinity];
   for (const p of recipe.parts) {
@@ -139,8 +146,18 @@ export function fitRecipe(recipe: ObjectRecipe, boxAspect: number): ObjectRecipe
     ) as RecipePart['at'],
     size: p.size.map((v, i) => clamp(v / span[i]!, 0.01, 1)) as RecipePart['size'],
   }));
-  const { h, d } = recipe.proportions;
-  const w = boxAspect > 0 && Number.isFinite(boxAspect) ? h * boxAspect : recipe.proportions.w;
+  const { h } = recipe.proportions;
+  let { d } = recipe.proportions;
+  const turn = clamp(Number.isFinite(yaw) ? yaw : 0, -MAX_YAW, MAX_YAW);
+  const known = boxAspect > 0 && Number.isFinite(boxAspect);
+  let w = known ? h * boxAspect : recipe.proportions.w;
+  if (known && turn !== 0) {
+    const cos = Math.cos(turn);
+    const sin = Math.abs(Math.sin(turn));
+    const seen = h * boxAspect;
+    w = Math.max(0.3 * seen, (seen - d * sin) / cos);
+    d = Math.max(0.01, Math.min(d, (seen - w * cos) / sin));
+  }
   const max = Math.max(w, h, d);
   return {
     proportions: {
@@ -149,6 +166,7 @@ export function fitRecipe(recipe: ObjectRecipe, boxAspect: number): ObjectRecipe
       d: clamp(d / max, 0.01, 1),
     },
     parts,
+    ...(turn !== 0 ? { yaw: turn } : {}),
   };
 }
 

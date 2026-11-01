@@ -210,3 +210,23 @@ describe('unitPrism (PF-T3)', () => {
     expect(front.getAttribute('position').count).toBe(9);
   });
 });
+
+describe('recipeMesh with a yaw (PF-T5)', () => {
+  const block: ObjectRecipe = {
+    proportions: { w: 1, h: 0.6, d: 0.5 },
+    parts: [{ shape: 'box', at: [0, 0, 0], size: [1, 1, 1], color: '#cccccc', front: true }],
+  };
+
+  it('turns the model; the photo then covers the front and the side seen on the photo', () => {
+    const straight = recipeMesh(block, box);
+    const turned = recipeMesh({ ...block, yaw: Math.PI / 6 }, box);
+    expect(straight.front.getAttribute('position').count).toBe(6);
+    // Front + one side face the camera now.
+    expect(turned.front.getAttribute('position').count).toBe(12);
+    // The photo box still spans the whole projected model.
+    const uv = turned.front.getAttribute('uv');
+    const us = Array.from({ length: uv.count }, (_, i) => uv.getX(i));
+    expect(Math.min(...us)).toBeCloseTo(box.x, 6);
+    expect(Math.max(...us)).toBeCloseTo(box.x + box.w, 6);
+  });
+});

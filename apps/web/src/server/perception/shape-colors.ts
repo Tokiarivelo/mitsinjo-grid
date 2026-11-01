@@ -21,19 +21,25 @@ function pixelBox(photo: PhotoForRegions, box: NormBox) {
 
 /** Columns of the grey grid for the repetition measure (PF-T4). */
 export const GRAY_COLUMNS = 128;
+/** Columns for the perspective measure (PF-T5): line segments need more pixels. */
+export const EDGE_COLUMNS = 256;
 
 /**
- * Grey levels of the box for the repetition measure (PF-T4): 128 columns, rows keeping the box aspect
- * (32–256), and the SAM outline as a mask (every pixel inside without an outline).
+ * Grey levels of the box: `columns` wide (128 for repetition, PF-T4; 256 for perspective, PF-T5), rows
+ * keeping the box aspect (¼–2 × columns), and the SAM outline as a mask (all pixels without an outline).
  */
 export async function sampleObjectGray(
   photo: PhotoForRegions,
   box: NormBox,
-  outline?: string
+  outline?: string,
+  columns = GRAY_COLUMNS
 ): Promise<GrayGrid> {
   const px = pixelBox(photo, box);
-  const width = GRAY_COLUMNS;
-  const height = Math.max(32, Math.min(256, Math.round((width * px.height) / px.width)));
+  const width = columns;
+  const height = Math.max(
+    columns / 4,
+    Math.min(2 * columns, Math.round((width * px.height) / px.width))
+  );
   const { data } = await sharp(photo.buffer, { failOn: 'none' })
     .extract(px)
     .resize({ width, height, fit: 'fill' })

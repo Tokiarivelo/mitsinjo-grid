@@ -138,3 +138,34 @@ describe('silhouetteRings (fallback)', () => {
     expect(silhouetteRings({ box: { x: 0, y: 0, w: 0, h: 0 } })).toEqual([]);
   });
 });
+
+describe('fitRecipe with a measured yaw (PF-T5)', () => {
+  const cube: ObjectRecipe = {
+    proportions: { w: 1, h: 0.5, d: 0.4 },
+    parts: [{ shape: 'box', at: [0, 0, 0], size: [1, 1, 1], color: '#cccccc', front: true }],
+  };
+
+  it('solves the true front width: w·cos + d·sin = box width', () => {
+    const yaw = Math.PI / 6;
+    const r = fitRecipe(cube, 2.4, yaw);
+    const { w, h, d } = r.proportions;
+    expect(w * Math.cos(yaw) + d * Math.sin(yaw)).toBeCloseTo(2.4 * h, 6);
+    // Narrower than the box suggests head-on (2.4 h).
+    expect(w / h).toBeLessThan(2.4);
+    expect(r.yaw).toBeCloseTo(yaw, 9);
+    expect(ObjectRecipeSchema.safeParse(r).success).toBe(true);
+  });
+
+  it('depth that cannot fit shrinks; the front keeps ≥ 30 % of the box width', () => {
+    const deep = { ...cube, proportions: { w: 1, h: 0.3, d: 1 } };
+    const r = fitRecipe(deep, 0.8, -Math.PI / 3);
+    const { w, h, d } = r.proportions;
+    expect(w / h).toBeGreaterThanOrEqual(0.3 * 0.8 - 1e-9);
+    expect(w * Math.cos(Math.PI / 3) + d * Math.sin(Math.PI / 3)).toBeCloseTo(0.8 * h, 6);
+  });
+
+  it('no yaw → same as before, no `yaw` field', () => {
+    expect(fitRecipe(cube, 2, 0)).toEqual(fitRecipe(cube, 2));
+    expect(fitRecipe(cube, 2)).not.toHaveProperty('yaw');
+  });
+});

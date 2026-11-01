@@ -13,9 +13,10 @@ import { pathToRings } from '@/lib/vision';
 import type { PerceptionClient } from './client';
 import { measureKitColors, type ObjectPixels } from './color-measure';
 import type { PhotoForRegions } from './region';
+import { measurePerspective, type Perspective } from './perspective';
 import { measureRepetition, type GrayGrid, type Repetition } from './repetition';
 import { measureRoof, type RoofMeasure } from './roofline';
-import { sampleObjectGray, sampleObjectPixels } from './shape-colors';
+import { EDGE_COLUMNS, sampleObjectGray, sampleObjectPixels } from './shape-colors';
 import { cropForShape } from './shape-crop';
 
 export { SHAPE_TIMEOUT_MS };
@@ -58,6 +59,27 @@ export function withMeasuredRepetition(
   return { kit: { ...kit, details }, repetition };
 }
 
+/** Archetypes with straight facade lines (PF-T5): a tree's or a person's edges point nowhere. */
+const STRAIGHT: ReadonlyArray<ObjectKit['archetype']> = [
+  'house',
+  'building',
+  'cabinet',
+  'machine',
+  'vehicle',
+  'screen',
+];
+
+/** Measured yaw of a straight-edged object, or null (round archetype, no grid, too few lines). */
+export function measuredYaw(
+  archetype: ObjectKit['archetype'],
+  grid: GrayGrid | null,
+  box: ShapeTarget['box'],
+  photo: Pick<PhotoForRegions, 'width' | 'height'>
+): Perspective | null {
+  if (!grid || !STRAIGHT.includes(archetype)) return null;
+  return measurePerspective(grid, box, photo.width, photo.height);
+}
+
 export interface ObjectShapeOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -69,7 +91,8 @@ export interface ObjectShapeOptions {
  * Selected object → its 3D shape (PV-T9), Meta models only. One Spark call on a crop around the object
  * returns a kit → parts recipe, fitted to the photo box (`fitRecipe`). Colours are measured on the photo
  * pixels inside the SAM outline while Spark thinks (PF-T2), and replace Spark's guessed colours; houses get the roofline
- * read on that outline (PF-T3) and the houses / windows counted by edge repetition (PF-T4). Fallbacks → `silhouette` mode, built in
+ * read on that outline (PF-T3) and the houses / windows counted by edge repetition (PF-T4); straight-edged objects are turned by the yaw read on
+ * their vanishing points (PF-T5). Fallbacks → `silhouette` mode, built in
  * the browser from the SAM outline (no extra call), with a precise `reason`: `timeout` (past
  * `SHAPE_TIMEOUT_MS`), `provider_error` + `detail` (`http_429`…), `spend_cap`, `malformed`, `no_body`.
  * Mock mode: fixed recipe per category, not checked. Never throws.
@@ -111,6 +134,9 @@ export async function runObjectShape(
           console.warn('[vision] grey sample failed:', err instanceof Error ? err.message : err);
           return null;
         })
+      : Promise.resolve(null);
+    const edges: Promise<GrayGrid | null> = photo
+      ? sampleObjectGray(photo, target.box, target.outline, EDGE_COLUMNS).catch(() => null)
       : Promise.resolve(null);
     onStep?.('model');
     const started = Date.now();
@@ -169,7 +195,16 @@ export async function runObjectShape(
         }
         if (colors || measure || rep.repetition) built = kitToRecipe(rep.kit);
       }
-      const recipe = fitRecipe(built, aspect);
+      const persp =
+        found.kit && photo
+          ? measuredYaw(found.kit.archetype, await edges, target.box, photo)
+          : null;
+      if (persp) {
+        console.info(
+          `[vision] 3D perspective for "${target.label}": yaw=${Math.round((persp.yaw * 180) / Math.PI)}° (${persp.inliers}${persp.inliersSide ? ` + ${persp.inliersSide}` : ''} lines, f=${persp.focal}${persp.focalMeasured ? ' measured' : ''})`
+        );
+      }
+      const recipe = fitRecipe(built, aspect, persp?.yaw ?? 0);
       const issue = recipeIssue(recipe);
       if (issue) {
         console.info(`[vision] 3D recipe for "${target.label}" rejected (${issue}), silhouette`);
