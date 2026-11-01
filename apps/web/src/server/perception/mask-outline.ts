@@ -47,7 +47,7 @@ export function simplify(points: readonly Pt[], tolerance: number): Pt[] {
 }
 
 /** Closed ring simplified from its farthest-apart split so both halves keep their shape. */
-function simplifyRing(ring: readonly Pt[], tolerance: number): Pt[] {
+export function simplifyRing(ring: readonly Pt[], tolerance: number): Pt[] {
   let far = 0;
   let farD = -1;
   for (let i = 1; i < ring.length; i++) {

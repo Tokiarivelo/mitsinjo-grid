@@ -3,6 +3,7 @@ import 'server-only';
 import {
   SHAPE_TIMEOUT_MS,
   fitRecipe,
+  frontPartIndex,
   recipeIssue,
   type ObjectShape,
   type ShapeStep,
@@ -21,6 +22,8 @@ import { fitSilhouette } from './silhouette-fit';
 import { EDGE_COLUMNS, sampleObjectGray, sampleObjectPixels } from './shape-colors';
 import { cropForShape } from './shape-crop';
 import { extractSwatches } from './photo-swatches';
+import { withProfileBody } from './profile-body';
+import { scoreRecipe } from './score-shape';
 import { generateImaginedViews } from './views-generation';
 
 export { SHAPE_TIMEOUT_MS };
@@ -250,11 +253,35 @@ export async function runObjectShape(
           : null;
       const start = fitRecipe(built, aspect, yaw0);
       conf.fit = fit ? confidence.fit(fit.iou) : 0;
-      const recipe = fit ? mixRecipe(fit.recipe, start, conf.fit) : start;
+      let recipe = fit ? mixRecipe(fit.recipe, start, conf.fit) : start;
       if (fit) {
         console.info(
           `[vision] 3D fit for "${target.label}": iou=${fit.iou} (start ${fit.iouStart}, ${fit.evals} evals) units=${finalKit?.details?.units ?? 1} yaw=${Math.round(((recipe.yaw ?? 0) * 180) / Math.PI)}° · confidence colours ${conf.colors}, yaw ${conf.yaw}, fit ${conf.fit}`
         );
+      }
+      // PR-2.2: side-seen bodies follow the SAM outline; the shipped silhouette is re-scored.
+      let fitIou = fit?.iou;
+      if (finalKit) {
+        const profiled = withProfileBody(finalKit.archetype, recipe, target, aspect);
+        if (profiled !== recipe) {
+          recipe = profiled;
+          const main = recipe.parts[frontPartIndex(recipe)]!;
+          console.info(
+            `[vision] 3D profile for "${target.label}": outline body, ${main.points?.length ?? 0} pts`
+          );
+          if (photo) {
+            try {
+              const re = await scoreRecipe(
+                photo,
+                { box: target.box, outline: target.outline },
+                recipe
+              );
+              if (re) fitIou = re.score.iou;
+            } catch (err) {
+              console.warn('[vision] profile rescore failed:', err);
+            }
+          }
+        }
       }
       const issue = recipeIssue(recipe);
       if (issue) {
@@ -287,7 +314,7 @@ export async function runObjectShape(
         mode: 'recipe',
         recipe,
         ...(imaginedViews ? { imaginedViews } : {}),
-        ...(fit ? { fit: { iou: fit.iou } } : {}),
+        ...(fitIou !== undefined ? { fit: { iou: fitIou } } : {}),
         ...source,
       };
     }
