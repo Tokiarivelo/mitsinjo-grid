@@ -15,7 +15,8 @@ import { polygonPath } from '@/lib/vision';
 import { GOLDEN_SHAPES, goldenBox, goldenOutline, goldenSvg, PHOTO } from '../__fixtures__/shape';
 import { runObjectShape } from '../object-shape';
 import { cropRectForShape } from '../shape-crop';
-import { fitCircle, RIM_COLOR, RIM_RATIO, withMaskWheels, type WheelMapGeom } from '../mask-wheels';
+import type { MaskMapGeom } from '../mask-geometry';
+import { fitCircle, RIM_COLOR, RIM_RATIO, withMaskWheels } from '../mask-wheels';
 
 const kit = (extra?: Partial<ObjectKit>): ObjectKit => ({
   archetype: 'vehicle',
@@ -26,13 +27,13 @@ const kit = (extra?: Partial<ObjectKit>): ObjectKit => ({
 });
 
 /** Photo 200×100, box 160×80 px at (20, 10): the crop is the whole photo. */
-const geomA = (): WheelMapGeom => {
+const geomA = (): MaskMapGeom => {
   const box = { x: 0.1, y: 0.1, w: 0.8, h: 0.8 };
   return { photoW: 200, photoH: 100, box, crop: cropRectForShape(200, 100, box) };
 };
 
 /** Circle outline (12 pts) + box as a wheel mask, in crop fractions. */
-const wheelMask = (geom: WheelMapGeom, cx: number, cy: number, r: number): PartMask => {
+const wheelMask = (geom: MaskMapGeom, cx: number, cy: number, r: number): PartMask => {
   const { crop } = geom;
   const cu = (px: number) => (px - crop.left) / crop.width;
   const cv = (py: number) => (py - crop.top) / crop.height;
@@ -159,7 +160,7 @@ describe('withMaskWheels (PR-2.6)', () => {
   it('offset crop: fractions map through the crop rect onto the box', () => {
     // Photo 300×200, box 60×60 at (150, 50): crop 96×96 at (132, 32).
     const box = { x: 0.5, y: 0.25, w: 0.2, h: 0.3 };
-    const geom: WheelMapGeom = {
+    const geom: MaskMapGeom = {
       photoW: 300,
       photoH: 200,
       box,
@@ -258,7 +259,7 @@ describe('withMaskWheels (PR-2.6)', () => {
     expect(plain.mode).toBe('recipe');
     // Wheel masks where the template put its wheels (near side), round in pixels.
     const box = target.box;
-    const geom: WheelMapGeom = {
+    const geom: MaskMapGeom = {
       photoW: photo.width,
       photoH: photo.height,
       box,

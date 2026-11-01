@@ -24,6 +24,7 @@ import { cropForShape, cropRectForShape } from './shape-crop';
 import { extractSwatches } from './photo-swatches';
 import { withLatheBody } from './lathe-body';
 import { fetchPartMasks } from './part-masks';
+import { withMaskPanels } from './mask-panels';
 import { withMaskWheels } from './mask-wheels';
 import { withProfileBody } from './profile-body';
 import { scoreRecipe } from './score-shape';
@@ -277,11 +278,11 @@ export async function runObjectShape(
           `[vision] 3D fit for "${target.label}": iou=${fit.iou} (start ${fit.iouStart}, ${fit.evals} evals) units=${finalKit?.details?.units ?? 1} yaw=${Math.round(((recipe.yaw ?? 0) * 180) / Math.PI)}° · confidence colours ${conf.colors}, yaw ${conf.yaw}, fit ${conf.fit}`
         );
       }
-      // PR-2.2 + PR-2.4 + PR-2.6: side-seen and round bodies follow the SAM outline, wheels
-      // follow their masks; the shipped silhouette is re-scored.
+      // PR-2.2 + PR-2.4 + PR-2.6 + PR-2.7: side-seen and round bodies follow the SAM outline,
+      // wheels and panels follow their masks; the shipped silhouette is re-scored.
       let fitIou = fit?.iou;
       if (finalKit) {
-        let reshaped: 'profile' | 'lathe' | 'wheels' | null = null;
+        let reshaped: 'profile' | 'lathe' | 'wheels' | 'panels' | null = null;
         const profiled = withProfileBody(finalKit.archetype, recipe, target, aspect);
         if (profiled !== recipe) {
           recipe = profiled;
@@ -293,25 +294,43 @@ export async function runObjectShape(
           reshaped = 'lathe';
         }
         if (partMasks && partMasks.length > 0 && photo) {
-          const wheeled = withMaskWheels(finalKit.archetype, recipe, partMasks, {
+          const geom = {
             photoW: photo.width,
             photoH: photo.height,
             box: target.box,
             crop: cropRectForShape(photo.width, photo.height, target.box),
-          });
+          };
+          const wheeled = withMaskWheels(finalKit.archetype, recipe, partMasks, geom);
           if (wheeled !== recipe) {
             recipe = wheeled;
             reshaped = 'wheels';
           }
+          const panelled = withMaskPanels(finalKit.archetype, recipe, partMasks, geom);
+          if (panelled !== recipe) {
+            recipe = panelled;
+            reshaped = 'panels';
+          }
         }
         if (reshaped) {
           const main = recipe.parts[frontPartIndex(recipe)]!;
+          const panelCounts = (partMasks ?? [])
+            .filter((m) => m.concept === 'window' || m.concept === 'door')
+            .reduce(
+              (acc, m) => ({ ...acc, [m.concept]: (acc[m.concept] ?? 0) + 1 }),
+              {} as Record<string, number>
+            );
           console.info(
             reshaped === 'profile'
               ? `[vision] 3D profile for "${target.label}": outline body, ${main.points?.length ?? 0} pts`
               : reshaped === 'lathe'
                 ? `[vision] 3D lathe for "${target.label}": outline body, ${main.profile?.length ?? 0} rows`
-                : `[vision] 3D wheels for "${target.label}": ${partMasks?.filter((m) => m.concept === 'wheel').length ?? 0} mask(s), ${recipe.parts.length} parts`
+                : reshaped === 'wheels'
+                  ? `[vision] 3D wheels for "${target.label}": ${partMasks?.filter((m) => m.concept === 'wheel').length ?? 0} mask(s), ${recipe.parts.length} parts`
+                  : `[vision] 3D panels for "${target.label}": ${
+                      Object.entries(panelCounts)
+                        .map(([c, n]) => `${c}×${n}`)
+                        .join(', ') || 'none'
+                    }, ${recipe.parts.length} parts`
           );
           if (photo) {
             try {

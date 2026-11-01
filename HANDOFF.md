@@ -1,10 +1,10 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-01 (PR-2.6 done, PR-2.7 next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-01 (PR-2.7 done, PR-2.8 next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
-- Committed: `18f20a4` (PR-0.7), `de147e1` (PR-0.4 machinery), `70ae224` (PR-2.1), `1b9c603` (PR-2.2), `89e0078` (PR-2.3), `1824421` (PR-2.4), `d018920` (PR-2.5) — unsigned (sandbox GPG). PR-2.6 ready to commit.
+- Committed: `18f20a4` (PR-0.7), `de147e1` (PR-0.4 machinery), `70ae224` (PR-2.1), `1b9c603` (PR-2.2), `89e0078` (PR-2.3), `1824421` (PR-2.4), `d018920` (PR-2.5), `7c23f5a` (PR-2.6) — unsigned (sandbox GPG). PR-2.7 ready to commit.
 - **PR-2.2 done:** `withProfileBody` — vehicle/cabinet/machine main body = SAM outline extruded (plate notches, per-wheel wells, yaw pre-squeeze in world units, fit.iou re-scored). Car 92 → 93 (IoU 0.97, edge 0.92, ΔE 3.2); fridge steady 97; mean 90.
 - **PR-2.3 done:** `lathe` primitive — `profile` ([r, y], y non-decreasing) → solid of revolution, `unitLathe`, hull rings, frustum-stack ray clip. Tank + lamp head use static profiles. Lamp 86 → 87 (IoU 0.95, edge 0.91, ΔE steady 7.3 — sits in pole pixels); mean 90.
 - Loop lessons: global band cut punched the middle (−3 %); shrink-then-expose buried glass; squeeze must use world units (frame h·aspect), proved by pixel-diff bisection.
@@ -12,7 +12,8 @@
 
 ## Next task
 
-- **Commit** PR-2.6, then **PR-2.7 windows/doors from masks** (min-area box per mask → inset glass/door panels, replaces `spread()`).
+- **Commit** PR-2.7, then **PR-2.8 region colours** (each part coloured from its own mask's pixels: glass from windows, tyre from wheels, body from the rest).
+- **PR-2.7 done:** `withMaskPanels` — min-area rect panels (shell recolour, mirror/room logic, wheels+roof protected). Live-car e2e stable; goldens identical; mean 93.
 - **PR-2.6 done:** `withMaskWheels` — Kasa circle fit → tyre + rim per mask, mirrored, count = masks, budget backstop. Live-car e2e IoU stable; goldens identical; mean 93.
 - **PR-2.5 done:** `fetchPartMasks` — concept batch on the crop (shared 5 s deadline, meta-only, ≤ 8/concept), attached as `ObjectShape.partMasks`. Scores identical (no consumer yet); mean 93.
 - **PR-2.4 done:** `withLatheBody` — round mains = outline half-width per row (24 rows + poles), resized round, filler dropped. Tree 89 → 99 (IoU/edge 0.99); lamp 87 → 89 (ΔE 7.4); mean 93. Budget fix: allocation-free `clipLathe` (render 132 → 32 ms, pixels identical).

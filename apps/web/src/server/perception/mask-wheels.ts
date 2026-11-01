@@ -3,21 +3,19 @@ import 'server-only';
 import type { KitArchetype } from '@/lib/object-kit';
 import {
   frontPartIndex,
-  MAX_RECIPE_PARTS,
   type ObjectRecipe,
   type PartMask,
   type RecipePart,
 } from '@/lib/object-shape';
-import { pathToRings, type NormBox } from '@/lib/vision';
-import type { CropRect } from './shape-crop';
-
-/** Geometry mapping SAM's crop fractions onto the recipe's box fractions. */
-export interface WheelMapGeom {
-  photoW: number;
-  photoH: number;
-  box: NormBox;
-  crop: CropRect;
-}
+import { pathToRings } from '@/lib/vision';
+import {
+  cropToPhoto,
+  enforcePartBudget,
+  PART_MIRROR_MIN_Z,
+  photoToObject,
+  type MaskMapGeom,
+  type Pt,
+} from './mask-geometry';
 
 /** Past this measured yaw the wheels are ellipses and the far side shows: keep the template. */
 export const WHEEL_YAW_MAX = 0.3;
@@ -33,37 +31,6 @@ export const RIM_PROUD = 0.02;
 
 /** Neutral alloy grey: shape is measured here, the rim tint waits for PR-2.8 region colours. */
 export const RIM_COLOR = '#b9bec6';
-
-/** Below this |z| the wheels sit on the centre plane (motorbike): placed once, not mirrored. */
-export const WHEEL_MIRROR_MIN_Z = 0.05;
-
-/** Parts at least this big (object volume) survive the 12-part budget backstop. */
-export const WHEEL_KEEP_VOLUME = 0.02;
-
-type Pt = readonly [number, number];
-
-/** Crop fractions → photo pixels. The resize to the SAM image keeps fractions. */
-function cropToPhoto(geom: WheelMapGeom, cu: number, cv: number): Pt {
-  return [geom.crop.left + cu * geom.crop.width, geom.crop.top + cv * geom.crop.height];
-}
-
-/** Photo pixels → object fractions (centred box fractions, y up). */
-function photoToObject(
-  geom: WheelMapGeom,
-  px: number,
-  py: number
-): { x: number; y: number; rbx: number; rby: number } | null {
-  const { photoW: W, photoH: H, box } = geom;
-  const bw = box.w * W;
-  const bh = box.h * H;
-  if (!(bw > 0) || !(bh > 0)) return null;
-  return {
-    x: (px - box.x * W) / bw - 0.5,
-    y: 0.5 - (py - box.y * H) / bh,
-    rbx: 1 / bw,
-    rby: 1 / bh,
-  };
-}
 
 /** 3×3 solve by Gaussian elimination; null when singular. */
 function solve3(a: number[][]): [number, number, number] | null {
@@ -135,7 +102,7 @@ export function fitCircle(points: ReadonlyArray<Pt>): {
 
 /** Wheel centre + radii in object fractions, from the mask outline (circle fit) or its box. */
 function maskWheel(
-  geom: WheelMapGeom,
+  geom: MaskMapGeom,
   mask: PartMask
 ): { x: number; y: number; rx: number; ry: number } | null {
   let cx = 0;
@@ -167,8 +134,6 @@ function maskWheel(
   return { x: m.x, y: m.y, rx: r * m.rbx, ry: r * m.rby };
 }
 
-const volume = (p: RecipePart) => p.size[0] * p.size[1] * p.size[2];
-
 /**
  * Measured wheels for a vehicle (PR-2.6): each wheel mask becomes a tyre (z-cylinder at the
  * fitted centre with the fitted radii — rx ≠ ry in box units so it renders round) plus a rim
@@ -181,7 +146,7 @@ export function withMaskWheels(
   archetype: KitArchetype,
   recipe: ObjectRecipe,
   masks: ReadonlyArray<PartMask>,
-  geom: WheelMapGeom
+  geom: MaskMapGeom
 ): ObjectRecipe {
   if (archetype !== 'vehicle') return recipe;
   if (Math.abs(recipe.yaw ?? 0) > WHEEL_YAW_MAX) return recipe;
@@ -224,7 +189,7 @@ export function withMaskWheels(
     const zw = zSide * d;
     return { ...wl, x: (xw - zw * sin) / cos / w, rx: wl.rx / cos, ry: wl.ry / cos };
   });
-  const mirror = zSide >= WHEEL_MIRROR_MIN_Z;
+  const mirror = zSide >= PART_MIRROR_MIN_Z;
   const parts: RecipePart[] = recipe.parts.filter((p) => !templateWheels.includes(p));
   for (const wl of unturned) {
     const tyre: RecipePart = {
@@ -249,36 +214,11 @@ export function withMaskWheels(
     }
   }
   // Budget backstop: smallest decals go first, the body and structural parts never.
-  const dropped: string[] = [];
-  while (parts.length > MAX_RECIPE_PARTS) {
-    const mainIdx = frontPartIndex({ ...recipe, parts });
-    let drop = -1;
-    let dropVol = Infinity;
-    parts.forEach((p, i) => {
-      if (i === mainIdx) return;
-      const v = volume(p);
-      if (v < dropVol && (v < WHEEL_KEEP_VOLUME || p.at[2] < -WHEEL_MIRROR_MIN_Z)) {
-        drop = i;
-        dropVol = v;
-      }
-    });
-    if (drop < 0) {
-      parts.forEach((p, i) => {
-        if (i === mainIdx) return;
-        if (volume(p) < dropVol) {
-          drop = i;
-          dropVol = volume(p);
-        }
-      });
-    }
-    if (drop < 0) break;
-    const [gone] = parts.splice(drop, 1);
-    dropped.push(`${gone!.shape}@[${gone!.at.map((v) => v.toFixed(2)).join(',')}]`);
-  }
+  const { parts: fit, dropped } = enforcePartBudget(parts, [main]);
   if (dropped.length > 0) {
     console.info(
       `[vision] 3D wheels: budget dropped ${dropped.length} part(s): ${dropped.join(' ')}`
     );
   }
-  return { ...recipe, parts };
+  return { ...recipe, parts: fit };
 }

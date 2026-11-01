@@ -133,8 +133,16 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
       z ≈ 0 for motorbikes); template wheels replaced so count = masks; 12-part budget drops smallest
       decals first (headlights on the sedan), never the body. Golden car e2e: IoU 0.97 → 0.97, 12 → 12
       parts. Golden set score-neutral (no segmenting client there).
-- [ ] **PR-2.7 Windows / doors from masks.** Rectangles (min-area box per mask) → inset glass / door panels at
+- [x] **PR-2.7 Windows / doors from masks.** Rectangles (min-area box per mask) → inset glass / door panels at
       their place; replaces `spread()`.
+      Done: `withMaskPanels` — min-area rect (rotating calipers) per window/door mask, tilt ≤ 20°,
+      colours captured from the replaced parts (vehicle shell lends its glass, house doors the tall
+      cluster / gable). Vehicle cabin shell recolored body behind measured glass (mirrored); house
+      spread facade replaced front-only. Panels clamp into the face span, never float; both sides
+      while fundable decals cover both else near-only else prefix; wheels/roof protected. Chimney
+      masks fetched but not consumed (needs a stack part — PR-2.9 candidate). Shared `mask-geometry`
+      (mapping, `enforcePartBudget`, `isWheelPart`; mask-wheels refactored onto it, tests green).
+      Live-car e2e IoU 0.97 → 0.97, 12 → 12 parts; goldens identical (no masks offline).
 - [ ] **PR-2.8 Region colours.** Each part coloured from its own mask's pixels (glass from windows, tyre from
       wheels, body from the rest).
 - [ ] **PR-2.9 Fit v2.** Per-part parameters (wheel radius, cabin box, eave) by coordinate descent on `scoreModel`,
@@ -196,3 +204,4 @@ S2 (shape), S3 (Spark), S4 last (a bet). Expect the car to stop looking like a b
 | 2026-11-01 | PR-2.4 lathe body (outline half-width rows + render fix)               | 0.98     | 0.91    | 3.4     | —        | tree 89 → 99 (IoU 0.99, edge 0.99), lamp 87 → 89 (ΔE 7.3 → 7.4); hot-loop rewrite after budget blow (render 132 → 32 ms, pixels identical)             |
 | 2026-11-01 | PR-2.5 part masks (concept batch + attach)                             | 0.98     | 0.91    | 3.4     | —        | scores identical (no consumer yet — PR-2.6…2.8); 6 unit + 1 pipeline test, contract entry                                                              |
 | 2026-11-01 | PR-2.6 wheels from masks (Kasa fit + mirror + budget)                  | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); live-car e2e IoU 0.97 → 0.97, parts 12 → 12 (headlights fund the rims)                                           |
+| 2026-11-01 | PR-2.7 panels from masks (calipers + shell + room)                     | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); live-car e2e IoU 0.97 → 0.97; fixed mid-PR: wheels/roof protected, sides decided before dropping                 |
