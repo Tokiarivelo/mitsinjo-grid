@@ -44,7 +44,7 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
 
 ### S0 — Measure first (the loop needs it)
 
-- [ ] **PR-0.1 Flat renderer.** Pure TS z-buffer raster of a recipe at the photo view (orthographic + yaw, Lambert
+- [x] **PR-0.1 Flat renderer.** Pure TS z-buffer raster of a recipe at the photo view (orthographic + yaw, Lambert
       shade, per-part colour), reusing `silhouette-fit` hulls → `Mask` + RGB buffer. Test: a box renders its colour.
 - [ ] **PR-0.2 Score.** `scoreModel(render, crop, outline)` → `{ iou, edgeF1, deltaE (masked mean), score 0–100 }`.
       Test on the golden set; the car must score lower than the fridge today.
@@ -52,6 +52,10 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
       contact sheet (sharp composite). Gitignored output.
 - [ ] **PR-0.4 Capture.** `make shape-capture PHOTO=… ID=…`: one live run that saves crop, SAM outline, Spark kit and
       part masks as JSON fixtures, so the loop replays offline (no API cost per iteration).
+- [ ] **PR-0.6 Spark critic** (user, 2026-11-01: the Meta model must help the render match the selected box).
+      Crop | `renderFlat` PNG side by side + kit + scores → Spark → kit JSON patch → re-fit, keep if `scoreModel`
+      rises. Live: 1 round when score < 70 and ≥ 20 s left; offline on captures: ≤ 3 rounds. Mock: no patch.
+      Guide: `/shape-3d` « Meta in the render loop ». Replaces PR-3.5.
 - [ ] **PR-0.5 Real set.** 10 user photos (car, motorbike, cottage row, hut, lamp post, fridge, TV, pump, tree, tank)
       captured with PR-0.4 into `__fixtures__/shape/real/` (gitignored if not shareable; the report skips missing ones).
 
@@ -100,8 +104,7 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
       PR-3.1, keep the better.
 - [ ] **PR-3.4 Model choice.** muse-spark-1.3 vs muse-wonder-1.0 vs muse-spark-1.2 on accuracy and latency; keep the
       best under 30 s median.
-- [ ] **PR-3.5 Feedback round.** When score < 70 and ≥ 20 s are left: send Spark the crop + the flat render side by
-      side, ask for a JSON patch of the kit (sub-type, counts, proportions); keep the patch only if the score rises.
+- [x] **PR-3.5 Feedback round.** Moved to PR-0.6 (Spark critic).
 - [ ] **PR-3.6 Loop pass.**
 
 ### S4 — Generated views (bet, behind `SHAPE_VIEWS=1`)

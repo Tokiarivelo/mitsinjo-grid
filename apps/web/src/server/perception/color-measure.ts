@@ -211,10 +211,15 @@ export function insideRings(
   return inside;
 }
 
+/** `#rrggbb` → sRGB 0–255. */
+export function hexToRgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
 /** `#rrggbb` → CIELAB. */
 export function hexToLab(hex: string): [number, number, number] {
-  const n = parseInt(hex.slice(1), 16);
-  return linearToLab(...srgbToLinear((n >> 16) & 255, (n >> 8) & 255, n & 255));
+  return linearToLab(...srgbToLinear(...hexToRgb(hex)));
 }
 
 /** CIEDE2000 colour difference (Sharma 2005); < 2 hard to see, < 10 the same colour family. */

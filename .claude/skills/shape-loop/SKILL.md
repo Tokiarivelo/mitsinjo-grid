@@ -10,6 +10,9 @@ One iteration = measure → pick → fix one thing → measure → log. Plan and
 2. **Pick.** The object with the lowest score; on it, the worst metric against the stop criteria (IoU, edge F1, ΔE,
    part counts, designer score). Name the cause in one line, pointing at code (`file:function`). If the cause is a
    missing capability, take the next unchecked plan task that provides it instead of a hack.
+   For a wrong **what** (sub-type, counts, proportions, part colours), ask Spark first: crop | flat render side by
+   side → kit patch (`/shape-3d` « Meta in the render loop »), on captured fixtures; keep only patches that raise
+   the score, and turn the repeated corrections into prompt lines.
 3. **Fix one thing** with `/shape-3d` rules. Add or update a test that fails before the fix.
 4. **Measure again.** Any metric down > 2 points on any object → fix or revert before step 5. Never tune a
    threshold just to pass one golden case: the change must make sense for a real photo.

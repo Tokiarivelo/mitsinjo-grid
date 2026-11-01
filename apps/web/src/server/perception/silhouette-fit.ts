@@ -109,6 +109,52 @@ function unitPoints(p: RecipePart): Array<[number, number, number]> {
   }
 }
 
+/** Row-major 3 × 3 matrix and translation: unit primitive point → view space (x right, y up, z to the camera). */
+export interface PartTransform {
+  m: readonly number[];
+  t: readonly [number, number, number];
+}
+
+/** Axis swap of a cylinder / cone, as the viewer's `unitPart` rotation. */
+const AXIS: Record<'x' | 'y' | 'z', readonly number[]> = {
+  x: [0, -1, 0, 1, 0, 0, 0, 0, 1],
+  y: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+  z: [1, 0, 0, 0, 0, -1, 0, 1, 0],
+};
+
+/**
+ * Where a part's unit primitive lands in view space: axis swap, part size and place, object proportions,
+ * then the yaw turn (three.js `rotateY`). Shared by the silhouette and the flat renderer.
+ */
+export function partTransform(recipe: ObjectRecipe, p: RecipePart): PartTransform {
+  const { w, h, d } = recipe.proportions;
+  const cos = Math.cos(recipe.yaw ?? 0);
+  const sin = Math.sin(recipe.yaw ?? 0);
+  const a = AXIS[p.axis ?? 'y'];
+  const s = [p.size[0] * w, p.size[1] * h, p.size[2] * d];
+  // World = diag(s)·A·u + at·dims; view = R_yaw·world.
+  const row = (i: number) => [a[i * 3]! * s[i]!, a[i * 3 + 1]! * s[i]!, a[i * 3 + 2]! * s[i]!];
+  const [x, y, z] = [row(0), row(1), row(2)];
+  const [tx, ty, tz] = [p.at[0] * w, p.at[1] * h, p.at[2] * d];
+  return {
+    m: [
+      ...x.map((v, k) => v * cos + z[k]! * sin),
+      ...y,
+      ...x.map((v, k) => -v * sin + z[k]! * cos),
+    ],
+    t: [tx * cos + tz * sin, ty, -tx * sin + tz * cos],
+  };
+}
+
+export const applyTransform = (
+  { m, t }: PartTransform,
+  [x, y, z]: readonly [number, number, number]
+): [number, number, number] => [
+  m[0]! * x + m[1]! * y + m[2]! * z + t[0],
+  m[3]! * x + m[4]! * y + m[5]! * z + t[1],
+  m[6]! * x + m[7]! * y + m[8]! * z + t[2],
+];
+
 /**
  * Silhouette of a fitted recipe in the photo box (`aspect` = box width / height, pixels): the model's
  * height fills the rows, its width spans `h·aspect` across the columns, centred.
@@ -119,20 +165,13 @@ export function renderRecipe(
   cols: number,
   rows: number
 ): Mask {
-  const { w, h, d } = recipe.proportions;
+  const { h } = recipe.proportions;
   const frameW = h * aspect;
-  const cos = Math.cos(recipe.yaw ?? 0);
-  const sin = Math.sin(recipe.yaw ?? 0);
   const mask = emptyMask(cols, rows);
   for (const p of recipe.parts) {
-    const pts = unitPoints(p).map(([ux, uy, uz]) => {
-      let [x, y, z] = [ux, uy, uz];
-      if (p.axis === 'x') [x, y] = [-y, x];
-      else if (p.axis === 'z') [y, z] = [-z, y];
-      x = (x * p.size[0] + p.at[0]) * w;
-      y = (y * p.size[1] + p.at[1]) * h;
-      z = (z * p.size[2] + p.at[2]) * d;
-      const sx = x * cos + z * sin;
+    const tf = partTransform(recipe, p);
+    const pts = unitPoints(p).map((u) => {
+      const [sx, y] = applyTransform(tf, u);
       return [((sx + frameW / 2) / frameW) * cols, ((h / 2 - y) / h) * rows] as const;
     });
     fillPolygons(mask, [convexHull(pts)]);

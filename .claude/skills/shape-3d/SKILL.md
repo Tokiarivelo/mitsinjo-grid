@@ -30,6 +30,23 @@ Judge every change with `/shape-loop`.
 | Viewer geometry / materials | `features/vision-insert/utils/object-geometry.ts`, `utils/surface-look.ts`, `ui/object-editor-3d.tsx` |
 | Golden set                  | `server/perception/__fixtures__/shape/`, `__tests__/golden-shape.test.ts`, `make test-shape`          |
 
+**Meta in the render loop (Spark as visual critic)**
+
+Meta models do not render 3D; we render, Spark judges. The flat render (`server/perception/flat-render.ts`
+`renderFlat`, same frame as the photo box) is what makes the selected box and the model comparable.
+
+1. Render the fitted recipe at the photo view (`renderFlat(recipe, boxW/boxH, 256, …)`) → PNG with `sharp`
+   (white background, same size as the crop).
+2. Send Spark **one image**: crop (left) | flat render (right), side by side, plus the current kit JSON and the
+   `scoreModel` numbers. Prompt: « Left is the photo of the selected object, right is our 3D model seen from the
+   same view. List what differs (shape, sub-type, counts, proportions, colours of each part) and answer only a
+   JSON patch of the kit. » Schema = a partial `ObjectKit` (strict JSON schema, same parser as `parseKit`).
+3. Apply the patch → re-fit → re-render → re-score. **Keep it only if the score rises**; otherwise drop it.
+4. At most 1 round in the live request (only when score < 70 and ≥ 20 s remain); offline (captured fixtures,
+   `make eval-shape`) up to 3 rounds to learn which prompt lines help, then fold them into `SHAPE_SYSTEM_PROMPT`.
+5. Spark never sends geometry numbers it cannot see (metres, watts); counts, sub-type, proportions and part
+   colour roles only. Measurements still win over its patch by confidence (`fusion.ts`).
+
 **Adding things**
 
 - A primitive: unit builder in `object-geometry.ts` (non-indexed, uv + normal like the others) **and** its outline
