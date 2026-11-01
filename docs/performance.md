@@ -88,7 +88,8 @@ them after mount (re-targeting races React root unmounts and can leave a label e
 - Object 3D viewer (/village, PR-1.1): studio light = one `RoomEnvironment` pre-filtered once per canvas
   (PMREM, 256² faces, disposed on unmount) + 2 directional lights; `frameloop="demand"` keeps it idle.
   Rounded boxes (PR-1.2): 300 triangles each, plain 12-triangle box under 0.005 radius; spheres 18 × 12 (396 triangles, PR-1.3);
-  ≤ 5 k triangles per object.
+  ≤ 5 k triangles per object. Surface maps (PR-1.4): 128² normal + roughness + shade per used material,
+  generated in JS on first use (~1 ms each) and cached for the session.
 - Charts in a hidden tab are not mounted (Recharts can't measure a `display:none` parent).
 
 ## 6. Loading & navigation

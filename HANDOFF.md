@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-01 (PR-0.1…0.3 measure, PR-1.1 light + colour fix, PR-1.2 rounded boxes, PR-1.3 roof overhang) · **By:** Claude Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-01 (PR-0.1…0.3 measure, PR-1.1 light + colour fix, PR-1.2 rounded boxes, PR-1.3 overhang, PR-1.4 maps) · **By:** Claude Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
@@ -16,7 +16,7 @@
 
 ## Next task
 
-- **3D realism (priority, user)**: task file `docs/tasks/PV-shape-realism.md` → PR-0.1…0.3, PR-1.1, PR-1.2, PR-1.3 done → next **PR-1.4 procedural maps** (S1); PR-0.4/0.5 wait for live Meta + user photos; then **PR-0.6 Spark critic** (user: Meta model compares crop | flat render, returns kit patch). Work with `/shape-3d`, judge with `/shape-loop` (or `/loop /shape-loop`). Meta only; photo never pasted, 64 px tileable swatches OK. Needs ~10 user photos for PR-0.5.
+- **3D realism (priority, user)**: task file `docs/tasks/PV-shape-realism.md` → PR-0.1…0.3, PR-1.1, PR-1.2…1.4 done → next **PR-1.5 photo swatches** (server, S1); PR-0.4/0.5 wait for live Meta + user photos; then **PR-0.6 Spark critic** (user: Meta model compares crop | flat render, returns kit patch). Work with `/shape-3d`, judge with `/shape-loop` (or `/loop /shape-loop`). Meta only; photo never pasted, 64 px tileable swatches OK. Needs ~10 user photos for PR-0.5.
 - Done before it: `PV-shape-fidelity.md` PF-T1…T9 (colours, roofline, rows, yaw, fit, fusion, golden set `make test-shape`); PF-T10 folded into PR-5.1/5.2.
 - **Free placement** (user: « Sector » too static): plan `docs/tasks/PV-free-placement.md` (position + feeder, PP-T1…T8).
 - **PV-T14** copilot tools report `appliances`; then **PV-T11b** (usage-hours chart, `edit_appliance`). Not done: screenshots, `make e2e`.
@@ -33,6 +33,6 @@
 
 ## Files touched this session
 
-- PR-0.1: `perception/flat-render.ts` (`renderFlat`, ray per pixel, z-buffer, Lambert), `partTransform` shared in `silhouette-fit.ts`, `hexToRgb`; PR-0.2: `model-score.ts` (`scoreModel`), `score-shape.ts` (`scoreRecipe`), `sampleObjectRgb`, `maskEdges`/`distanceTo`/`fitGrid`, test helper `__tests__/golden-run.ts`; PR-0.3: `shape-report.ts` (table, `worstMetric`, `contactSheet`), `renderFlat(…, view)` + `THREE_QUARTER`, z-tie fix, `make shape-report`; PR-1.1: `StudioEnvironment` in `object-editor-3d.tsx`, Neutral tone map, `recipeMesh` double sRGB fix, `scripts/object-viewer-shot.mjs` + `make shape-shots`, PR-1.2: `roundedBox`, `SURFACE_LOOK.radius`; PR-1.3: `ROOF_OVERHANG`, `SPHERE_SEGMENTS`; `.claude/settings.json` deny narrowed to `apps/*/test-results` (user); skills shape-3d/shape-loop « Meta in the render loop ».
+- PR-0.1: `perception/flat-render.ts` (`renderFlat`, ray per pixel, z-buffer, Lambert), `partTransform` shared in `silhouette-fit.ts`, `hexToRgb`; PR-0.2: `model-score.ts` (`scoreModel`), `score-shape.ts` (`scoreRecipe`), `sampleObjectRgb`, `maskEdges`/`distanceTo`/`fitGrid`, test helper `__tests__/golden-run.ts`; PR-0.3: `shape-report.ts` (table, `worstMetric`, `contactSheet`), `renderFlat(…, view)` + `THREE_QUARTER`, z-tie fix, `make shape-report`; PR-1.1: `StudioEnvironment` in `object-editor-3d.tsx`, Neutral tone map, `recipeMesh` double sRGB fix, `scripts/object-viewer-shot.mjs` + `make shape-shots`, PR-1.2: `roundedBox`, `SURFACE_LOOK.radius`; PR-1.3: `ROOF_OVERHANG`, `SPHERE_SEGMENTS`; PR-1.4: `surface-maps.ts`, `surface-textures.ts`, `planarUvs`, golden priors with materials; `.claude/settings.json` deny narrowed to `apps/*/test-results` (user); skills shape-3d/shape-loop « Meta in the render loop ».
 
 - Earlier (PF): roofline, repetition, silhouette-fit, fusion, golden set, perspective, photo removed — see `PV-shape-fidelity.md`.

@@ -72,8 +72,10 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
 - [x] **PR-1.3 Bevelled prism + smooth round parts.** Gable prisms with a small eave overhang; spheres / cylinders
       smooth-shaded. Done: `ROOF_OVERHANG` 0.03 on every side (no bevel: roof planes stay flat); round parts
       were already smooth (test added); spheres 18 × 12 so 12 round parts ≤ 5 k triangles.
-- [ ] **PR-1.4 Procedural maps.** Per material a 128² canvas normal + roughness map (stone blocks, brick courses,
+- [x] **PR-1.4 Procedural maps.** Per material a 128² canvas normal + roughness map (stone blocks, brick courses,
       wood grain, thatch, slate rows, brushed metal, tread), tiled by part size, tinted by the measured colour.
+      Done: `surface-maps.ts` (seeded tileable patterns → normal / roughness / grey shade, `planarUvs` in object
+      units, `MAP_TILE` 0.25), `surface-textures.ts` (lazy, cached); glass / water / plastic / painted smooth.
 - [ ] **PR-1.5 Photo swatches.** Server: per textured material, the 64 px patch inside its region with the most even
       texture (lowest gradient-variance outlier, no edges), made tileable (mirror + edge blend), sent as
       `part.texture` (data URL ≤ 8 kB). Overrides PR-1.4's colour map; normals stay procedural. Allowed by the user.
@@ -143,3 +145,4 @@ S2 (shape), S3 (Spark), S4 last (a bet). Expect the car to stop looking like a b
 | 2026-11-01 | PR-1.1 studio light + vertex colour fix (viewer only)                  | 0.95     | 0.76    | 3.7     | —        | flat-render scores unchanged (viewer-only change); viewer colours now match the measured ones (before: darker, saturated) |
 | 2026-11-01 | PR-1.2 rounded boxes (viewer only)                                     | 0.95     | 0.76    | 3.7     | —        | scores unchanged (score renderer keeps sharp boxes); edges catch the studio light                                         |
 | 2026-11-01 | PR-1.3 roof overhang, sphere budget (viewer only)                      | 0.95     | 0.76    | 3.7     | —        | scores unchanged; cottage roofs read as roofs                                                                             |
+| 2026-11-01 | PR-1.4 procedural maps; golden priors name materials                   | 0.95     | 0.76    | 3.7     | —        | scores unchanged; issue for the loop: metal parts (metalness 0.6) render darker than the measured colour                  |

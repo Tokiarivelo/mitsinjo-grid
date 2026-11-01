@@ -10,6 +10,7 @@ import { silhouetteRings, type ObjectShape } from '@/lib/object-shape';
 import type { ApplianceDetection } from '@/lib/vision';
 import { recipeMesh, silhouetteDepth, silhouetteMesh } from '../utils/object-geometry';
 import { SURFACE_LOOK, SURFACES } from '../utils/surface-look';
+import { surfaceTextures } from '../utils/surface-textures';
 
 export interface ObjectEditor3dProps {
   shape: ObjectShape;
@@ -68,14 +69,21 @@ function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
   );
   useEffect(() => () => mesh.dispose(), [mesh]);
   const vertexColors = shape.mode === 'recipe';
-  // One material per surface (stone matte, glass shiny…), indexed by the geometry groups.
-  const surfaces = useMemo(
-    () =>
-      SURFACES.map(
-        (s) => new THREE.MeshStandardMaterial({ vertexColors: true, ...SURFACE_LOOK[s] })
-      ),
-    []
-  );
+  // One material per surface (stone matte, glass shiny…), indexed by the geometry groups. Surfaces the
+  // model uses get their relief maps (PR-1.4: stone blocks, slate rows…), tinted by the measured colours.
+  const surfaces = useMemo(() => {
+    const used = new Set(mesh.groups.map((g) => g.materialIndex));
+    return SURFACES.map((s, i) => {
+      const { roughness, metalness } = SURFACE_LOOK[s];
+      const maps = vertexColors && used.has(i) ? surfaceTextures(s) : null;
+      return new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness,
+        metalness,
+        ...(maps ?? {}),
+      });
+    });
+  }, [mesh, vertexColors]);
   useEffect(() => () => surfaces.forEach((m) => m.dispose()), [surfaces]);
   // Ground under the object (shadow sits on it), from the real geometry.
   const floorY = useMemo(() => {

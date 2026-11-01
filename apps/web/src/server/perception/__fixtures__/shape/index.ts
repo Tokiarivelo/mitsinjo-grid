@@ -62,6 +62,7 @@ function cottageRow(n: number, eave: number): GoldenCase {
       archetype: 'house',
       proportions: { w: 1, h: 0.5, d: 0.4 },
       colors: WRONG,
+      materials: { main: 'stone', secondary: 'slate', accent: 'glass' },
       details: { units: 1, windows: 2 },
     },
     expect: { main: STONE, secondary: SLATE, gables: n },
@@ -91,7 +92,12 @@ const lampPost: GoldenCase = {
     [0.42, 0.18],
     [0.05, 0.18],
   ],
-  prior: { archetype: 'lamp_post', proportions: { w: 0.2, h: 1, d: 0.2 }, colors: WRONG },
+  prior: {
+    archetype: 'lamp_post',
+    proportions: { w: 0.2, h: 1, d: 0.2 },
+    colors: WRONG,
+    materials: { main: 'metal', secondary: 'metal', accent: 'glass' },
+  },
   expect: { main: POLE },
 };
 
@@ -104,7 +110,12 @@ const fridge: GoldenCase = {
     { fill: '#8a939c', points: rect(0.85, 0.3, 0.9, 0.55) },
   ],
   outline: rect(0, 0, 1, 1),
-  prior: { archetype: 'cabinet', proportions: { w: 0.5, h: 1, d: 0.5 }, colors: WRONG },
+  prior: {
+    archetype: 'cabinet',
+    proportions: { w: 0.5, h: 1, d: 0.5 },
+    colors: WRONG,
+    materials: { accent: 'plastic' }, // enamelled body: no material (painted)
+  },
   expect: { main: WHITE },
 };
 
@@ -140,6 +151,7 @@ const car: GoldenCase = {
     archetype: 'vehicle',
     proportions: { w: 1, h: 0.4, d: 0.45 },
     colors: WRONG,
+    materials: { main: 'metal', secondary: 'glass', accent: 'rubber' },
     details: { wheels: 4 },
   },
   expect: { main: RED },
@@ -168,7 +180,12 @@ const tree: GoldenCase = {
     { fill: LEAVES, points: treeOutline().slice(0, -2) },
   ],
   outline: treeOutline(),
-  prior: { archetype: 'tree', proportions: { w: 0.7, h: 1, d: 0.7 }, colors: WRONG },
+  prior: {
+    archetype: 'tree',
+    proportions: { w: 0.7, h: 1, d: 0.7 },
+    colors: WRONG,
+    materials: { main: 'foliage', secondary: 'wood' },
+  },
   expect: { main: LEAVES, secondary: BARK },
 };
 

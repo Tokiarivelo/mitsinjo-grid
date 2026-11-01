@@ -4,6 +4,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { ObjectRecipe, RecipePart } from '@/lib/object-shape';
 import { SURFACE_LOOK, SURFACES, surfaceIndex } from './surface-look';
+import { planarUvs } from './surface-maps';
 import { type ApplianceDetection, type NormBox, type SceneryType } from '@/lib/vision';
 
 /**
@@ -169,6 +170,14 @@ export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
       g.scale(sx + eave, sy, sz + eave);
     }
     g.translate(p.at[0] * dims[0], p.at[1] * dims[1], p.at[2] * dims[2]);
+    // Surface maps (PR-1.4) tile in object units, aligned with the walls (before the yaw).
+    g.setAttribute(
+      'uv',
+      new THREE.BufferAttribute(
+        planarUvs(g.getAttribute('position').array, g.getAttribute('normal').array),
+        2
+      )
+    );
     // Measured yaw (PF-T5): turned like on the photo.
     if (recipe.yaw) g.rotateY(recipe.yaw);
     // `set` already turns sRGB into the linear working space (ColorManagement): no second conversion.
