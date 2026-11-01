@@ -171,9 +171,22 @@ export const ImaginedViewsResponseSchema = z.object({
 export type ImaginedViewsResponse = z.infer<typeof ImaginedViewsResponseSchema>;
 
 /** `/api/vision/shape` reply. `recipe` set only in `recipe` mode; `reason` only in `silhouette` mode. */
+/**
+ * One segmented part on the object crop (PR-2.5): SAM concept + box in crop fractions, outline
+ * when the mask decoded. Wheels / windows / doors feed PR-2.6…2.8; empty when the archetype has
+ * no concepts, the client cannot segment, or every call failed.
+ */
+export const PartMaskSchema = z.object({
+  concept: z.string(),
+  box: NormBoxSchema,
+  outline: z.string().optional(),
+});
+export type PartMask = z.infer<typeof PartMaskSchema>;
+
 export const ObjectShapeSchema = z.object({
   detectionId: z.string(),
   mode: z.enum(['recipe', 'silhouette']),
+  partMasks: z.array(PartMaskSchema).optional(),
   recipe: ObjectRecipeSchema.optional(),
   reason: z.enum(SHAPE_FALLBACK_REASONS).optional(),
   source: z.enum(['meta', 'mock']),

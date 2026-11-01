@@ -374,4 +374,38 @@ describe('runObjectShape perspective (PF-T5)', () => {
     );
     expect(b.recipe).not.toHaveProperty('yaw');
   });
+
+  it('part masks (PR-2.5): segmented on the crop when the client can, else skipped', async () => {
+    const vehicle: ObjectKit = {
+      archetype: 'vehicle',
+      proportions: { w: 1, h: 0.4, d: 0.45 },
+      colors: { main: '#a33327', secondary: '#cfd6dd', accent: '#1c1c1e' },
+      materials: { main: 'metal', secondary: 'glass', accent: 'rubber' },
+    };
+    const car: ShapeTarget = { id: 'car', label: 'Car', category: 'other', box: target.box };
+    const segmentImage = vi.fn(async (_url: string, concept: string) => ({
+      source: 'meta' as const,
+      model: 'sam-3.1',
+      concept,
+      imageWidth: 100,
+      imageHeight: 100,
+      instances: [{ box: { x1: 10, y1: 60, x2: 30, y2: 80 } }],
+      count: 1,
+      boxCoverage: 0.04,
+    }));
+    const withSeg = {
+      describeShape: vi.fn().mockResolvedValue(meta(kitToRecipe(vehicle), { kit: vehicle })),
+      segmentImage,
+    };
+    const out = await runObjectShape(withSeg, await photo(), 'data:full', car);
+    expect(out.mode).toBe('recipe');
+    expect(segmentImage.mock.calls.map((c) => c[1]).sort()).toEqual(['wheel', 'window']);
+    expect(out.partMasks!.map((m) => m.concept).sort()).toEqual(['wheel', 'window']);
+    expect(ObjectShapeSchema.safeParse(out).success).toBe(true);
+
+    const withoutSeg = client(meta(kitToRecipe(vehicle), { kit: vehicle }));
+    const out2 = await runObjectShape(withoutSeg, await photo(), 'data:full', car);
+    expect(out2.mode).toBe('recipe');
+    expect(out2.partMasks).toBeUndefined();
+  });
 });

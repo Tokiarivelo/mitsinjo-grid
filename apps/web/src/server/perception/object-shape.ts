@@ -23,6 +23,7 @@ import { EDGE_COLUMNS, sampleObjectGray, sampleObjectPixels } from './shape-colo
 import { cropForShape } from './shape-crop';
 import { extractSwatches } from './photo-swatches';
 import { withLatheBody } from './lathe-body';
+import { fetchPartMasks } from './part-masks';
 import { withProfileBody } from './profile-body';
 import { scoreRecipe } from './score-shape';
 import { generateImaginedViews } from './views-generation';
@@ -124,7 +125,8 @@ export interface ObjectShapeOptions {
  * Mock mode: fixed recipe per category, not checked. Never throws.
  */
 export async function runObjectShape(
-  perception: Pick<PerceptionClient, 'describeShape'>,
+  perception: Pick<PerceptionClient, 'describeShape'> &
+    Partial<Pick<PerceptionClient, 'segmentImage'>>,
   photo: PhotoForRegions | null,
   fullImageUrl: string,
   target: ShapeTarget,
@@ -230,6 +232,20 @@ export async function runObjectShape(
         finalKit = rep.kit;
         if (colors || measure || rep.repetition) built = kitToRecipe(rep.kit);
       }
+      // PR-2.5: the archetype's part concepts segmented on the crop (wheels, windows…),
+      // best effort — skipped without a photo or a segmenting client.
+      let partMasks: import('@/lib/object-shape').PartMask[] | undefined;
+      const segmentImage = perception.segmentImage;
+      if (finalKit && photo && segmentImage) {
+        partMasks = await fetchPartMasks(segmentImage, imageUrl, finalKit.archetype);
+        if (partMasks.length > 0) {
+          const counts = new Map<string, number>();
+          for (const m of partMasks) counts.set(m.concept, (counts.get(m.concept) ?? 0) + 1);
+          console.info(
+            `[vision] 3D masks for "${target.label}": ${[...counts].map(([c, n]) => `${c}×${n}`).join(', ')}`
+          );
+        }
+      }
       const persp =
         finalKit && photo ? measuredYaw(finalKit, await edges, target.box, photo) : null;
       if (persp) {
@@ -328,6 +344,7 @@ export async function runObjectShape(
         recipe,
         ...(imaginedViews ? { imaginedViews } : {}),
         ...(fitIou !== undefined ? { fit: { iou: fitIou } } : {}),
+        ...(partMasks ? { partMasks } : {}),
         ...source,
       };
     }
