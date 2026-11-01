@@ -122,6 +122,8 @@ export const ObjectShapeSchema = z.object({
   source: z.enum(['meta', 'mock']),
   model: z.string(),
   fallback: z.enum(['provider_error', 'spend_cap', 'not_configured']).optional(),
+  /** How well the model's silhouette matches the SAM outline after the fit (PF-T6), IoU 0–1. Computed, not AI. */
+  fit: z.object({ iou: z.number().min(0).max(1) }).optional(),
   /** Short cause with `provider_error` (`http_429`…), shown in the panel and the logs. */
   detail: z.string().max(40).optional(),
 });

@@ -849,7 +849,8 @@
         "rubber": "caoutchouc",
         "foliage": "feuillage",
         "water": "eau"
-      }
+      },
+      "model3dFit": "Correspond au contour de la photo : {pct}"
     }
   },
   "copilot": {

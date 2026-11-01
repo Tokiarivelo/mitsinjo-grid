@@ -1,8 +1,19 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Box, Check, Circle, Layers, Loader2, Move3d, RotateCcw, Sparkles } from 'lucide-react';
+import {
+  Box,
+  Check,
+  Circle,
+  Layers,
+  Loader2,
+  Move3d,
+  RotateCcw,
+  Sparkles,
+  Target,
+} from 'lucide-react';
 import { useWebGLAvailable } from '@/features/microgrid-3d';
+import { fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
 import {
   SHAPE_STEPS,
@@ -210,6 +221,12 @@ export function ObjectShapePanel({
             </button>
           )}
         </div>
+      )}
+      {ready && shape?.fit && (
+        <p className="flex items-center gap-1.5 text-xs text-text-secondary">
+          <Target className="h-3 w-3 shrink-0" aria-hidden="true" />
+          {t('model3dFit', { pct: fmtPct(shape.fit.iou * 100, 0) })}
+        </p>
       )}
       {ready && materials.length > 0 && (
         <p className="flex items-start gap-1.5 text-xs text-ai-violet">

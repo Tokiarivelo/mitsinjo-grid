@@ -16,6 +16,7 @@ import type { PhotoForRegions } from './region';
 import { measurePerspective, type Perspective } from './perspective';
 import { measureRepetition, type GrayGrid, type Repetition } from './repetition';
 import { measureRoof, type RoofMeasure } from './roofline';
+import { fitSilhouette } from './silhouette-fit';
 import { EDGE_COLUMNS, sampleObjectGray, sampleObjectPixels } from './shape-colors';
 import { cropForShape } from './shape-crop';
 
@@ -92,7 +93,8 @@ export interface ObjectShapeOptions {
  * returns a kit → parts recipe, fitted to the photo box (`fitRecipe`). Colours are measured on the photo
  * pixels inside the SAM outline while Spark thinks (PF-T2), and replace Spark's guessed colours; houses get the roofline
  * read on that outline (PF-T3) and the houses / windows counted by edge repetition (PF-T4); straight-edged objects are turned by the yaw read on
- * their vanishing points (PF-T5). Fallbacks → `silhouette` mode, built in
+ * their vanishing points (PF-T5); with an outline, the template parameters are then fitted to it
+ * (PF-T6, `fit.iou`). Fallbacks → `silhouette` mode, built in
  * the browser from the SAM outline (no extra call), with a precise `reason`: `timeout` (past
  * `SHAPE_TIMEOUT_MS`), `provider_error` + `detail` (`http_429`…), `spend_cap`, `malformed`, `no_body`.
  * Mock mode: fixed recipe per category, not checked. Never throws.
@@ -169,6 +171,7 @@ export async function runObjectShape(
     if (!found.recipe) return silhouette('malformed', source);
     if (found.source === 'meta') {
       let built = found.recipe;
+      let finalKit = found.kit;
       const px = found.kit ? await pixels : null;
       const colors = found.kit && px ? measureKitColors(px, found.kit.archetype) : null;
       if (found.kit && colors) {
@@ -193,6 +196,7 @@ export async function runObjectShape(
             `[vision] 3D repetition for "${target.label}": units=${rep.kit.details?.units ?? 1} (R=${rep.repetition.strength}), windows=${rep.kit.details?.windows ?? '-'}`
           );
         }
+        finalKit = rep.kit;
         if (colors || measure || rep.repetition) built = kitToRecipe(rep.kit);
       }
       const persp =
@@ -204,7 +208,24 @@ export async function runObjectShape(
           `[vision] 3D perspective for "${target.label}": yaw=${Math.round((persp.yaw * 180) / Math.PI)}° (${persp.inliers}${persp.inliersSide ? ` + ${persp.inliersSide}` : ''} lines, f=${persp.focal}${persp.focalMeasured ? ' measured' : ''})`
         );
       }
-      const recipe = fitRecipe(built, aspect, persp?.yaw ?? 0);
+      const rings = target.outline ? pathToRings(target.outline).filter((r) => r.length >= 3) : [];
+      const fit =
+        finalKit && rings.length
+          ? fitSilhouette({
+              kit: finalKit,
+              rings,
+              box: target.box,
+              aspect,
+              yaw0: persp?.yaw ?? 0,
+              canYaw: STRAIGHT.includes(finalKit.archetype),
+            })
+          : null;
+      if (fit) {
+        console.info(
+          `[vision] 3D fit for "${target.label}": iou=${fit.iou} (start ${fit.iouStart}, ${fit.evals} evals)${finalKit?.details?.units ? ` units=${finalKit.details.units}` : ''} yaw=${Math.round(((fit.recipe.yaw ?? 0) * 180) / Math.PI)}°`
+        );
+      }
+      const recipe = fit?.recipe ?? fitRecipe(built, aspect, persp?.yaw ?? 0);
       const issue = recipeIssue(recipe);
       if (issue) {
         console.info(`[vision] 3D recipe for "${target.label}" rejected (${issue}), silhouette`);
@@ -213,7 +234,13 @@ export async function runObjectShape(
       console.info(
         `[vision] 3D recipe for "${target.label}": ${recipe.parts.length} parts in ${seconds} s (${found.model})${found.kit?.materials ? `, materials ${Object.values(found.kit.materials).join('/')}` : ''}`
       );
-      return { ...base, mode: 'recipe', recipe, ...source };
+      return {
+        ...base,
+        mode: 'recipe',
+        recipe,
+        ...(fit ? { fit: { iou: fit.iou } } : {}),
+        ...source,
+      };
     }
     return { ...base, mode: 'recipe', recipe: found.recipe, ...source };
   } catch (err) {

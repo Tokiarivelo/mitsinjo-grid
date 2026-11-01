@@ -849,7 +849,8 @@
         "rubber": "kaoty",
         "foliage": "ravina",
         "water": "rano"
-      }
+      },
+      "model3dFit": "Mifanaraka amin'ny sisin'ny sary: {pct}"
     }
   },
   "copilot": {

@@ -3,7 +3,7 @@
 **Why (user, 2026-11-01):** for `det-4` « stone cottages row » (Bourton-on-the-Water, box x 0.18 y 0.10 w 0.82 h 0.58),
 the 3D model does not look like the photo: one box with a black stepped roof, a grey bar across the front, and the whole
 photo (sky, roofs, cars) squashed onto the walls.
-**Status:** 🟡 PF-T1…T5 done. **User change 2026-11-01:** the photo is no longer pasted on the 3D model (PF-T1 projection and `photo-mask.ts` removed); the model is shapes + measured colours only, so PF-T2…T6 measurements carry the likeness. (`perspective.ts`: yaw from the facade vanishing point; **deviation:** no homography per facade — the model is turned by the yaw; PF-T4 not yet rectified; `repetition.ts` + `sampleObjectGray`: units read on the roof band only — window edges on the walls gave false houses —, windows per house on the walls; `roofline.ts`: skyline from the SAM rings, segmented LSQ + BIC, `KitRoof`, `prism` part; `decalWidth`; `color-measure.ts` + `shape-colors.ts`, target `outline`). Next: PF-T6.
+**Status:** 🟡 PF-T1…T6 done. **User change 2026-11-01:** the photo is no longer pasted on the 3D model (PF-T1 projection and `photo-mask.ts` removed); the model is shapes + measured colours only, so PF-T2…T6 measurements carry the likeness. (`perspective.ts`: yaw from the facade vanishing point; **deviation:** no homography per facade — the model is turned by the yaw; PF-T4 not yet rectified; `repetition.ts` + `sampleObjectGray`: units read on the roof band only — window edges on the walls gave false houses —, windows per house on the walls; `roofline.ts`: skyline from the SAM rings, segmented LSQ + BIC, `KitRoof`, `prism` part; `decalWidth`; `color-measure.ts` + `shape-colors.ts`, target `outline`; PF-T6 `silhouette-fit.ts` + `nelder-mead.ts`, **deviation:** `units` is not a fit parameter — a flat outline gained fake gables; h is fixed by the box). Next: PF-T7.
 **Rule kept:** Meta models only. All math is pure, seeded TS and deterministic (same photo → same model), with tests.
 It runs on the server on a ≤ 256 px copy of the crop, inside the 60 s budget (target < 300 ms).
 
@@ -57,7 +57,7 @@ photo crop ─┬─ SAM mask M(x,y) ──┬─ colours (k-means Lab per band)
       the facade; true aspect `w/h` = rectified width / height (replaces the box aspect in `fitRecipe`). Two VPs → two
       visible facades, split at the corner column, and each gets its own projective UV (`H₁`, `H₂`). No reliable VP
       (< 8 inliers) → today's front view.
-- [ ] **PF-T6 Fit by optimization.** Parameters θ = {w, h, d, roofHeight, yaw, units}. Render the model's silhouette at
+- [x] **PF-T6 Fit by optimization.** Parameters θ = {w, h, d, roofHeight, yaw, units}. Render the model's silhouette at
       128 px (pure rasteriser, orthographic + yaw), score `J(θ) = 1 − IoU(render, M) + λ·chamfer(edges)`, minimise with
       **Nelder–Mead** (≤ 150 evaluations, seeded start = PF-T3…T5 estimates). Stop when ΔJ < 1e-3. Report the IoU in the
       shape result (`fit.iou`) and show « match 82 % » in the panel (computed, not AI).

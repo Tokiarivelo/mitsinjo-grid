@@ -849,7 +849,8 @@
         "rubber": "rubber",
         "foliage": "leaves",
         "water": "water"
-      }
+      },
+      "model3dFit": "Matches the photo outline: {pct}"
     }
   },
   "copilot": {

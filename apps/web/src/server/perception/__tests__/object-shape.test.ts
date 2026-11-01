@@ -1,7 +1,7 @@
 // @vitest-environment node
 import sharp from 'sharp';
 import { describe, expect, it, vi } from 'vitest';
-import type { ObjectRecipe, ShapeTarget } from '@/lib/object-shape';
+import { ObjectShapeSchema, type ObjectRecipe, type ShapeTarget } from '@/lib/object-shape';
 vi.mock('server-only', () => ({}));
 import { runObjectShape, SHAPE_TIMEOUT_MS } from '../object-shape';
 import type { ShapeResult } from '../schemas';
@@ -247,6 +247,9 @@ describe('runObjectShape measured roof (PF-T3)', () => {
     const out = await runObjectShape(p, await street(), 'data:full', row(gabled));
     expect(out.mode).toBe('recipe');
     expect(out.recipe!.parts.filter((x) => x.shape === 'prism')).toHaveLength(3);
+    // PF-T6: the fitted silhouette matches the outline, score sent to the panel.
+    expect(out.fit!.iou).toBeGreaterThanOrEqual(0.8);
+    expect(ObjectShapeSchema.safeParse(out).success).toBe(true);
   });
 
   it('flat outline, no outline, or not a building → no prism (template unchanged)', async () => {
@@ -262,6 +265,8 @@ describe('runObjectShape measured roof (PF-T3)', () => {
         t
       );
       expect(out.recipe!.parts.some((x) => x.shape === 'prism')).toBe(false);
+      // No outline → no fit score (nothing to compare with).
+      if (!t.outline) expect(out.fit).toBeUndefined();
     }
   });
 });
