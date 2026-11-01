@@ -16,7 +16,7 @@
 
 ## Next task
 
-- **3D fidelity (priority, user)**: plan `docs/tasks/PV-shape-fidelity.md`; PF-T1 (photo + SAM mask), PF-T2 (colours), PF-T3 (roofline → `prism` gables), PF-T4 (houses / windows, `repetition.ts`), PF-T5 (yaw), PF-T6 (fit, `fit.iou`), PF-T7 (`fusion.ts`), PF-T8, PF-T9 (golden set, `make test-shape`) done. **User 2026-11-01: result still ugly (vehicle = boxes) → new plan `docs/tasks/PV-shape-realism.md`.**
+- **3D fidelity (priority, user)**: plan `docs/tasks/PV-shape-fidelity.md`; PF-T1 (photo + SAM mask), PF-T2 (colours), PF-T3 (roofline → `prism` gables), PF-T4 (houses / windows, `repetition.ts`), PF-T5 (yaw), PF-T6 (fit, `fit.iou`), PF-T7 (`fusion.ts`), PF-T8, PF-T9 (golden set, `make test-shape`) done. **User 2026-11-01: result still ugly (vehicle = boxes) → new plan `docs/tasks/PV-shape-realism.md` (PR-T1 studio light first; 2 open decisions for the user).**
 - **Free placement** (user: « Sector » too static): plan `docs/tasks/PV-free-placement.md` (position + feeder, PP-T1…T8).
 - **PV-T14** copilot tools report `appliances`; then **PV-T11b** (usage-hours chart, `edit_appliance`). Not done: screenshots, `make e2e`.
 
