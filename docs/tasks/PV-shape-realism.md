@@ -2,96 +2,131 @@
 
 **Why (user, 2026-11-01):** the generated car is a dark-blue box with a pale-grey box on top and four black discs:
 « ugly, not conform to the image, no good styling ». PF-T1…T9 (`PV-shape-fidelity.md`) made the numbers right
-(colours, roofline, row count, yaw, IoU 0.9 on the golden set), but the **vocabulary** is still 5 primitives with sharp
-edges under flat lights. Fidelity now needs better shapes, better surfaces and better light, not better measurements.
-**Status:** ❌ planned. **Rules kept:** Meta models only (Muse Spark, Muse Image, SAM 3.1); never paste the photo
-on the model (user, 2026-11-01); math pure, seeded, tested; ≤ 5 k triangles per object; 60 s total budget.
+(colours, roofline, row count, yaw, IoU ≥ 0.9 on the synthetic set), but the **vocabulary** is 5 sharp primitives
+under flat lights. Fidelity now needs better shapes, surfaces and light, measured by a loop.
+**Status:** ❌ planned. **Decisions (user, 2026-11-01):** Meta models only (Muse Spark / Wonder, Muse Image, SAM 3.1);
+never paste the photo on the model, **but small tileable swatches cut from it (≈ 64 px) are allowed** as textures.
+**Rules kept:** math pure, seeded, tested; ≤ 5 k triangles per object; whole request ≤ 60 s; shape math ≤ 300 ms.
+**Skills:** `/shape-3d` (how to build: files, vocabulary, budgets) · `/shape-loop` (the quality loop below).
 
 ## Why the car looks like that (from the code)
 
-| What the user sees                   | Cause                                                                                   | Where                               |
-| ------------------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------- |
-| A brick, not a car                   | `vehicle` template = 2 boxes + cylinders; the SAM side profile is only used for the IoU | `object-kit.ts` `TEMPLATES.vehicle` |
-| Sharp edges, toy look                | Box primitives, no bevel, no rounding, flat normals                                     | `object-geometry.ts` `unitPart`     |
-| Grey cabin, no windows               | Cabin takes the `secondary` colour; glass is never placed where the photo shows it      | templates, `measureKitColors` roles |
-| Wheels too small, at fixed positions | `spread(perSide, 0.6)` × size 0.18, not the photo's wheels                              | `TEMPLATES.vehicle`                 |
-| Plastic, flat light                  | 4 directional lights, no environment map, no ambient occlusion, no texture detail       | `object-editor-3d.tsx`              |
+| What the user sees                   | Cause                                                                              | Where                               |
+| ------------------------------------ | ---------------------------------------------------------------------------------- | ----------------------------------- |
+| A brick, not a car                   | `vehicle` template = 2 boxes + cylinders; the SAM side profile only feeds the IoU  | `object-kit.ts` `TEMPLATES.vehicle` |
+| Sharp edges, toy look                | Box primitives, no bevel, no rounding, flat normals                                | `object-geometry.ts` `unitPart`     |
+| Grey cabin, no windows               | Cabin takes the `secondary` colour; glass is never placed where the photo shows it | templates, `measureKitColors` roles |
+| Wheels too small, at fixed positions | `spread(perSide, 0.6)` × size 0.18, not the photo's wheels                         | `TEMPLATES.vehicle`                 |
+| Plastic, flat light                  | 4 directional lights, no environment map, no ambient occlusion, no texture detail  | `object-editor-3d.tsx`              |
 
-## What others do (research, 2026-11-01)
+## Research (2026-11-01, sources in the session report)
 
-- **Feed-forward image→3D** (TRELLIS.2, Hunyuan3D 2.1, SAM 3D Objects): best quality, but not on the Meta API
-  (PF-T8) → excluded by the Meta-only rule. Only lifting that rule gives « photo-real » meshes in one call.
-- **Multi-view generation + reconstruction** (Zero123++, One-2-3-45, InstantMesh): generate side / back views, then
-  rebuild. Muse Image 1.0 edits with reference images (`/v1/images/edits`, up to 10 refs, third-party docs) → we can
-  ask it for an orthographic side and top view of the object and **carve a visual hull** from the SAM masks.
-- **Code / CAD generation by an LLM** (CAD-Coder, CAD-Designer): the model writes a parametric program, a render is
-  compared with the image and fed back. Spark can do this with a richer part vocabulary (lathe, extrusion, rounded box).
-- **Part masks by concept** (SAM 3 « segment anything with concepts »): already on our API (`segmentImage(url, concept)`)
-  → « wheel », « window », « door », « roof » inside the crop give each part's true place and size.
-- **Rendering** (three.js `RoomEnvironment` + `PMREMGenerator`, ACES, soft shadow, `RoundedBoxGeometry`): image-based
-  light makes the same geometry read as painted metal, glass and stone instead of plastic.
+- Feed-forward image→3D (TRELLIS.2, Hunyuan3D 2.1, SAM 3D Objects): not on the Meta API → out (user keeps Meta only).
+- Multi-view generation + reconstruction (Zero123++, InstantMesh): Muse Image 1.0 edits with reference images
+  (`/v1/images/edits`) → side / top views → SAM masks → visual hull. A bet: generated views may be inconsistent.
+- LLM CAD code + visual feedback (CAD-Coder, CAD-Designer): Spark is multimodal → render, show it, correct once.
+- Part masks by concept: SAM 3.1 `segmentImage(url, concept)` is already wired → wheels, windows, doors, chimneys.
+- Rendering: three.js `RoomEnvironment` + PMREM image-based light, ACES, rounded geometry.
 
-## Plan (each step ships alone, behind the same « Generate 3D » button)
+## The loop (how every task is judged) — `/shape-loop`
 
-### Tier 1 — Look (1 day, deterministic, no new AI call)
+1. `make shape-report` → for each golden object: photo crop | flat render at the photo view | ¾ render, and the scores.
+2. Read the table; pick the **worst metric** on the **worst object**; fix one thing (one small task below, or one bug).
+3. Re-run. A metric that drops by > 2 points on any object → fix or revert before going on.
+4. Every 3 iterations (or after a Look task): `/designer-3d` reviews the ¾ sheet, ≤ 3 issues, score 1–5.
+5. Log one row in « Loop log » (bottom). Stop an issue after 3 rounds without gain and ask the user.
+   Autonomous: `/loop /shape-loop` (self-paced) until the stop criteria hold.
 
-- [ ] **PR-T1 Studio light.** `RoomEnvironment` → PMREM as `scene.environment`, ACES tone mapping, one soft key light
-      with a contact shadow; glass and metal finally reflect. Budget: one 256² PMREM, built once per viewer.
-- [ ] **PR-T2 Soft geometry.** `box` → rounded box (radius per material: metal 0.04, stone 0.01), smooth normals on
-      round parts, bevelled prisms; new primitives `lathe` (profile → solid of revolution: lamp heads, tanks, tree crowns)
-      and `extrude` (2-D polygon → slab with bevel). Pure builders in `object-geometry.ts`, tested on vertex counts.
-- [ ] **PR-T3 Procedural surfaces.** Per material a small canvas-generated normal + roughness map (stone blocks, brick
-      courses, wood grain, thatch strands, slate rows, brushed metal, tyre tread), tinted by the measured colour, scaled
-      to the part size. Not the photo: generated patterns (user rule). ≤ 6 textures of 128², cached.
+**Stop criteria (per object of the real set):** silhouette IoU ≥ 0.85 · edge F1 ≥ 0.6 · region ΔE2000 ≤ 8 ·
+part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape math ≤ 300 ms · request ≤ 45 s.
 
-### Tier 2 — Shape from the photo (2 days, deterministic)
+## Tasks (small: ≤ ½ day each, one commit each)
 
-- [ ] **PR-T4 Profile body.** For side-seen objects (vehicle, cabinet, machine, building), the main body = the SAM
-      outline (simplified, ≤ 64 points) **extruded** to the kit depth with a bevel, instead of a box. Front-seen objects
-      (house facade, screen) keep the template. IoU of the body = SAM IoU by construction.
-- [ ] **PR-T5 Two-view hull for round objects.** Tree, lamp, tank, person: the outline's half-width per row → `lathe`
-      profile (assumes rotational symmetry) — a tree crown gets its real shape, a lamp post its real head.
-- [ ] **PR-T6 Part masks by concept (SAM 3.1).** One call per archetype with its part concepts (vehicle: wheel,
-      window; house: window, door, chimney; lamp: lamp head) on the crop. Wheels → cylinders at the measured centres and
-      radius; windows / doors → inset glass / wood panels at their measured rectangles; chimney → box at its place.
-      Replaces `spread()` guesses. Confidence = SAM score (feeds PF-T7 fusion). +1 call (≈ 1–3 s).
-- [ ] **PR-T7 Region colours.** Colour each part from the pixels of its own SAM part mask (glass from the window
-      mask, tyre from the wheel mask, body from the rest), not from 3 global clusters.
+### S0 — Measure first (the loop needs it)
 
-### Tier 3 — Generated views (2–3 days, experimental, behind `SHAPE_VIEWS=1`)
+- [ ] **PR-0.1 Flat renderer.** Pure TS z-buffer raster of a recipe at the photo view (orthographic + yaw, Lambert
+      shade, per-part colour), reusing `silhouette-fit` hulls → `Mask` + RGB buffer. Test: a box renders its colour.
+- [ ] **PR-0.2 Score.** `scoreModel(render, crop, outline)` → `{ iou, edgeF1, deltaE (masked mean), score 0–100 }`.
+      Test on the golden set; the car must score lower than the fridge today.
+- [ ] **PR-0.3 Report.** `make shape-report`: golden set → `test-results/shape-report/index.md` (table) + one PNG
+      contact sheet (sharp composite). Gitignored output.
+- [ ] **PR-0.4 Capture.** `make shape-capture PHOTO=… ID=…`: one live run that saves crop, SAM outline, Spark kit and
+      part masks as JSON fixtures, so the loop replays offline (no API cost per iteration).
+- [ ] **PR-0.5 Real set.** 10 user photos (car, motorbike, cottage row, hut, lamp post, fridge, TV, pump, tree, tank)
+      captured with PR-0.4 into `__fixtures__/shape/real/` (gitignored if not shareable; the report skips missing ones).
 
-- [ ] **PR-T8 Spike (1 h): Muse Image views.** Check `POST /v1/images/edits` with the crop: « same object, pure side
-      view / top view, orthographic, white background ». Record latency, cost, consistency on the 5 golden objects.
-      Stop here if views are inconsistent or > 20 s.
-- [ ] **PR-T9 Visual hull.** Front (photo) + side + top masks (SAM on each view) → 64³ voxel carving → marching cubes →
-      Taubin smoothing → decimate ≤ 5 k triangles; per-vertex colour from the nearest view's region colours (not a photo
-      texture). Pure TS, seeded, tested on synthetic silhouettes (cube, cylinder, car profile).
-- [ ] **PR-T10 Pick the best.** Render each candidate (template, profile body, hull) at the photo view, keep the one with
-      the best `J` (PF-T6); show which one in the panel (« built from 3 views »).
+### S1 — Look (every object at once)
 
-### Tier 4 — Spark writes and corrects (optional, 1 day)
+- [ ] **PR-1.1 Studio light.** `RoomEnvironment` → PMREM `scene.environment` (256², built once), ACES, one soft key +
+      contact shadow; drop 2 of the 4 directional lights. Screenshot before / after.
+- [ ] **PR-1.2 Rounded box.** `box` parts become rounded boxes (radius by material: metal 0.04, plastic 0.03,
+      stone 0.01), smooth corner normals. Triangle budget test.
+- [ ] **PR-1.3 Bevelled prism + smooth round parts.** Gable prisms with a small eave overhang; spheres / cylinders
+      smooth-shaded.
+- [ ] **PR-1.4 Procedural maps.** Per material a 128² canvas normal + roughness map (stone blocks, brick courses,
+      wood grain, thatch, slate rows, brushed metal, tread), tiled by part size, tinted by the measured colour.
+- [ ] **PR-1.5 Photo swatches.** Server: per textured material, the 64 px patch inside its region with the most even
+      texture (lowest gradient-variance outlier, no edges), made tileable (mirror + edge blend), sent as
+      `part.texture` (data URL ≤ 8 kB). Overrides PR-1.4's colour map; normals stay procedural. Allowed by the user.
+- [ ] **PR-1.6 Loop pass** (`/shape-loop` + `/designer-3d`).
 
-- [ ] **PR-T11 Richer kit vocabulary + one feedback round.** Spark may return `lathe` / `extrude` parts; the server
-      renders the silhouette, sends Spark the IoU and the 3 worst-matching regions once, and keeps the better answer.
-      Only when time is left in the 60 s budget.
+### S2 — Shape from the photo
 
-### Measure and close
+- [ ] **PR-2.1 `extrude` primitive.** Polygon (box fractions, ≤ 64 points, simplified Douglas–Peucker) → slab with
+      bevel. Pure builder + raster support in `silhouette-fit`.
+- [ ] **PR-2.2 Profile body.** Side-seen archetypes (vehicle, cabinet, machine) → main body = SAM outline extruded to
+      the kit depth (minus wheels band for vehicles). IoU ≈ SAM IoU by construction.
+- [ ] **PR-2.3 `lathe` primitive.** Profile (radius per height) → solid of revolution, ≤ 24 segments.
+- [ ] **PR-2.4 Lathe body.** Round archetypes (tree crown, lamp head, tank, bush, person) → profile = outline
+      half-width per row.
+- [ ] **PR-2.5 Part masks.** Server: `segmentImage(crop, concept)` for the archetype's concepts in parallel
+      (vehicle: wheel, window; house: window, door, chimney; lamp_post: lamp), ≤ 5 s total, failures ignored.
+- [ ] **PR-2.6 Wheels from masks.** Centre + radius per wheel mask (circle fit), tyre + rim parts; count = masks.
+- [ ] **PR-2.7 Windows / doors from masks.** Rectangles (min-area box per mask) → inset glass / door panels at
+      their place; replaces `spread()`.
+- [ ] **PR-2.8 Region colours.** Each part coloured from its own mask's pixels (glass from windows, tyre from
+      wheels, body from the rest).
+- [ ] **PR-2.9 Fit v2.** Per-part parameters (wheel radius, cabin box, eave) by coordinate descent on `scoreModel`,
+      multi-start Nelder–Mead (3 seeded starts), still ≤ 300 ms.
+- [ ] **PR-2.10 Loop pass.**
 
-- [ ] **PR-T12 Real golden set.** 10 real photos the user owns (car, motorbike, cottage row, hut, lamp post, fridge, TV,
-      pump, tree, water tank) + hand-drawn masks; metrics: silhouette IoU, region ΔE2000, part counts (wheels, windows),
-      and a 4-view screenshot sheet reviewed with `/designer-3d`. `make test-shape` runs the synthetic + real sets.
-- [ ] **PR-T13 Docs and scenarios** (absorbs PF-T10): contracts (new primitives, part masks, views flag), copilot (Spark
-      vocabulary), performance (render budget), `test-scenarios/06-village.md`.
+### S3 — Smarter Spark (model optimisation)
 
-## Order and expected effect
+- [ ] **PR-3.1 Eval harness.** `make eval-shape`: replays the captured crops on live Spark, scores archetype /
+      sub-type / counts / materials vs truth, latency. Costs API calls: run on demand.
+- [ ] **PR-3.2 Sub-types.** Kit `subtype`: vehicle sedan · pickup · van · bus · motorbike · cart; house gable · hip ·
+      round thatch hut · terrace; tree round · conifer · palm. One template per sub-type.
+- [ ] **PR-3.3 Prompt v2.** One-line definition + example per sub-type, materials list, shorter schema; A/B with
+      PR-3.1, keep the better.
+- [ ] **PR-3.4 Model choice.** muse-spark-1.3 vs muse-wonder-1.0 vs muse-spark-1.2 on accuracy and latency; keep the
+      best under 30 s median.
+- [ ] **PR-3.5 Feedback round.** When score < 70 and ≥ 20 s are left: send Spark the crop + the flat render side by
+      side, ask for a JSON patch of the kit (sub-type, counts, proportions); keep the patch only if the score rises.
+- [ ] **PR-3.6 Loop pass.**
 
-PR-T1…T3 change how every object looks (the car becomes painted metal with glass and rubber). PR-T4 + PR-T6 change
-its shape (real profile, real wheels and windows). That is the recommended first sprint (≈ 3 days). Tier 3 is the
-only path toward « any object, real 3D » inside the Meta-only rule; it is a bet, so it starts with a 1-hour spike.
+### S4 — Generated views (bet, behind `SHAPE_VIEWS=1`)
 
-## Open decisions (user)
+- [ ] **PR-4.1 Spike (1 h).** Muse Image `/v1/images/edits` on 5 crops: « same object, orthographic side view, white
+      background » and top view. Record latency, cost, consistency. Stop S4 if > 20 s or inconsistent.
+- [ ] **PR-4.2 View masks.** SAM on each generated view; scale views to the photo height.
+- [ ] **PR-4.3 Voxel hull.** 64³ carving from front + side + top masks. Test on synthetic cube / cylinder / car.
+- [ ] **PR-4.4 Mesh.** Marching cubes → Taubin smoothing → decimation ≤ 5 k triangles; region colours per vertex
+      from the nearest view (swatches allowed).
+- [ ] **PR-4.5 Best candidate.** Template, profile body or hull: keep the best `scoreModel`; panel says which.
+- [ ] **PR-4.6 Loop pass.**
 
-1. Keep **Meta only**? Lifting it (TRELLIS.2 / Hunyuan3D via a hosted API) is the only one-call route to photo-real
-   meshes; it adds a vendor, a key and ≈ 10–30 s per object.
-2. Procedural textures (PR-T3) are generated patterns tinted by the measured colour. A **tileable swatch cut from the
-   photo** (64 px of real stone) would look more real but is a piece of the photo: allowed or not?
+### Close
+
+- [ ] **PR-5.1 Docs** (absorbs PF-T10): contracts (primitives, `texture`, part masks, `subtype`, views flag), copilot
+      (prompt v2, model choice), performance (render + math budgets).
+- [ ] **PR-5.2 Scenarios** in `test-scenarios/06-village.md` for each visible step (car, hut, tree, mock unchanged).
+
+## Order
+
+S0 first (½–1 day): without the score the loop is guesswork. Then S1 (biggest visible change for every object),
+S2 (shape), S3 (Spark), S4 last (a bet). Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6.
+
+## Loop log
+
+| Date | Task / fix | Mean IoU | Edge F1 | Mean ΔE | Designer | Note |
+| ---- | ---------- | -------- | ------- | ------- | -------- | ---- |

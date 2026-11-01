@@ -16,7 +16,7 @@ Demo path that must always work: **solar drop → strategy comparison → AI exp
 
 - Skills (`.claude/skills/`, loaded only when invoked): `/start` · `/handoff` · `/verify` · `/engine-change` ·
   `/ui-feature` · `/copilot-tool` · `/scene-3d` · `/designer-3d` · `/perf-audit` · `/design-dispatch` · `/design-check` ·
-  `/review-pr` · `/format`.
+  `/review-pr` · `/format` · `/shape-3d` · `/shape-loop`.
 - Rules (`.claude/rules/`, loaded only when matching files are touched): engine · web-ui · three · copilot · tests.
   `maintenance` is always on: new useful command → Makefile target; feature change → update its doc (same commit).
   `format` is always on: Prettier is the only formatter, auto-run by hooks (Claude edit hook, git pre-commit, CI).
