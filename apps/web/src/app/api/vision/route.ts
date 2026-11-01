@@ -10,6 +10,7 @@ import {
   jsonResponse,
   photoSize,
   readVisionRequest,
+  sseResponse,
 } from '@/server/perception/vision-request';
 import { hostVisionImage } from '@/server/storage/media';
 
@@ -35,35 +36,18 @@ export async function POST(req: NextRequest) {
   const visionImage = perception.callsMeta
     ? await hostVisionImage(photo.buffer, photo.contentType)
     : { url: `data:${photo.contentType};base64,${photo.buffer.toString('base64')}` };
-  const encoder = new TextEncoder();
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (event: string, data: Record<string, unknown>) =>
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
-      if (regions) {
-        await runRegionPipeline(
-          perception,
-          await photoSize(photo.buffer),
-          visionImage.url,
-          regions,
-          send,
-          req.signal
-        );
-      } else {
-        await runVisionPipeline(perception, visionImage, send, req.signal);
-      }
-      send('done', {});
-      controller.close();
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    },
+  return sseResponse(async (send) => {
+    if (regions) {
+      await runRegionPipeline(
+        perception,
+        await photoSize(photo.buffer),
+        visionImage.url,
+        regions,
+        send,
+        req.signal
+      );
+    } else {
+      await runVisionPipeline(perception, visionImage, send, req.signal);
+    }
   });
 }

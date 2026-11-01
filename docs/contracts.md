@@ -512,12 +512,17 @@ fallback? }` (no `vision_detections`). Client: `useVisionSession.sendShapes(shap
 (`shapeToDetection`: operator text or fallback label, `category: 'other'`, the drawn outline), then takes the model's label /
 kind / category / box; drawn outline kept until SAM sends one. Failure → `identifyFailed`, the shape keeps the operator text.
 `POST /api/vision/shape` (PV-T9) multipart `{ image (same rules and normalization as /api/vision, shared
-`server/perception/vision-request.ts`), target: JSON ShapeTarget { id, label, category, scenery?, box }, sessionId? }` → JSON
+`server/perception/vision-request.ts`), target: JSON ShapeTarget { id, label, category, scenery?, box }, sessionId? }` → `text/event-stream`:
+`shape_step { step: 'crop'|'model'|'fit' }` (live, `SHAPE_STEPS`) · `shape_result { shape: ObjectShape }` · `done`;
 `ObjectShape { detectionId, mode: 'recipe'|'silhouette', recipe? /*recipe only*/, reason? /*silhouette only: 'provider_error'|
-'spend_cap'|'malformed'|'no_body'*/, source, model, fallback? }`; 400 missing / invalid target.
+'spend_cap'|'malformed'|'no_body'|'timeout' (Spark past SHAPE_TIMEOUT_MS = 60 s)|'network' (browser side)*/, source, model,
+fallback?, detail? /*'http_429', 'timeout', 'offline'…*/ }`; 400 (JSON) missing / invalid target.
+Client state: `{ status, shape?, step?, startedAt? }`; `peek(target)` on select (kept shape or idle), `requestShape` on « Generate »; only lasting answers are cached (`keepShape`), failures are asked again.
 `ObjectRecipe { proportions: {w,h,d} (largest = 1), parts: { shape: 'box'|'cylinder'|'sphere'|'cone', at: [x,y,z] (−0.6…0.6),
 size: [x,y,z] (0.01–1), axis?: 'x'|'y'|'z', color: '#rrggbb', front?: true }[] (1–12) }`: object centred, x right, y up, z to the camera,
 in fractions of its own size. Shared Zod + `fitRecipe`, `recipeIssue`, `frontPartIndex`, `silhouetteRings` in `@/lib/object-shape`; no power value.
+Spark answers `ObjectKit { archetype: KIT_ARCHETYPES (cabinet…house, building, tree…other), proportions {w,h,d}, colors { main, secondary,
+accent: '#rrggbb' }, details?: { windows?, doors?, wheels?, legs?, floors?, chimney? } }` (`@/lib/object-kit`); `kitToRecipe(kit)` → `ObjectRecipe` (pure, ≤ 12 parts).
 Client: `useObjectShape().requestShape(photo, target & { adjusted? }, sessionId?, force?)` + `retry()` (box in the cache key once adjusted) → `{ status: 'idle'|'loading'|'ready', shape? }`; a network or
 HTTP failure also ends in `silhouette` (`reason: 'provider_error'`), never an error state. Answers kept per `shapeKey` (id, label,
 category) until `clear()` (new photo); offline silhouettes are not kept. Viewer geometry: `features/vision-insert/utils/object-geometry.ts`. Nothing is stored (crop sent inline).
@@ -531,7 +536,8 @@ Invalid args or failure → `{error}`.
 ## Perception (`server/perception`, Zod in `schemas.ts`)
 
 Observations, never energy values: any number must become an `InputPatch` proposal before the engine uses it.
-Every result carries `{ source: 'meta'|'mock', model, fallback?: 'provider_error'|'spend_cap'|'not_configured' }`.
+Every result carries `{ source: 'meta'|'mock', model, fallback?: 'provider_error'|'spend_cap'|'not_configured', failure? }`
+(`failure` with `provider_error`: `timeout`|`aborted`|`http_<status>`|`network`, from `failureOf`).
 
 ```ts
 Transcript { text; durationMs; turns: { startMs; endMs; text; speaker? }[] }

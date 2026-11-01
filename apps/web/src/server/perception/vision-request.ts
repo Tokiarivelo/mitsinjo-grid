@@ -70,3 +70,31 @@ export async function photoSize(buffer: Buffer): Promise<PhotoForRegions | null>
     return null;
   }
 }
+
+/** SSE sender of a vision route: `event: <name>` + JSON `data`. */
+export type SseSend = (event: string, data: Record<string, unknown>) => void;
+
+/**
+ * `text/event-stream` response for the vision routes: `run` sends events, then `done` closes it.
+ * Proxy buffering off so steps reach the browser as they happen.
+ */
+export function sseResponse(run: (send: SseSend) => Promise<void>): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send: SseSend = (event, data) =>
+        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      await run(send);
+      send('done', {});
+      controller.close();
+    },
+  });
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
+  });
+}

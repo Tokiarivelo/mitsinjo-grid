@@ -2,116 +2,98 @@ import type { ApplianceCategory } from '@mitsinjo/engine';
 import type { SceneryType } from '@/lib/vision';
 import { z } from 'zod';
 import {
-  MAX_RECIPE_PARTS,
-  ObjectRecipeSchema,
-  RECIPE_BOUND,
-  RECIPE_SHAPES,
-  type ObjectRecipe,
-  type RecipePart,
-} from '@/lib/object-shape';
+  KIT_ARCHETYPES,
+  ObjectKitSchema,
+  type KitArchetype,
+  type ObjectKit,
+} from '@/lib/object-kit';
+import type { ObjectRecipe, RecipePart } from '@/lib/object-shape';
 
-/** Prompts and parsing for the Spark shape recipe of one object (PV-T9). */
+/**
+ * Prompts and parsing for the Spark 3D « kit » of one object (PV-T9b). Spark only classifies and reads
+ * colours; `kitToRecipe` builds the parts. The old free 12-part recipe took Spark more than 60 s on a
+ * building (2026-11-01).
+ */
 
 export const SHAPE_SYSTEM_PROMPT = [
-  'You turn ONE object seen on a photo crop into a simple 3D model for a SIMULATED rural microgrid editor.',
-  `Build it from 1 to ${MAX_RECIPE_PARTS} primitive parts (box, cylinder, sphere, cone).`,
-  'The object is centred at the origin: x right, y up, z toward the camera.',
-  'proportions = the real width, height and depth of the object, largest = 1 (guess the depth from what the object is).',
-  'For each part: at = its centre and size = its extent, both as fractions of the object width, height and depth',
-  '(at between -0.5 and 0.5, size between 0.01 and 1); axis of a cylinder or cone (x, y or z, default y);',
-  'color = the colour seen, #rrggbb. Put the main body first and mark it front = true: the photo goes on its front face.',
-  'Add only the details that make the object recognisable (doors, handles, screen, legs, blades, stand).',
-  'Together the parts must fill the whole object from its lowest to its highest point and side to side.',
-  'Thin objects stay thin: a lamp post is a tall thin cylinder (size about 0.1 wide, 1 high) plus its arm and lamp head at the top;',
-  'a pole, antenna or mast the same. Never shrink the whole object to a small part in the middle.',
-  'Buildings, trees, vehicles and other scenery follow the same rules. Never give watts, kW or any energy value.',
+  'You describe ONE object seen on a photo crop so a SIMULATED rural microgrid editor can build a simple 3D model.',
+  'Answer fast and short: do not plan 3D coordinates, the editor has the templates.',
+  `archetype = the closest of: ${KIT_ARCHETYPES.join(', ')}.`,
+  'proportions = real width, height, depth of the object, largest = 1 (guess the depth from what it is).',
+  'colors: main = the biggest surface (walls, body, canopy), secondary = roof, stand, trunk or frame,',
+  'accent = glass, windows, handle, lamp or wheels; each #rrggbb as seen.',
+  'details (optional, small integers): windows on the front face, doors, wheels, legs, floors, chimney.',
+  'Never give watts, kW or any energy value.',
 ].join(' ');
 
 /**
  * User turn; the label is the detection name (from a model or typed by the operator), quoted.
- * `aspect` = width / height of the object on the photo, so thin or wide objects keep their shape.
+ * `aspect` = width / height on the photo; `hint` = archetype the detection implies (Spark may change it).
  */
-export function shapeQuestion(label: string, aspect?: number): string {
+export function shapeQuestion(label: string, aspect?: number, hint?: KitArchetype): string {
   const name = label.slice(0, 40).replace(/"/g, "'");
   const seen =
     aspect && aspect > 0 && Number.isFinite(aspect)
       ? ` On the photo it is ${aspect.toFixed(2)} times as wide as it is high.`
       : '';
-  return `Build the 3D recipe of the "${name}" in the clear rectangle in the middle of this crop.${seen}`;
+  const guess = hint ? ` It is probably a "${hint}".` : '';
+  return `Describe the "${name}" in the clear rectangle in the middle of this crop.${seen}${guess}`;
 }
 
-const vec3 = { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 };
+const color = { type: 'string' };
+const int = { type: 'integer' };
 
 export const SHAPE_JSON_SCHEMA = {
-  name: 'ObjectRecipe',
+  name: 'ObjectKit',
   schema: {
     type: 'object',
     properties: {
+      archetype: { type: 'string', enum: [...KIT_ARCHETYPES] },
       proportions: {
         type: 'object',
         properties: { w: { type: 'number' }, h: { type: 'number' }, d: { type: 'number' } },
         required: ['w', 'h', 'd'],
       },
-      parts: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            shape: { type: 'string', enum: [...RECIPE_SHAPES] },
-            at: vec3,
-            size: vec3,
-            axis: { type: 'string', enum: ['x', 'y', 'z'] },
-            color: { type: 'string' },
-            front: { type: 'boolean' },
-          },
-          required: ['shape', 'at', 'size', 'color'],
+      colors: {
+        type: 'object',
+        properties: { main: color, secondary: color, accent: color },
+        required: ['main', 'secondary', 'accent'],
+      },
+      details: {
+        type: 'object',
+        properties: {
+          windows: int,
+          doors: int,
+          wheels: int,
+          legs: int,
+          floors: int,
+          chimney: { type: 'boolean' },
         },
       },
     },
-    required: ['proportions', 'parts'],
+    required: ['archetype', 'proportions', 'colors'],
   },
 };
 
-const ReplySchema = z.object({
-  proportions: z.object({ w: z.number(), h: z.number(), d: z.number() }),
-  parts: z.array(z.unknown()),
-});
-
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const NEUTRAL = '#9aa3ad';
+const HEX = /^#[0-9a-f]{6}$/i;
 
-/** One part as the model printed it → a valid part, or null (bad shape, missing vectors). */
-function toPart(raw: unknown): RecipePart | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const p = raw as Record<string, unknown>;
-  const nums = (v: unknown) =>
-    Array.isArray(v) &&
-    v.length === 3 &&
-    v.every((n) => typeof n === 'number' && Number.isFinite(n))
-      ? (v as [number, number, number])
-      : null;
-  const at = nums(p.at);
-  const size = nums(p.size);
-  const shape = RECIPE_SHAPES.find((s) => s === p.shape);
-  if (!at || !size || !shape) return null;
-  const color = typeof p.color === 'string' && /^#[0-9a-f]{6}$/i.test(p.color) ? p.color : NEUTRAL;
-  const axis = p.axis === 'x' || p.axis === 'y' || p.axis === 'z' ? p.axis : undefined;
-  return {
-    shape,
-    at: at.map((c) => clamp(c, -RECIPE_BOUND, RECIPE_BOUND)) as RecipePart['at'],
-    size: size.map((s) => clamp(s, 0.01, 1)) as RecipePart['size'],
-    ...(axis ? { axis } : {}),
-    color,
-    ...(p.front === true ? { front: true } : {}),
-  };
-}
+const ReplySchema = z.object({
+  archetype: z.string(),
+  proportions: z.object({ w: z.number(), h: z.number(), d: z.number() }),
+  colors: z.record(z.string(), z.unknown()).optional(),
+  details: z.record(z.string(), z.unknown()).optional(),
+});
+
+const LIMITS = { windows: 8, doors: 3, wheels: 6, legs: 4, floors: 4 } as const;
 
 /**
- * Spark reply → recipe, or null when it is not JSON or has no usable part.
- * Lenient: proportions rescaled so the largest is 1, values clamped, bad parts dropped, bad colour → grey.
- * Whether the recipe *looks* right is `recipeIssue` (shared with the client).
+ * Spark reply → kit, or null when it is not JSON or misses the archetype / proportions.
+ * Lenient: unknown archetype → `fallback`, proportions rescaled (largest = 1), bad colour → grey,
+ * counts rounded and clamped, unknown details dropped.
  */
-export function parseRecipe(content: string): ObjectRecipe | null {
+export function parseKit(content: string, fallback: KitArchetype = 'other'): ObjectKit | null {
   let json: unknown;
   try {
     json = JSON.parse(content);
@@ -123,16 +105,28 @@ export function parseRecipe(content: string): ObjectRecipe | null {
   const { w, h, d } = reply.data.proportions;
   const max = Math.max(w, h, d);
   if (!(max > 0)) return null;
-  const parts = reply.data.parts.flatMap((raw) => toPart(raw) ?? []).slice(0, MAX_RECIPE_PARTS);
-  const ok = ObjectRecipeSchema.safeParse({
+  const archetype = KIT_ARCHETYPES.find((a) => a === reply.data.archetype) ?? fallback;
+  const pick = (k: string) => {
+    const v = reply.data.colors?.[k];
+    return typeof v === 'string' && HEX.test(v) ? v : NEUTRAL;
+  };
+  const details: NonNullable<ObjectKit['details']> = {};
+  for (const [k, lim] of Object.entries(LIMITS) as Array<[keyof typeof LIMITS, number]>) {
+    const v = reply.data.details?.[k];
+    if (typeof v === 'number' && Number.isFinite(v)) details[k] = clamp(Math.round(v), 0, lim);
+  }
+  if (reply.data.details?.chimney === true) details.chimney = true;
+  const kit = ObjectKitSchema.safeParse({
+    archetype,
     proportions: {
       w: clamp(w / max, 0.01, 1),
       h: clamp(h / max, 0.01, 1),
       d: clamp(d / max, 0.01, 1),
     },
-    parts,
+    colors: { main: pick('main'), secondary: pick('secondary'), accent: pick('accent') },
+    ...(Object.keys(details).length ? { details } : {}),
   });
-  return ok.success ? ok.data : null;
+  return kit.success ? kit.data : null;
 }
 
 const body = (color: string): RecipePart => ({

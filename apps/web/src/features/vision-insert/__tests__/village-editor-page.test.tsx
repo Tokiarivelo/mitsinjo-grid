@@ -7,6 +7,13 @@ vi.mock('../utils/prepare-image', async (orig) => ({
   prepareVisionImage: vi.fn(async () => new Blob([new Uint8Array(4)], { type: 'image/jpeg' })),
 }));
 
+// WebGL on (jsdom has none), viewer stubbed: the test is about when Spark is asked.
+vi.mock('@/features/microgrid-3d', async (orig) => ({
+  ...(await orig<typeof import('@/features/microgrid-3d')>()),
+  useWebGLAvailable: () => true,
+}));
+vi.mock('../ui/object-editor-3d', () => ({ ObjectEditor3d: () => <div>viewer</div> }));
+
 import { SAMPLE_ROOM_URL, VillageEditorPage } from '../index';
 
 const detections = [
@@ -41,7 +48,9 @@ beforeEach(() => {
       ? // jsdom's FileReader only reads its own Blob, not Node's Response.blob().
         ({ blob: async () => new Blob([new Uint8Array(8)], { type: 'image/jpeg' }) } as Response)
       : url === '/api/vision/shape'
-        ? new Response(JSON.stringify(shapeReply))
+        ? new Response(
+            `event: shape_result\ndata: ${JSON.stringify({ shape: shapeReply })}\n\nevent: done\ndata: {}\n\n`
+          )
         : new Response(sseBody, { headers: { 'Content-Type': 'text/event-stream' } })
   );
   global.fetch = fetchMock as unknown as typeof fetch;
@@ -95,12 +104,12 @@ describe('VillageEditorPage (/village)', () => {
     const tv = await screen.findByRole('button', { name: /Samsung TV/ }, { timeout: 5000 });
     fireEvent.click(tv);
     expect(screen.getByText('3D model')).toBeTruthy();
-    // jsdom has no WebGL: the badge still says how the shape was made, the photo stays the reference.
-    expect(await screen.findByText('AI shape')).toBeTruthy();
-    expect(
-      screen.getByText('The 3D view needs WebGL. The photo stays the reference.')
-    ).toBeTruthy();
     const shapeCalls = () => fetchMock.mock.calls.filter((c) => c[0] === '/api/vision/shape');
+    // Selecting (e.g. to adjust the box) asks nothing: the operator starts the 3D build.
+    expect(screen.getByText('Not built yet')).toBeTruthy();
+    expect(shapeCalls()).toHaveLength(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Generate the 3D model' }));
+    expect(await screen.findByText('AI shape')).toBeTruthy();
     expect(shapeCalls()).toHaveLength(1);
     const target = JSON.parse(
       (shapeCalls()[0]![1] as RequestInit & { body: FormData }).body.get('target') as string
@@ -115,6 +124,8 @@ describe('VillageEditorPage (/village)', () => {
     // Scenery is modelled too: the scenery type goes with the request.
     fireEvent.click(screen.getByRole('button', { name: /Stone house/ }));
     expect(screen.getByText('3D model')).toBeTruthy();
+    expect(shapeCalls()).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Generate the 3D model' }));
     await waitFor(() => expect(shapeCalls()).toHaveLength(2));
     const house = JSON.parse(
       (shapeCalls()[1]![1] as RequestInit & { body: FormData }).body.get('target') as string

@@ -22,6 +22,9 @@
   /* Per-object mark colours (vision boxes): hue per object, saturation + lightness per theme. */
   --theme-mark-s: 85%;
   --theme-mark-l: 64%;
+  /* 3D object viewer backdrop: lighter than most objects (black TVs, dark pumps) in the dark theme. */
+  --theme-viewer-center: #7d8ba0;
+  --theme-viewer-edge: #3a4659;
 }
 
 html.light,
@@ -47,6 +50,8 @@ html.light,
   --theme-critical-red: #dc2626;
   --theme-mark-s: 80%;
   --theme-mark-l: 40%;
+  --theme-viewer-center: #f8fafc;
+  --theme-viewer-edge: #cbd5e1;
 }
 
 @theme {
@@ -90,6 +95,15 @@ html.light,
 
   --duration-fast: 150ms;
   --duration-panel: 220ms;
+}
+
+/* 3D object viewer: studio backdrop, light centre behind the object, darker edges. */
+.viewer-studio {
+  background: radial-gradient(
+    ellipse at 50% 42%,
+    var(--theme-viewer-center) 0%,
+    var(--theme-viewer-edge) 78%
+  );
 }
 
 /* One object's colour: `--mark-h` (hue) and `--mark-dl` (lightness step) set inline per object. */

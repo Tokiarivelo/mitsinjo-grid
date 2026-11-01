@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 import {
   AlertTriangle,
   Check,
@@ -25,11 +25,12 @@ import {
 import type { VisionStatus } from '../hooks/use-vision-detection';
 import { categoryHint } from '../utils/labels';
 import { markStyle } from '../utils/mark-color';
+import { paintOrder, pickAt } from '../utils/stacking';
 import { useDetectionLabel, useObjectName } from '../hooks/use-object-name';
 import { useEdgeMap } from '../hooks/use-edge-map';
 import { useShapeEditor } from '../hooks/use-shape-editor';
 import { usePhotoZoom } from '../hooks/use-photo-zoom';
-import { boxPoints, type DrawnShape, type DrawTool } from '../utils/shapes';
+import { boxPoints, toNormPoint, type DrawnShape, type DrawTool } from '../utils/shapes';
 import { DrawOverlay } from './draw-overlay';
 import { DrawPanel } from './draw-panel';
 import { ZoomControls } from './zoom-controls';
@@ -107,6 +108,15 @@ export function DetectionCanvas({
       ? (detections.find((d) => d.id === adjustingId) ?? null)
       : null;
   const selectedDetection = detections.find((d) => d.id === selectedId) ?? null;
+  // Colour = position in the list (same as the list rows), whatever the paint order.
+  const colorIndex = new Map(detections.map((d, i) => [d.id, i]));
+  /** Click on the photo → smallest box under the pointer; again on the same spot → the one under it. */
+  const pickUnder = (e: MouseEvent<SVGPathElement>, fallback: string) => {
+    const svg = e.currentTarget.ownerSVGElement;
+    if (!svg) return fallback;
+    const point = toNormPoint(e.clientX, e.clientY, svg.getBoundingClientRect());
+    return pickAt(detections, point, selectedId) ?? fallback;
+  };
   const { viewportRef, contentStyle, onImageLoad, centreOn, ...zoom } = usePhotoZoom(
     imageUrl,
     adjusting?.box ?? null
@@ -197,7 +207,7 @@ export function DetectionCanvas({
               className="absolute inset-0 h-full w-full"
               aria-hidden="true"
             >
-              {detections.map((d, index) => {
+              {paintOrder(detections).map((d) => {
                 // The box being corrected is drawn by the editor layer.
                 if (d.id === adjusting?.id) return null;
                 const selected = d.id === selectedId;
@@ -207,7 +217,7 @@ export function DetectionCanvas({
                     key={d.id}
                     data-detection={d.id}
                     data-mark=""
-                    style={markStyle(index)}
+                    style={markStyle(colorIndex.get(d.id) ?? 0)}
                     d={d.outline ?? boxPath(d.box)}
                     vectorEffect="non-scaling-stroke"
                     strokeWidth={selected ? 4 : hot ? 3 : 2}
@@ -224,10 +234,21 @@ export function DetectionCanvas({
                     )}
                     onPointerEnter={() => setActiveId(d.id)}
                     onPointerLeave={() => setActiveId((id) => (id === d.id ? null : id))}
-                    onClick={() => onSelect(d.id)}
+                    onClick={(e) => onSelect(pickUnder(e, d.id))}
                   />
                 );
               })}
+              {/* Selected outline again on top (no pointer): visible even under smaller boxes. */}
+              {selectedDetection && selectedDetection.id !== adjusting?.id && (
+                <path
+                  data-mark=""
+                  style={markStyle(colorIndex.get(selectedDetection.id) ?? 0)}
+                  d={selectedDetection.outline ?? boxPath(selectedDetection.box)}
+                  vectorEffect="non-scaling-stroke"
+                  strokeWidth={4}
+                  className="pointer-events-none fill-none stroke-(--mark)"
+                />
+              )}
             </svg>
           )}
           {showList && active && (

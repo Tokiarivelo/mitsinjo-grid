@@ -2,66 +2,71 @@ import { APPLIANCE_CATEGORIES } from '@mitsinjo/engine';
 import { SCENERY_TYPES } from '@/lib/vision';
 import { describe, expect, it } from 'vitest';
 import { ObjectRecipeSchema, recipeIssue } from '@/lib/object-shape';
-import { mockRecipe, parseRecipe, SHAPE_SYSTEM_PROMPT, shapeQuestion } from '../shape';
+import {
+  mockRecipe,
+  parseKit,
+  SHAPE_JSON_SCHEMA,
+  SHAPE_SYSTEM_PROMPT,
+  shapeQuestion,
+} from '../shape';
 
 const reply = (o: unknown) => JSON.stringify(o);
 
-describe('parseRecipe (PV-T9)', () => {
-  it('reads a Spark recipe and rescales proportions so the largest is 1', () => {
-    const r = parseRecipe(
+describe('parseKit (PV-T9b)', () => {
+  it('reads a Spark kit and rescales proportions so the largest is 1', () => {
+    const k = parseKit(
       reply({
-        proportions: { w: 60, h: 180, d: 60 },
-        parts: [{ shape: 'box', at: [0, 0, 0], size: [1, 1, 1], color: '#EEEEEE', front: true }],
+        archetype: 'house',
+        proportions: { w: 300, h: 150, d: 150 },
+        colors: { main: '#C9A36A', secondary: '#6E6A62', accent: '#FFFFFF' },
+        details: { windows: 4, doors: 1, chimney: true },
       })
     );
-    expect(r?.proportions).toEqual({ w: 1 / 3, h: 1, d: 1 / 3 });
-    expect(r?.parts[0]).toEqual({
-      shape: 'box',
-      at: [0, 0, 0],
-      size: [1, 1, 1],
-      color: '#EEEEEE',
-      front: true,
+    expect(k).toEqual({
+      archetype: 'house',
+      proportions: { w: 1, h: 0.5, d: 0.5 },
+      colors: { main: '#C9A36A', secondary: '#6E6A62', accent: '#FFFFFF' },
+      details: { windows: 4, doors: 1, chimney: true },
     });
   });
 
-  it('clamps values, greys bad colours and drops unreadable parts', () => {
-    const r = parseRecipe(
+  it('unknown archetype → the hint, bad colours → grey, counts rounded and clamped', () => {
+    const k = parseKit(
       reply({
+        archetype: 'cottage',
         proportions: { w: 1, h: 1, d: 1 },
-        parts: [
-          { shape: 'box', at: [3, 0, 0], size: [5, 0, 1], color: 'white', axis: 'q' },
-          { shape: 'torus', at: [0, 0, 0], size: [1, 1, 1], color: '#000000' },
-          { shape: 'sphere', at: [0, 0], size: [1, 1, 1], color: '#000000' },
-        ],
-      })
+        colors: { main: 'beige' },
+        details: { windows: 40.4, wheels: -2, color: 'x' },
+      }),
+      'house'
     );
-    expect(r?.parts).toEqual([
-      { shape: 'box', at: [0.6, 0, 0], size: [1, 0.01, 1], color: '#9aa3ad' },
-    ]);
+    expect(k).toMatchObject({
+      archetype: 'house',
+      colors: { main: '#9aa3ad', secondary: '#9aa3ad', accent: '#9aa3ad' },
+      details: { windows: 8, wheels: 0 },
+    });
   });
 
-  it('returns null for prose, a missing field, no usable part or zero proportions', () => {
-    expect(parseRecipe('Here is a fridge')).toBeNull();
-    expect(parseRecipe(reply({ parts: [] }))).toBeNull();
-    expect(parseRecipe(reply({ proportions: { w: 1, h: 1, d: 1 }, parts: ['x'] }))).toBeNull();
-    expect(
-      parseRecipe(
-        reply({
-          proportions: { w: 0, h: 0, d: 0 },
-          parts: [{ shape: 'box', at: [0, 0, 0], size: [1, 1, 1], color: '#000000' }],
-        })
-      )
-    ).toBeNull();
+  it('returns null for prose, a missing archetype / proportions or zero proportions', () => {
+    expect(parseKit('Here is a house')).toBeNull();
+    expect(parseKit(reply({ proportions: { w: 1, h: 1, d: 1 } }))).toBeNull();
+    expect(parseKit(reply({ archetype: 'tree' }))).toBeNull();
+    expect(parseKit(reply({ archetype: 'tree', proportions: { w: 0, h: 0, d: 0 } }))).toBeNull();
+  });
+
+  it('asks for a short kit, not 3D coordinates (Spark was > 60 s on a building)', () => {
+    expect(SHAPE_SYSTEM_PROMPT).toMatch(/do not plan 3D coordinates/);
+    expect(JSON.stringify(SHAPE_JSON_SCHEMA)).not.toMatch(/"at"|"size"/);
+    expect(shapeQuestion('Stone cottages', 1.2, 'house')).toContain('probably a "house"');
   });
 
   it('quotes the label safely and never asks for energy values', () => {
     expect(shapeQuestion('my "big" fridge')).toContain("'big'");
   });
 
-  it('tells Spark how wide the object is on the photo, and how thin objects look', () => {
+  it('tells Spark how wide the object is on the photo', () => {
     expect(shapeQuestion('lamp post', 0.192)).toContain('0.19 times as wide as it is high');
     expect(shapeQuestion('lamp post')).not.toContain('times as wide');
-    expect(SHAPE_SYSTEM_PROMPT).toMatch(/lamp post is a tall thin cylinder/);
   });
 });
 

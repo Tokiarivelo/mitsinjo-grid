@@ -43,9 +43,13 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
   image fractions (≤ 160 points) set on each SAM instance and carried to the matched detection. Unreadable mask → no outline. Never throws: missing key, spend cap or API error → deterministic mock with `fallback` set.
   `describeShape` (PV-T9, `shape.ts` + `object-shape.ts`): **Meta models only** (no photo→3D model on the Meta API, checked
   2026-10-31). One Spark call on a square crop around the selected object (`shape-crop.ts`: 1.6× its long side, upscaled to
-  ≥ 640 px so a 20 px lamp post is readable, outside lightly dimmed), told the box width / height ratio, JSON schema `ObjectRecipe`
-  (≤ 12 parts box / cylinder / sphere / cone, `at` + `size` in object fractions, `#rrggbb`, main body `front: true` gets the photo),
-  20 s timeout. `parseRecipe` is lenient (clamps, drops bad parts, grey for bad colours); `fitRecipe` (shared) repairs instead of
+  640–768 px so a 20 px lamp post is readable, outside lightly dimmed), told the box width / height ratio and the archetype the
+  detection implies. **Kit, not coordinates (PV-T9b):** JSON schema `ObjectKit` (`archetype` among 17, `proportions`, 3 colours,
+  optional window / door / wheel / leg / floor counts, chimney), ≈ 80 output tokens; `kitToRecipe` (`@/lib/object-kit`) builds the
+  parts from fixed templates. Reason: a free 12-part recipe made Spark think > 60 s on a stone cottage (user, 2026-11-01).
+  Standard model id only (no contributor id: slower, rate-limited). 60 s timeout (was 20 s: Muse needs ≈ 15–25 s on an image).
+  Streams `shape_step` crop → model → fit; logs `[vision] 3D kit … in n s` or the cause. `parseKit` is lenient (archetype from the
+  hint when unknown, grey for bad colours, counts clamped); `fitRecipe` (shared) repairs instead of
   rejecting: parts stretched to fill the object box, w/h taken from the photo box (thin poles were rejected before);
   `recipeIssue` only refuses a near-empty recipe (< 0.5 % volume). Meta failure, spend cap,
   timeout, unreadable or empty recipe → `silhouette` mode (the browser extrudes the SAM outline, else the box; no extra call).

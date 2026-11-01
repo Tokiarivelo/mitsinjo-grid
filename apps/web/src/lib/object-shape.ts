@@ -67,6 +67,10 @@ export const SHAPE_FALLBACK_REASONS = [
   'spend_cap',
   'malformed',
   'no_body',
+  /** Spark took longer than the time limit (`SHAPE_TIMEOUT_MS`). */
+  'timeout',
+  /** The browser could not reach the app server (offline, server down, bad reply). */
+  'network',
 ] as const;
 export type ShapeFallbackReason = (typeof SHAPE_FALLBACK_REASONS)[number];
 
@@ -79,8 +83,25 @@ export const ObjectShapeSchema = z.object({
   source: z.enum(['meta', 'mock']),
   model: z.string(),
   fallback: z.enum(['provider_error', 'spend_cap', 'not_configured']).optional(),
+  /** Short cause with `provider_error` (`http_429`…), shown in the panel and the logs. */
+  detail: z.string().max(40).optional(),
 });
 export type ObjectShape = z.infer<typeof ObjectShapeSchema>;
+
+/**
+ * Server steps of `/api/vision/shape` (SSE `shape_step`), shown live in the « 3D model » block:
+ * `crop` = cut and enlarge the object · `model` = Muse Spark imagines the parts · `fit` = check and fit
+ * them to the photo box. The browser adds its own `build` step (geometry) once the answer is in.
+ */
+/**
+ * Spark budget for one recipe; past it the silhouette is used (reason `timeout`). Measured: Muse needs
+ * ≈ 15 s (base) to ≈ 25 s (contributor) on a photo, more for a 12-part recipe; the old 20 s cut most answers.
+ */
+export const SHAPE_TIMEOUT_MS = 60_000;
+
+export const SHAPE_STEPS = ['crop', 'model', 'fit'] as const;
+export type ShapeStep = (typeof SHAPE_STEPS)[number];
+export const ShapeStepEventSchema = z.object({ step: z.enum(SHAPE_STEPS) });
 
 const volume = (p: RecipePart) => p.size[0] * p.size[1] * p.size[2];
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -124,9 +145,7 @@ export function fitRecipe(recipe: ObjectRecipe, boxAspect: number): ObjectRecipe
 }
 
 /** Why a (fitted) recipe would look wrong, or null when it is usable: parts with almost no volume. */
-export function recipeIssue(
-  recipe: ObjectRecipe
-): Exclude<ShapeFallbackReason, 'provider_error' | 'spend_cap' | 'malformed'> | null {
+export function recipeIssue(recipe: ObjectRecipe): 'no_body' | null {
   const fill = recipe.parts.reduce((s, p) => s + volume(p), 0);
   return fill < MIN_FILL_VOLUME ? 'no_body' : null;
 }

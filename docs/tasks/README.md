@@ -24,6 +24,8 @@ Meta feature and carries external-API risk; 3D is local work and easy to time-bo
 | —   | PH Physical scale model (hardware twin)                      | `PH-hardware-twin.md`      | ❌ stretch (in progress) |
 | —   | PM All Meta models: voice, vision, image, chat control, fire | `PM-meta-models.md`        | ❌ stretch (planned)     |
 | —   | PV Vision insert (photo → detection → 3D → simulation)       | `PV-vision-insert.md`      | ❌ stretch (planned)     |
+| —   | PV-P Free placement of inserted objects (position + feeder)  | `PV-free-placement.md`     | ❌ planned               |
+| —   | PV-F 3D shape fidelity (measured colours, roofline, fit)     | `PV-shape-fidelity.md`     | ❌ planned               |
 
 ## Cut order if late
 

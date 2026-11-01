@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, useTexture } from '@react-three/drei';
+import { ContactShadows, OrbitControls, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { TOKEN_HEX } from '@/features/microgrid-3d/utils/scene-palette';
 import { silhouetteRings, type ObjectShape } from '@/lib/object-shape';
@@ -55,9 +55,22 @@ function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
     [mesh]
   );
   const vertexColors = shape.mode === 'recipe';
+  // Ground under the object (shadow sits on it), from the real geometry.
+  const floorY = useMemo(() => {
+    mesh.body.computeBoundingBox();
+    return (mesh.body.boundingBox?.min.y ?? -0.5) - 0.002;
+  }, [mesh]);
 
   return (
     <group>
+      <ContactShadows
+        position={[0, floorY, 0]}
+        scale={2.4}
+        blur={2.2}
+        far={1.2}
+        opacity={0.45}
+        frames={1}
+      />
       <mesh geometry={mesh.body}>
         <meshStandardMaterial
           vertexColors={vertexColors}
@@ -77,6 +90,8 @@ function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
 /**
  * 3D view of one detected object (PV-T10): Spark recipe or silhouette fallback, photo on the front.
  * Orbit (drag) and zoom (pinch / wheel), no pan. `frameloop="demand"`: renders only on change.
+ * Transparent canvas over the `.viewer-studio` backdrop; rim light + one baked contact shadow so a dark
+ * object never melts into the background.
  * Load with `LazyObjectEditor3d` (no SSR) behind a WebGL check.
  */
 export function ObjectEditor3d(props: ObjectEditor3dProps) {
@@ -90,6 +105,8 @@ export function ObjectEditor3d(props: ObjectEditor3dProps) {
       <hemisphereLight intensity={1.2} />
       <directionalLight position={[2, 3, 2.5]} intensity={1.6} />
       <directionalLight position={[-2, 1, -1.5]} intensity={0.5} />
+      {/* Rim light from behind: outlines dark objects (black TV, pump) against the backdrop. */}
+      <directionalLight position={[-0.5, 1.6, -3]} intensity={1.4} />
       <Suspense fallback={null}>
         <ObjectModel {...props} />
       </Suspense>

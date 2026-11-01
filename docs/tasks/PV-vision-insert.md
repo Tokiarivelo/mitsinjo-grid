@@ -98,10 +98,12 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
 
 - [x] **PV-T9** 3D shape with Meta models only (user change 2026-10-31: no fal.ai; the Meta API has no photo→3D model).
       `POST /api/vision/shape` → `server/perception/object-shape.ts`: one Spark call on a crop of the object returns an
-      `ObjectRecipe` (≤ 12 primitive parts, colours, main body carries the photo); Meta failure, spend cap, 20 s timeout,
+      `ObjectRecipe` (≤ 12 primitive parts, colours, main body carries the photo); Meta failure, spend cap, 60 s timeout (SSE steps),
       empty recipe (`recipeIssue`, after `fitRecipe` stretches it to the photo box) → `silhouette` mode (SAM outline, else box, extruded in the browser).
       Hook `useObjectShape` (network failure → silhouette too). **Done when** tests cover recipe, each fallback and the
       mock recipes; no error is ever shown. _(Nothing stored: no GLB, crop sent inline.)_
+- [x] **PV-T9b** Spark answered > 60 s on a building (user, 2026-11-01): it now returns an `ObjectKit` (archetype, proportions,
+      3 colours, counts; ≈ 80 tokens) and `kitToRecipe` builds the parts from templates; standard model only, crop ≤ 768 px.
 - [x] **PV-T10** `object-editor-3d.tsx`: R3F viewer (orbit, auto-fit, lazy-loaded) of the `useObjectShape` result:
       recipe parts merged (reuse `merge-parts` / scene palette) with the photo on the `frontPartIndex` part's front face
       (texture offset/repeat = detection box), or the `silhouetteRings` extrusion (depth per category) with the photo on the front.
@@ -142,7 +144,7 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
 
 1 Muse call (≈ 1 image + ~300 output tokens) + N SAM calls (N = distinct labels, ≈ $0.0025 each)
 
-- 1 Spark call per selected object for its 3D recipe (≈ 1 small crop + ~300 output tokens). No LLM call for watts or curves.
+- 1 Spark call per object when « Generate the 3D model » is clicked (≈ 1 crop ≤ 768 px + ~80 output tokens, kit). No LLM call for watts or curves.
 
 ## Exit criteria
 

@@ -16,6 +16,18 @@ import type {
 } from './schemas';
 
 /**
+ * Short cause of a failed Meta call: `timeout` (our time limit), `aborted` (the browser left),
+ * `http_<status>` (Meta answered with an error), else `network`.
+ */
+export function failureOf(err: unknown): string {
+  const name = err instanceof Error || err instanceof DOMException ? err.name : '';
+  if (name === 'TimeoutError') return 'timeout';
+  if (name === 'AbortError') return 'aborted';
+  const status = err instanceof Error ? /API error \((\d{3})\)/.exec(err.message)?.[1] : undefined;
+  return status ? `http_${status}` : 'network';
+}
+
+/**
  * Perception entry point for routes and copilot tools. Never throws for a Meta problem:
  * missing key, spend cap or API error → the deterministic mock answers, with `fallback` set.
  */
@@ -38,13 +50,14 @@ export class PerceptionClient {
     kind: string,
     call: (b: PerceptionBackend) => Promise<PerceptionCall<T>>
   ): Promise<T & PerceptionSource> {
-    const fromMock = async (fallback?: PerceptionSource['fallback']) => {
+    const fromMock = async (fallback?: PerceptionSource['fallback'], failure?: string) => {
       const out = await call(this.mock);
       return {
         ...out.result,
         source: 'mock',
         model: out.model,
         ...(fallback ? { fallback } : {}),
+        ...(failure ? { failure } : {}),
       } as T & PerceptionSource;
     };
 
@@ -58,11 +71,12 @@ export class PerceptionClient {
       this.guard.record(this.budgetKey, out.model, out.usage);
       return { ...out.result, source: 'meta', model: out.model } as T & PerceptionSource;
     } catch (err) {
+      const failure = failureOf(err);
       console.warn(
-        `[perception] ${kind} failed on Meta, using mock:`,
+        `[perception] ${kind} failed on Meta (${failure}), using mock:`,
         err instanceof Error ? err.message : err
       );
-      return fromMock('provider_error');
+      return fromMock('provider_error', failure);
     }
   }
 

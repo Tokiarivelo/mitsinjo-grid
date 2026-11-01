@@ -8,9 +8,15 @@ the engine catalog gives power (never the AI). Sidebar + MobileNav entry « Vill
   (`/samples/vision-room.jpg`). Wrong type → inline red alert, no call.
 - Photo: `DetectionCanvas` (components.md) left; aside « Selected appliance » right (320 px, stacks under on < lg):
   selected line, « 3D model » block (every object, scenery included, PV-T10), AI note (« power from the engine catalog »), « Change photo ».
+  « 3D model » is built on demand (user, 2026-11-01): selecting shows a kept model or « Not built yet » + hint + violet
+  « Generate the 3D model » (`useObjectShape().peek` / `requestShape`), so picking to adjust a box costs no Spark call.
+  Viewer on `.viewer-studio` (radial backdrop `--theme-viewer-center/edge`, lighter than dark objects in dark theme), rim
+  light from behind + one baked contact shadow.
   « 3D model »: title + badge (violet « AI shape » = Spark recipe; grey « Outline shape » = fallback + one-line why (Meta did not answer / AI shape unusable) + « Try the AI shape again »), viewer
   `h-60 sm:h-72` on `bg-canvas-sunken` (orbit + zoom, no pan), « Drag to turn · pinch or scroll to zoom ». Loading: spinner line +
-  skeleton. No WebGL: note, photo stays the reference. One Spark call per object per photo (kept on reselect).
+  live AI steps (violet box: « Extracting the object » → « Muse Spark imagines the parts » with seconds → « Fitting the parts »,
+  done = green check, wait hint 15–40 s) + skeleton. Outline note per reason (Meta error + « Cause: HTTP n », timeout, spend cap,
+  server unreachable, unusable). No WebGL: note, photo stays the reference. One Spark call per object per photo (kept on reselect).
   « Add to the simulation » (PV-T11/T12, under the 3D block, `ApplianceInsertPanel`): toggle « AI estimate » (violet) / « Manual »
   (cyan), note, fields name · type · sector · power per unit (catalog range under it, red when out) · quantity (1 column on
   mobile and lg aside, 2 on sm / xl), engine preview line, cyan « Insert into simulation » (« Update » + « Remove » once in),

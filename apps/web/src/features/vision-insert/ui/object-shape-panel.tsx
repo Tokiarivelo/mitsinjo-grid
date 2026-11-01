@@ -1,10 +1,18 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Box, Loader2, Move3d, RotateCcw, Sparkles } from 'lucide-react';
+import { Box, Check, Circle, Loader2, Move3d, RotateCcw, Sparkles } from 'lucide-react';
 import { useWebGLAvailable } from '@/features/microgrid-3d';
 import { useTranslations } from '@/lib/i18n';
+import {
+  SHAPE_STEPS,
+  SHAPE_TIMEOUT_MS,
+  type ObjectShape,
+  type ShapeStep,
+} from '@/lib/object-shape';
 import type { ApplianceDetection } from '@/lib/vision';
+import { cn } from '@/lib/utils';
+import { useElapsedSeconds } from '../hooks/use-elapsed-seconds';
 import type { ObjectShapeState } from '../hooks/use-object-shape';
 
 /** Placeholder while the viewer chunk loads or Spark builds the recipe. */
@@ -17,6 +25,67 @@ export const LazyObjectEditor3d = dynamic(
   { ssr: false, loading: () => <ViewerSkeleton /> }
 );
 
+/** Note under an outline fallback: says why the AI shape is missing. */
+const NOTE_KEY: Record<NonNullable<ObjectShape['reason']>, string> = {
+  timeout: 'model3dTimeoutNote',
+  provider_error: 'model3dOfflineNote',
+  spend_cap: 'model3dSpendNote',
+  network: 'model3dNetworkNote',
+  malformed: 'model3dOutlineNote',
+  no_body: 'model3dOutlineNote',
+};
+
+/** `http_429` → `HTTP 429`; other causes as sent. */
+const causeText = (detail: string) => detail.replace(/^http_/, 'HTTP ');
+
+/** Live list of the server steps (crop → Spark → fit), current one spinning with its seconds. */
+function ShapeSteps({ step, seconds }: { step: ShapeStep; seconds: number }) {
+  const t = useTranslations('features.visionInsert');
+  const current = SHAPE_STEPS.indexOf(step);
+  return (
+    <div className="flex flex-col gap-1.5 rounded-control border border-ai-violet/30 bg-ai-violet/5 p-3">
+      <ol aria-label={t('model3dStepsLabel')} className="flex flex-col gap-1.5 text-xs">
+        {SHAPE_STEPS.map((s, i) => {
+          const state = i < current ? 'done' : i === current ? 'active' : 'todo';
+          return (
+            <li
+              key={s}
+              aria-current={state === 'active' ? 'step' : undefined}
+              className={cn(
+                'flex items-center gap-2',
+                state === 'todo' ? 'text-text-muted' : 'text-text-primary',
+                state === 'active' && 'font-medium'
+              )}
+            >
+              {state === 'done' ? (
+                <Check className="h-3.5 w-3.5 shrink-0 text-battery-green" aria-hidden="true" />
+              ) : state === 'active' ? (
+                <Loader2
+                  className="h-3.5 w-3.5 shrink-0 animate-spin text-ai-violet motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Circle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              )}
+              <span className="min-w-0 flex-1">{t(`model3dStep.${s}`)}</span>
+              {state === 'active' && (
+                <span className="shrink-0 font-mono text-text-secondary">
+                  {t('model3dSeconds', { s: seconds })}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      {step === 'model' && (
+        <p className="text-[11px] text-text-muted">
+          {t('model3dWaitHint', { max: SHAPE_TIMEOUT_MS / 1000 })}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export interface ObjectShapePanelProps extends ObjectShapeState {
   detection: ApplianceDetection;
   /** Name shown to the operator (page language). */
@@ -24,23 +93,31 @@ export interface ObjectShapePanelProps extends ObjectShapeState {
   imageUrl: string;
   /** Ask Spark again (outline fallback only). */
   onRetry?: () => void;
+  /** « Generate the 3D model »: nothing is asked to Spark before (selecting only shows a kept model). */
+  onGenerate?: () => void;
 }
 
 /**
- * « 3D model » block of the selected appliance (PV-T10): Spark recipe (« AI shape », violet = AI output)
- * or outline fallback (« Outline shape » + note). No WebGL → a note, the photo stays the reference.
+ * « 3D model » block of the selected appliance (PV-T10): built on demand (« Generate the 3D model »), then
+ * Spark recipe (« AI shape », violet = AI output) or outline fallback (« Outline shape » + note), on a
+ * studio backdrop that stays lighter than dark objects in both themes. No WebGL → a note.
  */
 export function ObjectShapePanel({
   status,
   shape,
+  step,
+  startedAt,
   detection,
   label,
   imageUrl,
   onRetry,
+  onGenerate,
 }: ObjectShapePanelProps) {
   const t = useTranslations('features.visionInsert');
   const webgl = useWebGLAvailable();
   const ready = status === 'ready' && shape?.detectionId === detection.id;
+  const loading = status === 'loading';
+  const seconds = useElapsedSeconds(startedAt, status === 'loading');
 
   return (
     <section className="flex flex-col gap-2" aria-labelledby="object-3d-title">
@@ -49,7 +126,9 @@ export function ObjectShapePanel({
           {t('model3dTitle')}
         </h4>
         <div aria-live="polite">
-          {!ready ? (
+          {!ready && !loading ? (
+            <span className="text-xs text-text-muted">{t('model3dNotBuilt')}</span>
+          ) : !ready ? (
             <span className="inline-flex items-center gap-1 text-xs text-text-muted">
               <Loader2
                 className="h-3 w-3 animate-spin motion-reduce:animate-none"
@@ -76,26 +155,46 @@ export function ObjectShapePanel({
           {t('model3dNoWebgl')}
         </p>
       ) : (
-        <div
-          role="img"
-          aria-label={t('model3dCanvas', { label })}
-          className="h-60 w-full overflow-hidden rounded-control border border-border bg-canvas-sunken sm:h-72"
-        >
-          {ready ? (
-            <LazyObjectEditor3d shape={shape} detection={detection} imageUrl={imageUrl} />
+        <>
+          {loading && step && <ShapeSteps step={step} seconds={seconds} />}
+          {!ready && !loading ? (
+            <div className="flex flex-col items-center gap-2 rounded-control border border-dashed border-border bg-canvas-sunken p-4 text-center">
+              <p className="text-xs text-text-secondary">{t('model3dGenerateHint')}</p>
+              {onGenerate && (
+                <button
+                  type="button"
+                  onClick={onGenerate}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-ai-violet px-4 text-sm font-semibold text-surface hover:bg-ai-violet/90 cursor-pointer"
+                >
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  {t('model3dGenerate')}
+                </button>
+              )}
+            </div>
           ) : (
-            <ViewerSkeleton />
+            <div
+              role="img"
+              aria-label={t('model3dCanvas', { label })}
+              className="viewer-studio h-60 w-full overflow-hidden rounded-control border border-border sm:h-72"
+            >
+              {ready ? (
+                <LazyObjectEditor3d shape={shape} detection={detection} imageUrl={imageUrl} />
+              ) : (
+                <ViewerSkeleton />
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
 
       {ready && shape.mode === 'silhouette' && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="min-w-0 flex-1 text-xs text-text-muted">
-            {t(
-              shape.reason === 'provider_error' || shape.reason === 'spend_cap'
-                ? 'model3dOfflineNote'
-                : 'model3dOutlineNote'
+            {t(NOTE_KEY[shape.reason ?? 'malformed'], { max: SHAPE_TIMEOUT_MS / 1000 })}
+            {shape.detail && (
+              <span className="block font-mono text-[11px] text-text-secondary">
+                {t('model3dCause', { cause: causeText(shape.detail) })}
+              </span>
             )}
           </p>
           {onRetry && (

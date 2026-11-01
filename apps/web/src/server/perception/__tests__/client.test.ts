@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SpendGuard } from '@/server/spend';
 import type { PerceptionBackend } from '../backend';
-import { PerceptionClient } from '../client';
+import { failureOf, PerceptionClient } from '../client';
 import { MOCK_DETECTIONS, MockPerceptionBackend } from '../mock';
 
 const image = 'data:image/png;base64,AA';
@@ -86,5 +86,25 @@ describe('PerceptionClient', () => {
     expect(out.source).toBe('mock');
     expect(out.fallback).toBe('provider_error');
     expect(out.detections).toEqual(MOCK_DETECTIONS);
+  });
+});
+
+describe('failureOf (why Meta failed)', () => {
+  it('tells a time limit, a closed browser, an HTTP error and a network error apart', () => {
+    expect(failureOf(new DOMException('t', 'TimeoutError'))).toBe('timeout');
+    expect(failureOf(new DOMException('a', 'AbortError'))).toBe('aborted');
+    expect(
+      failureOf(new Error('Meta perception API error (429) on /chat/completions: slow down'))
+    ).toBe('http_429');
+    expect(failureOf(new TypeError('fetch failed'))).toBe('network');
+  });
+
+  it('a timed-out Meta call → mock answer with fallback + failure', async () => {
+    const meta = fakeMeta({
+      describeShape: vi.fn().mockRejectedValue(new DOMException('t', 'TimeoutError')),
+    });
+    const client = new PerceptionClient(meta, new MockPerceptionBackend(), new SpendGuard(1), 's1');
+    const out = await client.describeShape(image, { label: 'Lamp', category: 'lamp' });
+    expect(out).toMatchObject({ source: 'mock', fallback: 'provider_error', failure: 'timeout' });
   });
 });

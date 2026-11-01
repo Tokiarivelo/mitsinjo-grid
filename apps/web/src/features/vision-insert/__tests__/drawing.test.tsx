@@ -303,6 +303,13 @@ describe('DetectionCanvas draw mode (PV-T8)', () => {
     drag(area(), [120, 60], [180, 100]);
     const layer = area();
     expect(layer.querySelectorAll('[data-corner]')).toHaveLength(4);
+    // Handles sit outside the shape (its inside stays free to drag, even on a tiny box).
+    expect(layer.querySelector('[data-corner="nw"]')!.getAttribute('class')).toContain(
+      '-translate-x-full -translate-y-full'
+    );
+    expect(layer.querySelector('[data-corner="se"]')!.getAttribute('class')).not.toContain(
+      'translate'
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Remove shape 1' }));
     expect(layer.querySelectorAll('[data-shape]')).toHaveLength(0);
     fireEvent.click(screen.getByRole('button', { name: 'Add a box' }));

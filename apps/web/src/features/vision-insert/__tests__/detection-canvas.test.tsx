@@ -139,4 +139,51 @@ describe('DetectionCanvas (PV-T7)', () => {
     fireEvent.click(item);
     expect(onSelect).toHaveBeenCalledWith('det-3');
   });
+
+  it('regression: a small box under a big one is drawn on top and can be picked, a 2nd click goes under', () => {
+    const house: ApplianceDetection = {
+      id: 'det-9',
+      label: 'House',
+      kind: 'scenery',
+      category: 'other',
+      scenery: 'building',
+      box: { x: 0.1, y: 0.1, w: 0.8, h: 0.8 },
+    };
+    const lamp: ApplianceDetection = {
+      id: 'det-10',
+      label: 'Lamp post',
+      category: 'lamp',
+      box: { x: 0.44, y: 0.48, w: 0.02, h: 0.11 },
+    };
+    // The big house comes AFTER the lamp in the list: it used to cover it.
+    const { container, onSelect, path, rerender } = setup({ detections: [lamp, house] });
+    const order = [...container.querySelectorAll('path[data-detection]')].map((p) =>
+      p.getAttribute('data-detection')
+    );
+    expect(order).toEqual(['det-9', 'det-10']);
+    const svg = (path('det-9') as SVGPathElement).ownerSVGElement!;
+    svg.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 1000, height: 1000, right: 1000, bottom: 1000 }) as DOMRect;
+    // Click on the lamp spot, even if the event lands on the house path.
+    fireEvent.click(path('det-9'), { clientX: 450, clientY: 530 });
+    expect(onSelect).toHaveBeenLastCalledWith('det-10');
+    rerender(
+      <I18nProvider>
+        <DetectionCanvas
+          imageUrl="data:image/jpeg;base64,AA"
+          status="ready"
+          detections={[lamp, house]}
+          selectedId="det-10"
+          onSelect={onSelect}
+        />
+      </I18nProvider>
+    );
+    fireEvent.click(path('det-10'), { clientX: 450, clientY: 530 });
+    expect(onSelect).toHaveBeenLastCalledWith('det-9');
+    // Colours still follow the list order, not the paint order.
+    const row = screen.getByRole('button', { name: /Lamp post/ });
+    expect((row as HTMLElement).style.getPropertyValue('--mark-h')).toBe(
+      (path('det-10') as unknown as HTMLElement).style.getPropertyValue('--mark-h')
+    );
+  });
 });

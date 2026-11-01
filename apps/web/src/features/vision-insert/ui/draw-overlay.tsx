@@ -9,8 +9,26 @@ import { CORNERS, cornerPoint, type DrawTool } from '../utils/shapes';
 type Editor = ReturnType<typeof useShapeEditor>;
 
 /**
+ * Corner handles sit OUTSIDE the shape (44 px touch area pointing away from it), the visible knob
+ * centred on the corner: on a small box (lamp post ≈ 20 px) the inside stays free to drag.
+ */
+const HANDLE_AREA: Record<(typeof CORNERS)[number], string> = {
+  nw: '-translate-x-full -translate-y-full items-end justify-end cursor-nwse-resize',
+  ne: '-translate-y-full items-end justify-start cursor-nesw-resize',
+  sw: '-translate-x-full items-start justify-end cursor-nesw-resize',
+  se: 'items-start justify-start cursor-nwse-resize',
+};
+const HANDLE_KNOB: Record<(typeof CORNERS)[number], string> = {
+  nw: 'translate-x-1/2 translate-y-1/2',
+  ne: '-translate-x-1/2 translate-y-1/2',
+  sw: 'translate-x-1/2 -translate-y-1/2',
+  se: '-translate-x-1/2 -translate-y-1/2',
+};
+
+/**
  * Drawing layer on the photo (PV-T8): drawn shapes (amber, dashed), the stroke in progress, and
- * 4 corner handles (44 px touch area) on the selected shape. Pointer and keyboard go to the editor.
+ * 4 corner handles (44 px touch area, outside the shape) on the selected shape. Pointer and keyboard go
+ * to the editor.
  */
 export function DrawOverlay({
   editor,
@@ -82,13 +100,15 @@ export function DrawOverlay({
               key={corner}
               data-corner={corner}
               aria-hidden="true"
-              className={cn(
-                'absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center',
-                corner === 'nw' || corner === 'se' ? 'cursor-nwse-resize' : 'cursor-nesw-resize'
-              )}
+              className={cn('absolute flex h-11 w-11', HANDLE_AREA[corner])}
               style={{ left: `${x * 100}%`, top: `${y * 100}%` }}
             >
-              <span className="pointer-events-none h-3.5 w-3.5 rounded-sm border-2 border-solar-amber bg-surface" />
+              <span
+                className={cn(
+                  'pointer-events-none h-3.5 w-3.5 rounded-sm border-2 border-solar-amber bg-surface',
+                  HANDLE_KNOB[corner]
+                )}
+              />
             </span>
           );
         })}

@@ -1,18 +1,31 @@
 import 'server-only';
 
-import { fitRecipe, recipeIssue, type ObjectShape, type ShapeTarget } from '@/lib/object-shape';
+import {
+  SHAPE_TIMEOUT_MS,
+  fitRecipe,
+  recipeIssue,
+  type ObjectShape,
+  type ShapeStep,
+  type ShapeTarget,
+} from '@/lib/object-shape';
 import type { PerceptionClient } from './client';
 import type { PhotoForRegions } from './region';
 import { cropForShape } from './shape-crop';
 
-/** Spark budget for one recipe; past it the silhouette is used (the operator is waiting on the editor). */
-export const SHAPE_TIMEOUT_MS = 20_000;
+export { SHAPE_TIMEOUT_MS };
+
+export interface ObjectShapeOptions {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  /** Live progress (SSE `shape_step`). */
+  onStep?: (step: ShapeStep) => void;
+}
 
 /**
  * Selected object → its 3D shape (PV-T9), Meta models only. One Spark call on a crop around the object
- * returns a parts recipe, fitted to the photo box (`fitRecipe`); Meta failure, spend cap, timeout,
- * unreadable or empty recipe (`recipeIssue`) →
- * `silhouette` mode, built in the browser from the SAM outline it already has (no extra call).
+ * returns a parts recipe, fitted to the photo box (`fitRecipe`). Fallbacks → `silhouette` mode, built in
+ * the browser from the SAM outline (no extra call), with a precise `reason`: `timeout` (past
+ * `SHAPE_TIMEOUT_MS`), `provider_error` + `detail` (`http_429`…), `spend_cap`, `malformed`, `no_body`.
  * Mock mode: fixed recipe per category, not checked. Never throws.
  */
 export async function runObjectShape(
@@ -20,16 +33,16 @@ export async function runObjectShape(
   photo: PhotoForRegions | null,
   fullImageUrl: string,
   target: ShapeTarget,
-  signal?: AbortSignal,
-  timeoutMs = SHAPE_TIMEOUT_MS
+  { signal, timeoutMs = SHAPE_TIMEOUT_MS, onStep }: ObjectShapeOptions = {}
 ): Promise<ObjectShape> {
   const base = { detectionId: target.id };
   const silhouette = (
     reason: NonNullable<ObjectShape['reason']>,
-    source: Pick<ObjectShape, 'source' | 'model' | 'fallback'>
+    source: Pick<ObjectShape, 'source' | 'model' | 'fallback' | 'detail'>
   ): ObjectShape => ({ ...base, mode: 'silhouette', reason, ...source });
 
   try {
+    onStep?.('crop');
     const { w, h } = target.box;
     const aspect = photo && h > 0 ? (w * photo.width) / (h * photo.height) : 0;
     let imageUrl = fullImageUrl;
@@ -40,6 +53,8 @@ export async function runObjectShape(
         console.warn('[vision] shape crop failed, sending the whole photo:', err);
       }
     }
+    onStep?.('model');
+    const started = Date.now();
     const timeout = AbortSignal.timeout(timeoutMs);
     const found = await perception.describeShape(
       imageUrl,
@@ -51,14 +66,21 @@ export async function runObjectShape(
       },
       signal ? AbortSignal.any([signal, timeout]) : timeout
     );
+    const seconds = ((Date.now() - started) / 1000).toFixed(1);
     const source = {
       source: found.source,
       model: found.model,
       ...(found.fallback ? { fallback: found.fallback } : {}),
+      ...(found.failure ? { detail: found.failure } : {}),
     };
     if (found.fallback === 'provider_error' || found.fallback === 'spend_cap') {
-      return silhouette(found.fallback, source);
+      const reason = found.failure === 'timeout' ? 'timeout' : found.fallback;
+      console.info(
+        `[vision] 3D recipe for "${target.label}": ${reason}${found.failure ? ` (${found.failure})` : ''} after ${seconds} s, silhouette`
+      );
+      return silhouette(reason, source);
     }
+    onStep?.('fit');
     if (!found.recipe) return silhouette('malformed', source);
     if (found.source === 'meta') {
       const recipe = fitRecipe(found.recipe, aspect);
@@ -67,6 +89,9 @@ export async function runObjectShape(
         console.info(`[vision] 3D recipe for "${target.label}" rejected (${issue}), silhouette`);
         return silhouette(issue, source);
       }
+      console.info(
+        `[vision] 3D recipe for "${target.label}": ${recipe.parts.length} parts in ${seconds} s (${found.model})`
+      );
       return { ...base, mode: 'recipe', recipe, ...source };
     }
     return { ...base, mode: 'recipe', recipe: found.recipe, ...source };

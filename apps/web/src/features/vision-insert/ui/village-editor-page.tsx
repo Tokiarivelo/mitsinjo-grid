@@ -42,6 +42,7 @@ export function VillageEditorPage() {
   const nameOf = useDetectionLabel();
   const {
     requestShape,
+    peek: peekShape,
     retry: retryShape,
     reset: resetShape,
     clear: clearShapes,
@@ -63,24 +64,29 @@ export function VillageEditorPage() {
 
   // New photo: object ids start again, so kept shapes no longer apply.
   useEffect(() => clearShapes(), [imageUrl, clearShapes]);
+  const shapeRequest = shapeTarget
+    ? {
+        id: shapeTarget.id,
+        label: shapeTarget.label,
+        category: shapeTarget.category,
+        ...(shapeTarget.scenery ? { scenery: shapeTarget.scenery } : {}),
+        box: shapeTarget.box,
+        ...(shapeTarget.adjusted ? { adjusted: shapeTarget.adjusted } : {}),
+      }
+    : null;
+  // Selecting only shows a kept model: Spark runs on « Generate the 3D model » (user: pick to
+  // adjust the box without paying a 3D call). Keyed on the object (id, name, category, box once adjusted).
   useEffect(() => {
-    if (!imageUrl || !shapeTarget) {
+    if (!imageUrl || !shapeRequest) {
       resetShape();
       return;
     }
-    const { id, label, category, scenery, box, adjusted } = shapeTarget;
-    void requestShape(imageUrl, {
-      id,
-      label,
-      category,
-      ...(scenery ? { scenery } : {}),
-      box,
-      ...(adjusted ? { adjusted } : {}),
-    });
-    // Keyed on the object (id, name, category, box once adjusted by hand): a SAM box refinement
-    // does not pay for a new recipe.
+    peekShape(shapeRequest);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imageUrl, targetKey, requestShape, resetShape]);
+  }, [imageUrl, targetKey, peekShape, resetShape]);
+  const generateShape = () => {
+    if (imageUrl && shapeRequest) void requestShape(imageUrl, shapeRequest);
+  };
 
   const pickPhoto = async (file: Blob) => {
     if (!PHOTO_TYPES.includes(file.type)) {
@@ -224,6 +230,7 @@ export function VillageEditorPage() {
                   label={nameOf(shapeTarget)}
                   imageUrl={imageUrl}
                   onRetry={retryShape}
+                  onGenerate={generateShape}
                 />
               )}
               {shapeTarget && (

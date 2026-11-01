@@ -9,7 +9,7 @@ export const SHAPE_CROP_CONTEXT = 1.6;
 /** A small object (a lamp post is ~20 px wide) is upscaled so Spark sees its parts. */
 export const SHAPE_CROP_MIN_PX = 640;
 /** Never send more than this (tokens). */
-export const SHAPE_CROP_MAX_PX = 1024;
+export const SHAPE_CROP_MAX_PX = 768;
 
 /**
  * Crop for the 3D recipe (PV-T9): a square around the object box with context, upscaled when small,

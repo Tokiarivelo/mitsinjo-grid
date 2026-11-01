@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@/lib/i18n';
 import type { ObjectShape } from '@/lib/object-shape';
@@ -52,10 +52,38 @@ const renderPanel = (props: Partial<Parameters<typeof ObjectShapePanel>[0]> = {}
   );
 
 describe('ObjectShapePanel (PV-T10)', () => {
+  it('idle: « Not built yet » and the Generate button, no viewer', () => {
+    const onGenerate = vi.fn();
+    renderPanel({ status: 'idle', shape: undefined, onGenerate });
+    expect(screen.getByText('Not built yet')).toBeTruthy();
+    expect(screen.queryByRole('img')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Generate the 3D model' }));
+    expect(onGenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it('the viewer sits on the studio backdrop (lighter than dark objects in both themes)', () => {
+    renderPanel();
+    expect(screen.getByRole('img', { name: '3D model of Fridge' }).className).toContain(
+      'viewer-studio'
+    );
+  });
+
   it('loading: says the model is being built, no viewer yet', () => {
     renderPanel({ status: 'loading', shape: undefined });
     expect(screen.getByText('Building the 3D model…')).toBeTruthy();
     expect(screen.queryByText('viewer')).toBeNull();
+  });
+
+  it('loading shows the AI steps: done, current (with seconds and wait hint), to do', () => {
+    renderPanel({ status: 'loading', shape: undefined, step: 'model', startedAt: Date.now() });
+    const steps = screen.getByRole('list', { name: 'AI steps for the 3D model' });
+    const items = within(steps).getAllByRole('listitem');
+    expect(items).toHaveLength(3);
+    expect(items[0]!.textContent).toContain('Extracting the object');
+    expect(items[1]!.getAttribute('aria-current')).toBe('step');
+    expect(items[1]!.textContent).toMatch(/Muse Spark imagines the parts.*0 s/);
+    expect(items[2]!.getAttribute('aria-current')).toBeNull();
+    expect(screen.getByText(/usually needs 15 to 40 s \(limit 60 s\)/)).toBeTruthy();
   });
 
   it('recipe: AI badge, labelled viewer and the orbit hint', async () => {
@@ -78,22 +106,34 @@ describe('ObjectShapePanel (PV-T10)', () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
-  it('silhouette because Meta did not answer: says so; recipe mode has no retry', () => {
+  it('each fallback says its own cause; recipe mode has no retry', () => {
+    const cases: Array<[NonNullable<ObjectShape['reason']>, RegExp]> = [
+      ['provider_error', /The Meta model did not answer/],
+      ['timeout', /Muse Spark took more than 60 s/],
+      ['spend_cap', /spend cap is reached/],
+      ['network', /app server could not be reached/],
+    ];
+    for (const [reason, text] of cases) {
+      const { unmount } = renderPanel({
+        shape: shape('silhouette', 'det-1', reason),
+        onRetry: () => {},
+      });
+      expect(screen.getByText(text)).toBeTruthy();
+      unmount();
+    }
     const { unmount } = renderPanel({
-      shape: shape('silhouette', 'det-1', 'provider_error'),
-      onRetry: () => {},
+      shape: { ...shape('silhouette', 'det-1', 'provider_error'), detail: 'http_429' },
     });
-    expect(
-      screen.getByText("The Meta model did not answer: shown from the object's outline.")
-    ).toBeTruthy();
+    expect(screen.getByText('Cause: HTTP 429')).toBeTruthy();
     unmount();
     renderPanel({ onRetry: () => {} });
     expect(screen.queryByRole('button', { name: 'Try the AI shape again' })).toBeNull();
   });
 
-  it('a shape for another object counts as still loading (no stale model)', () => {
+  it('a shape for another object is not shown (no stale model)', () => {
     renderPanel({ shape: shape('recipe', 'det-9') });
-    expect(screen.getByText('Building the 3D model…')).toBeTruthy();
+    expect(screen.getByText('Not built yet')).toBeTruthy();
+    expect(screen.queryByText('viewer')).toBeNull();
   });
 
   it('no WebGL: a note instead of the viewer', () => {

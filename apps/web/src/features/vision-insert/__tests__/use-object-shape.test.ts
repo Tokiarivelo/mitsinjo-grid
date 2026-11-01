@@ -24,6 +24,15 @@ const recipeShape: ObjectShape = {
   model: 'muse-spark-1.3',
 };
 
+/** What the route streams: steps, then the shape. */
+const sse = (shape: unknown) =>
+  new Response(
+    ['crop', 'model', 'fit']
+      .map((step) => `event: shape_step\ndata: ${JSON.stringify({ step })}\n\n`)
+      .join('') +
+      `event: shape_result\ndata: ${JSON.stringify({ shape })}\n\nevent: done\ndata: {}\n\n`
+  );
+
 const originalFetch = global.fetch;
 let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
@@ -36,7 +45,7 @@ afterEach(() => {
 
 describe('useObjectShape (PV-T9)', () => {
   it('posts the photo and target, then holds the recipe', async () => {
-    fetchMock.mockResolvedValue(new Response(JSON.stringify(recipeShape)));
+    fetchMock.mockResolvedValue(sse(recipeShape));
     const { result } = renderHook(() => useObjectShape());
     expect(result.current.status).toBe('idle');
     act(() => {
@@ -56,23 +65,46 @@ describe('useObjectShape (PV-T9)', () => {
     for (const answer of [
       () => fetchMock.mockRejectedValueOnce(new Error('offline')),
       () => fetchMock.mockResolvedValueOnce(new Response('{}', { status: 500 })),
-      () => fetchMock.mockResolvedValueOnce(new Response('{"mode":"cube"}')),
+      () => fetchMock.mockResolvedValueOnce(sse({ mode: 'cube' })),
     ]) {
       answer();
       const { result } = renderHook(() => useObjectShape());
       await act(() => result.current.requestShape('data:image/png;base64,AA', target));
       expect(result.current).toMatchObject({
         status: 'ready',
-        shape: { detectionId: 'det-1', mode: 'silhouette', reason: 'provider_error' },
+        shape: { detectionId: 'det-1', mode: 'silhouette', reason: 'network' },
       });
     }
   });
 
-  it('keeps answers per object until clear(); offline silhouettes are retried', async () => {
-    fetchMock.mockResolvedValue(new Response(JSON.stringify(recipeShape)));
+  it('server-side failures (timeout…) are shown but not kept: a reselect asks again', async () => {
+    const timeout = { ...recipeShape, mode: 'silhouette', recipe: undefined, reason: 'timeout' };
+    fetchMock.mockImplementation(async () => sse(timeout));
     const { result } = renderHook(() => useObjectShape());
     await act(() => result.current.requestShape('data:image/png;base64,AA', target));
-    fetchMock.mockImplementation(async () => new Response(JSON.stringify(recipeShape)));
+    expect(result.current.shape?.reason).toBe('timeout');
+    await act(() => result.current.requestShape('data:image/png;base64,AA', target));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('loading carries the server step and its start time', async () => {
+    let finish: (r: Response) => void = () => {};
+    fetchMock.mockReturnValue(new Promise<Response>((r) => (finish = r)));
+    const { result } = renderHook(() => useObjectShape());
+    act(() => {
+      void result.current.requestShape('data:image/png;base64,AA', target);
+    });
+    expect(result.current).toMatchObject({ status: 'loading', step: 'crop' });
+    expect(typeof result.current.startedAt).toBe('number');
+    await act(async () => finish(sse(recipeShape)));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+  });
+
+  it('keeps answers per object until clear(); offline silhouettes are retried', async () => {
+    fetchMock.mockResolvedValue(sse(recipeShape));
+    const { result } = renderHook(() => useObjectShape());
+    await act(() => result.current.requestShape('data:image/png;base64,AA', target));
+    fetchMock.mockImplementation(async () => sse(recipeShape));
     await act(() => result.current.requestShape('data:image/png;base64,AA', target));
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(result.current.shape).toEqual(recipeShape);
@@ -95,7 +127,7 @@ describe('useObjectShape (PV-T9)', () => {
   });
 
   it('retry asks Spark again for the same object, skipping the kept answer', async () => {
-    fetchMock.mockImplementation(async () => new Response(JSON.stringify(recipeShape)));
+    fetchMock.mockImplementation(async () => sse(recipeShape));
     const { result } = renderHook(() => useObjectShape());
     await act(() => result.current.requestShape('data:image/png;base64,AA', target));
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -105,7 +137,7 @@ describe('useObjectShape (PV-T9)', () => {
   });
 
   it('a box adjusted by hand is a new request; the flag is not sent', async () => {
-    fetchMock.mockImplementation(async () => new Response(JSON.stringify(recipeShape)));
+    fetchMock.mockImplementation(async () => sse(recipeShape));
     const { result } = renderHook(() => useObjectShape());
     await act(() => result.current.requestShape('data:image/png;base64,AA', target));
     const moved = { ...target, box: { ...target.box, w: 0.1 }, adjusted: true as const };
@@ -123,8 +155,21 @@ describe('useObjectShape (PV-T9)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('peek shows a kept shape, else stays idle and asks nothing', async () => {
+    fetchMock.mockImplementation(async () => sse(recipeShape));
+    const { result } = renderHook(() => useObjectShape());
+    act(() => result.current.peek(target));
+    expect(result.current.status).toBe('idle');
+    expect(fetchMock).not.toHaveBeenCalled();
+    await act(() => result.current.requestShape('data:image/png;base64,AA', target));
+    act(() => result.current.reset());
+    act(() => result.current.peek(target));
+    expect(result.current).toMatchObject({ status: 'ready', shape: recipeShape });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('reset goes back to idle', async () => {
-    fetchMock.mockResolvedValue(new Response(JSON.stringify(recipeShape)));
+    fetchMock.mockResolvedValue(sse(recipeShape));
     const { result } = renderHook(() => useObjectShape());
     await act(() => result.current.requestShape('data:image/png;base64,AA', target));
     act(() => result.current.reset());

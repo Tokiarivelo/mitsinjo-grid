@@ -108,7 +108,9 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 - `DetectionCanvas` (`features/vision-insert`, PV-T7): photo + SVG overlay (`viewBox 0 0 1`, one path per detection: SAM
   outline or box). Each object its own colour (`utils/mark-color`: golden-angle hue + 3 lightness steps, `--mark` from
   `--theme-mark-s/l` per theme), same colour on its list row border; hover/focus = stronger fill + label chip, selected = thicker
-  stroke + fill and tinted row. Pointer: hover/tap on the
+  stroke + fill and tinted row (outline repeated on top, no pointer). Paint order biggest first (`utils/stacking`): a small box
+  under a big one stays clickable; a click picks the smallest box there, a 2nd click on the same spot the one under it.
+  Edit handles (draw / adjust) sit outside the shape so a tiny box can still be dragged. Pointer: hover/tap on the
   photo; keyboard + screen readers: the « Appliances found (n) » list below (buttons ≥ 44 px, focus = same highlight).
   States: loading (dimmed photo + status), refining (outlines coming), ready, empty, error + retry. Violet « AI perception ·
   to verify » tag; demo note when the mock answered. Category shown only when it differs from the label.

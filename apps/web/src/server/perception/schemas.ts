@@ -20,6 +20,8 @@ export const PerceptionSourceSchema = z.object({
   source: z.enum(['meta', 'mock']),
   model: z.string(),
   fallback: z.enum(['provider_error', 'spend_cap', 'not_configured']).optional(),
+  /** With `provider_error`: why Meta failed (`timeout`, `aborted`, `http_<status>`, `network`). Logs + UI note. */
+  failure: z.string().max(40).optional(),
 });
 export type PerceptionSource = z.infer<typeof PerceptionSourceSchema>;
 

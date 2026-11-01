@@ -14,7 +14,8 @@ import {
 } from './detect';
 import { maskToOutline } from './mask-outline';
 import { REGION_SYSTEM_PROMPT, regionQuestion } from './region-prompt';
-import { parseRecipe, SHAPE_JSON_SCHEMA, SHAPE_SYSTEM_PROMPT, shapeQuestion } from './shape';
+import { defaultArchetype, kitToRecipe } from '@/lib/object-kit';
+import { parseKit, SHAPE_JSON_SCHEMA, SHAPE_SYSTEM_PROMPT, shapeQuestion } from './shape';
 import { boxUnionCoverage, parseSamOutput } from './parse-sam';
 import {
   ObservationSchema,
@@ -108,12 +109,13 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     makeBody: (model: string) => BodyInit,
     baseModel: string,
     init: HeadersInit,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    allowContributor = true
   ): Promise<{ data: unknown; model: string }> {
     if (!this.apiKey) throw new Error('META_API_KEY is not configured in environment');
     const { res, model } = await fetchPreferringContributor(
       baseModel,
-      Boolean(baseModel) && this.preferContributor,
+      Boolean(baseModel) && this.preferContributor && allowContributor,
       (m) =>
         fetch(`${this.baseUrl}${path}`, {
           method: 'POST',
@@ -173,7 +175,9 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     question: string,
     imageUrl: string,
     jsonSchema: object,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    /** false = always the standard model id (latency-sensitive calls). */
+    allowContributor = true
   ): Promise<{ content: string; model: string; usage: UsageSample }> {
     const body = (model: string) => ({
       model,
@@ -194,7 +198,8 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       (m) => JSON.stringify(body(m)),
       env.META_VISION_MODEL,
       { 'Content-Type': 'application/json' },
-      signal
+      signal,
+      allowContributor
     );
     const data = sent.data as {
       choices?: Array<{ message?: { content?: string | null } }>;
@@ -276,17 +281,20 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     target: ShapeSubject,
     signal?: AbortSignal
   ): Promise<PerceptionCall<ShapeResult>> {
+    const hint = defaultArchetype(target.category, target.scenery);
+    // Standard id, not the contributor one: the operator waits on this answer (≈ 15 s vs ≈ 25 s measured).
     const { content, model, usage } = await this.visionJson(
       SHAPE_SYSTEM_PROMPT,
-      shapeQuestion(target.label, target.aspect),
+      shapeQuestion(target.label, target.aspect, hint),
       imageUrl,
       SHAPE_JSON_SCHEMA,
-      signal
+      signal,
+      false
     );
-    const recipe = parseRecipe(content);
-    if (!recipe)
-      console.info(`[vision] ${model} gave no usable 3D recipe: ${content.slice(0, 300)}`);
-    return { model, usage, result: { recipe } };
+    const kit = parseKit(content, hint);
+    if (!kit) console.info(`[vision] ${model} gave no usable 3D kit: ${content.slice(0, 300)}`);
+    else console.info(`[vision] 3D kit from ${model}: ${kit.archetype}`);
+    return { model, usage, result: { recipe: kit ? kitToRecipe(kit) : null } };
   }
 
   async segmentImage(

@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { kitToRecipe, type ObjectKit } from '@/lib/object-kit';
 import { MetaPerceptionBackend } from '../meta';
 
 const BASE = 'https://api.meta.ai/v1';
@@ -144,25 +145,34 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
     expect(out.usage).toEqual({ inputTokens: 1500, outputTokens: 120 });
   });
 
-  it('asks Spark for a 3D recipe with the parts schema (PV-T9)', async () => {
-    const recipe = {
+  it('asks Spark for a short 3D kit on the standard model, then builds the recipe (PV-T9b)', async () => {
+    const kit = {
+      archetype: 'cabinet',
       proportions: { w: 0.5, h: 1, d: 0.5 },
-      parts: [{ shape: 'box', at: [0, 0, 0], size: [1, 1, 1], color: '#eeeeee', front: true }],
+      colors: { main: '#eeeeee', secondary: '#bbbbbb', accent: '#888888' },
     };
     const fetchMock = respond({
-      choices: [{ message: { content: JSON.stringify(recipe) } }],
-      usage: { prompt_tokens: 900, completion_tokens: 200 },
+      choices: [{ message: { content: JSON.stringify(kit) } }],
+      usage: { prompt_tokens: 900, completion_tokens: 80 },
     });
-    const out = await backend.describeShape('data:image/jpeg;base64,AA', {
+    const prefersContributor = new MetaPerceptionBackend({
+      apiKey: 'k',
+      baseUrl: BASE,
+      preferContributor: true,
+    });
+    const out = await prefersContributor.describeShape('data:image/jpeg;base64,AA', {
       label: 'Fridge',
       category: 'fridge',
     });
     const body = JSON.parse(lastRequest(fetchMock).init.body as string);
     expect(lastRequest(fetchMock).url).toBe(`${BASE}/chat/completions`);
-    expect(body.response_format.json_schema.name).toBe('ObjectRecipe');
+    expect(body.response_format.json_schema.name).toBe('ObjectKit');
+    // Latency-sensitive: never the (slower) contributor id.
+    expect(body.model).not.toMatch(/contributor/);
     expect(body.messages[1].content[0].text).toContain('"Fridge"');
-    expect(out.result.recipe).toEqual(recipe);
-    expect(out.usage).toEqual({ inputTokens: 900, outputTokens: 200 });
+    expect(body.messages[1].content[0].text).toContain('probably a "cabinet"');
+    expect(out.result.recipe).toEqual(kitToRecipe(kit as ObjectKit));
+    expect(out.usage).toEqual({ inputTokens: 900, outputTokens: 80 });
 
     respond({ choices: [{ message: { content: 'A white fridge.' } }] });
     const prose = await backend.describeShape('data:image/jpeg;base64,AA', {

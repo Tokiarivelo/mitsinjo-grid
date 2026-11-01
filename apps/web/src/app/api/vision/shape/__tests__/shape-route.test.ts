@@ -5,6 +5,7 @@ import type { NextRequest } from 'next/server';
 vi.mock('server-only', () => ({}));
 
 import { ObjectShapeSchema } from '@/lib/object-shape';
+import { parseSseChunk } from '@/lib/sse';
 import { mockRecipe } from '@/server/perception';
 import { POST } from '../route';
 
@@ -29,11 +30,23 @@ const fridge = {
   box: { x: 0.1, y: 0.1, w: 0.2, h: 0.6 },
 };
 
+const events = async (res: Response) => parseSseChunk(await res.text()).events;
+
 describe('POST /api/vision/shape (PV-T9)', () => {
-  it('answers the offline fridge recipe in mock mode', async () => {
+  it('streams the steps, then the offline fridge recipe in mock mode', async () => {
     const res = await POST(request(form(fridge)));
     expect(res.status).toBe(200);
-    const body = ObjectShapeSchema.parse(await res.json());
+    expect(res.headers.get('Content-Type')).toBe('text/event-stream');
+    const list = await events(res);
+    expect(list.map((e) => e.event)).toEqual([
+      'shape_step',
+      'shape_step',
+      'shape_step',
+      'shape_result',
+      'done',
+    ]);
+    expect(list.slice(0, 3).map((e) => e.data.step)).toEqual(['crop', 'model', 'fit']);
+    const body = ObjectShapeSchema.parse(list[3]!.data.shape);
     expect(body).toMatchObject({ detectionId: 'det-1', mode: 'recipe', source: 'mock' });
     expect(body.recipe).toEqual(mockRecipe('fridge'));
     // Geometry and colours only: no power value.

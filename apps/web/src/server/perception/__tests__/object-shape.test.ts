@@ -3,7 +3,7 @@ import sharp from 'sharp';
 import { describe, expect, it, vi } from 'vitest';
 import type { ObjectRecipe, ShapeTarget } from '@/lib/object-shape';
 vi.mock('server-only', () => ({}));
-import { runObjectShape } from '../object-shape';
+import { runObjectShape, SHAPE_TIMEOUT_MS } from '../object-shape';
 import type { ShapeResult } from '../schemas';
 
 const target: ShapeTarget = {
@@ -127,9 +127,44 @@ describe('runObjectShape (PV-T9)', () => {
         return Promise.reject(new Error('boom'));
       }),
     };
-    const out = await runObjectShape(p, null, 'data:full', target, undefined, 5);
+    const out = await runObjectShape(p, null, 'data:full', target, { timeoutMs: 5 });
     expect(out).toMatchObject({ mode: 'silhouette', reason: 'provider_error' });
     await new Promise((r) => setTimeout(r, 20));
     expect(seen?.aborted).toBe(true);
+  });
+
+  it('gives Spark 60 s (it needs 15–40 s) and reports each step', async () => {
+    expect(SHAPE_TIMEOUT_MS).toBe(60_000);
+    const steps: string[] = [];
+    await runObjectShape(client(meta(tall)), await photo(), 'data:full', target, {
+      onStep: (s) => steps.push(s),
+    });
+    expect(steps).toEqual(['crop', 'model', 'fit']);
+  });
+
+  it('a Meta timeout is reason « timeout », other Meta errors keep their cause', async () => {
+    const timedOut = client({
+      recipe: tall,
+      source: 'mock',
+      model: 'mock-perception-v1',
+      fallback: 'provider_error',
+      failure: 'timeout',
+    });
+    expect(await runObjectShape(timedOut, null, 'data:full', target)).toMatchObject({
+      mode: 'silhouette',
+      reason: 'timeout',
+      detail: 'timeout',
+    });
+    const refused = client({
+      recipe: tall,
+      source: 'mock',
+      model: 'mock-perception-v1',
+      fallback: 'provider_error',
+      failure: 'http_429',
+    });
+    expect(await runObjectShape(refused, null, 'data:full', target)).toMatchObject({
+      reason: 'provider_error',
+      detail: 'http_429',
+    });
   });
 });
