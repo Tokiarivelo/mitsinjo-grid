@@ -14,6 +14,7 @@ import {
   enforcePartBudget,
   MASK_YAW_MAX,
   photoToObject,
+  roofTopAbove,
   type MaskMapGeom,
 } from './mask-geometry';
 import { minAreaRect, PANEL_MIN_SIZE, PANEL_TILT_MAX } from './mask-panels';
@@ -70,8 +71,11 @@ function maskChimney(
   return { x: m.x, top: m.y + hu / 2, w: wu, h: hu };
 }
 
-/** Template chimney: a small centred box rising past the eave (stepped and measured houses). */
-function isTemplateChimney(p: RecipePart, midY: number, eave: number): boolean {
+/**
+ * Chimney stack (template or measured): a small centred box rising past the eave (stepped and
+ * measured houses). Shared with the object graph (PR-2.14).
+ */
+export function isChimneyStack(p: RecipePart, midY: number, eave: number): boolean {
   return (
     p.shape === 'box' &&
     Math.abs(p.at[2]) <= 0.3 &&
@@ -100,15 +104,9 @@ export function withMaskChimney(
   if (Math.abs(recipe.yaw ?? 0) > MASK_YAW_MAX) return recipe;
   const main = recipe.parts[frontPartIndex(recipe)]!;
   const eave = main.at[1] + main.size[1] / 2;
-  const removed = recipe.parts.filter((p) => isTemplateChimney(p, main.at[1], eave));
+  const removed = recipe.parts.filter((p) => isChimneyStack(p, main.at[1], eave));
   const paint = removed[0] ?? main;
-  const roofTop = Math.max(
-    eave,
-    ...recipe.parts
-      .filter((p) => p !== main && !removed.includes(p))
-      .map((p) => p.at[1] + p.size[1] / 2)
-      .filter((t) => t > eave)
-  );
+  const roofTop = roofTopAbove(recipe.parts, eave, (p) => p === main || removed.includes(p));
 
   const x0 = main.at[0] - main.size[0] / 2;
   const x1 = main.at[0] + main.size[0] / 2;

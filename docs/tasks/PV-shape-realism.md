@@ -247,12 +247,18 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
       Done 2026-11-01: report re-run — every object meets the stop criteria (mean 93, IoU 0.98,
       edge 0.91, ΔE 3.4, math ≤ 267 ms); no metric regressed across the three PRs; no designer
       review (no Look task). Lowest score cottage row (86), all ✓.
-- [ ] **PR-2.14 Object graph + constraints** (archi reasoning). Parent → child graph per recipe
+- [x] **PR-2.14 Object graph + constraints** (archi reasoning). Parent → child graph per recipe
       (panel → wall, chimney → roof, wheel → body, gable → wall) built once after the masks; a
       constraint pass after every reshape (panels/wheels/fit): parts clamped into their parent span,
       chimney feet on a roof plane, no incoherent intersections. Generalises the panels clamp.
       Each node param carries a dimension status (measured / estimated / inferred / unknown).
       Test: floating panel pulled into the wall; violation count in the report; no golden −2.
+      Done: `object-graph.ts` — `buildGraph` (parents + 4 statuses: mask-matched/outline bodies
+      measured, far twins inferred, template estimated/unknown by evidence), `applyConstraints`
+      (panel clamp into parent span, stack feet onto roofTop, same-ref when clean),
+      `checkConstraints` (count); wired after wheels/panels/chimney/fit with rescore on fix;
+      report gains a Viol column (0 everywhere). `roofTopAbove` shared with mask-chimney.
+      Goldens identical. Also: region-colour rings now use the fetched outline (fix-2 gap).
 - [ ] **PR-2.15 Dimension status** (archi rule 2). Every part and key dim (eave, depth, yaw, scale)
       carries measured / estimated / inferred / unknown (unified vocabulary; estimates never shown
       as measured). Stored on the recipe, shown in the panel next to each part and dim (extends the
@@ -361,3 +367,4 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-01 | PR-2.20 on-demand outline at shape time                                | 0.98     | 0.91    | 3.4     | —        | goldens identical (all outlined); e2e fetched outline → stone walls + fit; region concept test re-pointed (water pump → pump                           |
 | 2026-11-01 | PR-2.12 house backs + shared yaw gates (0.3 / 1.05)                    | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); house e2e 6 → 8 parts (backs); profile gate 0.26 → 0.3, no golden in the sliver                                  |
 | 2026-11-01 | PR-0.8 landmark term (part centres vs mask centres)                    | 0.98     | 0.91    | 3.4     | —        | goldens identical (classic weights); live-car e2e landmark 0.95, score 90 → 91; shifted wheel scores lower; capture replay left 3-term                 |
+| 2026-11-01 | PR-2.14 object graph + constraints + Viol column                       | 0.98     | 0.91    | 3.4     | —        | goldens identical, Viol 0 everywhere; floating panel/stack pulled in (unit); fixed mid-PR: tuple types, lint _dropped warnings                         |

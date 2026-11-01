@@ -249,7 +249,7 @@ describe('runObjectShape measured colours (PF-T2)', () => {
       describeShape: client(meta(kitToRecipe(guessed), { kit: guessed })).describeShape,
       segmentImage,
     };
-    const { outline: _dropped, ...boxOnly } = cottage;
+    const boxOnly = { ...cottage, outline: undefined };
     const out = await runObjectShape(p, await street(), 'data:full', boxOnly);
     expect(segmentImage).toHaveBeenCalledWith('data:full', 'house', expect.any(AbortSignal));
     // The fetched outline focuses sampling (stone walls) and enables the fit.
@@ -262,7 +262,7 @@ describe('runObjectShape measured colours (PF-T2)', () => {
 
   it('no outline → the guess dominates the box mix (regression: green Mini)', async () => {
     const p = client(meta(kitToRecipe(guessed), { kit: guessed }));
-    const { outline: _dropped, ...boxOnly } = cottage;
+    const boxOnly = { ...cottage, outline: undefined };
     const out = await runObjectShape(p, await street(), 'data:full', boxOnly);
     expect(out.mode).toBe('recipe');
     const walls = out.recipe!.parts.find((x) => x.front)!.color;

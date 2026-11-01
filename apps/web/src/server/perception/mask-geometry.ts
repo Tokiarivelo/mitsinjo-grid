@@ -44,6 +44,24 @@ export function photoToObject(
 export const PART_KEEP_VOLUME = 0.02;
 
 /**
+ * Top of the roof at its highest (PR-2.14): the max part top above the eave, else the eave.
+ * Excluded parts (the main body, chimney stacks) never count as roof.
+ */
+export function roofTopAbove(
+  parts: ReadonlyArray<RecipePart>,
+  eave: number,
+  exclude: (p: RecipePart) => boolean = () => false
+): number {
+  let top = eave;
+  for (const p of parts) {
+    if (exclude(p)) continue;
+    const t = p.at[1] + p.size[1] / 2;
+    if (t > eave && t > top) top = t;
+  }
+  return top;
+}
+
+/**
  * Shared yaw gates for the measured passes (PR-2.12: profile, wheels, panels, chimney — one
  * constant, not 0.26 here and 0.3 there). ≤ 17° the photo reads like a front view: profile
  * bodies, measured wheels/panels/stacks, mirror to the far side. 17–60° only near-side panels

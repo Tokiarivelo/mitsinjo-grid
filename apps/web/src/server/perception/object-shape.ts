@@ -5,6 +5,7 @@ import {
   fitRecipe,
   frontPartIndex,
   recipeIssue,
+  type ObjectRecipe,
   type ObjectShape,
   type ShapeStep,
   type ShapeTarget,
@@ -26,6 +27,7 @@ import {
   sampleObjectRgb,
 } from './shape-colors';
 import { conceptOf, fetchOutlineForBox } from './outline';
+import { applyConstraints } from './object-graph';
 import { cropForShape, cropRectForShape } from './shape-crop';
 import { extractSwatches } from './photo-swatches';
 import { withLatheBody } from './lathe-body';
@@ -312,13 +314,20 @@ export async function runObjectShape(
           `[vision] 3D fit for "${target.label}": iou=${fit.iou} (start ${fit.iouStart}, ${fit.evals} evals) units=${finalKit?.details?.units ?? 1} yaw=${Math.round(((recipe.yaw ?? 0) * 180) / Math.PI)}° · confidence colours ${conf.colors}, yaw ${conf.yaw}, fit ${conf.fit}`
         );
       }
-      // PR-2.2 + PR-2.4 + PR-2.6 + PR-2.7 + PR-2.10: side-seen and round bodies follow the
-      // SAM outline, wheels, panels and chimneys follow their masks; the shipped silhouette is
-      // re-scored.
+      // PR-2.2 + PR-2.4 + PR-2.6 + PR-2.7 + PR-2.10 + PR-2.14: side-seen and round bodies
+      // follow the SAM outline, wheels, panels and chimneys follow their masks, constraints keep
+      // every reshape coherent; the shipped silhouette is re-scored.
       let fitIou = fit?.iou;
       if (finalKit) {
         let reshaped: 'profile' | 'lathe' | 'wheels' | 'panels' | 'chimney' | 'fit' | null = null;
         let fitGains = '';
+        // PR-2.14: coherence after every reshape; a fix also re-scores (silhouette moved).
+        let constrainedFix = false;
+        const constrain = (r: ObjectRecipe) => {
+          const q = applyConstraints(finalKit.archetype, r);
+          if (q !== r) constrainedFix = true;
+          return q;
+        };
         const profiled = withProfileBody(finalKit.archetype, recipe, target, aspect);
         if (profiled !== recipe) {
           recipe = profiled;
@@ -341,22 +350,25 @@ export async function runObjectShape(
             recipe = wheeled;
             reshaped = 'wheels';
           }
+          recipe = constrain(recipe);
           const panelled = withMaskPanels(finalKit.archetype, recipe, partMasks, geom);
           if (panelled !== recipe) {
             recipe = panelled;
             reshaped = 'panels';
           }
+          recipe = constrain(recipe);
           const stacked = withMaskChimney(finalKit.archetype, recipe, partMasks, geom);
           if (stacked !== recipe) {
             recipe = stacked;
             reshaped = 'chimney';
           }
+          recipe = constrain(recipe);
           // PR-2.8: each part from its own mask's pixels. Best effort, never throws; no
           // re-score — colours don't move the silhouette IoU.
           try {
             const grid = await sampleObjectRgb(photo, target.box, REGION_GRID, REGION_GRID);
-            const rings = target.outline
-              ? pathToRings(target.outline).filter((r) => r.length >= 3)
+            const rings = shaped.outline
+              ? pathToRings(shaped.outline).filter((r) => r.length >= 3)
               : [];
             const regions = measureRegionColors(grid, rings, partMasks, geom, photo, target.box);
             const recoloured = withRegionColors(
@@ -388,31 +400,36 @@ export async function runObjectShape(
             console.warn('[vision] part fit failed:', err);
           }
         }
-        if (reshaped) {
-          const main = recipe.parts[frontPartIndex(recipe)]!;
-          const panelCounts = (partMasks ?? [])
-            .filter((m) => m.concept === 'window' || m.concept === 'door')
-            .reduce(
-              (acc, m) => ({ ...acc, [m.concept]: (acc[m.concept] ?? 0) + 1 }),
-              {} as Record<string, number>
+        recipe = constrain(recipe);
+        if (reshaped || constrainedFix) {
+          if (reshaped) {
+            const main = recipe.parts[frontPartIndex(recipe)]!;
+            const panelCounts = (partMasks ?? [])
+              .filter((m) => m.concept === 'window' || m.concept === 'door')
+              .reduce(
+                (acc, m) => ({ ...acc, [m.concept]: (acc[m.concept] ?? 0) + 1 }),
+                {} as Record<string, number>
+              );
+            console.info(
+              reshaped === 'profile'
+                ? `[vision] 3D profile for "${target.label}": outline body, ${main.points?.length ?? 0} pts`
+                : reshaped === 'lathe'
+                  ? `[vision] 3D lathe for "${target.label}": outline body, ${main.profile?.length ?? 0} rows`
+                  : reshaped === 'wheels'
+                    ? `[vision] 3D wheels for "${target.label}": ${partMasks?.filter((m) => m.concept === 'wheel').length ?? 0} mask(s), ${recipe.parts.length} parts`
+                    : reshaped === 'chimney'
+                      ? `[vision] 3D chimney for "${target.label}": ${partMasks?.filter((m) => m.concept === 'chimney').length ?? 0} mask(s), ${recipe.parts.length} parts`
+                      : reshaped === 'fit'
+                        ? `[vision] 3D part fit for "${target.label}": ${fitGains}`
+                        : `[vision] 3D panels for "${target.label}": ${
+                            Object.entries(panelCounts)
+                              .map(([c, n]) => `${c}×${n}`)
+                              .join(', ') || 'none'
+                          }, ${recipe.parts.length} parts`
             );
-          console.info(
-            reshaped === 'profile'
-              ? `[vision] 3D profile for "${target.label}": outline body, ${main.points?.length ?? 0} pts`
-              : reshaped === 'lathe'
-                ? `[vision] 3D lathe for "${target.label}": outline body, ${main.profile?.length ?? 0} rows`
-                : reshaped === 'wheels'
-                  ? `[vision] 3D wheels for "${target.label}": ${partMasks?.filter((m) => m.concept === 'wheel').length ?? 0} mask(s), ${recipe.parts.length} parts`
-                  : reshaped === 'chimney'
-                    ? `[vision] 3D chimney for "${target.label}": ${partMasks?.filter((m) => m.concept === 'chimney').length ?? 0} mask(s), ${recipe.parts.length} parts`
-                    : reshaped === 'fit'
-                      ? `[vision] 3D part fit for "${target.label}": ${fitGains}`
-                      : `[vision] 3D panels for "${target.label}": ${
-                          Object.entries(panelCounts)
-                            .map(([c, n]) => `${c}×${n}`)
-                            .join(', ') || 'none'
-                        }, ${recipe.parts.length} parts`
-          );
+          } else {
+            console.info(`[vision] 3D constraints for "${target.label}": coherence fixes applied`);
+          }
           if (photo) {
             try {
               const re = await scoreRecipe(
