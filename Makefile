@@ -85,6 +85,10 @@ test-shape: ## Run the 3D shape golden set (5 photos, IoU / colour / gables / 30
 	$(need_ws)
 	SHAPE_BUDGET_STRICT=1 $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/golden-shape.test.ts
 
+shape-report: ## 3D shape report: scores + contact sheet → test-results/shape-report/ (/shape-loop)
+	$(need_ws)
+	SHAPE_REPORT=1 SHAPE_REPORT_DIR=$(CURDIR)/test-results/shape-report $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/shape-report.test.ts -t "make shape-report"
+
 test-watch: ## Run engine tests in watch mode
 	$(need_ws)
 	$(PNPM) --filter $(ENGINE) exec vitest
@@ -194,5 +198,5 @@ clean: ## Remove build/test output (keeps node_modules)
 clean-all: clean ## Also remove node_modules
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
 
-.PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-shape test-watch coverage e2e \
+.PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-shape shape-report test-watch coverage e2e \
         typecheck lint bridge bridge-sim test-bridge format format-check format-changed git-hooks check ci shots mockups analyze scene-audit scene-audit-gpu lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all

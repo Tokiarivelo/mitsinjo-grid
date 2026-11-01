@@ -112,11 +112,10 @@ function clipQuadric(s: Span, a: number, b: number, c: number, at: (t: number) =
     const disc = b * b - 4 * a * c;
     if (disc < 0) pieces = a > 0 ? [] : [[-Infinity, Infinity]];
     else {
-      const r = Math.sqrt(disc);
-      const [t1, t2] = [(-b - r) / (2 * a), (-b + r) / (2 * a)].sort((p, q) => p - q) as [
-        number,
-        number,
-      ];
+      // Stable roots (no cancellation when `a` is tiny: a long cylinder seen almost along its axis).
+      const q = -(b + (b < 0 ? -1 : 1) * Math.sqrt(disc)) / 2;
+      const roots = q === 0 ? [0, 0] : [q / a, c / q];
+      const [t1, t2] = roots.sort((p, r) => p - r) as [number, number];
       pieces =
         a > 0
           ? [[t1, t2]]
@@ -197,30 +196,73 @@ function intersect(p: RecipePart, o: V3, d: V3): Span | null {
   return s.n && s.tin < s.tout ? s : null;
 }
 
+/** Depth difference under which two hits are the same surface. */
+const TIE = 1e-6;
+
 const CORNERS: V3[] = [-H, H].flatMap((x) =>
   [-H, H].flatMap((y) => [-H, H].map((z) => [x, y, z] as V3))
 );
 
-/** The recipe at the photo view: `aspect` = box width / height (pixels), grid `cols` × `rows`. */
+/** Extra camera turn for a look around the model: yaw (rad, around y), pitch (rad, + = seen from above). */
+export interface FlatView {
+  yaw: number;
+  pitch: number;
+}
+
+/** The ¾ view of the contact sheet: turned 35°, seen 20° from above. */
+export const THREE_QUARTER: FlatView = { yaw: (35 * Math.PI) / 180, pitch: (20 * Math.PI) / 180 };
+
+/** `t` turned by the view: pitch·yaw·t (both rows of the matrix and the translation). */
+function turned(t: PartTransform, { yaw, pitch }: FlatView): PartTransform {
+  const [cy, sy, cp, sp] = [Math.cos(yaw), Math.sin(yaw), Math.cos(pitch), Math.sin(pitch)];
+  const col = (x: number, y: number, z: number): V3 => {
+    const [x1, z1] = [x * cy + z * sy, -x * sy + z * cy];
+    return [x1, y * cp - z1 * sp, y * sp + z1 * cp];
+  };
+  const { m } = t;
+  const c = [0, 1, 2].map((j) => col(m[j]!, m[3 + j]!, m[6 + j]!));
+  return {
+    m: [0, 1, 2].flatMap((i) => c.map((v) => v[i]!)),
+    t: col(...t.t),
+  };
+}
+
+/**
+ * The recipe drawn on a `cols` × `rows` grid. Default: at the photo view (`aspect` = box width / height in
+ * pixels, same frame as `renderRecipe`). With `view`: turned around the model and framed on its bounds
+ * (contact sheet), `aspect` unused.
+ */
 export function renderFlat(
   recipe: ObjectRecipe,
   aspect: number,
   cols: number,
-  rows: number
+  rows: number,
+  view?: FlatView
 ): FlatRender {
-  const { h } = recipe.proportions;
-  const frameW = h * aspect;
   const n = cols * rows;
   const mask = emptyMask(cols, rows);
   const rgb = new Uint8ClampedArray(n * 3);
   const part = new Int16Array(n).fill(-1);
-  const depth = new Float32Array(n).fill(Infinity);
-  const toCol = (x: number) => ((x + frameW / 2) / frameW) * cols - 0.5;
-  const toRow = (y: number) => ((h / 2 - y) / h) * rows - 0.5;
+  const depth = new Float64Array(n).fill(Infinity);
+  const transforms = recipe.parts.map((p) => {
+    const t = partTransform(recipe, p);
+    return view ? turned(t, view) : t;
+  });
+  // Frame: centre and size in view units.
+  let [cx, cy, fw, fh] = [0, 0, recipe.proportions.h * aspect, recipe.proportions.h];
+  if (view) {
+    const pts = transforms.flatMap((t) => CORNERS.map((c) => applyTransform(t, c)));
+    const [x0, x1] = [Math.min(...pts.map((q) => q[0])), Math.max(...pts.map((q) => q[0]))];
+    const [y0, y1] = [Math.min(...pts.map((q) => q[1])), Math.max(...pts.map((q) => q[1]))];
+    const unit = Math.max((x1 - x0) / cols, (y1 - y0) / rows) * 1.1; // 10 % margin
+    [cx, cy, fw, fh] = [(x0 + x1) / 2, (y0 + y1) / 2, unit * cols, unit * rows];
+  }
+  const toCol = (x: number) => ((x - cx + fw / 2) / fw) * cols - 0.5;
+  const toRow = (y: number) => ((cy + fh / 2 - y) / fh) * rows - 0.5;
   const EYE = 100; // in front of every part (recipes stay within ±2)
 
   recipe.parts.forEach((p, k) => {
-    const tf: PartTransform = partTransform(recipe, p);
+    const tf = transforms[k]!;
     const inv = invert(tf.m);
     if (!inv) return;
     const box = CORNERS.map((c) => applyTransform(tf, c));
@@ -232,13 +274,14 @@ export function renderFlat(
     const d = mul(inv, [0, 0, -1]);
     const [cr, cg, cb] = hexToRgb(p.color);
     for (let r = r0; r <= r1; r++) {
-      const y = h / 2 - ((r + 0.5) / rows) * h;
+      const y = cy + fh / 2 - ((r + 0.5) / rows) * fh;
       for (let c = c0; c <= c1; c++) {
-        const x = ((c + 0.5) / cols) * frameW - frameW / 2;
+        const x = cx - fw / 2 + ((c + 0.5) / cols) * fw;
         const o = mul(inv, [x - tf.t[0], y - tf.t[1], EYE - tf.t[2]]);
         const hit = intersect(p, o, d);
         const i = r * cols + c;
-        if (!hit || hit.tin >= depth[i]!) continue;
+        // Ties (a wheel flush with the body front) go to the later part: details come after the body.
+        if (!hit || hit.tin > depth[i]! + TIE) continue;
         depth[i] = hit.tin;
         // Normals map by the inverse transpose.
         const [nx, ny, nz] = hit.n!;

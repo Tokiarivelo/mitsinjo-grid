@@ -108,7 +108,7 @@ describe('scoreRecipe on the golden set (PR-0.2)', () => {
     const scores: Record<string, number> = {};
     for (const c of GOLDEN_SHAPES) {
       const { shape, photo: p, target } = await runGolden(c);
-      const s = (await scoreRecipe(p, target, shape.recipe!))!;
+      const { score: s } = (await scoreRecipe(p, target, shape.recipe!))!;
       expect(s.iou, c.name).toBeGreaterThan(0.6);
       expect(s.score, c.name).toBeGreaterThan(0);
       scores[c.name] = s.score;

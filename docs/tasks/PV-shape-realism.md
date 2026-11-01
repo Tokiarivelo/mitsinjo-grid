@@ -49,7 +49,7 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
 - [x] **PR-0.2 Score.** `scoreModel(render, crop, outline)` → `{ iou, edgeF1, deltaE (masked mean), score 0–100 }`.
       Test on the golden set; the car must score lower than the fridge today. Done: `model-score.ts` (silhouette
       edges count on both sides, Canny-thinned photo edges), `score-shape.ts` `scoreRecipe(photo, target, recipe)`.
-- [ ] **PR-0.3 Report.** `make shape-report`: golden set → `test-results/shape-report/index.md` (table) + one PNG
+- [x] **PR-0.3 Report.** `make shape-report`: golden set → `test-results/shape-report/index.md` (table) + one PNG
       contact sheet (sharp composite). Gitignored output.
 - [ ] **PR-0.4 Capture.** `make shape-capture PHOTO=… ID=…`: one live run that saves crop, SAM outline, Spark kit and
       part masks as JSON fixtures, so the loop replays offline (no API cost per iteration).
@@ -132,6 +132,7 @@ S2 (shape), S3 (Spark), S4 last (a bet). Expect the car to stop looking like a b
 
 ## Loop log
 
-| Date       | Task / fix                             | Mean IoU | Edge F1 | Mean ΔE | Designer | Note                                                                                   |
-| ---------- | -------------------------------------- | -------- | ------- | ------- | -------- | -------------------------------------------------------------------------------------- |
-| 2026-11-01 | PR-0.2 baseline (synthetic golden set) | 0.95     | 0.76    | 3.6     | —        | scores: cottage 86 · lamp 86 · fridge 97 · car 83 · tree 80; worst = tree edge F1 0.54 |
+| Date       | Task / fix                                                             | Mean IoU | Edge F1 | Mean ΔE | Designer | Note                                                                                   |
+| ---------- | ---------------------------------------------------------------------- | -------- | ------- | ------- | -------- | -------------------------------------------------------------------------------------- |
+| 2026-11-01 | PR-0.2 baseline (synthetic golden set)                                 | 0.95     | 0.76    | 3.6     | —        | scores: cottage 86 · lamp 86 · fridge 97 · car 83 · tree 80; worst = tree edge F1 0.54 |
+| 2026-11-01 | PR-0.3 report; renderer fix: flush parts z-fought (comb on car wheels) | 0.95     | 0.76    | 3.7     | —        | car 83 → 82 (wheels now drawn whole, misfit visible); next: tree edge F1 0.54          |

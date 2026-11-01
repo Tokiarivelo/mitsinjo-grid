@@ -5,8 +5,10 @@ description: Quality loop for the object 3D models — run the shape report, rea
 
 One iteration = measure → pick → fix one thing → measure → log. Plan and stop criteria: `docs/tasks/PV-shape-realism.md`.
 
-1. **Measure.** `make shape-report` (falls back to `make test-shape` until PR-0.3 exists). Read
-   `test-results/shape-report/index.md` and look at the contact sheet PNG once (photo | flat render | ¾ render).
+1. **Measure.** `make shape-report`: the table (with the « Next » object and metric) is printed in the output and
+   written to `test-results/shape-report/index.md`; look at `contact-sheet.png` once (photo | flat render | ¾ render).
+   `SHAPE_REPORT_DIR=<dir>` writes them elsewhere. The renderer itself can be wrong: an artifact on the sheet
+   (holes, combs, missing part) is a `flat-render.ts` bug to fix first, with a regression test.
 2. **Pick.** The object with the lowest score; on it, the worst metric against the stop criteria (IoU, edge F1, ΔE,
    part counts, designer score). Name the cause in one line, pointing at code (`file:function`). If the cause is a
    missing capability, take the next unchecked plan task that provides it instead of a hack.

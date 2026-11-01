@@ -191,6 +191,9 @@ make check
 # Run the 3D shape golden set (5 street photos, 300 ms math budget)
 make test-shape
 
+# 3D shape report: scores + contact sheet (photo | flat | ¾) → test-results/shape-report/
+make shape-report
+
 # Run Playwright end-to-end test suite
 make e2e
 

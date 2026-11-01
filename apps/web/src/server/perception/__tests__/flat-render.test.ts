@@ -89,6 +89,32 @@ describe('renderFlat (PR-0.1)', () => {
     expect(cols.size).toBeGreaterThan(rows.size * 2);
   });
 
+  it('a part flush with the body front shows whole (before: comb of body pixels on the car wheels)', () => {
+    const body = part({ size: [1, 0.5, 1], at: [0, 0, 0] });
+    const wheel = part({
+      shape: 'cylinder',
+      axis: 'z',
+      size: [0.18, 0.34, 1],
+      at: [-0.3, -0.25, 0],
+    });
+    const rec = { ...recipe([body, wheel], 0.0996), proportions: { w: 0.72, h: 0.33, d: 1 } };
+    const flat = renderFlat(rec, 0.72 / 0.33, 128, 59);
+    // Where the wheel overlaps the body, every pixel of a row's wheel span is the wheel.
+    let rowsChecked = 0;
+    for (let r = 0; r < 59; r++) {
+      const row = Array.from(flat.part.slice(r * 128, r * 128 + 128));
+      const first = row.indexOf(1);
+      const last = row.lastIndexOf(1);
+      if (first < 0 || !row.includes(0)) continue;
+      rowsChecked++;
+      expect(
+        row.slice(first, last + 1).every((k) => k === 1),
+        `row ${r}`
+      ).toBe(true);
+    }
+    expect(rowsChecked).toBeGreaterThan(3);
+  });
+
   it('matches the fit silhouette on the golden set, within budget', () => {
     for (const c of GOLDEN_SHAPES) {
       const rec = kitToRecipe(c.prior);
