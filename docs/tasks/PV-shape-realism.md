@@ -280,6 +280,7 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
       UI/copilot wiring explicitly out. Test: enlarge window 20 % → glass + hole grow, wall bounds
       kept, 0 violations.
       (PR-2.14…2.18 each follow the loop: measure → log a row; the next loop pass covers them.)
+- [x] **Loop pass** (covers PR-2.14…2.18). Report identical through the pass; worst = cottage edge 0.77 (holds ≥ 0.6); visual review: 3 issues, score 4/5 (car glass/doors the known gap — needs parts, budget full).
 - [x] **PR-2.19 Cap box-only colour confidence** (green-Mini fix 1, inserted 2026-11-01).
       Without an outline every box pixel counts, and pixel-count confidence hit 1.0, so hedge
       pixels fully overwrote Spark's car colour. `confidence.colors` takes `hasOutline`: box-only
@@ -372,3 +373,4 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-01 | PR-2.16 hidden-side deduction (back facade, end windows, rear door)    | 0.98     | 0.91    | 3.4     | —        | cottage 9 → 11 (end pair, back set waits on room), scores identical, Viol 0; sedan rule unit-tested (golden car gated at side yaw); roof far slope already full-depth, no rule needed                        |
 | 2026-11-01 | PR-2.17 real openings (segmentWall + house wire + panel class)         | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); cottage e2e 86 → 90, IoU 0.98, leaf measured, Viol 0; vehicles keep overlays (sedan cannot fund strips); fixed mid-PR: test arithmetic (union/clamp), strip re-tint ΔE |
 | 2026-11-01 | PR-2.18 parametric edits (applyEdit: openings/chimney/parts)           | 0.98     | 0.91    | 3.4     | —        | API-only, goldens identical; window +20% re-tiles, bounds kept, Viol 0; metric via scale; fixed mid-PR: wall membership (slabs absorbed), chimney boolean                                                    |
+| 2026-11-01 | Loop pass over PR-2.14…2.18                                            | 0.98     | 0.91    | 3.4     | 4/5      | all stop criteria hold (Viol 0, ms ≤ 300); visual: cottage ends filled, car rear lensed; issues: car slab cabin (no side glass/doors, budget full), row backs wait on room, end-window sliver minimal        |
