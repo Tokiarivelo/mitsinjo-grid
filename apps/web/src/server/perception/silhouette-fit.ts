@@ -215,11 +215,21 @@ const isEdge = (m: Mask, c: number, r: number) => {
 };
 
 /** Distance (px, 3-4 chamfer / 3) from every pixel to the nearest edge pixel of `m`. */
-export function edgeDistance(m: Mask): Float32Array {
-  const { cols, rows } = m;
+export const edgeDistance = (m: Mask): Float32Array => distanceTo(maskEdges(m));
+
+/** Boundary pixels of `m` (inside pixels touching the outside or the grid border). */
+export function maskEdges(m: Mask): Mask {
+  const edges = emptyMask(m.cols, m.rows);
+  for (let r = 0; r < m.rows; r++)
+    for (let c = 0; c < m.cols; c++) if (isEdge(m, c, r)) edges.data[r * m.cols + c] = 1;
+  return edges;
+}
+
+/** Distance (px, 3-4 chamfer / 3) from every pixel to the nearest set pixel of `seeds` (huge when none). */
+export function distanceTo(seeds: Mask): Float32Array {
+  const { cols, rows } = seeds;
   const dist = new Float32Array(cols * rows).fill(1e6);
-  for (let r = 0; r < rows; r++)
-    for (let c = 0; c < cols; c++) if (isEdge(m, c, r)) dist[r * cols + c] = 0;
+  for (let i = 0; i < dist.length; i++) if (seeds.data[i]) dist[i] = 0;
   const relax = (k: number, n: number, cost: number) => {
     if (dist[n]! + cost < dist[k]!) dist[k] = dist[n]! + cost;
   };
@@ -264,6 +274,12 @@ export function chamfer(m: Mask, targetDistance: Float32Array): number {
   return n ? sum / n / Math.hypot(m.cols, m.rows) : 1;
 }
 
+/** Grid of the fit and the score: `FIT_COLUMNS` wide, rows following the box aspect (32 – 2 × columns). */
+export function fitGrid(aspect: number): { cols: number; rows: number } {
+  const cols = FIT_COLUMNS;
+  return { cols, rows: clamp(Math.round(cols / aspect), 32, 2 * cols) };
+}
+
 export interface SilhouetteFit {
   recipe: ObjectRecipe;
   /** IoU of the fitted silhouette with the SAM mask (0–1, 2 decimals). */
@@ -298,8 +314,7 @@ export function fitSilhouette({
   canYaw: boolean;
 }): SilhouetteFit | null {
   if (!(aspect > 0) || !rings.length) return null;
-  const cols = FIT_COLUMNS;
-  const rows = clamp(Math.round(cols / aspect), 32, 2 * cols);
+  const { cols, rows } = fitGrid(aspect);
   const target = ringsMask(rings, box, cols, rows);
   if (!target.data.some((v) => v)) return null;
   const targetDistance = edgeDistance(target);

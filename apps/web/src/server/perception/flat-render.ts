@@ -29,6 +29,8 @@ export interface FlatRender {
   rgb: Uint8ClampedArray;
   /** Index of the visible part per pixel, −1 outside. */
   part: Int16Array;
+  /** Unshaded colour of each part (`#rrggbb`), by part index. */
+  colors: readonly string[];
 }
 
 function normalize([x, y, z]: Readonly<V3>): V3 {
@@ -254,5 +256,5 @@ export function renderFlat(
       }
     }
   });
-  return { mask, rgb, part };
+  return { mask, rgb, part, colors: recipe.parts.map((p) => p.color) };
 }

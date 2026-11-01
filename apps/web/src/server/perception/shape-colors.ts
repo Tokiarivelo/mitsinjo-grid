@@ -3,6 +3,7 @@ import 'server-only';
 import sharp from 'sharp';
 import { pathToRings } from '@/lib/vision';
 import { insideRings, MIN_MEASURED_PIXELS, objectPixels, type ObjectPixels } from './color-measure';
+import type { RgbGrid } from './model-score';
 import type { PhotoForRegions } from './region';
 import type { GrayGrid } from './repetition';
 import type { NormBox } from './schemas';
@@ -64,6 +65,26 @@ export async function sampleObjectGray(
     }
   }
   return { width, height, gray, mask };
+}
+
+/**
+ * The box resized to `cols` × `rows` (sRGB, 3 bytes per pixel, stretched like the render frame), for the
+ * model score (PR-0.2).
+ */
+export async function sampleObjectRgb(
+  photo: PhotoForRegions,
+  box: NormBox,
+  cols: number,
+  rows: number
+): Promise<RgbGrid> {
+  const { data } = await sharp(photo.buffer, { failOn: 'none' })
+    .extract(pixelBox(photo, box))
+    .resize({ width: cols, height: rows, fit: 'fill' })
+    .removeAlpha()
+    .toColourspace('srgb')
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  return { cols, rows, rgb: data };
 }
 
 /**

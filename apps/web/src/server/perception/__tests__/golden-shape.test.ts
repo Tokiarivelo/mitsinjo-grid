@@ -1,44 +1,9 @@
 // @vitest-environment node
-import sharp from 'sharp';
 import { describe, expect, it, vi } from 'vitest';
-import { kitToRecipe } from '@/lib/object-kit';
-import type { ShapeTarget } from '@/lib/object-shape';
 vi.mock('server-only', () => ({}));
 import { deltaE2000, hexToLab } from '../color-measure';
-import { runObjectShape } from '../object-shape';
-import {
-  GOLDEN_SHAPES,
-  goldenBox,
-  goldenOutline,
-  goldenSvg,
-  PHOTO,
-  type GoldenCase,
-} from '../__fixtures__/shape';
-
-/** Golden set (PF-T9): the whole 3D shape math on five street photos, Spark answering instantly. */
-async function run(c: GoldenCase) {
-  const buffer = await sharp(Buffer.from(goldenSvg(c)))
-    .jpeg({ quality: 85 })
-    .toBuffer();
-  const target: ShapeTarget = {
-    id: c.name,
-    label: c.name,
-    category: 'other',
-    box: goldenBox(c),
-    outline: goldenOutline(c),
-  };
-  const spark = {
-    describeShape: vi.fn().mockResolvedValue({
-      recipe: kitToRecipe(c.prior),
-      kit: c.prior,
-      source: 'meta',
-      model: 'muse-spark-1.3',
-    }),
-  };
-  const t0 = performance.now();
-  const shape = await runObjectShape(spark, { buffer, ...PHOTO }, 'data:full', target);
-  return { shape, ms: performance.now() - t0 };
-}
+import { GOLDEN_SHAPES } from '../__fixtures__/shape';
+import { runGolden as run } from './golden-run';
 
 /**
  * Math budget per object: 300 ms when run alone (`make test-shape` sets SHAPE_BUDGET_STRICT); looser
