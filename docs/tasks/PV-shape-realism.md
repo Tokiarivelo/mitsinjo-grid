@@ -210,11 +210,16 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
       house: eave 1D), 3 seeded starts × 8 evals on the raw score at a 48-col grid with cached
       photo terms (`photoTerms` + `scoreRender`, `scoreModel` identical), kept iff +0.05. Others:
       no groups, no cost. Live-car e2e: wheels +0.9, cabin +0.5 (coarse pts), fine score steady 93.
-- [ ] **PR-2.10 Chimney from masks** (investigation rank 1). PR-2.5 fetches the chimney concept but nothing
+- [x] **PR-2.10 Chimney from masks** (investigation rank 1). PR-2.5 fetches the chimney concept but nothing
       places it (template chimney is a static boolean at fixed x = 0.3). Min-area rect per chimney mask →
       stack box on the roof at the mask's x (house only, eave to eave + height, tilt/limits like panels),
       funded by the part-budget backstop. Test: mask → stack on the roof plane; goldens unchanged (no
       chimney there), live e2e IoU stable, math ≤ 300 ms.
+      Done: `withMaskChimney` — min-area rect per chimney mask (tilt ≤ 20°, yaw ≤ 0.3, ≤ 2
+      masks), feet buried at the eave, top follows the mask (at least peeking above the ridge),
+      off-house masks skipped, template stack replaced, decals fund the room. Golden cottage e2e:
+      IoU 0.98 → 0.96 (no chimney in the golden outline: above-ridge pixels are false positives
+      by construction), parts 9 → 10. Goldens identical; mean 93.
 - [ ] **PR-2.11 Asymmetric vehicle rears** (investigation rank 2). Templates put headlights at +x only, so
       backs read as front copies (grep: no taillight in `object-kit.ts`). Red lens cylinders at −x plus a
       distinct rear bumper/trunk per vehicle subtype (sedan, van, pickup, motorbike: none), funded by the
@@ -313,3 +318,4 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-01 | PR-2.7 panels from masks (calipers + shell + room)                     | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); live-car e2e IoU 0.97 → 0.97; fixed mid-PR: wheels/roof protected, sides decided before dropping                 |
 | 2026-11-01 | PR-2.8 region colours (median per mask + rest)                         | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); live-car e2e stable; fixed mid-PR: median not mean (rest-mean went mauve #a0545c, median reads pure #b0302f)     |
 | 2026-11-01 | PR-2.9 Fit v2 (coordinate descent on the raw score)                    | 0.98     | 0.91    | 3.4     | —        | car 93 → 93 (edge +0.01, IoU −0.01; coarse +1.4); cottage eave no gain; car math 174 → 257 ms; panels e2e fixed                                        |
+| 2026-11-01 | PR-2.10 chimney from masks (min-area rect → stack on the roof)         | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); cottage e2e IoU 0.98 → 0.96, parts 9 → 10; fixed mid-PR: e2e mask shrunk (golden outline has no chimney)         |

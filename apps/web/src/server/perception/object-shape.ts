@@ -31,6 +31,7 @@ import { withLatheBody } from './lathe-body';
 import { fetchPartMasks } from './part-masks';
 import { fitPartParams, hasPartGroups, preparePartFit } from './part-fit';
 import { REGION_GRID, measureRegionColors, withRegionColors } from './region-colors';
+import { withMaskChimney } from './mask-chimney';
 import { withMaskPanels } from './mask-panels';
 import { withMaskWheels } from './mask-wheels';
 import { withProfileBody } from './profile-body';
@@ -285,11 +286,12 @@ export async function runObjectShape(
           `[vision] 3D fit for "${target.label}": iou=${fit.iou} (start ${fit.iouStart}, ${fit.evals} evals) units=${finalKit?.details?.units ?? 1} yaw=${Math.round(((recipe.yaw ?? 0) * 180) / Math.PI)}° · confidence colours ${conf.colors}, yaw ${conf.yaw}, fit ${conf.fit}`
         );
       }
-      // PR-2.2 + PR-2.4 + PR-2.6 + PR-2.7: side-seen and round bodies follow the SAM outline,
-      // wheels and panels follow their masks; the shipped silhouette is re-scored.
+      // PR-2.2 + PR-2.4 + PR-2.6 + PR-2.7 + PR-2.10: side-seen and round bodies follow the
+      // SAM outline, wheels, panels and chimneys follow their masks; the shipped silhouette is
+      // re-scored.
       let fitIou = fit?.iou;
       if (finalKit) {
-        let reshaped: 'profile' | 'lathe' | 'wheels' | 'panels' | 'fit' | null = null;
+        let reshaped: 'profile' | 'lathe' | 'wheels' | 'panels' | 'chimney' | 'fit' | null = null;
         let fitGains = '';
         const profiled = withProfileBody(finalKit.archetype, recipe, target, aspect);
         if (profiled !== recipe) {
@@ -317,6 +319,11 @@ export async function runObjectShape(
           if (panelled !== recipe) {
             recipe = panelled;
             reshaped = 'panels';
+          }
+          const stacked = withMaskChimney(finalKit.archetype, recipe, partMasks, geom);
+          if (stacked !== recipe) {
+            recipe = stacked;
+            reshaped = 'chimney';
           }
           // PR-2.8: each part from its own mask's pixels. Best effort, never throws; no
           // re-score — colours don't move the silhouette IoU.
@@ -370,13 +377,15 @@ export async function runObjectShape(
                 ? `[vision] 3D lathe for "${target.label}": outline body, ${main.profile?.length ?? 0} rows`
                 : reshaped === 'wheels'
                   ? `[vision] 3D wheels for "${target.label}": ${partMasks?.filter((m) => m.concept === 'wheel').length ?? 0} mask(s), ${recipe.parts.length} parts`
-                  : reshaped === 'fit'
-                    ? `[vision] 3D part fit for "${target.label}": ${fitGains}`
-                    : `[vision] 3D panels for "${target.label}": ${
-                        Object.entries(panelCounts)
-                          .map(([c, n]) => `${c}×${n}`)
-                          .join(', ') || 'none'
-                      }, ${recipe.parts.length} parts`
+                  : reshaped === 'chimney'
+                    ? `[vision] 3D chimney for "${target.label}": ${partMasks?.filter((m) => m.concept === 'chimney').length ?? 0} mask(s), ${recipe.parts.length} parts`
+                    : reshaped === 'fit'
+                      ? `[vision] 3D part fit for "${target.label}": ${fitGains}`
+                      : `[vision] 3D panels for "${target.label}": ${
+                          Object.entries(panelCounts)
+                            .map(([c, n]) => `${c}×${n}`)
+                            .join(', ') || 'none'
+                        }, ${recipe.parts.length} parts`
           );
           if (photo) {
             try {

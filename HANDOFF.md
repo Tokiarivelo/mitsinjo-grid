@@ -1,10 +1,11 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-01 (PR-2.9 done, PR-2.10 new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-01 (PR-2.10 done, PR-2.11 new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
-- Committed through `093fad0` (PR-2.8). Uncommitted: `reasoning_effort: high` on Spark vision + PR-2.9 Fit v2 (see Next). Nothing committed this session (no commit asked).
+- Committed through `342344a` (PR-2.9). Uncommitted: PR-2.10 chimney (see Next). Nothing committed this session (no commit asked).
+- **PR-2.10 done:** `withMaskChimney` — min-area rect per chimney mask (tilt ≤ 20°, yaw ≤ 0.3, ≤ 2), feet at eave, top follows mask (≥ ridge + 0.02), template replaced, decals fund room. Cottage e2e IoU 0.98 → 0.96, 9 → 10 parts; goldens identical; mean 93.
 - **PR-2.9 done:** `part-fit.ts` — coordinate descent (wheels/cabin/eave, 3-start NM × 8 evals, 48-col grid, cached photo terms, keep iff +0.05). Car 93 → 93 (edge +0.01, IoU −0.01); car math 174 → 257 ms, all ≤ 300; mean 93.
 - **PR-2.2 done:** `withProfileBody` — vehicle/cabinet/machine main body = SAM outline extruded (plate notches, per-wheel wells, yaw pre-squeeze in world units, fit.iou re-scored). Car 92 → 93 (IoU 0.97, edge 0.92, ΔE 3.2); fridge steady 97; mean 90.
 - **PR-2.3 done:** `lathe` primitive — `profile` ([r, y], y non-decreasing) → solid of revolution, `unitLathe`, hull rings, frustum-stack ray clip. Tank + lamp head use static profiles. Lamp 86 → 87 (IoU 0.95, edge 0.91, ΔE steady 7.3 — sits in pole pixels); mean 90.
@@ -13,7 +14,7 @@
 
 ## Next task
 
-- **Commit** `reasoning_effort: high` + PR-2.9 (two commits: `feat(perception)`, `feat(web)`), then **PR-2.10 chimney-from-masks** (priority fixes 2.10–2.12 inserted; loop pass → PR-2.13).
+- **Commit** PR-2.10 (`feat(web)`), then **PR-2.11 asymmetric vehicle rears** (red taillights at −x + rear bumper/trunk per subtype, funded by backstop; then PR-2.12, loop pass → PR-2.13).
 - **PR-2.8 done:** `measureRegionColors` + `withRegionColors` — median colour per mask/rest, confidence-mixed. Live-car e2e stable; goldens identical; mean 93.
 - **PR-2.7 done:** `withMaskPanels` — min-area rect panels (shell recolour, mirror/room logic, wheels+roof protected). Live-car e2e stable; goldens identical; mean 93.
 - **PR-2.6 done:** `withMaskWheels` — Kasa circle fit → tyre + rim per mask, mirrored, count = masks, budget backstop. Live-car e2e IoU stable; goldens identical; mean 93.
@@ -31,7 +32,6 @@
 
 ## Files touched this session
 
-- New: `server/perception/part-fit.ts`, `__tests__/part-fit.test.ts`.
-- `server/perception/meta.ts` (reasoning_effort) + `__tests__/meta.test.ts`.
-- `server/perception/model-score.ts` (photoTerms/scoreRender), `object-shape.ts` (wire fit).
-- `__tests__/mask-panels.test.ts` (y-tolerant locator, ΔE panels), `docs/copilot.md`, `docs/tasks/PV-shape-realism.md`.
+- New: `server/perception/mask-chimney.ts`, `__tests__/mask-chimney.test.ts`.
+- `server/perception/object-shape.ts` (wire chimney pass + log), `docs/tasks/PV-shape-realism.md` (tick + log).
+- `test-scenarios/06-village.md` (V71 chimney, gitignored).
