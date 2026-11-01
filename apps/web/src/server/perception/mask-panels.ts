@@ -13,15 +13,14 @@ import {
   cropToPhoto,
   enforcePartBudget,
   isWheelPart,
+  MASK_YAW_HARD_MAX,
+  MASK_YAW_MAX,
   PART_KEEP_VOLUME,
   PART_MIRROR_MIN_Z,
   photoToObject,
   type MaskMapGeom,
   type Pt,
 } from './mask-geometry';
-
-/** Past this measured yaw the panels shear too far: keep the template. */
-export const PANEL_YAW_MAX = 0.3;
 
 /** A mask rotated past this (degrees from the axes) is not a facade rectangle: skipped. */
 export const PANEL_TILT_MAX = 20;
@@ -212,13 +211,14 @@ interface PlacedPanel {
 }
 
 /**
- * Measured glass and door panels (PR-2.7): each window/door mask becomes a thin panel at its
- * min-area rectangle on the shell (vehicle) or walls (house) face, replacing the `spread()`
- * guesses — the vehicle cabin shell takes the body colour behind them. Panels never float:
- * centres outside the face span are skipped, sizes clamp into it. Both sides while decals
- * fund the room, else near only, else the fitting prefix; structure never drops for panels.
- * Returns the recipe unchanged (same reference) without usable masks, past the yaw limit, or
- * for another archetype. Pure: same inputs → same recipe.
+ * Measured glass and door panels (PR-2.7, PR-2.12): each window/door mask becomes a thin
+ * panel at its min-area rectangle on the shell (vehicle) or walls (house) face, replacing the
+ * `spread()` guesses — the vehicle cabin shell takes the body colour behind them. Panels never
+ * float: centres outside the face span are skipped, sizes clamp into it. ≤ 17° both sides while
+ * decals fund the room (house backs mirror the front), else near only, else the fitting prefix;
+ * 17–60° near only; structure never drops for panels.
+ * Returns the recipe unchanged (same reference) without usable masks, past the hard yaw
+ * limit, or for another archetype. Pure: same inputs → same recipe.
  */
 export function withMaskPanels(
   archetype: KitArchetype,
@@ -227,7 +227,9 @@ export function withMaskPanels(
   geom: MaskMapGeom
 ): ObjectRecipe {
   if (archetype !== 'vehicle' && archetype !== 'house') return recipe;
-  if (Math.abs(recipe.yaw ?? 0) > PANEL_YAW_MAX) return recipe;
+  if (Math.abs(recipe.yaw ?? 0) > MASK_YAW_HARD_MAX) return recipe;
+  // ≤ 17° the far side mirrors the near one (both archetypes); 17–60° the near side only.
+  const allowMirror = Math.abs(recipe.yaw ?? 0) <= MASK_YAW_MAX;
   const main = recipe.parts[frontPartIndex(recipe)]!;
 
   // The face behind the panels + the colours they reuse.
@@ -315,17 +317,17 @@ export function withMaskPanels(
     list.filter(
       (p) => !protect.includes(p) && (volume(p) < PART_KEEP_VOLUME || p.at[2] < -PART_MIRROR_MIN_Z)
     ).length;
-  const both = archetype === 'vehicle' ? panels.length * 2 : panels.length;
+  const both = allowMirror ? panels.length * 2 : panels.length;
   const shortBoth = kept.length + both - MAX_RECIPE_PARTS;
   const shortNear = kept.length + panels.length - MAX_RECIPE_PARTS;
   let base = { parts: kept, dropped: [] as string[] };
   let mirror = false;
   let use = panels;
   if (shortBoth <= 0) {
-    mirror = archetype === 'vehicle';
+    mirror = allowMirror;
   } else if (fundable(kept) >= shortBoth) {
     base = enforcePartBudget(kept, protect, { max: MAX_RECIPE_PARTS - both, soft: true });
-    mirror = archetype === 'vehicle';
+    mirror = allowMirror;
   } else {
     if (shortNear > 0) {
       base =

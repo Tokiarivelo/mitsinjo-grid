@@ -230,11 +230,18 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
       (rear bumper kept), pickup −front bumper (bed kept), bike none; all ≤ 12, 6-wheel van drops
       lenses before wheels. Mask funding tests updated (lights fund panels/wheels). Goldens
       identical (car 93); rear renders show the lenses (136 px straight, 37 px ¾).
-- [ ] **PR-2.12 House backs + yaw gates** (investigation rank 3). Measured house panels are front-only: mirror
+- [x] **PR-2.12 House backs + yaw gates** (investigation rank 3). Measured house panels are front-only: mirror
       them to the back like vehicle glass when the budget allows. Unify the yaw gates (profile 0.26,
       mirror 0.3) into one shared constant with defined 17–60° behaviour (panels near-only, no mirror,
       template kept). Test: yawed-house fixture renders backs; gates documented in a code comment.
-- [ ] **PR-2.13 Loop pass** (covers PR-2.10…2.12).
+      Done: `MASK_YAW_MAX = 0.3` + `MASK_YAW_HARD_MAX = 1.05` in `mask-geometry.ts` (ladder in a
+      comment); profile/wheels/chimney on the shared gate (profile 0.26 → 0.3); panels ≤ 17° mirror
+      both archetypes, 17–60° near-only, past 60° template. House e2e counts updated (backs).
+      Goldens identical.
+- [x] **PR-2.13 Loop pass** (covers PR-2.10…2.12).
+      Done 2026-11-01: report re-run — every object meets the stop criteria (mean 93, IoU 0.98,
+      edge 0.91, ΔE 3.4, math ≤ 267 ms); no metric regressed across the three PRs; no designer
+      review (no Look task). Lowest score cottage row (86), all ✓.
 - [ ] **PR-2.14 Object graph + constraints** (archi reasoning). Parent → child graph per recipe
       (panel → wall, chimney → roof, wheel → body, gable → wall) built once after the masks; a
       constraint pass after every reshape (panels/wheels/fit): parts clamped into their parent span,
@@ -347,3 +354,4 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-01 | PR-2.19 box-only colour cap (0.3, guess leads)                         | 0.98     | 0.91    | 3.4     | —        | goldens identical (all outlined); box-only e2e keeps mostly the guess; fixed mid-PR: linear-space closeness (sRGB gamma fooled the first assertion)    |
 | 2026-11-01 | PR-2.21 SAM concept normalization (noun table)                         | 0.98     | 0.91    | 3.4     | —        | goldens identical; refine + grouping tests green; fixed mid-PR: guarded regexes (street→tree, power plant→bush, bare mini dropped)                     |
 | 2026-11-01 | PR-2.20 on-demand outline at shape time                                | 0.98     | 0.91    | 3.4     | —        | goldens identical (all outlined); e2e fetched outline → stone walls + fit; region concept test re-pointed (water pump → pump                           |
+| 2026-11-01 | PR-2.12 house backs + shared yaw gates (0.3 / 1.05)                    | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); house e2e 6 → 8 parts (backs); profile gate 0.26 → 0.3, no golden in the sliver                                  |

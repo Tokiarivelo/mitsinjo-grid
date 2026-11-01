@@ -122,7 +122,8 @@ describe('withProfileBody (PR-2.2)', () => {
     expect(withProfileBody('vehicle', vehicle, { ...target, outline: 'M0 0L1 0Z' }, 2.5)).toBe(
       vehicle
     );
-    // Small yaw still profiles.
+    // Small yaw still profiles, up to the shared 0.3 gate (was 0.26 before PR-2.12).
     expect(withProfileBody('vehicle', { ...vehicle, yaw: 0.1 }, target, 2.5)).not.toBe(vehicle);
+    expect(withProfileBody('vehicle', { ...vehicle, yaw: 0.28 }, target, 2.5)).not.toBe(vehicle);
   });
 });

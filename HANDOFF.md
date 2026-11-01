@@ -1,25 +1,25 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-01 (PR-2.19–2.21 done, PR-2.12 new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-01 (PR-2.12+2.13 done, PR-0.8 new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
-- Committed through `bf76578` (PR-2.11). Uncommitted: PR-2.19/2.20/2.21 (1 atomic commit, cross-dependent). Standing: commit each, unsigned fallback, always continue.
-- **PR-2.19 done:** `BOX_COLOR_CONFIDENCE_MAX = 0.3` — box-only colour mixes cap at 0.3 (Spark leads). Fusion + box-only e2e tests; goldens identical.
-- **PR-2.21 done:** `CONCEPT_NOUNS` — SAM concepts normalized (EN+FR, phrases first, guarded). conceptOf takes `{label}`; refine/grouping tests; goldens identical.
-- **PR-2.20 done:** `fetchOutlineForBox` — outline-less shape targets segmented on demand (full photo, normalized concept, IoU ≥ 0.3, box kept), sampling awaits it (usually free). Unit + e2e tests; goldens identical.
-- **PR-2.11 done:** `TAIL_LIGHT_COLOR` fixed red (kitToRecipe passthrough); sedan −2 invisible bumpers +2 lenses, van/pickup −front bumper, bike none; all ≤ 12. Goldens identical (car 93); rear renders red (136/37 px).
-- **PR-2.10 done:** `withMaskChimney` — min-area rect per chimney mask (tilt ≤ 20°, yaw ≤ 0.3, ≤ 2), feet at eave, top follows mask (≥ ridge + 0.02), template replaced, decals fund room. Cottage e2e IoU 0.98 → 0.96; mean 93.
-- Loop lessons: global band cut punched the middle (−3 %); shrink-then-expose buried glass; squeeze must use world units (frame h·aspect); pixel-count confidence is perverse without an outline.
+- Committed through `b6a6c84` (PR-2.19–2.21). Uncommitted: PR-2.12+2.13. Standing: commit each, unsigned fallback, always continue.
+- User ordered: do ALL planned tasks, then a full image-recognition + imagined-3D investigation.
+- **PR-2.12 done:** `MASK_YAW_MAX/HARD_MAX` (0.3/1.05) shared gates; panels ≤ 17° mirror both archetypes, 17–60° near-only, > 60° template; profile 0.26 → 0.3. House e2e 6 → 8 parts; goldens identical.
+- **PR-2.13 done:** loop pass over 2.10–2.12 — all criteria met (mean 93, IoU 0.98, edge 0.91, ΔE 3.4, ≤ 267 ms), no regressions, no designer review (no Look task).
+- **PR-2.19/2.20/2.21 done:** box-only colour cap 0.3, on-demand outline, SAM noun table. Goldens identical; suite 1160 green.
+- **PR-2.11 done:** red taillights + rear bumper/trunk per subtype; goldens identical; rear renders red.
+- **PR-2.10 done:** chimney stacks from masks; cottage e2e IoU 0.98 → 0.96; goldens identical.
+- Loop lessons: global band cut −3 %; shrink-then-expose buries glass; world-unit squeeze; pixel-count confidence perverse without outline.
 - **Meta still out:** PR-0.4 live fixture, PR-0.5, PR-0.6-live blocked.
 
 ## Next task
 
-- **Commit** PR-2.19/2.20/2.21 (3× `feat(web)`), then **PR-2.12 house backs + yaw gates** (mirror house panels to back; unify 0.26/0.3 gates; 17–60° near-only; then loop pass → PR-2.13).
-- User ordered: do ALL planned tasks, then a full image-recognition + imagined-3D investigation.
-- **PR-2.9 done:** `part-fit.ts` — coordinate descent, keep iff +0.05. Car 93 → 93; car math 174 → 257 ms; mean 93.
-- **PR-2.8/2.7/2.6/2.5/2.4 done:** region colours, mask panels, mask wheels, part masks, lathe body. Mean 93 throughout.
-- Then PR-2.13, PR-0.6, S4 bet. Free placement PP-T1…T8. PV-T14 + PV-T11b.
+- **Commit** PR-2.12+2.13 (`feat(web)`), then **PR-0.8 landmark term** (S0 leftover: part-centre distances as 4th score term; goldens neutral, live e2e stable).
+- Then PR-2.14 graph → 2.15 status → 2.16 hidden sides → 2.17 openings → 2.18 edits (+ pass), S3/S4 as unblocked, PR-5.1/5.2 docs.
+- Blocked on Meta (probe when reached): PR-0.4, PR-0.5, PR-0.6-live, PR-3.1, PR-3.4, PR-4.x.
+- Free placement PP-T1…T8. PV-T14 + PV-T11b.
 
 ## Decisions taken
 
@@ -31,6 +31,6 @@
 
 ## Files touched this session
 
-- `fusion.ts` + `fusion.test.ts` (2.19); `outline.ts` + `outline.test.ts` (2.20/2.21).
-- `object-shape.ts` + `object-shape.test.ts` (wire 2.20, cap site, call-list update); `region.test.ts` (pump).
-- `docs/tasks/PV-shape-realism.md` (3 ticks + 3 log rows), `test-scenarios/06-village.md` (V73).
+- `mask-geometry.ts` (shared gates), `mask-panels.ts` (ladder + house mirror), `profile-body.ts`, `mask-wheels.ts`, `mask-chimney.ts` (gate unify).
+- `__tests__/mask-panels.test.ts` (backs, ladder), `__tests__/profile-body.test.ts` (0.28 pin).
+- `docs/tasks/PV-shape-realism.md` (ticks + log), `test-scenarios/06-village.md` (V74).

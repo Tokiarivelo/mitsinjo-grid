@@ -43,6 +43,17 @@ export function photoToObject(
 /** Parts at least this big (object volume) survive the 12-part budget backstop. */
 export const PART_KEEP_VOLUME = 0.02;
 
+/**
+ * Shared yaw gates for the measured passes (PR-2.12: profile, wheels, panels, chimney — one
+ * constant, not 0.26 here and 0.3 there). ≤ 17° the photo reads like a front view: profile
+ * bodies, measured wheels/panels/stacks, mirror to the far side. 17–60° only near-side panels
+ * place (no mirror: the far side is guesswork, and wheels/stacks shear too far). Past 60° the
+ * template is kept (even panels would clamp into a span the photo barely shows).
+ */
+export const MASK_YAW_MAX = 0.3;
+/** Past this measured yaw (≈ 60°) even near-side panels stop: keep the template. */
+export const MASK_YAW_HARD_MAX = 1.05;
+
 /** |z| below this is the centre plane, not a far side. */
 export const PART_MIRROR_MIN_Z = 0.05;
 

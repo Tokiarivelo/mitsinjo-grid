@@ -191,8 +191,11 @@ describe('withMaskPanels (PR-2.7)', () => {
       geom
     );
     expect(out).not.toBe(recipe);
-    // 8 − 4 spread + 2 measured = 6; the chimney mask is not consumed (PR-2.7 is windows/doors).
-    expect(out.parts).toHaveLength(6);
+    // 8 − 4 spread + 4 measured (front mirrors to the back); the chimney mask is not consumed.
+    expect(out.parts).toHaveLength(8);
+    const thin = out.parts.filter((p) => p.shape === 'box' && p.size[2] === 0.02);
+    expect(thin.filter((p) => p.at[2]! > 0)).toHaveLength(2);
+    expect(thin.filter((p) => p.at[2]! < 0)).toHaveLength(2);
     const win = out.parts.find((p) => p.color === '#2222bb')!;
     expect(win.at[0]).toBeCloseTo(-0.28125, 3);
     expect(win.at[1]).toBeCloseTo(-0.1, 3);
@@ -204,9 +207,34 @@ describe('withMaskPanels (PR-2.7)', () => {
     expect(door.at[1]).toBeCloseTo(-0.25, 3);
     expect(door.size[0]).toBeCloseTo(0.125, 3);
     expect(door.size[1]).toBeCloseTo(0.3, 3);
+    // Back twins at the same x/y on the far face.
+    const back = thin.filter((p) => p.at[2]! < 0);
+    expect(back.map((p) => p.at[2])).toEqual([-0.505, -0.505]);
+    expect(back.map((p) => [p.at[0], p.at[1]])).toEqual(
+      thin.filter((p) => p.at[2]! > 0).map((p) => [p.at[0], p.at[1]])
+    );
     // Roof slabs kept, walls kept.
     expect(out.parts.filter((p) => p.at[2] === 0)).toHaveLength(4);
     expect(ObjectRecipeSchema.safeParse(out).success).toBe(true);
+  });
+
+  it('yawed house (0.2 rad) renders backs; at 0.5 only the near side', () => {
+    const geom = geomA();
+    const masks = [
+      rectMask(geom, 'window', 40, 50, 70, 66),
+      rectMask(geom, 'door', 100, 58, 120, 82),
+    ];
+    const thin = (r: ObjectRecipe) =>
+      r.parts.filter((p) => p.shape === 'box' && p.size[2] === 0.02);
+    const yawed = withMaskPanels('house', { ...kitToRecipe(houseKit()), yaw: 0.2 }, masks, geom);
+    expect(thin(yawed).filter((p) => p.at[2]! > 0)).toHaveLength(2);
+    expect(thin(yawed).filter((p) => p.at[2]! < 0)).toHaveLength(2);
+    expect(ObjectRecipeSchema.safeParse(yawed).success).toBe(true);
+    const recipe = { ...kitToRecipe(houseKit()), yaw: 0.5 };
+    const turned = withMaskPanels('house', recipe, masks, geom);
+    expect(turned).not.toBe(recipe);
+    expect(thin(turned).length).toBeGreaterThan(0);
+    expect(thin(turned).every((p) => p.at[2]! > 0)).toBe(true);
   });
 
   it('three masks on a full sedan → near side only, nothing structural dropped', () => {
@@ -275,7 +303,8 @@ describe('withMaskPanels (PR-2.7)', () => {
     const masks = [rectMask(geom, 'window', 60, 16, 100, 32)];
     expect(withMaskPanels('cabinet', recipe, masks, geom)).toBe(recipe);
     expect(withMaskPanels('vehicle', recipe, [], geom)).toBe(recipe);
-    const turned = { ...recipe, yaw: 0.5 };
+    // Past the hard gate (60°) the template is kept; at 0.5 the near side still places.
+    const turned = { ...recipe, yaw: 1.2 };
     expect(withMaskPanels('vehicle', turned, masks, geom)).toBe(turned);
     // Wheel masks are not panels; a house without facade panels teaches no colours.
     expect(

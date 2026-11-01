@@ -9,11 +9,14 @@ import {
   type RecipePart,
 } from '@/lib/object-shape';
 import { pathToRings } from '@/lib/vision';
-import { cropToPhoto, enforcePartBudget, photoToObject, type MaskMapGeom } from './mask-geometry';
+import {
+  cropToPhoto,
+  enforcePartBudget,
+  MASK_YAW_MAX,
+  photoToObject,
+  type MaskMapGeom,
+} from './mask-geometry';
 import { minAreaRect, PANEL_MIN_SIZE, PANEL_TILT_MAX } from './mask-panels';
-
-/** Past this measured yaw the stack shears too far: keep the template (unified in PR-2.12). */
-export const CHIMNEY_YAW_MAX = 0.3;
 
 /** Most chimney masks used (a house shows 1–2; more are SAM duplicates). */
 export const CHIMNEY_MASKS_MAX = 2;
@@ -94,7 +97,7 @@ export function withMaskChimney(
   geom: MaskMapGeom
 ): ObjectRecipe {
   if (archetype !== 'house') return recipe;
-  if (Math.abs(recipe.yaw ?? 0) > CHIMNEY_YAW_MAX) return recipe;
+  if (Math.abs(recipe.yaw ?? 0) > MASK_YAW_MAX) return recipe;
   const main = recipe.parts[frontPartIndex(recipe)]!;
   const eave = main.at[1] + main.size[1] / 2;
   const removed = recipe.parts.filter((p) => isTemplateChimney(p, main.at[1], eave));

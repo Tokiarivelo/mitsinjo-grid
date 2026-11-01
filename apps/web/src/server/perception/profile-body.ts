@@ -9,13 +9,11 @@ import {
   type RecipePart,
   type ShapeTarget,
 } from '@/lib/object-shape';
+import { MASK_YAW_MAX } from './mask-geometry';
 import { simplifyRing } from './mask-outline';
 
 /** Archetypes seen from the side whose main body follows the SAM outline (PR-2.2). */
 export const PROFILE_ARCHETYPES: ReadonlyArray<KitArchetype> = ['vehicle', 'cabinet', 'machine'];
-
-/** Past this measured yaw the outline is a ¾ view, not a profile: keep the template body. */
-export const PROFILE_YAW_MAX = 0.26;
 
 /** Plates covering the body side (glasshouse, bumpers) notch the slab: z-size above this. */
 export const NOTCH_PLATE_MIN_Z = 0.5;
@@ -69,7 +67,7 @@ export function withProfileBody(
   aspect: number
 ): ObjectRecipe {
   if (!PROFILE_ARCHETYPES.includes(archetype)) return recipe;
-  if (Math.abs(recipe.yaw ?? 0) > PROFILE_YAW_MAX) return recipe;
+  if (Math.abs(recipe.yaw ?? 0) > MASK_YAW_MAX) return recipe;
   if (!target.outline) return recipe;
   const main = recipe.parts[frontPartIndex(recipe)]!;
   if (main.shape === 'extrude') return recipe;

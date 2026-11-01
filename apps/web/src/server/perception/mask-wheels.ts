@@ -11,14 +11,12 @@ import { pathToRings } from '@/lib/vision';
 import {
   cropToPhoto,
   enforcePartBudget,
+  MASK_YAW_MAX,
   PART_MIRROR_MIN_Z,
   photoToObject,
   type MaskMapGeom,
   type Pt,
 } from './mask-geometry';
-
-/** Past this measured yaw the wheels are ellipses and the far side shows: keep the template. */
-export const WHEEL_YAW_MAX = 0.3;
 
 /** Most wheel masks used per side (a side view shows 2–3; more are SAM duplicates). */
 export const WHEEL_MASKS_MAX = 3;
@@ -149,7 +147,7 @@ export function withMaskWheels(
   geom: MaskMapGeom
 ): ObjectRecipe {
   if (archetype !== 'vehicle') return recipe;
-  if (Math.abs(recipe.yaw ?? 0) > WHEEL_YAW_MAX) return recipe;
+  if (Math.abs(recipe.yaw ?? 0) > MASK_YAW_MAX) return recipe;
   const main = recipe.parts[frontPartIndex(recipe)]!;
   // Template wheels: z-axis cylinders below the body's middle (same predicate as PR-2.2).
   const midY = main.at[1];
