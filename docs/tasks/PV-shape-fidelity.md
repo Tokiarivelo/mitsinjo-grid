@@ -3,7 +3,7 @@
 **Why (user, 2026-11-01):** for `det-4` « stone cottages row » (Bourton-on-the-Water, box x 0.18 y 0.10 w 0.82 h 0.58),
 the 3D model does not look like the photo: one box with a black stepped roof, a grey bar across the front, and the whole
 photo (sky, roofs, cars) squashed onto the walls.
-**Status:** 🟡 PF-T1…T3 done (`roofline.ts`: skyline from the SAM rings, segmented LSQ + BIC, `KitRoof`, `prism` part; `recipeMesh` projects the photo on every front face, `photo-mask.ts`, `decalWidth`; `color-measure.ts` + `shape-colors.ts`, target `outline`). Next: PF-T4.
+**Status:** 🟡 PF-T1…T4 done (`repetition.ts` + `sampleObjectGray`: units read on the roof band only — window edges on the walls gave false houses —, windows per house on the walls; `roofline.ts`: skyline from the SAM rings, segmented LSQ + BIC, `KitRoof`, `prism` part; `recipeMesh` projects the photo on every front face, `photo-mask.ts`, `decalWidth`; `color-measure.ts` + `shape-colors.ts`, target `outline`). Next: PF-T5.
 **Rule kept:** Meta models only. All math is pure, seeded TS and deterministic (same photo → same model), with tests.
 It runs on the server on a ≤ 256 px copy of the crop, inside the 60 s budget (target < 300 ms).
 
@@ -48,7 +48,7 @@ photo crop ─┬─ SAM mask M(x,y) ──┬─ colours (k-means Lab per band)
       **Segmented least squares** (dynamic programming, O(n²) on 128 columns), with the number of segments chosen by **BIC**,
       gives the slopes and breakpoints. Rising/falling pairs = gables → pitch angle, ridge height, gable count. The
       template gets `roofHeight`, `pitch` and `gables[]` instead of 3 fixed slabs (new part: `prism` = extruded triangle).
-- [ ] **PF-T4 Repetition (rows, windows).** Vertical-edge energy `e(x) = Σ_y |∂I/∂x|` inside the mask (rectified by PF-T5
+- [x] **PF-T4 Repetition (rows, windows).** Vertical-edge energy `e(x) = Σ_y |∂I/∂x|` inside the mask (rectified by PF-T5
       when available). **Normalised autocorrelation** `R(τ)` → the first strong peak (> 0.35) gives the period `P`. Then
       `units = round(W / P)` (row of cottages) and windows per unit come from the same analysis on the wall band. A Spark
       count is used only when `R(P)` is weak. Kit: new `details.units` (1–8), and the template repeats the house along x.

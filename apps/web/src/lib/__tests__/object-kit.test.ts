@@ -106,3 +106,44 @@ describe('measured roof (PF-T3)', () => {
     expect(kitToRecipe(kit('house')).parts.some((p) => p.shape === 'prism')).toBe(false);
   });
 });
+
+describe('row of houses (PF-T4)', () => {
+  it('units without a roof → one even gable per house, door + windows per house, ≤ 12 parts', () => {
+    for (const units of [2, 3, 4, 6, 8]) {
+      const r = kitToRecipe(kit('house', { units, windows: 2 * units }));
+      expect(ObjectRecipeSchema.safeParse(r).success, `${units}`).toBe(true);
+      expect(r.parts.length).toBeLessThanOrEqual(12);
+      expect(r.parts.filter((p) => p.shape === 'prism')).toHaveLength(Math.min(6, units));
+      expect(recipeIssue(fitRecipe(r, 3))).toBeNull();
+    }
+  });
+
+  it('2 houses × 2 windows: each house has its door and windows inside its own width', () => {
+    const r = kitToRecipe(kit('house', { units: 2, windows: 4 }));
+    const decals = r.parts.filter((p) => p.at[2] > 0.5);
+    expect(decals.filter((p) => p.color === '#ffffff')).toHaveLength(4);
+    expect(decals.filter((p) => p.color === '#6e6a62')).toHaveLength(2);
+    for (const d of decals) {
+      const unit = Math.floor((d.at[0] + 0.5) * 2);
+      const lo = unit / 2 - 0.5;
+      expect(d.at[0] - d.size[0] / 2).toBeGreaterThan(lo);
+      expect(d.at[0] + d.size[0] / 2).toBeLessThan(lo + 1 / 2);
+    }
+    // No two decals overlap.
+    const xs = decals
+      .filter((p) => p.color === '#ffffff')
+      .map((p) => [p.at[0] - p.size[0] / 2, p.at[0] + p.size[0] / 2] as const)
+      .sort((a, b) => a[0] - b[0]);
+    for (let i = 1; i < xs.length; i++) expect(xs[i]![0]).toBeGreaterThan(xs[i - 1]![1]);
+  });
+
+  it('3 houses: the 12-part budget keeps one door + one window per house', () => {
+    const r = kitToRecipe(kit('house', { units: 3, windows: 6 }));
+    expect(r.parts).toHaveLength(12 - 2);
+    expect(r.parts.filter((p) => p.at[2] > 0.5)).toHaveLength(6);
+  });
+
+  it('units 1 (or absent) keeps the single-house facade', () => {
+    expect(kitToRecipe(kit('house', { units: 1 }))).toEqual(kitToRecipe(kit('house')));
+  });
+});

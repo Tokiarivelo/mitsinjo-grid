@@ -13,8 +13,9 @@ import { pathToRings } from '@/lib/vision';
 import type { PerceptionClient } from './client';
 import { measureKitColors, type ObjectPixels } from './color-measure';
 import type { PhotoForRegions } from './region';
+import { measureRepetition, type GrayGrid, type Repetition } from './repetition';
 import { measureRoof, type RoofMeasure } from './roofline';
-import { sampleObjectPixels } from './shape-colors';
+import { sampleObjectGray, sampleObjectPixels } from './shape-colors';
 import { cropForShape } from './shape-crop';
 
 export { SHAPE_TIMEOUT_MS };
@@ -35,6 +36,28 @@ export function withMeasuredRoof(
   return { kit: { ...kit, archetype: 'house', roof: measure.roof }, measure };
 }
 
+/**
+ * Kit + houses in the row and windows per house (PF-T4), houses only (a flat building's window columns
+ * are not houses). Units: the measured gables when ≥ 2 (seen directly), else the edge period, else
+ * Spark's count. Windows: measured per house × units (≤ 8), else Spark's.
+ */
+export function withMeasuredRepetition(
+  kit: ObjectKit,
+  grid: GrayGrid | null
+): { kit: ObjectKit; repetition: Repetition | null } {
+  if (kit.archetype !== 'house' || !grid) return { kit, repetition: null };
+  const repetition = measureRepetition(grid, kit.roof?.eave ?? 0.4);
+  const gables = kit.roof?.gables.length ?? 0;
+  const units =
+    gables >= 2 ? gables : repetition.units >= 2 ? repetition.units : kit.details?.units;
+  const details = { ...kit.details };
+  if (units) details.units = units;
+  if (repetition.windowsPerUnit) {
+    details.windows = Math.min(8, repetition.windowsPerUnit * (units ?? 1));
+  }
+  return { kit: { ...kit, details }, repetition };
+}
+
 export interface ObjectShapeOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -46,7 +69,7 @@ export interface ObjectShapeOptions {
  * Selected object → its 3D shape (PV-T9), Meta models only. One Spark call on a crop around the object
  * returns a kit → parts recipe, fitted to the photo box (`fitRecipe`). Colours are measured on the photo
  * pixels inside the SAM outline while Spark thinks (PF-T2), and replace Spark's guessed colours; houses get the roofline
- * read on that outline (PF-T3). Fallbacks → `silhouette` mode, built in
+ * read on that outline (PF-T3) and the houses / windows counted by edge repetition (PF-T4). Fallbacks → `silhouette` mode, built in
  * the browser from the SAM outline (no extra call), with a precise `reason`: `timeout` (past
  * `SHAPE_TIMEOUT_MS`), `provider_error` + `detail` (`http_429`…), `spend_cap`, `malformed`, `no_body`.
  * Mock mode: fixed recipe per category, not checked. Never throws.
@@ -80,6 +103,12 @@ export async function runObjectShape(
     const pixels: Promise<ObjectPixels | null> = photo
       ? sampleObjectPixels(photo, target.box, target.outline).catch((err) => {
           console.warn('[vision] colour sample failed:', err instanceof Error ? err.message : err);
+          return null;
+        })
+      : Promise.resolve(null);
+    const gray: Promise<GrayGrid | null> = photo
+      ? sampleObjectGray(photo, target.box, target.outline).catch((err) => {
+          console.warn('[vision] grey sample failed:', err instanceof Error ? err.message : err);
           return null;
         })
       : Promise.resolve(null);
@@ -132,7 +161,13 @@ export async function runObjectShape(
             `[vision] 3D roof measured for "${target.label}": ${measure.roof.gables.length} gables, pitch ${measure.pitch}°, eave ${measure.roof.eave}`
           );
         }
-        if (colors || measure) built = kitToRecipe(kit);
+        const rep = withMeasuredRepetition(kit, await gray);
+        if (rep.repetition) {
+          console.info(
+            `[vision] 3D repetition for "${target.label}": units=${rep.kit.details?.units ?? 1} (R=${rep.repetition.strength}), windows=${rep.kit.details?.windows ?? '-'}`
+          );
+        }
+        if (colors || measure || rep.repetition) built = kitToRecipe(rep.kit);
       }
       const recipe = fitRecipe(built, aspect);
       const issue = recipeIssue(recipe);

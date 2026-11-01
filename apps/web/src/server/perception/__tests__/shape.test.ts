@@ -36,14 +36,14 @@ describe('parseKit (PV-T9b)', () => {
         archetype: 'cottage',
         proportions: { w: 1, h: 1, d: 1 },
         colors: { main: 'beige' },
-        details: { windows: 40.4, wheels: -2, color: 'x' },
+        details: { windows: 40.4, wheels: -2, units: 12, color: 'x' },
       }),
       'house'
     );
     expect(k).toMatchObject({
       archetype: 'house',
       colors: { main: '#9aa3ad', secondary: '#9aa3ad', accent: '#9aa3ad' },
-      details: { windows: 8, wheels: 0 },
+      details: { windows: 8, wheels: 0, units: 8 },
     });
   });
 

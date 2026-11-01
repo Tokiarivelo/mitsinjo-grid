@@ -263,3 +263,57 @@ describe('runObjectShape measured roof (PF-T3)', () => {
     }
   });
 });
+
+describe('runObjectShape repetition (PF-T4)', () => {
+  const house: ObjectKit = {
+    archetype: 'house',
+    proportions: { w: 1, h: 0.5, d: 0.4 },
+    colors: { main: '#202020', secondary: '#000000', accent: '#ff8800' },
+    details: { units: 1, windows: 1 },
+  };
+  /** 4 cottages on 240 × 100: a dark chimney stripe at each house edge on the roof, 2 windows each on the walls. */
+  async function terrace() {
+    const P = 60;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="100">
+      <rect width="240" height="40" fill="#6e5f55"/>
+      <rect y="40" width="240" height="60" fill="#c8aa78"/>
+      ${[0, 1, 2, 3].map((u) => `<rect x="${u * P}" width="5" height="40" fill="#1e1e1e"/>`).join('')}
+      ${[0, 1, 2, 3]
+        .flatMap((u) => [u * P + 10, u * P + 40])
+        .map((x) => `<rect x="${x}" y="55" width="12" height="16" fill="#1e232d"/>`)
+        .join('')}
+    </svg>`;
+    const buffer = await sharp(Buffer.from(svg)).png().toBuffer();
+    return { buffer, width: 240, height: 100 };
+  }
+  const target: ShapeTarget = {
+    id: 'det-4',
+    label: 'terrace',
+    category: 'other',
+    scenery: 'building',
+    box: { x: 0, y: 0, w: 1, h: 1 },
+  };
+
+  it('a terrace of 4 → 4 houses (Spark said 1), 2 windows each', async () => {
+    const out = await runObjectShape(
+      client(meta(kitToRecipe(house), { kit: house })),
+      await terrace(),
+      'data:full',
+      target
+    );
+    const parts = out.recipe!.parts;
+    expect(parts.filter((p) => p.shape === 'prism')).toHaveLength(4);
+    expect(parts.length).toBeLessThanOrEqual(12);
+  });
+
+  it('a cabinet is never split into units', async () => {
+    const cabinet: ObjectKit = { ...house, archetype: 'cabinet' };
+    const out = await runObjectShape(
+      client(meta(kitToRecipe(cabinet), { kit: cabinet })),
+      await terrace(),
+      'data:full',
+      target
+    );
+    expect(out.recipe!.parts.some((p) => p.shape === 'prism')).toBe(false);
+  });
+});

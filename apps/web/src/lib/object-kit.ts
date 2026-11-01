@@ -73,6 +73,8 @@ export const ObjectKitSchema = z.object({
       legs: count(4).optional(),
       floors: count(4).optional(),
       chimney: z.boolean().optional(),
+      /** Houses side by side in a row (PF-T4): measured on the photo, Spark's count only as a fallback. */
+      units: count(8).optional(),
     })
     .optional(),
   /** Measured roofline (houses): replaces the stepped roof with one prism per gable. */
@@ -133,31 +135,66 @@ export const decalWidth = (n: number, span: number, max: number) =>
   n <= 1 ? max : Math.min(max, (0.7 * span) / (n - 1));
 
 type Template = (k: ObjectKit) => RecipePart[];
+const MAX_PARTS = 12;
 
-/** Front windows spread over the wall band [`bottom`, `top`] (y), doors standing on the ground. */
-function facade(c: ObjectKit['colors'], d: ObjectKit['details'], bottom: number, top: number) {
-  const windows = Math.min(8, d?.windows ?? 3);
-  const doors = Math.min(3, d?.doors ?? 1);
+/** Houses side by side (1–8, `details.units`). */
+const unitsOf = (d: ObjectKit['details']) => Math.max(1, Math.min(8, d?.units ?? 1));
+
+/**
+ * Front windows over the wall band [`bottom`, `top`] (y), doors standing on the ground. One house: the
+ * kit counts spread over the front. A row of `units` (PF-T4): each house gets its own door and windows,
+ * fewer when the 12-part budget (`room`) is short (windows first dropped, then doors).
+ */
+function facade(
+  c: ObjectKit['colors'],
+  d: ObjectKit['details'],
+  bottom: number,
+  top: number,
+  room = 12
+) {
   const wall = top - bottom;
   const doorH = Math.min(0.28, 0.47 * wall);
-  return [
-    ...spread(windows, 0.76).map((x) =>
-      part(
-        'box',
-        [x, bottom + (0.44 / 0.6) * wall, 0.505],
-        [decalWidth(windows, 0.76, 0.11), Math.min(0.14, 0.24 * wall), 0.02],
-        c.accent
-      )
-    ),
-    ...spread(doors, 0.5).map((x) =>
-      part(
-        'box',
-        [x, bottom + doorH / 2, 0.505],
-        [decalWidth(doors, 0.5, 0.1), doorH, 0.02],
-        c.secondary
-      )
-    ),
-  ];
+  const winY = bottom + (0.44 / 0.6) * wall;
+  const winH = Math.min(0.14, 0.24 * wall);
+  const units = unitsOf(d);
+  const window = (x: number, w: number) => part('box', [x, winY, 0.505], [w, winH, 0.02], c.accent);
+  const door = (x: number, w: number) =>
+    part('box', [x, bottom + doorH / 2, 0.505], [w, doorH, 0.02], c.secondary);
+  if (units === 1) {
+    const windows = Math.min(8, d?.windows ?? 3);
+    const doors = Math.min(3, d?.doors ?? 1);
+    return [
+      ...spread(windows, 0.76).map((x) => window(x, decalWidth(windows, 0.76, 0.11))),
+      ...spread(doors, 0.5).map((x) => door(x, decalWidth(doors, 0.5, 0.1))),
+    ];
+  }
+  const per = Math.floor(Math.max(0, room) / units);
+  const doors = per >= 2 || (per === 1 && !d?.windows) ? 1 : 0;
+  const wanted = Math.max(1, Math.ceil((d?.windows ?? 2 * units) / units));
+  const windows = Math.max(0, Math.min(wanted, per - doors));
+  const pitch = 1 / units;
+  // With a door: door on the left quarter of the house, windows over the right half.
+  const span = (doors ? 0.44 : 0.76) * pitch;
+  const winW = decalWidth(windows, span, Math.min(0.11, 0.16 * pitch));
+  return spread(units, 1 - pitch).flatMap((cx) => [
+    ...spread(windows, span).map((x) => window(cx + x + (doors ? 0.15 * pitch : 0), winW)),
+    ...(doors ? [door(cx - 0.3 * pitch, Math.min(0.1, 0.16 * pitch))] : []),
+  ]);
+}
+
+/** Row of `units` houses without a measured roof (PF-T4): one even gable per house, walls 60 % high. */
+export function uniformRoof(units: number): KitRoof | null {
+  if (units < 2) return null;
+  const n = Math.min(6, units);
+  return {
+    eave: 0.4,
+    gables: Array.from({ length: n }, (_, i) => ({
+      x0: i / n,
+      x1: (i + 1) / n,
+      peak: (i + 0.5) / n,
+      top: 0,
+    })),
+  };
 }
 
 /** House without a measured roof: walls + three slabs that read as a pitched roof. */
@@ -183,14 +220,14 @@ function measuredHouse({ colors: c, details: d }: ObjectKit, roof: KitRoof): Rec
     });
   });
   const chimneyTop = eave + 0.85 * (highest - eave) + 0.06;
-  return [
+  const structure = [
     part('box', [0, (eave - 0.5) / 2, 0], [1, eave + 0.5, 1], c.main, { front: true }),
     ...gables,
     ...(d?.chimney
       ? [part('box', [0.3, (eave + chimneyTop) / 2, 0], [0.08, chimneyTop - eave, 0.1], c.main)]
       : []),
-    ...facade(c, d, -0.5, eave),
   ];
+  return [...structure, ...facade(c, d, -0.5, eave, MAX_PARTS - structure.length)];
 }
 
 const TEMPLATES: Record<KitArchetype, Template> = {
@@ -236,7 +273,10 @@ const TEMPLATES: Record<KitArchetype, Template> = {
       part('box', [x, -0.35, 0], [0.06, 0.3, 0.12], c.secondary)
     ),
   ],
-  house: (k) => (k.roof ? measuredHouse(k, k.roof) : steppedHouse(k)),
+  house: (k) => {
+    const roof = k.roof ?? uniformRoof(unitsOf(k.details));
+    return roof ? measuredHouse(k, roof) : steppedHouse(k);
+  },
   building: ({ colors: c, details: d }) => {
     const floors = Math.max(1, Math.min(4, d?.floors ?? 2));
     const windows = Math.max(1, Math.min(8, d?.windows ?? 4));

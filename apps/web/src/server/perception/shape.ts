@@ -22,7 +22,7 @@ export const SHAPE_SYSTEM_PROMPT = [
   'proportions = real width, height, depth of the object, largest = 1 (guess the depth from what it is).',
   'colors: main = the biggest surface (walls, body, canopy), secondary = roof, stand, trunk or frame,',
   'accent = glass, windows, handle, lamp or wheels; each #rrggbb as seen.',
-  'details (optional, small integers): windows on the front face, doors, wheels, legs, floors, chimney.',
+  'details (optional, small integers): windows on the front face, doors, wheels, legs, floors, chimney, units (houses side by side in a row).',
   'Never give watts, kW or any energy value.',
 ].join(' ');
 
@@ -68,6 +68,7 @@ export const SHAPE_JSON_SCHEMA = {
           legs: int,
           floors: int,
           chimney: { type: 'boolean' },
+          units: int,
         },
       },
     },
@@ -86,7 +87,7 @@ const ReplySchema = z.object({
   details: z.record(z.string(), z.unknown()).optional(),
 });
 
-const LIMITS = { windows: 8, doors: 3, wheels: 6, legs: 4, floors: 4 } as const;
+const LIMITS = { windows: 8, doors: 3, wheels: 6, legs: 4, floors: 4, units: 8 } as const;
 
 /**
  * Spark reply → kit, or null when it is not JSON or misses the archetype / proportions.
