@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { silhouetteRings, type ObjectRecipe } from '@/lib/object-shape';
 import {
   recipeMesh,
+  roundedBox,
   silhouetteDepth,
   silhouetteMesh,
   silhouetteSize,
   triangleCount,
   unitPrism,
 } from '../utils/object-geometry';
+import { SURFACE_LOOK } from '../utils/surface-look';
 
 const box = { x: 0.2, y: 0.1, w: 0.4, h: 0.5 };
 const fridge: ObjectRecipe = {
@@ -71,6 +73,67 @@ describe('recipeMesh (PV-T10)', () => {
   });
 });
 
+describe('roundedBox (PR-1.2)', () => {
+  it('keeps the exact size, rounds the corners, smooth normals there', () => {
+    const g = roundedBox(1, 0.5, 0.4, 0.04);
+    const b = bounds(g);
+    expect(b.max.x - b.min.x).toBeCloseTo(1);
+    expect(b.max.y - b.min.y).toBeCloseTo(0.5);
+    expect(b.max.z - b.min.z).toBeCloseTo(0.4);
+    // A corner point is cut off: no vertex at (0.5, 0.25, 0.2).
+    const pos = g.getAttribute('position');
+    let atCorner = false;
+    const normals = new Set<string>();
+    const n = g.getAttribute('normal');
+    for (let i = 0; i < pos.count; i++) {
+      if (Math.hypot(pos.getX(i) - 0.5, pos.getY(i) - 0.25, pos.getZ(i) - 0.2) < 1e-4)
+        atCorner = true;
+      normals.add(`${n.getX(i).toFixed(2)},${n.getY(i).toFixed(2)},${n.getZ(i).toFixed(2)}`);
+    }
+    expect(atCorner).toBe(false);
+    expect(normals.size).toBeGreaterThan(6); // more than the 6 face normals of a sharp box
+    expect(Object.keys(g.attributes).sort()).toEqual(['normal', 'position', 'uv']);
+  });
+
+  it('radius ≤ ¼ of the thinnest side; negligible radius → plain 12-triangle box', () => {
+    const thin = roundedBox(1, 1, 0.02, 0.04);
+    expect(bounds(thin).max.z - bounds(thin).min.z).toBeCloseTo(0.02);
+    expect(triangleCount(roundedBox(1, 1, 1, 0.001))).toBe(12);
+  });
+
+  it('a metal box is rounder than a stone one (radius by material)', () => {
+    const part = (material: 'metal' | 'stone'): ObjectRecipe => ({
+      proportions: { w: 1, h: 1, d: 1 },
+      parts: [{ shape: 'box', at: [0, 0, 0], size: [1, 1, 1], color: '#808080', material }],
+    });
+    // Distance of the vertex nearest to the sharp corner grows with the radius.
+    const cornerGap = (g: THREE.BufferGeometry) => {
+      const pos = g.getAttribute('position');
+      let best = Infinity;
+      for (let i = 0; i < pos.count; i++)
+        best = Math.min(best, Math.hypot(pos.getX(i) - 0.5, pos.getY(i) - 0.5, pos.getZ(i) - 0.5));
+      return best;
+    };
+    expect(cornerGap(recipeMesh(part('metal')))).toBeGreaterThan(
+      cornerGap(recipeMesh(part('stone')))
+    );
+  });
+
+  it('budget: 12 rounded boxes stay under 5 k triangles', () => {
+    const boxes: ObjectRecipe = {
+      ...fridge,
+      parts: Array.from({ length: 12 }, () => ({
+        shape: 'box' as const,
+        at: [0, 0, 0] as [number, number, number],
+        size: [0.5, 0.5, 0.5] as [number, number, number],
+        color: '#808080',
+        material: 'metal' as const,
+      })),
+    };
+    expect(triangleCount(recipeMesh(boxes))).toBeLessThanOrEqual(5_000);
+  });
+});
+
 describe('silhouetteMesh (fallback)', () => {
   it('sizes the object from the box on the photo, largest side = 1', () => {
     expect(silhouetteSize({ x: 0, y: 0, w: 0.5, h: 0.5 }, 2)).toEqual([1, 0.5]);
@@ -119,7 +182,8 @@ describe('unitPrism (PF-T3)', () => {
       ],
     };
     const body = recipeMesh(house);
-    expect(body.getAttribute('position').count).toBe(36 + 24);
+    // Rounded walls (PR-1.2: 300 triangles) + the 8-triangle prism.
+    expect(body.getAttribute('position').count).toBe(3 * (2 * 6 * 25 + 8));
     expect(bounds(body).max.y).toBeCloseTo(0.4, 6);
   });
 });
@@ -134,7 +198,9 @@ describe('recipeMesh with a yaw (PF-T5)', () => {
     const straight = bounds(recipeMesh(block));
     const turned = bounds(recipeMesh({ ...block, yaw: Math.PI / 6 }));
     expect(straight.max.x - straight.min.x).toBeCloseTo(1, 6);
-    // w·cos 30° + d·sin 30° = 0.866 + 0.25.
-    expect(turned.max.x - turned.min.x).toBeCloseTo(Math.cos(Math.PI / 6) + 0.25, 6);
+    // Sharp box: w·cos 30° + d·sin 30°; rounded corners (PR-1.2) take 2r off each side, add 2r back.
+    const r = SURFACE_LOOK.painted.radius;
+    const expected = (1 - 2 * r) * Math.cos(Math.PI / 6) + (0.5 - 2 * r) * 0.5 + 2 * r;
+    expect(turned.max.x - turned.min.x).toBeCloseTo(expected, 3);
   });
 });

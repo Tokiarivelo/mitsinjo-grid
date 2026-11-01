@@ -66,8 +66,9 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
       contact shadow; drop 2 of the 4 directional lights. Screenshot before / after. Done: Neutral tone mapping
       (not ACES: keeps the measured colours), vertex colours were converted to linear twice (fixed); shots
       `make shape-shots` (stubbed API, dark + light).
-- [ ] **PR-1.2 Rounded box.** `box` parts become rounded boxes (radius by material: metal 0.04, plastic 0.03,
-      stone 0.01), smooth corner normals. Triangle budget test.
+- [x] **PR-1.2 Rounded box.** `box` parts become rounded boxes (radius by material: metal 0.04, plastic 0.03,
+      stone 0.01), smooth corner normals. Triangle budget test. Done: `roundedBox` (built at size, r ≤ ¼ thinnest
+      side, < 0.005 → plain box), `SURFACE_LOOK[*].radius`; 300 triangles per box, 12 boxes ≤ 5 k.
 - [ ] **PR-1.3 Bevelled prism + smooth round parts.** Gable prisms with a small eave overhang; spheres / cylinders
       smooth-shaded.
 - [ ] **PR-1.4 Procedural maps.** Per material a 128² canvas normal + roughness map (stone blocks, brick courses,
@@ -139,3 +140,4 @@ S2 (shape), S3 (Spark), S4 last (a bet). Expect the car to stop looking like a b
 | 2026-11-01 | PR-0.2 baseline (synthetic golden set)                                 | 0.95     | 0.76    | 3.6     | —        | scores: cottage 86 · lamp 86 · fridge 97 · car 83 · tree 80; worst = tree edge F1 0.54                                    |
 | 2026-11-01 | PR-0.3 report; renderer fix: flush parts z-fought (comb on car wheels) | 0.95     | 0.76    | 3.7     | —        | car 83 → 82 (wheels now drawn whole, misfit visible); next: tree edge F1 0.54                                             |
 | 2026-11-01 | PR-1.1 studio light + vertex colour fix (viewer only)                  | 0.95     | 0.76    | 3.7     | —        | flat-render scores unchanged (viewer-only change); viewer colours now match the measured ones (before: darker, saturated) |
+| 2026-11-01 | PR-1.2 rounded boxes (viewer only)                                     | 0.95     | 0.76    | 3.7     | —        | scores unchanged (score renderer keeps sharp boxes); edges catch the studio light                                         |

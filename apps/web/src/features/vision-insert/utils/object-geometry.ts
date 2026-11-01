@@ -1,8 +1,9 @@
 import type { ApplianceCategory } from '@mitsinjo/engine';
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { ObjectRecipe, RecipePart } from '@/lib/object-shape';
-import { surfaceIndex } from './surface-look';
+import { SURFACE_LOOK, SURFACES, surfaceIndex } from './surface-look';
 import { type ApplianceDetection, type NormBox, type SceneryType } from '@/lib/vision';
 
 /**
@@ -96,6 +97,29 @@ export function unitPrism(apex = 0.5): THREE.BufferGeometry {
   return g;
 }
 
+/** Corner segments of a rounded box: 300 triangles per box, 12 boxes stay under 5 k. */
+export const ROUNDED_SEGMENTS = 2;
+/** Below this radius (object units, ≈ 1 px in the viewer) the rounding is invisible: plain box, 12 triangles. */
+export const MIN_RADIUS = 0.005;
+
+/**
+ * Box of its final size with rounded edges and smooth corner normals (PR-1.2), non-indexed, centred.
+ * Built at size (not scaled afterwards) so the radius stays round on long thin parts; ≤ ¼ of the thinnest side.
+ */
+export function roundedBox(w: number, h: number, d: number, radius: number): THREE.BufferGeometry {
+  const r = Math.min(radius, Math.min(w, h, d) / 4);
+  if (r < MIN_RADIUS) {
+    const g = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
+    g.scale(w, h, d);
+    return g;
+  }
+  const g = new RoundedBoxGeometry(w, h, d, ROUNDED_SEGMENTS, r);
+  if (!g.index) return g;
+  const flat = g.toNonIndexed();
+  g.dispose();
+  return flat;
+}
+
 /** Unit primitive (1 × 1 × 1 bounds) along y, non-indexed so parts merge. */
 function unitPart(shape: RecipePart['shape'], apex?: number): THREE.BufferGeometry {
   switch (shape) {
@@ -124,12 +148,18 @@ export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
   const sorted = recipe.parts
     .map((p) => ({ p, surface: surfaceIndex(p.material) }))
     .sort((a, b) => a.surface - b.surface);
-  const parts = sorted.map(({ p }) => {
-    const g = unitPart(p.shape, p.apex);
-    // Round parts turn to their axis before taking the part's own x / y / z extent.
-    if (p.axis === 'x') g.rotateZ(Math.PI / 2);
-    else if (p.axis === 'z') g.rotateX(Math.PI / 2);
-    g.scale(p.size[0] * dims[0], p.size[1] * dims[1], p.size[2] * dims[2]);
+  const parts = sorted.map(({ p, surface }) => {
+    const [sx, sy, sz] = [p.size[0] * dims[0], p.size[1] * dims[1], p.size[2] * dims[2]];
+    let g: THREE.BufferGeometry;
+    if (p.shape === 'box') {
+      g = roundedBox(sx, sy, sz, SURFACE_LOOK[SURFACES[surface]!].radius);
+    } else {
+      g = unitPart(p.shape, p.apex);
+      // Round parts turn to their axis before taking the part's own x / y / z extent.
+      if (p.axis === 'x') g.rotateZ(Math.PI / 2);
+      else if (p.axis === 'z') g.rotateX(Math.PI / 2);
+      g.scale(sx, sy, sz);
+    }
     g.translate(p.at[0] * dims[0], p.at[1] * dims[1], p.at[2] * dims[2]);
     // Measured yaw (PF-T5): turned like on the photo.
     if (recipe.yaw) g.rotateY(recipe.yaw);

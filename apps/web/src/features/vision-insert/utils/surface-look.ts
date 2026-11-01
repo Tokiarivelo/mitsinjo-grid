@@ -4,6 +4,8 @@ import { RECIPE_MATERIALS, type ObjectRecipe, type RecipeMaterial } from '@/lib/
 export interface SurfaceLook {
   roughness: number;
   metalness: number;
+  /** Edge radius of a box part (PR-1.2), object units (largest side = 1): pressed metal soft, cut stone sharp. */
+  radius: number;
 }
 
 /** Every surface of the 3D view: the AI materials, then `painted` for a part with no material. */
@@ -12,25 +14,26 @@ export type Surface = (typeof SURFACES)[number];
 
 /**
  * Look per surface. Matte for stone, thatch, leaves; shiny for glass, water, metal. Metalness stays
- * ≤ 0.6: the viewer has no environment map, and a fully metallic part would render black.
+ * ≤ 0.6 so a metal part keeps its measured colour under the studio light. Edges: rounded most on
+ * pressed / moulded surfaces (metal, plastic, rubber), barely on masonry.
  */
 export const SURFACE_LOOK: Record<Surface, SurfaceLook> = {
-  stone: { roughness: 0.95, metalness: 0 },
-  brick: { roughness: 0.9, metalness: 0 },
-  plaster: { roughness: 0.85, metalness: 0 },
-  concrete: { roughness: 0.9, metalness: 0 },
-  wood: { roughness: 0.75, metalness: 0 },
-  thatch: { roughness: 1, metalness: 0 },
-  tile: { roughness: 0.6, metalness: 0 },
-  slate: { roughness: 0.55, metalness: 0.05 },
-  metal: { roughness: 0.35, metalness: 0.6 },
-  glass: { roughness: 0.08, metalness: 0.4 },
-  plastic: { roughness: 0.4, metalness: 0 },
-  fabric: { roughness: 1, metalness: 0 },
-  rubber: { roughness: 0.9, metalness: 0 },
-  foliage: { roughness: 0.95, metalness: 0 },
-  water: { roughness: 0.1, metalness: 0.2 },
-  painted: { roughness: 0.6, metalness: 0.05 },
+  stone: { roughness: 0.95, metalness: 0, radius: 0.01 },
+  brick: { roughness: 0.9, metalness: 0, radius: 0.01 },
+  plaster: { roughness: 0.85, metalness: 0, radius: 0.015 },
+  concrete: { roughness: 0.9, metalness: 0, radius: 0.01 },
+  wood: { roughness: 0.75, metalness: 0, radius: 0.015 },
+  thatch: { roughness: 1, metalness: 0, radius: 0.03 },
+  tile: { roughness: 0.6, metalness: 0, radius: 0.01 },
+  slate: { roughness: 0.55, metalness: 0.05, radius: 0.008 },
+  metal: { roughness: 0.35, metalness: 0.6, radius: 0.04 },
+  glass: { roughness: 0.08, metalness: 0.4, radius: 0.01 },
+  plastic: { roughness: 0.4, metalness: 0, radius: 0.03 },
+  fabric: { roughness: 1, metalness: 0, radius: 0.03 },
+  rubber: { roughness: 0.9, metalness: 0, radius: 0.04 },
+  foliage: { roughness: 0.95, metalness: 0, radius: 0.03 },
+  water: { roughness: 0.1, metalness: 0.2, radius: 0.01 },
+  painted: { roughness: 0.6, metalness: 0.05, radius: 0.02 },
 };
 
 /** Index of a part's surface in `SURFACES` (the geometry group's material index). */
