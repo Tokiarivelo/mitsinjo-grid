@@ -181,6 +181,8 @@ export class MetaPerceptionBackend implements PerceptionBackend {
   ): Promise<{ content: string; model: string; usage: UsageSample }> {
     const body = (model: string) => ({
       model,
+      // High reasoning on detection + 3D kits: better perception for the operator.
+      reasoning_effort: 'high',
       messages: [
         { role: 'system', content: system },
         {

@@ -25,7 +25,7 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
 ### Perception & spend cap (PM-M0)
 
 - `server/perception/`: `getPerceptionClient(sessionId)` → `transcribe` (Voice, `POST /asr/transcribe`, multipart, **WAV only**, ≤ 10 min),
-  `analyzeImage` (Spark 1.3 `chat/completions` + `response_format: json_schema`), `segmentImage` (SAM `POST /responses`, boxes parsed
+  `analyzeImage` (Spark 1.3 `chat/completions` + `response_format: json_schema`, `reasoning_effort: high` on every vision call), `segmentImage` (SAM `POST /responses`, boxes parsed
   from the text output, masks ignored), `detectAppliances` (PV: Spark 1.3, same `chat/completions` JSON-schema call, category enum from the
   engine; `detect.ts` clamps the 0–1000 grid to 0–1 fractions, maps unknown categories to `other`, throws on a non-JSON reply). The prompt asks for every visible object: catalog
   appliances (`kind:'appliance'`, street lamp → `lamp`) and scenery (houses, cars, trees… `kind:'scenery'`, no load), so an outdoor

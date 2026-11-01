@@ -79,6 +79,7 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
     const body = JSON.parse(lastRequest(fetchMock).init.body as string);
     expect(lastRequest(fetchMock).url).toBe(`${BASE}/chat/completions`);
     expect(body.model).toBe('muse-spark-1.3');
+    expect(body.reasoning_effort).toBe('high');
     expect(body.response_format.type).toBe('json_schema');
     expect(body.messages[1].content[1]).toEqual({
       type: 'image_url',
@@ -130,6 +131,7 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
     const body = JSON.parse(lastRequest(fetchMock).init.body as string);
     expect(lastRequest(fetchMock).url).toBe(`${BASE}/chat/completions`);
     expect(body.model).toBe('muse-spark-1.3');
+    expect(body.reasoning_effort).toBe('high');
     expect(body.response_format.json_schema.name).toBe('ApplianceDetections');
     expect(
       body.response_format.json_schema.schema.properties.objects.items.properties.category.enum
@@ -167,6 +169,7 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
     const body = JSON.parse(lastRequest(fetchMock).init.body as string);
     expect(lastRequest(fetchMock).url).toBe(`${BASE}/chat/completions`);
     expect(body.response_format.json_schema.name).toBe('ObjectKit');
+    expect(body.reasoning_effort).toBe('high');
     // Latency-sensitive: never the (slower) contributor id.
     expect(body.model).not.toMatch(/contributor/);
     expect(body.messages[1].content[0].text).toContain('"Fridge"');
