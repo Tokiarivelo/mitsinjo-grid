@@ -111,8 +111,15 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
       cone-profile==cone pixel for pixel). Tank body + lamp head use static profiles. Lamp 86 → 87
       (IoU 0.95, edge 0.91); lamp ΔE steady at 7.3 (glass measures #f2d78a vs truth #f2d68a — the
       ΔE sits in thin-pole pixels, not the glass).
-- [ ] **PR-2.4 Lathe body.** Round archetypes (tree crown, lamp head, tank, bush, person) → profile = outline
+- [x] **PR-2.4 Lathe body.** Round archetypes (tree crown, lamp head, tank, bush, person) → profile = outline
       half-width per row.
+      Done: `withLatheBody` — 24 scanline rows in the main-part band (furthest extent from the
+      outline centre, poles close both ends), part resized round (depth = width), same-look
+      filler inside dropped (tree canopy spheres). Tree 89 → 99 (IoU 0.99, edge 0.99); lamp
+      87 → 89 (IoU 0.97, edge 0.93, ΔE 7.3 → 7.4 on re-sampled head pixels); mean 90 → 93.
+      Fixed mid-loop: the 26-row render blew the 300 ms budget (tree 390 ms) → `clipLathe`
+      hot loop allocation-free (inline slab scalars, reused span, winner-only normal) plus
+      sort-free quadric roots; render 132 → 32 ms, pixel tests unchanged, tree 251 ms.
 - [ ] **PR-2.5 Part masks.** Server: `segmentImage(crop, concept)` for the archetype's concepts in parallel
       (vehicle: wheel, window; house: window, door, chimney; lamp_post: lamp), ≤ 5 s total, failures ignored.
 - [ ] **PR-2.6 Wheels from masks.** Centre + radius per wheel mask (circle fit), tyre + rim parts; count = masks.
@@ -176,3 +183,4 @@ S2 (shape), S3 (Spark), S4 last (a bet). Expect the car to stop looking like a b
 | 2026-11-01 | PR-2.1 `extrude` primitive (ring + bevel + ray clip)                   | 0.96     | 0.84    | 3.3     | —        | scores identical (unused by templates yet); L-notch renders 768 px, square == box mask, 64-gon < 1 k tris                                              |
 | 2026-11-01 | PR-2.2 profile body (outline extrude + wells + notches)                | 0.97     | 0.84    | 3.4     | —        | car 92 → 93 (IoU 0.97, edge 0.92, ΔE 3.2); fridge steady 97; fixed mid-loop: global band cut → per-wheel wells, yaw squeeze in world units             |
 | 2026-11-01 | PR-2.3 `lathe` primitive (profile + frustum ray clip)                  | 0.97     | 0.85    | 3.4     | —        | lamp 86 → 87 (IoU 0.95, edge 0.91, ΔE steady 7.3); tank unmeasured (not golden); fixed mid-loop: flat annuli, cap normals, eased (not round) lamp bowl |
+| 2026-11-01 | PR-2.4 lathe body (outline half-width rows + render fix)               | 0.98     | 0.91    | 3.4     | —        | tree 89 → 99 (IoU 0.99, edge 0.99), lamp 87 → 89 (ΔE 7.3 → 7.4); hot-loop rewrite after budget blow (render 132 → 32 ms, pixels identical)             |

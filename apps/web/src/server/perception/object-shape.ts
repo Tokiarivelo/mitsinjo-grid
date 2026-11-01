@@ -22,6 +22,7 @@ import { fitSilhouette } from './silhouette-fit';
 import { EDGE_COLUMNS, sampleObjectGray, sampleObjectPixels } from './shape-colors';
 import { cropForShape } from './shape-crop';
 import { extractSwatches } from './photo-swatches';
+import { withLatheBody } from './lathe-body';
 import { withProfileBody } from './profile-body';
 import { scoreRecipe } from './score-shape';
 import { generateImaginedViews } from './views-generation';
@@ -259,15 +260,27 @@ export async function runObjectShape(
           `[vision] 3D fit for "${target.label}": iou=${fit.iou} (start ${fit.iouStart}, ${fit.evals} evals) units=${finalKit?.details?.units ?? 1} yaw=${Math.round(((recipe.yaw ?? 0) * 180) / Math.PI)}° · confidence colours ${conf.colors}, yaw ${conf.yaw}, fit ${conf.fit}`
         );
       }
-      // PR-2.2: side-seen bodies follow the SAM outline; the shipped silhouette is re-scored.
+      // PR-2.2 + PR-2.4: side-seen and round bodies follow the SAM outline; the shipped
+      // silhouette is re-scored.
       let fitIou = fit?.iou;
       if (finalKit) {
+        let reshaped: 'profile' | 'lathe' | null = null;
         const profiled = withProfileBody(finalKit.archetype, recipe, target, aspect);
         if (profiled !== recipe) {
           recipe = profiled;
+          reshaped = 'profile';
+        }
+        const lathed = withLatheBody(finalKit.archetype, recipe, target);
+        if (lathed !== recipe) {
+          recipe = lathed;
+          reshaped = 'lathe';
+        }
+        if (reshaped) {
           const main = recipe.parts[frontPartIndex(recipe)]!;
           console.info(
-            `[vision] 3D profile for "${target.label}": outline body, ${main.points?.length ?? 0} pts`
+            reshaped === 'profile'
+              ? `[vision] 3D profile for "${target.label}": outline body, ${main.points?.length ?? 0} pts`
+              : `[vision] 3D lathe for "${target.label}": outline body, ${main.profile?.length ?? 0} rows`
           );
           if (photo) {
             try {

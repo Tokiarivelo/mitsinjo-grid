@@ -114,8 +114,11 @@ function clipQuadric(s: Span, a: number, b: number, c: number, at: (t: number) =
     else {
       // Stable roots (no cancellation when `a` is tiny: a long cylinder seen almost along its axis).
       const q = -(b + (b < 0 ? -1 : 1) * Math.sqrt(disc)) / 2;
-      const roots = q === 0 ? [0, 0] : [q / a, c / q];
-      const [t1, t2] = roots.sort((p, r) => p - r) as [number, number];
+      // Ordered pair without a sort closure: the hot loop calls this per pixel per segment.
+      const ra = q === 0 ? 0 : q / a;
+      const rb = q === 0 ? 0 : c / q;
+      const t1 = Math.min(ra, rb);
+      const t2 = Math.max(ra, rb);
       pieces =
         a > 0
           ? [[t1, t2]]
@@ -215,22 +218,57 @@ function clipPolygon(s: Span, o: V3, d: V3, ring: ReadonlyArray<Pt2>): void {
   s.n = n;
 }
 
+const Y_UP: V3 = [0, 1, 0];
+const Y_DOWN: V3 = [0, -1, 0];
+/** Placeholder normal for the shared scratch span; the winner's real normal is set below. */
+const NO_NORMAL: V3 = [0, 0, 0];
+const dummyAt = (): V3 => NO_NORMAL;
+
+/** Outward cone normal at ray parameter `t` on the frustum (r0, y0) → (r1, y1). */
+function frustumNormal(
+  o: V3,
+  d: V3,
+  r0: number,
+  r1: number,
+  y0: number,
+  y1: number,
+  t: number
+): V3 {
+  const px = o[0] + d[0] * t;
+  const py = o[1] + d[1] * t;
+  const pz = o[2] + d[2] * t;
+  const dr = r1 - r0;
+  const m = dr === 0 ? 0 : dr / (y1 - y0);
+  const rr = r0 + dr * ((py - y0) / (y1 - y0));
+  return [px, 0 - m * rr, pz];
+}
+
 /**
  * Front-most ray hit on a lathe profile (PR-2.3): each segment is a cone frustum (or tube when
  * both radii match), solved with the tested quadric clipper inside its own y-slab; the nearest
  * segment wins. Slab entries lose the merge except at true rims (caps), where the plane normal
  * is the cap normal — so no flat bands at profile joints.
+ *
+ * Hot loop (per pixel per segment): the slab clips are inline scalars and one Span is reused,
+ * so the loop allocates nothing except the winner's normal. Same tin/tout/n as the clipping
+ * version — the quadric still decides, the cone normal applies exactly when its entry is in
+ * front of the slab entry.
  */
 function clipLathe(s: Span, o: V3, d: V3, profile: ReadonlyArray<Pt2>): void {
   const [ox, oy, oz] = o;
-  let best: Span | null = null;
+  const dy = d[1];
+  const t: Span = { tin: 0, tout: 0, n: null };
+  let hasBest = false;
+  let bestTin = 0;
+  let bestTout = 0;
+  let bestN: V3 | null = null;
   for (let i = 0; i + 1 < profile.length; i++) {
     const [r0, y0] = profile[i]!;
     const [r1, y1] = profile[i + 1]!;
     if (!(y1 > y0)) {
       // Flat annulus (rim or flange): disk hit at the plane, normal facing the ray.
-      if (Math.abs(d[1]) < 1e-12) continue;
-      const tHit = (y0 - oy) / d[1];
+      if (Math.abs(dy) < 1e-12) continue;
+      const tHit = (y0 - oy) / dy;
       if (!(tHit > s.tin) || !(tHit < s.tout)) continue;
       const px = ox + d[0] * tHit;
       const pz = oz + d[2] * tHit;
@@ -238,45 +276,71 @@ function clipLathe(s: Span, o: V3, d: V3, profile: ReadonlyArray<Pt2>): void {
       const a0 = Math.min(r0, r1);
       const a1 = Math.max(r0, r1);
       if (rr < a0 * a0 || rr > a1 * a1) continue;
-      if (!best || tHit < best.tin)
-        best = { tin: tHit, tout: tHit + 1e-9, n: [0, d[1] > 0 ? -1 : 1, 0] };
+      if (!hasBest || tHit < bestTin) {
+        hasBest = true;
+        bestTin = tHit;
+        bestTout = tHit + 1e-9;
+        bestN = [0, dy > 0 ? -1 : 1, 0];
+      }
       continue;
     }
+    // The two y-slab clips as scalar math (same thresholds and strictness as clipPlane).
     // Carry the incoming normal: a slab coinciding with an already-clipped plane keeps
     // its tin, and the cap normal with it (dropping it punches cap holes from above).
-    const t: Span = { tin: s.tin, tout: s.tout, n: s.n };
-    clipPlane(t, o, d, [0, 1, 0], y1);
-    clipPlane(t, o, d, [0, -1, 0], -y0);
-    if (!(t.tin < t.tout)) continue;
+    let tin = s.tin;
+    let tout = s.tout;
+    let n: V3 | null = s.n;
+    if (Math.abs(dy) < 1e-12) {
+      if (oy > y1 || oy < y0) continue;
+    } else if (dy < 0) {
+      const ta = (y1 - oy) / dy;
+      if (ta > tin) {
+        tin = ta;
+        n = Y_UP;
+      }
+      const tb = (y0 - oy) / dy;
+      if (tb < tout) tout = tb;
+      if (!(tin < tout)) continue;
+    } else {
+      const tb = (y1 - oy) / dy;
+      if (tb < tout) tout = tb;
+      const ta = (y0 - oy) / dy;
+      if (ta > tin) {
+        tin = ta;
+        n = Y_DOWN;
+      }
+      if (!(tin < tout)) continue;
+    }
     // Radius along the ray: r(t) = q0 + q1·t, linear in y like the cone case.
     const dr = r1 - r0;
     const u = (oy - y0) / (y1 - y0);
-    const v = d[1] / (y1 - y0);
+    const v = dy / (y1 - y0);
     const q0 = r0 + dr * u;
     const q1 = dr === 0 ? 0 : dr * v;
-    const m = dr === 0 ? 0 : dr / (y1 - y0);
+    t.tin = tin;
+    t.tout = tout;
+    t.n = null;
     clipQuadric(
       t,
       d[0] * d[0] + d[2] * d[2] - q1 * q1,
       2 * (ox * d[0] + oz * d[2] - q0 * q1),
       ox * ox + oz * oz - q0 * q0,
-      (tt) => {
-        const px = ox + d[0] * tt;
-        const py = oy + d[1] * tt;
-        const pz = oz + d[2] * tt;
-        const rr = r0 + dr * ((py - y0) / (y1 - y0));
-        return [px, 0 - m * rr, pz];
-      }
+      dummyAt
     );
-    if (t.tin < t.tout && (!best || t.tin < best.tin)) best = t;
+    if (!(t.tin < t.tout)) continue;
+    if (hasBest && !(t.tin < bestTin)) continue;
+    hasBest = true;
+    bestTin = t.tin;
+    bestTout = t.tout;
+    bestN = t.tin > tin ? frustumNormal(o, d, r0, r1, y0, y1, t.tin) : n;
   }
-  if (!best) {
+  if (!hasBest) {
     s.tout = -Infinity;
     return;
   }
-  s.tin = best.tin;
-  s.tout = best.tout;
-  s.n = best.n;
+  s.tin = bestTin;
+  s.tout = bestTout;
+  s.n = bestN;
 }
 
 /** Ray (unit space) through one unit primitive (1 × 1 × 1 bounds, as the viewer's `unitPart`). */
