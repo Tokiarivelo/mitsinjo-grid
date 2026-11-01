@@ -147,3 +147,25 @@ describe('row of houses (PF-T4)', () => {
     expect(kitToRecipe(kit('house', { units: 1 }))).toEqual(kitToRecipe(kit('house')));
   });
 });
+
+describe('materials (AI)', () => {
+  it('each part takes the material and colour of its role: stone walls, slate roof, glass windows', () => {
+    const r = kitToRecipe({
+      ...kit('house', { windows: 2, doors: 1 }),
+      materials: { main: 'stone', secondary: 'slate', accent: 'glass' },
+    });
+    const walls = r.parts.find((p) => p.front)!;
+    expect(walls).toMatchObject({ material: 'stone', color: '#c9a36a' });
+    const windows = r.parts.filter((p) => p.color === '#ffffff');
+    expect(windows.length).toBe(2);
+    for (const w of windows) expect(w.material).toBe('glass');
+    expect(r.parts.some((p) => p.material === 'slate')).toBe(true);
+    expect(ObjectRecipeSchema.safeParse(r).success).toBe(true);
+  });
+
+  it('no materials → parts have none, colours unchanged (as before)', () => {
+    const r = kitToRecipe(kit('cabinet'));
+    expect(r.parts.every((p) => p.material === undefined)).toBe(true);
+    expect(r.parts[0]!.color).toBe('#c9a36a');
+  });
+});

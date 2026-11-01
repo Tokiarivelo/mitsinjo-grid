@@ -35,6 +35,6 @@
 
 - PF-T3: `roofline.ts`, `withMeasuredRoof`, `KitRoof`, `prism`/`apex`, `unitPrism`, V57. Docs: contracts, copilot, PV-shape-fidelity.
 - PF-T4: `perception/repetition.ts`, `sampleObjectGray`, `withMeasuredRepetition`, `details.units`, V58.
-- Photo removed from 3D: `object-geometry.ts`, `object-editor-3d.tsx`, V55/V59 rewritten.
+- Photo removed from 3D (V55/V59 rewritten); AI materials: `RECIPE_MATERIALS`, `kit.materials`, `surface-look.ts`, panel line, V60.
 - PF-T5: `perception/perspective.ts`, `measuredYaw`, `recipe.yaw`, `fitRecipe(…, yaw)`, `recipeMesh` rotateY, test fixture `render-facade.ts`, V59.
 - Earlier: shape (`lib/object-*`, `server/perception/*`, `api/vision/shape`, `use-object-shape`, `ui/object-*`); boxes: `utils/stacking.ts`, `detection-canvas`, `draw-overlay`, `globals.css`, `village-editor-page`; docs: copilot, contracts, PV task, PV-free-placement (new), tasks README; messages ×3; scenarios V47–V54.

@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Box, Check, Circle, Loader2, Move3d, RotateCcw, Sparkles } from 'lucide-react';
+import { Box, Check, Circle, Layers, Loader2, Move3d, RotateCcw, Sparkles } from 'lucide-react';
 import { useWebGLAvailable } from '@/features/microgrid-3d';
 import { useTranslations } from '@/lib/i18n';
 import {
@@ -14,6 +14,7 @@ import type { ApplianceDetection } from '@/lib/vision';
 import { cn } from '@/lib/utils';
 import { useElapsedSeconds } from '../hooks/use-elapsed-seconds';
 import type { ObjectShapeState } from '../hooks/use-object-shape';
+import { recipeMaterials } from '../utils/surface-look';
 
 /** Placeholder while the viewer chunk loads or Spark builds the recipe. */
 function ViewerSkeleton() {
@@ -116,6 +117,7 @@ export function ObjectShapePanel({
   const t = useTranslations('features.visionInsert');
   const webgl = useWebGLAvailable();
   const ready = status === 'ready' && shape?.detectionId === detection.id;
+  const materials = ready && shape?.recipe ? recipeMaterials(shape.recipe) : [];
   const loading = status === 'loading';
   const seconds = useElapsedSeconds(startedAt, status === 'loading');
 
@@ -208,6 +210,14 @@ export function ObjectShapePanel({
             </button>
           )}
         </div>
+      )}
+      {ready && materials.length > 0 && (
+        <p className="flex items-start gap-1.5 text-xs text-ai-violet">
+          <Layers className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+          {t('model3dMaterials', {
+            list: materials.map((m) => t(`model3dMaterial.${m}`)).join(' · '),
+          })}
+        </p>
       )}
       {ready && webgl && (
         <p className="flex items-center gap-1.5 text-xs text-text-muted">

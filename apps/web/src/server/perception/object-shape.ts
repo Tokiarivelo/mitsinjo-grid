@@ -211,7 +211,7 @@ export async function runObjectShape(
         return silhouette(issue, source);
       }
       console.info(
-        `[vision] 3D recipe for "${target.label}": ${recipe.parts.length} parts in ${seconds} s (${found.model})`
+        `[vision] 3D recipe for "${target.label}": ${recipe.parts.length} parts in ${seconds} s (${found.model})${found.kit?.materials ? `, materials ${Object.values(found.kit.materials).join('/')}` : ''}`
       );
       return { ...base, mode: 'recipe', recipe, ...source };
     }

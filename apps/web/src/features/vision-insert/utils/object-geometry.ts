@@ -2,6 +2,7 @@ import type { ApplianceCategory } from '@mitsinjo/engine';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { ObjectRecipe, RecipePart } from '@/lib/object-shape';
+import { surfaceIndex } from './surface-look';
 import { type ApplianceDetection, type NormBox, type SceneryType } from '@/lib/vision';
 
 /**
@@ -113,10 +114,17 @@ function unitPart(shape: RecipePart['shape'], apex?: number): THREE.BufferGeomet
 
 const color = new THREE.Color();
 
-/** Recipe → one merged, vertex-coloured body (windows, doors, roofs are parts of their own colour). */
+/**
+ * Recipe → one merged, vertex-coloured body (windows, doors, roofs are parts of their own colour).
+ * Parts are grouped by material: one geometry group per surface, `materialIndex` = `surfaceIndex`, so the
+ * view draws stone matte and glass shiny in one mesh.
+ */
 export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
   const dims = [recipe.proportions.w, recipe.proportions.h, recipe.proportions.d] as const;
-  const parts = recipe.parts.map((p) => {
+  const sorted = recipe.parts
+    .map((p) => ({ p, surface: surfaceIndex(p.material) }))
+    .sort((a, b) => a.surface - b.surface);
+  const parts = sorted.map(({ p }) => {
     const g = unitPart(p.shape, p.apex);
     // Round parts turn to their axis before taking the part's own x / y / z extent.
     if (p.axis === 'x') g.rotateZ(Math.PI / 2);
@@ -133,6 +141,15 @@ export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
     return g;
   });
   const body = mergeGeometries(parts) ?? new THREE.BufferGeometry();
+  body.clearGroups();
+  let start = 0;
+  parts.forEach((g, i) => {
+    const count = g.getAttribute('position').count;
+    const surface = sorted[i]!.surface;
+    if (i > 0 && sorted[i - 1]!.surface === surface) body.groups.at(-1)!.count += count;
+    else body.addGroup(start, count, surface);
+    start += count;
+  });
   parts.forEach((g) => g.dispose());
   return body;
 }

@@ -44,7 +44,7 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
   `describeShape` (PV-T9, `shape.ts` + `object-shape.ts`): **Meta models only** (no photo→3D model on the Meta API, checked
   2026-10-31). One Spark call on a square crop around the selected object (`shape-crop.ts`: 1.6× its long side, upscaled to
   640–768 px so a 20 px lamp post is readable, outside lightly dimmed), told the box width / height ratio and the archetype the
-  detection implies. **Kit, not coordinates (PV-T9b):** JSON schema `ObjectKit` (`archetype` among 17, `proportions`, 3 colours,
+  detection implies. **Kit, not coordinates (PV-T9b):** JSON schema `ObjectKit` (`archetype` among 17, `proportions`, 3 colours + their materials (AI: stone, slate, glass…),
   optional window / door / wheel / leg / floor / unit counts, chimney), ≈ 80 output tokens; `kitToRecipe` (`@/lib/object-kit`) builds the
   parts from fixed templates. **Measured colours (PF-T2):** while Spark answers, `sampleObjectPixels` reads the box (≤ 96 px)
   inside the SAM outline; `measureKitColors` (k-means k = 5 in CIELAB, farthest-point start, roles by vertical band per archetype)

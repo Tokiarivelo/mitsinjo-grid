@@ -831,7 +831,25 @@
       "adjustTitle": "Adjusting the box of {label}",
       "adjustHint": "Drag the box or its corners. Keyboard: arrows move it, Shift + arrows resize it. Zoom in for precision.",
       "adjustSave": "Save the box",
-      "adjustedBadge": "Adjusted"
+      "adjustedBadge": "Adjusted",
+      "model3dMaterials": "Materials (AI): {list}",
+      "model3dMaterial": {
+        "stone": "stone",
+        "brick": "brick",
+        "plaster": "plaster",
+        "concrete": "concrete",
+        "wood": "wood",
+        "thatch": "thatch",
+        "tile": "tiles",
+        "slate": "slate",
+        "metal": "metal",
+        "glass": "glass",
+        "plastic": "plastic",
+        "fabric": "fabric",
+        "rubber": "rubber",
+        "foliage": "leaves",
+        "water": "water"
+      }
     }
   },
   "copilot": {

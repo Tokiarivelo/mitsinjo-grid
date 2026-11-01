@@ -70,6 +70,25 @@ describe('parseKit (PV-T9b)', () => {
   });
 });
 
+describe('parseKit materials (AI)', () => {
+  it('keeps known materials per role, drops unknown ones', () => {
+    const k = parseKit(
+      reply({
+        archetype: 'house',
+        proportions: { w: 1, h: 0.6, d: 0.6 },
+        colors: { main: '#c9a36a', secondary: '#6e6a62', accent: '#ffffff' },
+        materials: { main: 'stone', secondary: 'marble', accent: 'glass' },
+      })
+    );
+    expect(k?.materials).toEqual({ main: 'stone', accent: 'glass' });
+  });
+
+  it('asks Spark for materials in the prompt and the JSON schema', () => {
+    expect(SHAPE_SYSTEM_PROMPT).toContain('materials');
+    expect(SHAPE_JSON_SCHEMA.schema.properties.materials.properties.main.enum).toContain('slate');
+  });
+});
+
 describe('mockRecipe', () => {
   it('gives a valid, usable recipe for every category', () => {
     for (const c of APPLIANCE_CATEGORIES) {

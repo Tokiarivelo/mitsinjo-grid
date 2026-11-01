@@ -7,7 +7,7 @@ import {
   type KitArchetype,
   type ObjectKit,
 } from '@/lib/object-kit';
-import type { ObjectRecipe, RecipePart } from '@/lib/object-shape';
+import { RECIPE_MATERIALS, type ObjectRecipe, type RecipePart } from '@/lib/object-shape';
 
 /**
  * Prompts and parsing for the Spark 3D « kit » of one object (PV-T9b). Spark only classifies and reads
@@ -22,6 +22,7 @@ export const SHAPE_SYSTEM_PROMPT = [
   'proportions = real width, height, depth of the object, largest = 1 (guess the depth from what it is).',
   'colors: main = the biggest surface (walls, body, canopy), secondary = roof, stand, trunk or frame,',
   'accent = glass, windows, handle, lamp or wheels; each #rrggbb as seen.',
+  `materials: what main, secondary and accent are made of, each one of: ${RECIPE_MATERIALS.join(', ')} (e.g. stone walls, slate roof, glass windows).`,
   'details (optional, small integers): windows on the front face, doors, wheels, legs, floors, chimney, units (houses side by side in a row).',
   'Never give watts, kW or any energy value.',
 ].join(' ');
@@ -42,6 +43,7 @@ export function shapeQuestion(label: string, aspect?: number, hint?: KitArchetyp
 
 const color = { type: 'string' };
 const int = { type: 'integer' };
+const material = { type: 'string', enum: [...RECIPE_MATERIALS] };
 
 export const SHAPE_JSON_SCHEMA = {
   name: 'ObjectKit',
@@ -58,6 +60,10 @@ export const SHAPE_JSON_SCHEMA = {
         type: 'object',
         properties: { main: color, secondary: color, accent: color },
         required: ['main', 'secondary', 'accent'],
+      },
+      materials: {
+        type: 'object',
+        properties: { main: material, secondary: material, accent: material },
       },
       details: {
         type: 'object',
@@ -84,6 +90,7 @@ const ReplySchema = z.object({
   archetype: z.string(),
   proportions: z.object({ w: z.number(), h: z.number(), d: z.number() }),
   colors: z.record(z.string(), z.unknown()).optional(),
+  materials: z.record(z.string(), z.unknown()).optional(),
   details: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -92,7 +99,7 @@ const LIMITS = { windows: 8, doors: 3, wheels: 6, legs: 4, floors: 4, units: 8 }
 /**
  * Spark reply → kit, or null when it is not JSON or misses the archetype / proportions.
  * Lenient: unknown archetype → `fallback`, proportions rescaled (largest = 1), bad colour → grey,
- * counts rounded and clamped, unknown details dropped.
+ * counts rounded and clamped, unknown details and materials dropped.
  */
 export function parseKit(content: string, fallback: KitArchetype = 'other'): ObjectKit | null {
   let json: unknown;
@@ -117,6 +124,12 @@ export function parseKit(content: string, fallback: KitArchetype = 'other'): Obj
     if (typeof v === 'number' && Number.isFinite(v)) details[k] = clamp(Math.round(v), 0, lim);
   }
   if (reply.data.details?.chimney === true) details.chimney = true;
+  const materials: NonNullable<ObjectKit['materials']> = {};
+  for (const k of ['main', 'secondary', 'accent'] as const) {
+    const v = reply.data.materials?.[k];
+    const m = RECIPE_MATERIALS.find((x) => x === v);
+    if (m) materials[k] = m;
+  }
   const kit = ObjectKitSchema.safeParse({
     archetype,
     proportions: {
@@ -125,6 +138,7 @@ export function parseKit(content: string, fallback: KitArchetype = 'other'): Obj
       d: clamp(d / max, 0.01, 1),
     },
     colors: { main: pick('main'), secondary: pick('secondary'), accent: pick('accent') },
+    ...(Object.keys(materials).length ? { materials } : {}),
     ...(Object.keys(details).length ? { details } : {}),
   });
   return kit.success ? kit.data : null;

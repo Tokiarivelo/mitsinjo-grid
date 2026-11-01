@@ -1,6 +1,6 @@
 import type { ApplianceCategory } from '@mitsinjo/engine';
 import { z } from 'zod';
-import type { ObjectRecipe, RecipePart } from './object-shape';
+import { RecipeMaterialSchema, type ObjectRecipe, type RecipePart } from './object-shape';
 import type { SceneryType } from './vision';
 
 /**
@@ -64,6 +64,14 @@ export const ObjectKitSchema = z.object({
   }),
   /** main = biggest surface (walls, body), secondary = roof / stand / trunk, accent = glass, handle, lamp. */
   colors: z.object({ main: hex, secondary: hex, accent: hex }),
+  /** What each colour role is made of, named by Spark (stone walls, slate roof, glass windows). */
+  materials: z
+    .object({
+      main: RecipeMaterialSchema.optional(),
+      secondary: RecipeMaterialSchema.optional(),
+      accent: RecipeMaterialSchema.optional(),
+    })
+    .optional(),
   /** Front windows (houses: per floor), doors, wheels, legs, floors. Absent = template default. */
   details: z
     .object({
@@ -326,10 +334,29 @@ const TEMPLATES: Record<KitArchetype, Template> = {
   other: ({ colors: c }) => [part('box', [0, 0, 0], [1, 1, 1], c.main, { front: true })],
 };
 
-/** Kit → parts recipe (≤ 12 parts, inside the object box). Pure: same kit → same recipe. */
+type Role = keyof ObjectKit['colors'];
+/**
+ * Stand-in colours handed to the templates so each part's role (main / secondary / accent) can be read
+ * back afterwards; templates only pass colours through, so no real colour is ever one of these.
+ */
+const ROLE_TOKEN: Record<Role, string> = {
+  main: '#000001',
+  secondary: '#000002',
+  accent: '#000003',
+};
+const ROLES = Object.keys(ROLE_TOKEN) as Role[];
+
+/**
+ * Kit → parts recipe (≤ 12 parts, inside the object box). Pure: same kit → same recipe. Each part takes
+ * the colour and the material (AI, `kit.materials`) of its role.
+ */
 export function kitToRecipe(kit: ObjectKit): ObjectRecipe {
-  return {
-    proportions: kit.proportions,
-    parts: TEMPLATES[kit.archetype](kit).slice(0, 12),
-  };
+  const parts = TEMPLATES[kit.archetype]({ ...kit, colors: ROLE_TOKEN })
+    .slice(0, 12)
+    .map((p) => {
+      const role = ROLES.find((r) => ROLE_TOKEN[r] === p.color) ?? 'main';
+      const material = kit.materials?.[role];
+      return { ...p, color: kit.colors[role], ...(material ? { material } : {}) };
+    });
+  return { proportions: kit.proportions, parts };
 }

@@ -26,6 +26,30 @@ export const RECIPE_BOUND = 0.6;
  */
 export const MIN_FILL_VOLUME = 0.005;
 
+/**
+ * What a part is made of, named by Spark (the AI): the 3D view gives each its own surface (rough stone,
+ * shiny glass, metal…). Absent = a neutral painted surface.
+ */
+export const RECIPE_MATERIALS = [
+  'stone',
+  'brick',
+  'plaster',
+  'concrete',
+  'wood',
+  'thatch',
+  'tile',
+  'slate',
+  'metal',
+  'glass',
+  'plastic',
+  'fabric',
+  'rubber',
+  'foliage',
+  'water',
+] as const;
+export const RecipeMaterialSchema = z.enum(RECIPE_MATERIALS);
+export type RecipeMaterial = z.infer<typeof RecipeMaterialSchema>;
+
 /** Largest measured yaw (60°). */
 export const MAX_YAW = Math.PI / 3;
 
@@ -45,6 +69,8 @@ export const RecipePartSchema = z.object({
   /** Prism only: x of the ridge, share of the part width from its left edge (default 0.5). */
   apex: z.number().min(0).max(1).optional(),
   color: z.string().regex(/^#[0-9a-f]{6}$/i),
+  /** What the part is made of (AI), sets its surface in the 3D view. */
+  material: RecipeMaterialSchema.optional(),
   /** Main body of the object (walls, cabinet). */
   front: z.boolean().optional(),
 });

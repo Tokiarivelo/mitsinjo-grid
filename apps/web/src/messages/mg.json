@@ -831,7 +831,25 @@
       "adjustTitle": "Fanitsiana ny efajoron'ny {label}",
       "adjustHint": "Sintony ny efajoro na ny zorony. Fitendry: zana-tsipika hamindra, Shift + zana-tsipika hanova habe. Hanalehibe mba ho marina kokoa.",
       "adjustSave": "Tehirizo ny efajoro",
-      "adjustedBadge": "Nahitsy"
+      "adjustedBadge": "Nahitsy",
+      "model3dMaterials": "Fitaovana (IA): {list}",
+      "model3dMaterial": {
+        "stone": "vato",
+        "brick": "biriky",
+        "plaster": "lalotra",
+        "concrete": "betôna",
+        "wood": "hazo",
+        "thatch": "bozaka",
+        "tile": "tuile",
+        "slate": "vato fisaka",
+        "metal": "vy",
+        "glass": "fitaratra",
+        "plastic": "plastika",
+        "fabric": "lamba",
+        "rubber": "kaoty",
+        "foliage": "ravina",
+        "water": "rano"
+      }
     }
   },
   "copilot": {

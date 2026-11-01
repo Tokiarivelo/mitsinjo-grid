@@ -8,6 +8,7 @@ import { TOKEN_HEX } from '@/features/microgrid-3d/utils/scene-palette';
 import { silhouetteRings, type ObjectShape } from '@/lib/object-shape';
 import type { ApplianceDetection } from '@/lib/vision';
 import { recipeMesh, silhouetteDepth, silhouetteMesh } from '../utils/object-geometry';
+import { SURFACE_LOOK, SURFACES } from '../utils/surface-look';
 
 export interface ObjectEditor3dProps {
   shape: ObjectShape;
@@ -38,6 +39,15 @@ function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
   );
   useEffect(() => () => mesh.dispose(), [mesh]);
   const vertexColors = shape.mode === 'recipe';
+  // One material per surface (stone matte, glass shiny…), indexed by the geometry groups.
+  const surfaces = useMemo(
+    () =>
+      SURFACES.map(
+        (s) => new THREE.MeshStandardMaterial({ vertexColors: true, ...SURFACE_LOOK[s] })
+      ),
+    []
+  );
+  useEffect(() => () => surfaces.forEach((m) => m.dispose()), [surfaces]);
   // Ground under the object (shadow sits on it), from the real geometry.
   const floorY = useMemo(() => {
     mesh.computeBoundingBox();
@@ -54,14 +64,13 @@ function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
         opacity={0.45}
         frames={1}
       />
-      <mesh geometry={mesh}>
-        <meshStandardMaterial
-          vertexColors={vertexColors}
-          color={vertexColors ? undefined : TOKEN_HEX.idle}
-          roughness={0.6}
-          metalness={0.05}
-        />
-      </mesh>
+      {vertexColors ? (
+        <mesh geometry={mesh} material={surfaces} />
+      ) : (
+        <mesh geometry={mesh}>
+          <meshStandardMaterial color={TOKEN_HEX.idle} roughness={0.6} metalness={0.05} />
+        </mesh>
+      )}
     </group>
   );
 }

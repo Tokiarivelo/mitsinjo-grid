@@ -831,7 +831,25 @@
       "adjustTitle": "Ajustement du cadre de {label}",
       "adjustHint": "Faites glisser le cadre ou ses coins. Clavier : flèches pour déplacer, Maj + flèches pour redimensionner. Zoomez pour plus de précision.",
       "adjustSave": "Enregistrer le cadre",
-      "adjustedBadge": "Ajusté"
+      "adjustedBadge": "Ajusté",
+      "model3dMaterials": "Matériaux (IA) : {list}",
+      "model3dMaterial": {
+        "stone": "pierre",
+        "brick": "brique",
+        "plaster": "enduit",
+        "concrete": "béton",
+        "wood": "bois",
+        "thatch": "chaume",
+        "tile": "tuiles",
+        "slate": "ardoise",
+        "metal": "métal",
+        "glass": "verre",
+        "plastic": "plastique",
+        "fabric": "tissu",
+        "rubber": "caoutchouc",
+        "foliage": "feuillage",
+        "water": "eau"
+      }
     }
   },
   "copilot": {
