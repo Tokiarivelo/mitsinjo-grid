@@ -6,6 +6,7 @@ import {
   KIT_ARCHETYPES,
   kitToRecipe,
   ObjectKitSchema,
+  TAIL_LIGHT_COLOR,
   type ObjectKit,
 } from '../object-kit';
 import { fitRecipe, ObjectRecipeSchema, recipeIssue } from '../object-shape';
@@ -63,6 +64,79 @@ describe('kitToRecipe (PV-T9b)', () => {
       expect(r.parts.filter((p) => p.front)).toHaveLength(1);
       expect(recipeIssue(fitRecipe(r, 1.8))).toBeNull();
     }
+  });
+
+  it('fixed signal colours pass through untouched, role colours still map', () => {
+    const r = kitToRecipe({ ...kit('vehicle'), subtype: 'sedan' });
+    const tails = r.parts.filter((p) => p.color === TAIL_LIGHT_COLOR);
+    expect(tails).toHaveLength(2);
+    for (const t of tails) expect(t.material).toBeUndefined();
+    // Roles still map to the kit colours and materials.
+    const r2 = kitToRecipe({
+      ...kit('vehicle'),
+      subtype: 'sedan',
+      materials: { main: 'metal', secondary: 'glass', accent: 'rubber' },
+    });
+    expect(r2.parts.find((p) => p.front)).toMatchObject({ color: '#c9a36a', material: 'metal' });
+    expect(r2.parts.filter((p) => p.color === TAIL_LIGHT_COLOR)).toHaveLength(2);
+  });
+});
+
+describe('vehicle rears (PR-2.11)', () => {
+  const lenses = (subtype?: string) =>
+    kitToRecipe({ ...kit('vehicle'), ...(subtype ? { subtype } : {}) }).parts.filter(
+      (p) => p.shape === 'cylinder' && p.axis === 'x'
+    );
+
+  it('sedan, van and pickup carry two red lenses at −x mirroring the headlights', () => {
+    for (const sub of [undefined, 'sedan', 'van', 'pickup']) {
+      const r = kitToRecipe({ ...kit('vehicle'), ...(sub ? { subtype: sub } : {}) });
+      const tails = r.parts.filter((p) => p.color === TAIL_LIGHT_COLOR);
+      expect(tails, sub ?? 'default').toHaveLength(2);
+      const heads = lenses(sub).filter((p) => p.color !== TAIL_LIGHT_COLOR);
+      expect(heads).toHaveLength(2);
+      for (const t of tails) {
+        expect(t.shape).toBe('cylinder');
+        expect(t.at[0]).toBeCloseTo(-0.49, 9);
+        const mirror = heads.find((h) => Math.abs(h.at[2]! - t.at[2]!) < 1e-9)!;
+        expect(mirror.at[0]).toBeCloseTo(0.49, 9);
+        expect([t.at[1], t.size[0], t.size[1], t.size[2]]).toEqual([
+          mirror.at[1],
+          mirror.size[0],
+          mirror.size[1],
+          mirror.size[2],
+        ]);
+      }
+      expect(r.parts.length).toBeLessThanOrEqual(12);
+      expect(ObjectRecipeSchema.safeParse(r).success).toBe(true);
+      expect(recipeIssue(fitRecipe(r, 1.8))).toBeNull();
+    }
+  });
+
+  it('each rear is distinct: sedan trunk slope, van rear bumper, pickup bed; bike has none', () => {
+    const sedan = kitToRecipe({ ...kit('vehicle'), subtype: 'sedan' });
+    // Trunk slope prism at the back, no bumper boxes left (they were coplanar and invisible).
+    const trunk = sedan.parts.find((p) => p.shape === 'prism' && p.at[0]! < 0)!;
+    expect(trunk.apex).toBe(1);
+    expect(
+      sedan.parts.filter((p) => p.shape === 'box' && !p.front && p.size[2]! > 0.5)
+    ).toHaveLength(1);
+    const van = kitToRecipe({ ...kit('vehicle'), subtype: 'van' });
+    const vanBumpers = van.parts.filter((p) => p.shape === 'box' && p.size[0] === 0.04);
+    expect(vanBumpers).toHaveLength(1);
+    expect(vanBumpers[0]!.at[0]).toBeLessThan(0);
+    const pickup = kitToRecipe({ ...kit('vehicle'), subtype: 'pickup' });
+    expect(pickup.parts.some((p) => p.shape === 'box' && p.at[0]! < 0 && p.at[1]! > 0)).toBe(true);
+    expect(pickup.parts.filter((p) => p.shape === 'box' && p.size[0] === 0.04)).toHaveLength(0);
+    const bike = kitToRecipe({ ...kit('vehicle'), subtype: 'motorbike' });
+    expect(bike.parts.filter((p) => p.color === TAIL_LIGHT_COLOR)).toHaveLength(0);
+  });
+
+  it('a 6-wheel van keeps its wheels and drops the red lenses first', () => {
+    const r = kitToRecipe({ ...kit('vehicle', { wheels: 6 }), subtype: 'van' });
+    expect(r.parts).toHaveLength(12);
+    expect(r.parts.filter((p) => p.shape === 'cylinder' && p.axis === 'z')).toHaveLength(6);
+    expect(r.parts.filter((p) => p.color === TAIL_LIGHT_COLOR)).toHaveLength(0);
   });
 });
 

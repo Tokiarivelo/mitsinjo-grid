@@ -388,7 +388,7 @@ export const TEMPLATES: Record<KitArchetype, Template> = {
         part('box', [0, -0.08, 0], [1.0, 0.44, 0.9], c.main, { front: true }),
         part('box', [-0.04, 0.28, 0], [0.84, 0.36, 0.84], c.secondary),
         part('prism', [0.44, 0.28, 0], [0.12, 0.36, 0.84], c.accent, { apex: 0 }),
-        part('box', [0.5, -0.18, 0], [0.04, 0.14, 0.88], c.accent),
+        // Rear bumper only: the front one funded the red lenses (PR-2.11).
         part('box', [-0.5, -0.18, 0], [0.04, 0.14, 0.88], c.accent),
         part('cylinder', [0.49, 0.02, 0.3], [0.03, 0.09, 0.09], c.accent, { axis: 'x' }),
         part('cylinder', [0.49, 0.02, -0.3], [0.03, 0.09, 0.09], c.accent, { axis: 'x' }),
@@ -396,41 +396,47 @@ export const TEMPLATES: Record<KitArchetype, Template> = {
           part('cylinder', [x, -0.38, 0.44], [0.22, 0.22, 0.14], c.accent, { axis: 'z' }),
           part('cylinder', [x, -0.38, -0.44], [0.22, 0.22, 0.14], c.accent, { axis: 'z' }),
         ]),
+        // Red rear lenses last: the 12-part slice drops them before a wheel (PR-2.11).
+        part('cylinder', [-0.49, 0.02, 0.3], [0.03, 0.09, 0.09], TAIL_LIGHT_COLOR, { axis: 'x' }),
+        part('cylinder', [-0.49, 0.02, -0.3], [0.03, 0.09, 0.09], TAIL_LIGHT_COLOR, { axis: 'x' }),
       ].slice(0, 12);
     }
 
-    // Pickup / truck:
+    // Pickup / truck: open bed at the back, red lenses at its rear corners (PR-2.11).
     if (sub === 'pickup' || sub === 'truck') {
       return [
         part('box', [0, -0.1, 0], [1.0, 0.4, 0.9], c.main, { front: true }),
         part('box', [0.14, 0.28, 0], [0.44, 0.36, 0.84], c.secondary),
         part('prism', [0.42, 0.28, 0], [0.14, 0.36, 0.84], c.accent, { apex: 0 }),
         part('box', [-0.25, 0.14, 0], [0.46, 0.08, 0.86], c.secondary),
-        part('box', [0.5, -0.2, 0], [0.04, 0.14, 0.88], c.accent),
         part('cylinder', [0.32, -0.38, 0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
         part('cylinder', [0.32, -0.38, -0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
         part('cylinder', [-0.3, -0.38, 0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
         part('cylinder', [-0.3, -0.38, -0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
         part('cylinder', [0.49, 0.02, 0.3], [0.03, 0.09, 0.09], c.accent, { axis: 'x' }),
         part('cylinder', [0.49, 0.02, -0.3], [0.03, 0.09, 0.09], c.accent, { axis: 'x' }),
+        part('cylinder', [-0.49, 0.02, 0.3], [0.03, 0.09, 0.09], TAIL_LIGHT_COLOR, { axis: 'x' }),
+        part('cylinder', [-0.49, 0.02, -0.3], [0.03, 0.09, 0.09], TAIL_LIGHT_COLOR, { axis: 'x' }),
       ];
     }
 
     // Classic car / vintage / hatchback / sedan (Mini Cooper, etc.):
-    // Sleek, recognizable vehicle with sloped windshield, sloped rear, 4 wheels, bumpers, headlights.
+    // Sleek, recognizable vehicle with sloped windshield, sloped rear, 4 wheels, headlights and red
+    // taillights. The bumpers sat coplanar with the body in its own colour (invisible): the rear
+    // reads through the trunk slope and the red lenses instead (PR-2.11).
     return [
       part('box', [0, -0.06, 0], [1.0, 0.48, 0.9], c.main, { front: true }),
       part('box', [-0.03, 0.32, 0], [0.52, 0.36, 0.82], c.secondary),
       part('prism', [0.26, 0.32, 0], [0.14, 0.36, 0.82], c.secondary, { apex: 0 }),
       part('prism', [-0.33, 0.32, 0], [0.14, 0.36, 0.82], c.secondary, { apex: 1 }),
-      part('box', [0.49, -0.16, 0], [0.02, 0.12, 0.88], c.main),
-      part('box', [-0.49, -0.16, 0], [0.02, 0.12, 0.88], c.main),
       part('cylinder', [0.25, -0.38, 0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
       part('cylinder', [0.25, -0.38, -0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
       part('cylinder', [-0.25, -0.38, 0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
       part('cylinder', [-0.25, -0.38, -0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
       part('cylinder', [0.49, 0.04, 0.28], [0.02, 0.08, 0.08], c.secondary, { axis: 'x' }),
       part('cylinder', [0.49, 0.04, -0.28], [0.02, 0.08, 0.08], c.secondary, { axis: 'x' }),
+      part('cylinder', [-0.49, 0.04, 0.28], [0.02, 0.08, 0.08], TAIL_LIGHT_COLOR, { axis: 'x' }),
+      part('cylinder', [-0.49, 0.04, -0.28], [0.02, 0.08, 0.08], TAIL_LIGHT_COLOR, { axis: 'x' }),
     ];
   },
   person: ({ colors: c }) => [
@@ -449,6 +455,13 @@ export const TEMPLATES: Record<KitArchetype, Template> = {
 };
 
 type Role = keyof ObjectKit['colors'];
+
+/**
+ * Signal red both taillights share (PR-2.11): a light lens is red on every car, so unlike body
+ * parts it is fixed rather than role-measured (same exception as the alloy `RIM_COLOR`).
+ */
+export const TAIL_LIGHT_COLOR = '#c0271c';
+
 /**
  * Stand-in colours handed to the templates so each part's role (main / secondary / accent) can be read
  * back afterwards; templates only pass colours through, so no real colour is ever one of these.
@@ -462,13 +475,15 @@ const ROLES = Object.keys(ROLE_TOKEN) as Role[];
 
 /**
  * Kit → parts recipe (≤ 12 parts, inside the object box). Pure: same kit → same recipe. Each part takes
- * the colour and the material (AI, `kit.materials`) of its role.
+ * the colour and the material (AI, `kit.materials`) of its role; fixed signal colours (taillight
+ * red) pass through untouched, with no material.
  */
 export function kitToRecipe(kit: ObjectKit): ObjectRecipe {
   const parts = TEMPLATES[kit.archetype]({ ...kit, colors: ROLE_TOKEN })
     .slice(0, 12)
     .map((p) => {
-      const role = ROLES.find((r) => ROLE_TOKEN[r] === p.color) ?? 'main';
+      const role = ROLES.find((r) => ROLE_TOKEN[r] === p.color);
+      if (!role) return p;
       const material = kit.materials?.[role];
       return { ...p, color: kit.colors[role], ...(material ? { material } : {}) };
     });

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-import { kitToRecipe, type ObjectKit } from '@/lib/object-kit';
+import { kitToRecipe, TAIL_LIGHT_COLOR, type ObjectKit } from '@/lib/object-kit';
 import {
   MAX_RECIPE_PARTS,
   ObjectRecipeSchema,
@@ -169,7 +169,7 @@ describe('withMaskPanels (PR-2.7)', () => {
     expect(left.at[1]).toBeCloseTo(0.325, 3);
     expect(left.size[0]).toBeCloseTo(0.25, 3);
     expect(left.size[1]).toBeCloseTo(0.2, 3);
-    // 12 − 4 decals (lights, bumpers) + 4 panels = 12; prisms survive.
+    // 12 − 4 light dots (heads, tails) + 4 panels = 12; prisms survive.
     expect(out.parts).toHaveLength(12);
     expect(out.parts.some((p) => p.shape === 'prism')).toBe(true);
     expect(out.parts.some((p) => p.size[0] === 0.02 && p.size[1] === 0.08)).toBe(false);
@@ -225,11 +225,13 @@ describe('withMaskPanels (PR-2.7)', () => {
     expect(panels).toHaveLength(3);
     expect(panels.every((p) => p.at[2] > 0)).toBe(true);
     expect(out.parts).toHaveLength(12);
-    // 3 near panels funded by lights ×2 + bumper ×1: prisms, wheels and one bumper survive.
+    // 3 near panels funded by 3 of the 4 light dots: prisms, wheels and one taillight survive.
     expect(out.parts.some((p) => p.shape === 'prism')).toBe(true);
     expect(out.parts.filter((p) => p.shape === 'cylinder' && p.axis === 'z')).toHaveLength(4);
-    expect(out.parts.some((p) => p.size[0] === 0.02 && p.size[2] === 0.88)).toBe(true);
-    expect(out.parts.some((p) => p.size[0] === 0.02 && p.size[1] === 0.08)).toBe(false);
+    expect(out.parts.filter((p) => p.color === TAIL_LIGHT_COLOR)).toHaveLength(1);
+    expect(out.parts.some((p) => p.shape === 'cylinder' && p.axis === 'x' && p.at[0]! > 0)).toBe(
+      false
+    );
   });
 
   it('rotated, floating and tiny masks are skipped, panels clamp into the span', () => {

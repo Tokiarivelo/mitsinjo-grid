@@ -220,11 +220,16 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
       off-house masks skipped, template stack replaced, decals fund the room. Golden cottage e2e:
       IoU 0.98 → 0.96 (no chimney in the golden outline: above-ridge pixels are false positives
       by construction), parts 9 → 10. Goldens identical; mean 93.
-- [ ] **PR-2.11 Asymmetric vehicle rears** (investigation rank 2). Templates put headlights at +x only, so
+- [x] **PR-2.11 Asymmetric vehicle rears** (investigation rank 2). Templates put headlights at +x only, so
       backs read as front copies (grep: no taillight in `object-kit.ts`). Red lens cylinders at −x plus a
       distinct rear bumper/trunk per vehicle subtype (sedan, van, pickup, motorbike: none), funded by the
       budget backstop (structure protected). Test: rear parts per subtype; ¾ sheet shows red rears; no
       golden metric down > 2.
+      Done: `TAIL_LIGHT_COLOR` fixed signal red (kitToRecipe passes non-token colours through);
+      sedan −2 coplanar invisible bumpers +2 red lenses (trunk slope kept), van −front bumper
+      (rear bumper kept), pickup −front bumper (bed kept), bike none; all ≤ 12, 6-wheel van drops
+      lenses before wheels. Mask funding tests updated (lights fund panels/wheels). Goldens
+      identical (car 93); rear renders show the lenses (136 px straight, 37 px ¾).
 - [ ] **PR-2.12 House backs + yaw gates** (investigation rank 3). Measured house panels are front-only: mirror
       them to the back like vehicle glass when the budget allows. Unify the yaw gates (profile 0.26,
       mirror 0.3) into one shared constant with defined 17–60° behaviour (panels near-only, no mirror,
@@ -319,3 +324,4 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-01 | PR-2.8 region colours (median per mask + rest)                         | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); live-car e2e stable; fixed mid-PR: median not mean (rest-mean went mauve #a0545c, median reads pure #b0302f)     |
 | 2026-11-01 | PR-2.9 Fit v2 (coordinate descent on the raw score)                    | 0.98     | 0.91    | 3.4     | —        | car 93 → 93 (edge +0.01, IoU −0.01; coarse +1.4); cottage eave no gain; car math 174 → 257 ms; panels e2e fixed                                        |
 | 2026-11-01 | PR-2.10 chimney from masks (min-area rect → stack on the roof)         | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); cottage e2e IoU 0.98 → 0.96, parts 9 → 10; fixed mid-PR: e2e mask shrunk (golden outline has no chimney)         |
+| 2026-11-01 | PR-2.11 asymmetric vehicle rears (red lenses + rear bumper/trunk)      | 0.98     | 0.91    | 3.4     | —        | goldens identical (bumpers were coplanar-invisible); masks funding tests re-pointed at the lights; probe: rear 136 px, ¾ 37 px red (deleted after)     |

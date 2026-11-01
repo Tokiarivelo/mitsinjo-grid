@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-import { kitToRecipe, type ObjectKit } from '@/lib/object-kit';
+import { kitToRecipe, TAIL_LIGHT_COLOR, type ObjectKit } from '@/lib/object-kit';
 import {
   MAX_RECIPE_PARTS,
   ObjectRecipeSchema,
@@ -115,10 +115,13 @@ describe('withMaskWheels (PR-2.6)', () => {
     expect(far.every((p) => p.color === '#1c1c1e')).toBe(true);
     expect(out.parts.length).toBeLessThanOrEqual(MAX_RECIPE_PARTS);
     expect(out.parts).toHaveLength(12);
-    // Budget backstop dropped the two headlight dots, never the body or the glasshouse.
+    // Budget backstop dropped the two headlight dots first of the four light dots; the
+    // red lenses stay, never the body or the glasshouse.
     expect(out.parts.some((p) => p.front)).toBe(true);
-    expect(out.parts.some((p) => p.size[0] === 0.02 && p.size[1] === 0.08)).toBe(false);
-    expect(out.parts.some((p) => p.size[0] === 0.02 && p.size[2] === 0.88)).toBe(true);
+    expect(out.parts.filter((p) => p.color === TAIL_LIGHT_COLOR)).toHaveLength(2);
+    expect(out.parts.some((p) => p.shape === 'cylinder' && p.axis === 'x' && p.at[0]! > 0)).toBe(
+      false
+    );
     expect(ObjectRecipeSchema.safeParse(out).success).toBe(true);
   });
 
