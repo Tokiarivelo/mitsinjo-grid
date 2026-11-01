@@ -194,6 +194,9 @@ make test-shape
 # 3D shape report: scores + contact sheet (photo | flat | ¾) → test-results/shape-report/
 make shape-report
 
+# Real 3D viewer shots of those recipes, dark + light (dev server running, API stubbed)
+make shape-shots
+
 # Run Playwright end-to-end test suite
 make e2e
 

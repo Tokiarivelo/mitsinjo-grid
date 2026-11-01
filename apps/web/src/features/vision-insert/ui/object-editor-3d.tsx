@@ -1,9 +1,10 @@
 'use client';
 
 import { Suspense, useEffect, useMemo } from 'react';
-import { Canvas, useLoader } from '@react-three/fiber';
+import { Canvas, useLoader, useThree } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { TOKEN_HEX } from '@/features/microgrid-3d/utils/scene-palette';
 import { silhouetteRings, type ObjectShape } from '@/lib/object-shape';
 import type { ApplianceDetection } from '@/lib/vision';
@@ -15,6 +16,34 @@ export interface ObjectEditor3dProps {
   detection: Pick<ApplianceDetection, 'box' | 'outline' | 'category' | 'scenery'>;
   /** The photo the object was found on: only its size is read (the photo is never pasted on the model). */
   imageUrl: string;
+}
+
+/** Strength of the studio reflections and fill (image-based light). */
+const ENV_INTENSITY = 0.9;
+
+/**
+ * Studio light (PR-1.1): a soft room (`RoomEnvironment`) pre-filtered once per canvas (PMREM, 256² faces)
+ * as `scene.environment`, so every surface gets fill light and reflections by its roughness; disposed on
+ * unmount. Replaces the hemisphere and fill lights.
+ */
+function StudioEnvironment() {
+  const get = useThree((s) => s.get);
+  useEffect(() => {
+    const { gl, scene, invalidate } = get();
+    const pmrem = new THREE.PMREMGenerator(gl);
+    const room = new RoomEnvironment();
+    const target = pmrem.fromScene(room, 0.04);
+    room.dispose();
+    pmrem.dispose();
+    scene.environment = target.texture;
+    scene.environmentIntensity = ENV_INTENSITY;
+    invalidate(); // frameloop="demand"
+    return () => {
+      scene.environment = null;
+      target.dispose();
+    };
+  }, [get]);
+  return null;
 }
 
 /** Camera on a ¾ view, far enough for a 1 × 1 × 1 object. */
@@ -78,8 +107,9 @@ function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
 /**
  * 3D view of one detected object (PV-T10): Spark recipe (measured colours) or silhouette fallback, no photo on it.
  * Orbit (drag) and zoom (pinch / wheel), no pan. `frameloop="demand"`: renders only on change.
- * Transparent canvas over the `.viewer-studio` backdrop; rim light + one baked contact shadow so a dark
- * object never melts into the background.
+ * Transparent canvas over the `.viewer-studio` backdrop. Studio light (PR-1.1): image-based room light,
+ * Khronos PBR Neutral tone mapping (keeps the measured colours; ACES shifted them), one soft key, a rim light (a dark object never melts into the background) and one
+ * baked contact shadow.
  * Load with `LazyObjectEditor3d` (no SSR) behind a WebGL check.
  */
 export function ObjectEditor3d(props: ObjectEditor3dProps) {
@@ -88,13 +118,18 @@ export function ObjectEditor3d(props: ObjectEditor3dProps) {
       frameloop="demand"
       dpr={[1, 1.5]}
       camera={{ position: CAMERA_POSITION, fov: 35, near: 0.05, far: 20 }}
-      gl={{ alpha: true, antialias: true }}
+      gl={{
+        alpha: true,
+        antialias: true,
+        toneMapping: THREE.NeutralToneMapping,
+        toneMappingExposure: 1,
+      }}
     >
-      <hemisphereLight intensity={1.2} />
-      <directionalLight position={[2, 3, 2.5]} intensity={1.6} />
-      <directionalLight position={[-2, 1, -1.5]} intensity={0.5} />
+      <StudioEnvironment />
+      {/* Soft key from the upper right front. */}
+      <directionalLight position={[2, 3, 2.5]} intensity={1.2} />
       {/* Rim light from behind: outlines dark objects (black TV, pump) against the backdrop. */}
-      <directionalLight position={[-0.5, 1.6, -3]} intensity={1.4} />
+      <directionalLight position={[-0.5, 1.6, -3]} intensity={1.1} />
       <Suspense fallback={null}>
         <ObjectModel {...props} />
       </Suspense>

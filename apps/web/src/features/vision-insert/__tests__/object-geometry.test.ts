@@ -36,6 +36,14 @@ describe('recipeMesh (PV-T10)', () => {
     expect(colors.getX(colors.count - 1)).toBeCloseTo(0); // handle black
   });
 
+  it('regression (PR-1.1): a measured colour is converted to linear once, not twice', () => {
+    // Before: `set(hex)` then `convertSRGBToLinear()` → stone #c8aa78 shown dark orange.
+    const stone: ObjectRecipe = { ...fridge, parts: [{ ...fridge.parts[0]!, color: '#808080' }] };
+    const colors = recipeMesh(stone).getAttribute('color');
+    expect(colors.getX(0)).toBeCloseTo(new THREE.Color('#808080').r, 5);
+    expect(colors.getX(0)).toBeCloseTo(0.2158, 3); // sRGB 0.5 → linear
+  });
+
   it('turns a cylinder to its axis: the x-axis handle is long along x', () => {
     const handleOnly: ObjectRecipe = { ...fridge, parts: [fridge.parts[1]!] };
     const b = bounds(recipeMesh(handleOnly));

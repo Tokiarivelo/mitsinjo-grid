@@ -60,13 +60,14 @@ describe('shape report (PR-0.3)', () => {
 
 /**
  * `make shape-report` (SHAPE_REPORT=1): the golden set → `test-results/shape-report/` (index.md +
- * contact-sheet.png). Skipped in the normal suite.
+ * contact-sheet.png + recipes.json). Skipped in the normal suite.
  */
 describe.runIf(process.env.SHAPE_REPORT)('make shape-report', () => {
   it('writes the report', async () => {
     const dir = process.env.SHAPE_REPORT_DIR ?? join(process.cwd(), 'test-results', 'shape-report');
     const rows: ReportRow[] = [];
     const sheet: SheetRow[] = [];
+    const recipes: Array<{ name: string; recipe: unknown }> = [];
     for (const c of GOLDEN_SHAPES) {
       await runGolden(c); // warm-up: `ms` is the steady-state math
       const { shape, ms, photo, target } = await runGolden(c);
@@ -74,6 +75,7 @@ describe.runIf(process.env.SHAPE_REPORT)('make shape-report', () => {
       const s = await scoreRecipe(photo, target, recipe);
       if (!s) continue;
       rows.push({ name: c.name, score: s.score, parts: recipe.parts.length, ms });
+      recipes.push({ name: c.name, recipe });
       sheet.push({
         name: `${c.name} — ${s.score.score}`,
         crop: s.crop,
@@ -85,6 +87,8 @@ describe.runIf(process.env.SHAPE_REPORT)('make shape-report', () => {
     const md = reportMarkdown(rows, new Date().toISOString().slice(0, 10));
     await writeFile(join(dir, 'index.md'), md);
     await writeFile(join(dir, 'contact-sheet.png'), await contactSheet(sheet));
+    // Fitted recipes for `make shape-shots` (the real 3D viewer, stubbed API).
+    await writeFile(join(dir, 'recipes.json'), JSON.stringify(recipes));
     console.info(`\n${md}\n→ ${dir}`);
     expect(rows.length).toBe(GOLDEN_SHAPES.length);
   }, 60_000);

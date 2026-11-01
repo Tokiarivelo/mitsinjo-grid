@@ -85,6 +85,8 @@ them after mount (re-targeting races React root unmounts and can leave a label e
 
 - Weather effects add ≤ 2 draw calls (instanced clouds + one rain `LineSegments`) and animate on the GPU (one
   uniform per frame); they keep the frame loop running only while motion is allowed.
+- Object 3D viewer (/village, PR-1.1): studio light = one `RoomEnvironment` pre-filtered once per canvas
+  (PMREM, 256² faces, disposed on unmount) + 2 directional lights; `frameloop="demand"` keeps it idle.
 - Charts in a hidden tab are not mounted (Recharts can't measure a `display:none` parent).
 
 ## 6. Loading & navigation

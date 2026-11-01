@@ -27,7 +27,8 @@
       "Read(**/pnpm-lock.yaml)",
       "Read(**/coverage/**)",
       "Read(**/playwright-report/**)",
-      "Read(**/test-results/**)",
+      "Read(./apps/*/test-results/**)",
+      "Read(./packages/*/test-results/**)",
       "Read(**/*.tsbuildinfo)",
       "Read(./.env)",
       "Read(./**/.env.local)"

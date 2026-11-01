@@ -133,7 +133,8 @@ export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
     g.translate(p.at[0] * dims[0], p.at[1] * dims[1], p.at[2] * dims[2]);
     // Measured yaw (PF-T5): turned like on the photo.
     if (recipe.yaw) g.rotateY(recipe.yaw);
-    color.set(p.color).convertSRGBToLinear();
+    // `set` already turns sRGB into the linear working space (ColorManagement): no second conversion.
+    color.set(p.color);
     const count = g.getAttribute('position').count;
     const colors = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) color.toArray(colors, i * 3);
