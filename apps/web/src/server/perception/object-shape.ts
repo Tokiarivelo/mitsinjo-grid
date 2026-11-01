@@ -19,11 +19,17 @@ import { measureRepetition, type GrayGrid, type Repetition } from './repetition'
 import { measureRoof, type RoofMeasure } from './roofline';
 import { confidence, mixColors, mixNumber, mixRecipe, pickCount } from './fusion';
 import { fitSilhouette } from './silhouette-fit';
-import { EDGE_COLUMNS, sampleObjectGray, sampleObjectPixels } from './shape-colors';
+import {
+  EDGE_COLUMNS,
+  sampleObjectGray,
+  sampleObjectPixels,
+  sampleObjectRgb,
+} from './shape-colors';
 import { cropForShape, cropRectForShape } from './shape-crop';
 import { extractSwatches } from './photo-swatches';
 import { withLatheBody } from './lathe-body';
 import { fetchPartMasks } from './part-masks';
+import { REGION_GRID, measureRegionColors, withRegionColors } from './region-colors';
 import { withMaskPanels } from './mask-panels';
 import { withMaskWheels } from './mask-wheels';
 import { withProfileBody } from './profile-body';
@@ -309,6 +315,25 @@ export async function runObjectShape(
           if (panelled !== recipe) {
             recipe = panelled;
             reshaped = 'panels';
+          }
+          // PR-2.8: each part from its own mask's pixels. Best effort, never throws; no
+          // re-score — colours don't move the silhouette IoU.
+          try {
+            const grid = await sampleObjectRgb(photo, target.box, REGION_GRID, REGION_GRID);
+            const rings = target.outline
+              ? pathToRings(target.outline).filter((r) => r.length >= 3)
+              : [];
+            const regions = measureRegionColors(grid, rings, partMasks, geom, photo, target.box);
+            const recoloured = withRegionColors(
+              finalKit.archetype,
+              recipe,
+              partMasks,
+              regions,
+              geom
+            );
+            if (recoloured !== recipe) recipe = recoloured;
+          } catch (err) {
+            console.warn('[vision] region colours failed:', err);
           }
         }
         if (reshaped) {

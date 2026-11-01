@@ -176,7 +176,10 @@ function maskPanel(
 const volume = (p: RecipePart) => p.size[0] * p.size[1] * p.size[2];
 
 /** Largest non-front box above the body's middle: the cabin shell behind the side glass. */
-function vehicleShell(parts: ReadonlyArray<RecipePart>, main: RecipePart): RecipePart | null {
+export function vehicleShell(
+  parts: ReadonlyArray<RecipePart>,
+  main: RecipePart
+): RecipePart | null {
   let shell: RecipePart | null = null;
   for (const p of parts) {
     if (p === main || p.shape !== 'box' || p.at[1] <= main.at[1]) continue;

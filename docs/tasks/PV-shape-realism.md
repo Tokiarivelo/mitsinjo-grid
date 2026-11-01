@@ -143,8 +143,15 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
       masks fetched but not consumed (needs a stack part — PR-2.9 candidate). Shared `mask-geometry`
       (mapping, `enforcePartBudget`, `isWheelPart`; mask-wheels refactored onto it, tests green).
       Live-car e2e IoU 0.97 → 0.97, 12 → 12 parts; goldens identical (no masks offline).
-- [ ] **PR-2.8 Region colours.** Each part coloured from its own mask's pixels (glass from windows, tyre from
+- [x] **PR-2.8 Region colours.** Each part coloured from its own mask's pixels (glass from windows, tyre from
       wheels, body from the rest).
+      Done: `measureRegionColors` — 96² box grid, cells to first containing mask (outline-tested,
+      box-only eroded 20% for wheel corners) or the rest pool (outline cells outside masks; skipped
+      without outline). `withRegionColors` — thin panels ← window/door regions, biggest wheel per
+      site ← tyre region (rims keep alloy), front + unified shell ← rest; linear-space median per
+      region, mixed by pixel confidence (untrusted below 64 px). No rescore (colours don't move
+      IoU). Lamp/rims stay role colours (no suitable mask/part split yet). Live-car e2e: glass +
+      body remeasured, IoU 0.97 → 0.97; goldens identical (no masks offline).
 - [ ] **PR-2.9 Fit v2.** Per-part parameters (wheel radius, cabin box, eave) by coordinate descent on `scoreModel`,
       multi-start Nelder–Mead (3 seeded starts), still ≤ 300 ms.
 - [ ] **PR-2.10 Loop pass.**
@@ -205,3 +212,4 @@ S2 (shape), S3 (Spark), S4 last (a bet). Expect the car to stop looking like a b
 | 2026-11-01 | PR-2.5 part masks (concept batch + attach)                             | 0.98     | 0.91    | 3.4     | —        | scores identical (no consumer yet — PR-2.6…2.8); 6 unit + 1 pipeline test, contract entry                                                              |
 | 2026-11-01 | PR-2.6 wheels from masks (Kasa fit + mirror + budget)                  | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); live-car e2e IoU 0.97 → 0.97, parts 12 → 12 (headlights fund the rims)                                           |
 | 2026-11-01 | PR-2.7 panels from masks (calipers + shell + room)                     | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); live-car e2e IoU 0.97 → 0.97; fixed mid-PR: wheels/roof protected, sides decided before dropping                 |
+| 2026-11-01 | PR-2.8 region colours (median per mask + rest)                         | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); live-car e2e stable; fixed mid-PR: median not mean (rest-mean went mauve #a0545c, median reads pure #b0302f)     |
