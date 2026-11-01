@@ -34,9 +34,17 @@ export interface GraphEvidence {
   photo?: boolean;
 }
 
-/** Thin face plate (glass, door, decal): a box ≤ 0.05 deep that is not the main body. */
-function isPanelPart(p: RecipePart, main: RecipePart): boolean {
-  return p !== main && p.shape === 'box' && p.size[2] <= 0.05;
+/**
+ * Clampable face plate (glass, door, decal): a box whose thinnest axis is z, sitting on (or
+ * proud of) either face of its parent. Inset leaves (PR-2.17, centred in the wall) and side
+ * plates (end windows, seams: thinnest in x/y) are placed by construction, never clamped.
+ */
+function isPanelPart(p: RecipePart, parent: RecipePart): boolean {
+  if (p === parent || p.shape !== 'box' || p.size[2] > 0.05) return false;
+  if (p.size[2] > Math.min(p.size[0], p.size[1])) return false;
+  const front = parent.at[2] + parent.size[2] / 2;
+  const back = parent.at[2] - parent.size[2] / 2;
+  return p.at[2] + p.size[2] / 2 >= front - 0.02 || p.at[2] - p.size[2] / 2 <= back + 0.02;
 }
 
 /** Far-side twin of a near part: the same plate back to back. */
@@ -98,7 +106,7 @@ export function buildGraph(
   const nodes = recipe.parts.map((p, i) => {
     let parent: number | null = null;
     if (p !== main) {
-      if (isPanelPart(p, main)) {
+      if (isPanelPart(p, shell)) {
         parent = recipe.parts.indexOf(shell);
       } else if (isWheelPart(p, main.at[1])) {
         parent = recipe.parts.indexOf(main);
@@ -176,7 +184,7 @@ export function applyConstraints(archetype: KitArchetype, recipe: ObjectRecipe):
   const roofTop = roofTopAbove(recipe.parts, eave, (p) => p === main || isStack(p));
   let moved = false;
   const parts = recipe.parts.map((p) => {
-    if (isPanelPart(p, main)) {
+    if (isPanelPart(p, shell)) {
       const q = clampPanel(p, shell);
       if (q !== p) moved = true;
       return q;
@@ -206,7 +214,7 @@ export function checkConstraints(archetype: KitArchetype, recipe: ObjectRecipe):
   const roofTop = roofTopAbove(recipe.parts, eave, (p) => p === main || isStack(p));
   let n = 0;
   for (const p of recipe.parts) {
-    if (isPanelPart(p, main)) {
+    if (isPanelPart(p, shell)) {
       if (clampPanel(p, shell) !== p) n++;
     } else if (isStack(p)) {
       if (p.at[1] - p.size[1] / 2 > roofTop + FIX_EPS) n++;

@@ -1,11 +1,12 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-01 (PR-2.16 done, PR-2.17 new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-01 (PR-2.17 done, PR-2.18 new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
-- Committed through PR-2.15 (`3e151d4`). Uncommitted: PR-2.16. Standing: commit each, unsigned fallback, always continue.
+- Committed through PR-2.16 (`6b3bc2d`). Uncommitted: PR-2.17. Standing: commit each, unsigned fallback, always continue.
 - User ordered: do ALL planned tasks, then a full image-recognition + imagined-3D investigation.
+- **PR-2.17 done:** `wall-openings.ts` + house panels wire — segmented walls, centred leaves (measured), overlays fallback; panel class = on-face only. Goldens identical; cottage e2e 86→90, Viol 0.
 - **PR-2.16 done:** `hidden-sides.ts` — back facade/end windows/rear door as inferred, low-yaw gate, set-atomic room. Cottage 9→11, scores identical, Viol 0.
 - **PR-2.15 done:** DimStatus on parts + recipe (pipeline stamping), panel Dim/Parts lines (fr/en/mg), report Status col. Goldens identical + Status (car M1 I11).
 - **PR-2.14 done:** `object-graph.ts` — graph (parents + 4 statuses), constraint pass after wheels/panels/chimney/fit (rescore on fix), Viol column in report (0 everywhere). Goldens identical.
@@ -19,8 +20,8 @@
 
 ## Next task
 
-- **Commit** PR-2.16 (`feat(web)`), then **PR-2.17 real openings** (walls segmented around holes, glass inset; template-only walls keep decals; budget via backstop).
-- Then 2.18 edits (+ pass), S3/S4 as unblocked, PR-5.1/5.2 docs.
+- **Commit** PR-2.17 (`feat(web)`), then **PR-2.18 parametric edits** (`applyEdit` on graph nodes → constraints re-solve; UI/copilot wiring out).
+- Then loop pass, S3/S4 as unblocked, PR-5.1/5.2 docs.
 - Blocked on Meta (probe when reached): PR-0.4, PR-0.5, PR-0.6-live, PR-3.1, PR-3.4, PR-4.x.
 - Free placement PP-T1…T8. PV-T14 + PV-T11b.
 

@@ -190,4 +190,22 @@ describe('applyConstraints + checkConstraints (PR-2.14)', () => {
     expect(checkConstraints('house', recipe)).toBe(0);
     expect(applyConstraints('house', recipe)).toBe(recipe);
   });
+
+  it('inset leaves and side plates are placed by construction, never clamped (PR-2.17)', () => {
+    // Segmented wall: largest strip keeps `front`, leaves centred in their holes.
+    const recipe: ObjectRecipe = {
+      proportions: { w: 1, h: 0.6, d: 0.5 },
+      parts: [
+        box([-0.375, -0.2, 0], [0.25, 0.6, 1], { front: true }),
+        box([0.375, -0.2, 0], [0.25, 0.6, 1]),
+        box([-0.1, -0.1, 0], [0.2, 0.2, 0.02], { color: '#2222bb' }),
+        box([0.5, -0.1, 0], [0.02, 0.2, 0.2], { color: '#2222bb' }),
+      ],
+    };
+    // The leaf hangs under the wall node (largest strip), like the other strip.
+    expect(buildGraph('house', recipe).nodes.map((n) => n.parent)).toEqual([null, 0, 0, 0]);
+    // Outside the largest strip's span, yet coherent: no clamp, no violation.
+    expect(checkConstraints('house', recipe)).toBe(0);
+    expect(applyConstraints('house', recipe)).toBe(recipe);
+  });
 });

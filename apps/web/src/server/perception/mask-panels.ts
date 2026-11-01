@@ -21,6 +21,7 @@ import {
   type MaskMapGeom,
   type Pt,
 } from './mask-geometry';
+import { segmentWall, type FaceRect } from './wall-openings';
 
 /** A mask rotated past this (degrees from the axes) is not a facade rectangle: skipped. */
 export const PANEL_TILT_MAX = 20;
@@ -297,6 +298,50 @@ export function withMaskPanels(
     else doors++;
   }
   if (panels.length === 0) return recipe;
+  const paint = (c: PlacedPanel['concept']) => (c === 'window' ? glass! : (doorPaint ?? glass!));
+
+  // PR-2.17: real openings — the wall segments around the measured holes and each leaf sits
+  // centred in its hole instead of floating on the face. Whole-wall atomic: when strips +
+  // leaves do not fit the room the facade removal freed, fall through to today's overlays.
+  if (archetype === 'house') {
+    const seg = segmentWall(
+      { x: shell.at[0], y: shell.at[1], w: shell.size[0], h: shell.size[1] },
+      panels
+    );
+    if (seg) {
+      const holeConcept = (h: FaceRect): PlacedPanel['concept'] =>
+        panels.find(
+          (p) => Math.abs(p.x - h.x) * 2 < p.w + h.w && Math.abs(p.y - h.y) * 2 < p.h + h.h
+        )?.concept ?? 'window';
+      const rest = recipe.parts.filter((p) => !removed.includes(p) && p !== main);
+      if (rest.length + seg.strips.length + seg.holes.length <= MAX_RECIPE_PARTS) {
+        const stripParts: RecipePart[] = seg.strips.map((s) => ({
+          shape: 'box',
+          at: [s.x, s.y, main.at[2]],
+          size: [s.w, s.h, main.size[2]],
+          color: main.color,
+          ...(main.material ? { material: main.material } : {}),
+        }));
+        // The wall node survives as its largest strip (keeps `front`, parents the leaves).
+        let wall = stripParts[0]!;
+        for (const s of stripParts) {
+          if (s.size[0] * s.size[1] > wall.size[0] * wall.size[1]) wall = s;
+        }
+        wall.front = true;
+        const leaves: RecipePart[] = seg.holes.map((h) => {
+          const pc = paint(holeConcept(h));
+          return {
+            shape: 'box',
+            at: [h.x, h.y, main.at[2]],
+            size: [h.w, h.h, PANEL_THICK],
+            color: pc.color,
+            ...(pc.material ? { material: pc.material } : {}),
+          };
+        });
+        return { ...recipe, parts: [...rest, ...stripParts, ...leaves] };
+      }
+    }
+  }
 
   // Room for the panels: soft-drop decals (never structure) to fit both sides, else near
   // only, else the fitting prefix; a structure-full recipe keeps its template panels.
@@ -339,7 +384,6 @@ export function withMaskPanels(
     if (room <= 0) return recipe;
     use = panels.slice(0, room);
   }
-  const paint = (c: PlacedPanel['concept']) => (c === 'window' ? glass! : (doorPaint ?? glass!));
   const mk = (pp: PlacedPanel, z: number): RecipePart => {
     const pc = paint(pp.concept);
     return {

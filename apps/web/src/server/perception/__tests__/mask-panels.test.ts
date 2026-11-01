@@ -15,6 +15,7 @@ import {
 import { polygonPath } from '@/lib/vision';
 import { GOLDEN_SHAPES, goldenBox, goldenOutline, goldenSvg, PHOTO } from '../__fixtures__/shape';
 import { deltaE2000, hexToLab } from '../color-measure';
+import { checkConstraints } from '../object-graph';
 import type { MaskMapGeom } from '../mask-geometry';
 import { runObjectShape } from '../object-shape';
 import { scoreRecipe } from '../score-shape';
@@ -177,7 +178,7 @@ describe('withMaskPanels (PR-2.7)', () => {
     expect(ObjectRecipeSchema.safeParse(out).success).toBe(true);
   });
 
-  it('house: spread facade replaced by a measured window and door', () => {
+  it('house: spread facade replaced by a segmented wall with inset leaves (PR-2.17)', () => {
     const geom = geomA();
     const recipe = kitToRecipe(houseKit());
     expect(recipe.parts).toHaveLength(8);
@@ -192,50 +193,70 @@ describe('withMaskPanels (PR-2.7)', () => {
       geom
     );
     expect(out).not.toBe(recipe);
-    // 8 − 4 spread + 4 measured (front mirrors to the back); the chimney mask is not consumed.
-    expect(out.parts).toHaveLength(8);
-    const thin = out.parts.filter((p) => p.shape === 'box' && p.size[2] === 0.02);
-    expect(thin.filter((p) => p.at[2]! > 0)).toHaveLength(2);
-    expect(thin.filter((p) => p.at[2]! < 0)).toHaveLength(2);
+    // 3 slabs + 7 strips + 2 leaves; the chimney mask is not consumed.
+    expect(out.parts).toHaveLength(12);
+    const strips = out.parts.filter((p) => p.color === '#aaaaaa');
+    expect(strips).toHaveLength(7);
+    // Full-depth wall strips in the wall paint; the largest keeps `front`.
+    expect(strips.every((p) => p.shape === 'box' && p.size[2] === 1)).toBe(true);
+    expect(strips.filter((p) => p.front)).toHaveLength(1);
+    // Leaves at the measured x/y, centred in the wall depth (recessed both faces).
     const win = out.parts.find((p) => p.color === '#2222bb')!;
     expect(win.at[0]).toBeCloseTo(-0.28125, 3);
     expect(win.at[1]).toBeCloseTo(-0.1, 3);
     expect(win.size[0]).toBeCloseTo(0.1875, 3);
     expect(win.size[1]).toBeCloseTo(0.2, 3);
-    expect(win.at[2]).toBeCloseTo(0.505, 9);
+    expect(win.at[2]).toBe(0);
     const door = out.parts.find((p) => p.color === '#bb2222' && p.size[2] === 0.02)!;
     expect(door.at[0]).toBeCloseTo(0.0625, 3);
     expect(door.at[1]).toBeCloseTo(-0.25, 3);
     expect(door.size[0]).toBeCloseTo(0.125, 3);
     expect(door.size[1]).toBeCloseTo(0.3, 3);
-    // Back twins at the same x/y on the far face.
-    const back = thin.filter((p) => p.at[2]! < 0);
-    expect(back.map((p) => p.at[2])).toEqual([-0.505, -0.505]);
-    expect(back.map((p) => [p.at[0], p.at[1]])).toEqual(
-      thin.filter((p) => p.at[2]! > 0).map((p) => [p.at[0], p.at[1]])
-    );
-    // Roof slabs kept, walls kept.
-    expect(out.parts.filter((p) => p.at[2] === 0)).toHaveLength(4);
+    expect(door.at[2]).toBe(0);
+    // No overlay decals left on either face: nothing thin at |z| ≈ 0.5.
+    const thin = out.parts.filter((p) => p.shape === 'box' && p.size[2] === 0.02);
+    expect(thin).toHaveLength(2);
+    expect(thin.every((p) => Math.abs(p.at[2]!) < 0.01)).toBe(true);
+    // Roof slabs kept.
+    expect(out.parts.filter((p) => p.color === '#bb2222' && p.size[2] !== 0.02)).toHaveLength(3);
     expect(ObjectRecipeSchema.safeParse(out).success).toBe(true);
   });
 
-  it('yawed house (0.2 rad) renders backs; at 0.5 only the near side', () => {
+  it('yawed house segments at any yaw; unfundable holes fall back to overlays (PR-2.17)', () => {
     const geom = geomA();
     const masks = [
       rectMask(geom, 'window', 40, 50, 70, 66),
       rectMask(geom, 'door', 100, 58, 120, 82),
     ];
-    const thin = (r: ObjectRecipe) =>
+    const leaves = (r: ObjectRecipe) =>
       r.parts.filter((p) => p.shape === 'box' && p.size[2] === 0.02);
-    const yawed = withMaskPanels('house', { ...kitToRecipe(houseKit()), yaw: 0.2 }, masks, geom);
-    expect(thin(yawed).filter((p) => p.at[2]! > 0)).toHaveLength(2);
-    expect(thin(yawed).filter((p) => p.at[2]! < 0)).toHaveLength(2);
-    expect(ObjectRecipeSchema.safeParse(yawed).success).toBe(true);
-    const recipe = { ...kitToRecipe(houseKit()), yaw: 0.5 };
-    const turned = withMaskPanels('house', recipe, masks, geom);
-    expect(turned).not.toBe(recipe);
-    expect(thin(turned).length).toBeGreaterThan(0);
-    expect(thin(turned).every((p) => p.at[2]! > 0)).toBe(true);
+    // Through-holes are view-independent: centred leaves at 0.2 and at 0.5 rad alike.
+    for (const yaw of [0.2, 0.5]) {
+      const input = { ...kitToRecipe(houseKit()), yaw };
+      const turned = withMaskPanels('house', input, masks, geom);
+      expect(turned).not.toBe(input);
+      expect(leaves(turned)).toHaveLength(2);
+      expect(leaves(turned).every((p) => Math.abs(p.at[2]!) < 0.01)).toBe(true);
+      expect(ObjectRecipeSchema.safeParse(turned).success).toBe(true);
+    }
+    // 3 windows + 2 doors need 21 parts: overlays, near side, budget held.
+    const many = withMaskPanels(
+      'house',
+      kitToRecipe(houseKit()),
+      [
+        rectMask(geom, 'window', 30, 46, 50, 62),
+        rectMask(geom, 'window', 60, 46, 80, 62),
+        rectMask(geom, 'window', 90, 46, 110, 62),
+        rectMask(geom, 'door', 120, 56, 136, 84),
+        rectMask(geom, 'door', 142, 56, 158, 84),
+      ],
+      geom
+    );
+    expect(many.parts.length).toBeLessThanOrEqual(MAX_RECIPE_PARTS);
+    const over = leaves(many);
+    expect(over.length).toBeGreaterThan(0);
+    expect(over.every((p) => p.at[2]! > 0.4)).toBe(true);
+    expect(ObjectRecipeSchema.safeParse(many).success).toBe(true);
   });
 
   it('three masks on a full sedan → near side only, nothing structural dropped', () => {
@@ -460,5 +481,129 @@ describe('withMaskPanels (PR-2.7)', () => {
     expect(glass.length).toBeGreaterThan(0);
     expect(glass.every((p) => p.status === 'measured')).toBe(true);
     expect(measured.recipe!.dimStatus).toMatchObject({ depth: 'estimated', scale: 'estimated' });
+  });
+
+  it('golden cottage: a window mask segments the wall, the leaf sits inset (PR-2.17)', async () => {
+    const c = GOLDEN_SHAPES.find((g) => g.name === 'cottage row')!;
+    const buffer = await sharp(Buffer.from(goldenSvg(c)))
+      .jpeg({ quality: 85 })
+      .toBuffer();
+    const photo = { buffer, ...PHOTO };
+    const target: ShapeTarget = {
+      id: 'cottage',
+      label: 'cottage',
+      category: 'other',
+      box: goldenBox(c),
+      outline: goldenOutline(c),
+    };
+    const spark = {
+      describeShape: vi.fn().mockResolvedValue({
+        recipe: kitToRecipe(c.prior),
+        kit: c.prior,
+        source: 'meta',
+        model: 'muse-spark-1.3',
+      }),
+    };
+    const plain = await runObjectShape(spark, photo, 'data:full', target);
+    expect(plain.mode).toBe('recipe');
+    // One window mask over the wall band (self-consistent: inside the fitted wall span).
+    const box = target.box;
+    const geom: MaskMapGeom = {
+      photoW: photo.width,
+      photoH: photo.height,
+      box,
+      crop: cropRectForShape(photo.width, photo.height, box),
+    };
+    const wall = plain.recipe!.parts.find((p) => p.front)!;
+    const wx0 = wall.at[0] - wall.size[0] / 2;
+    const wx1 = wall.at[0] + wall.size[0] / 2;
+    const wy0 = wall.at[1] - wall.size[1] / 2;
+    const wy1 = wall.at[1] + wall.size[1] / 2;
+    const spanX = wx1 - wx0;
+    const spanY = wy1 - wy0;
+    const hx0 = wx0 + 0.3 * spanX;
+    const hx1 = wx0 + 0.5 * spanX;
+    const hy0 = wy0 + 0.45 * spanY;
+    const hy1 = wy0 + 0.75 * spanY;
+    const px = (ox: number) => (box.x + (ox + 0.5) * box.w) * photo.width;
+    const py = (oy: number) => (box.y + (0.5 - oy) * box.h) * photo.height;
+    const { crop } = geom;
+    const cu = (x: number) => (x - crop.left) / crop.width;
+    const cv = (y: number) => (y - crop.top) / crop.height;
+    const x0 = px(hx0);
+    const y0 = py(hy1);
+    const x1 = px(hx1);
+    const y1 = py(hy0);
+    const outline = polygonPath([
+      [cu(x0), cv(y0)],
+      [cu(x1), cv(y0)],
+      [cu(x1), cv(y1)],
+      [cu(x0), cv(y1)],
+    ]);
+    const segmentImage = vi.fn(async (_url: string, concept: string) => ({
+      source: 'meta' as const,
+      model: 'sam-3.1',
+      concept,
+      imageWidth: geom.crop.outWidth,
+      imageHeight: geom.crop.outHeight,
+      instances:
+        concept === 'window'
+          ? [
+              {
+                box: {
+                  x1: cu(x0) * geom.crop.outWidth,
+                  y1: cv(y0) * geom.crop.outHeight,
+                  x2: cu(x1) * geom.crop.outWidth - 1,
+                  y2: cv(y1) * geom.crop.outHeight - 1,
+                },
+                confidence: 0.9,
+                outline,
+              },
+            ]
+          : [],
+      count: concept === 'window' ? 1 : 0,
+      boxCoverage: 0.1,
+    }));
+    const measured = await runObjectShape({ ...spark, segmentImage }, photo, 'data:full', target);
+    expect(measured.mode).toBe('recipe');
+    expect(measured.partMasks!.filter((m) => m.concept === 'window')).toHaveLength(1);
+    expect(measured.recipe!.parts.length).toBeLessThanOrEqual(MAX_RECIPE_PARTS);
+    // The wall is gone, replaced by full-depth strips in the wall paint (ΔE: a later
+    // pass may re-tint the front strip a digit, like Fit v2 does the shell).
+    const wallLab = hexToLab(wall.color);
+    const walls = measured.recipe!.parts.filter(
+      (p) => p.shape === 'box' && p.size[2] > 0.5 && deltaE2000(hexToLab(p.color), wallLab) < 3
+    );
+    expect(walls.length).toBeGreaterThanOrEqual(4);
+    expect(walls.some((p) => p.front)).toBe(true);
+    // One leaf at the mask rect, centred in the wall depth (no overlay z-fight).
+    const leaves = measured.recipe!.parts.filter(
+      (p) => p.shape === 'box' && p.size[2] === 0.02 && Math.abs(p.at[2]! - wall.at[2]) < 0.05
+    );
+    expect(leaves).toHaveLength(1);
+    const leaf = leaves[0]!;
+    expect(leaf.at[0]).toBeCloseTo((hx0 + hx1) / 2, 1);
+    expect(leaf.at[1]).toBeCloseTo((hy0 + hy1) / 2, 1);
+    const overlays = measured.recipe!.parts.filter(
+      (p) =>
+        p.shape === 'box' &&
+        p.size[2] <= 0.05 &&
+        Math.abs(Math.abs(p.at[2]! - wall.at[2]) - wall.size[2] / 2) < 0.05
+    );
+    expect(overlays).toHaveLength(0);
+    expect(ObjectRecipeSchema.safeParse(measured.recipe!).success).toBe(true);
+    expect(checkConstraints('house', measured.recipe!)).toBe(0);
+    // The leaf hangs under the wall node and reads measured (mask-matched).
+    expect(leaf.status).toBe('measured');
+    console.info(
+      `[test] cottage openings: iou ${plain.fit!.iou} → ${measured.fit!.iou}, parts ${plain.recipe!.parts.length} → ${measured.recipe!.parts.length}`
+    );
+    expect(Math.abs(measured.fit!.iou - plain.fit!.iou)).toBeLessThanOrEqual(0.03);
+    const scored = (await scoreRecipe(photo, target, measured.recipe!, measured.partMasks))!;
+    const plainScored = (await scoreRecipe(photo, target, plain.recipe!))!;
+    console.info(
+      `[test] cottage openings score: ${plainScored.score.score} → ${scored.score.score}`
+    );
+    expect(scored.score.score).toBeGreaterThanOrEqual(plainScored.score.score - 2);
   });
 });
