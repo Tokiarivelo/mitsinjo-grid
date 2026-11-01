@@ -47,9 +47,22 @@ describe('kitToRecipe (PV-T9b)', () => {
     for (const s of SCENERY_TYPES) expect(KIT_ARCHETYPES).toContain(defaultArchetype('other', s));
     expect(defaultArchetype('lamp')).toBe('lamp_post');
     expect(defaultArchetype('other', 'building')).toBe('house');
+    expect(defaultArchetype('other', undefined, 'Purple vintage car')).toBe('vehicle');
+    expect(defaultArchetype('other', undefined, 'Mini Cooper')).toBe('vehicle');
+    expect(defaultArchetype('other', undefined, 'Old Stone Cottage')).toBe('house');
     expect(ObjectKitSchema.safeParse({ ...kit('tree'), colors: { main: 'red' } }).success).toBe(
       false
     );
+  });
+
+  it('builds realistic vehicles (classic car, van, truck, motorbike) within 12 parts', () => {
+    for (const sub of [undefined, 'hatchback', 'vintage', 'sedan', 'van', 'truck', 'motorbike']) {
+      const r = kitToRecipe({ ...kit('vehicle'), subtype: sub });
+      expect(ObjectRecipeSchema.safeParse(r).success).toBe(true);
+      expect(r.parts.length).toBeLessThanOrEqual(12);
+      expect(r.parts.filter((p) => p.front)).toHaveLength(1);
+      expect(recipeIssue(fitRecipe(r, 1.8))).toBeNull();
+    }
   });
 });
 

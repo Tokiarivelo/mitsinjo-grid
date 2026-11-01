@@ -82,6 +82,8 @@ export const ObjectRecipeSchema = z.object({
   parts: z.array(RecipePartSchema).min(1).max(MAX_RECIPE_PARTS),
   /** Measured turn of the front away from the camera (PF-T5), radians, + = right end farther. */
   yaw: z.number().min(-MAX_YAW).max(MAX_YAW).optional(),
+  /** One tileable 64 px photo swatch per material (PR-1.5), base64 data URL (≤ 8 kB each). */
+  swatches: z.record(RecipeMaterialSchema, z.string()).optional(),
 });
 export type ObjectRecipe = z.infer<typeof ObjectRecipeSchema>;
 
@@ -113,6 +115,27 @@ export const SHAPE_FALLBACK_REASONS = [
 ] as const;
 export type ShapeFallbackReason = (typeof SHAPE_FALLBACK_REASONS)[number];
 
+export const CANONICAL_ANGLES = ['front', 'back', 'left', 'right', 'top', 'three_quarter'] as const;
+export type CanonicalAngle = (typeof CANONICAL_ANGLES)[number];
+
+export const ImaginedAngleViewSchema = z.object({
+  angle: z.enum(CANONICAL_ANGLES),
+  labelKey: z.string(),
+  angleDeg: z.number(),
+  description: z.string(),
+  imageUrl: z.string(),
+  features: z.array(z.string()).default([]),
+});
+export type ImaginedAngleView = z.infer<typeof ImaginedAngleViewSchema>;
+
+/** `/api/vision/views` reply: the 6 canonical 2D imagined angles for one detection. */
+export const ImaginedViewsResponseSchema = z.object({
+  ok: z.literal(true),
+  views: z.array(ImaginedAngleViewSchema).length(CANONICAL_ANGLES.length),
+  detectionId: z.string(),
+});
+export type ImaginedViewsResponse = z.infer<typeof ImaginedViewsResponseSchema>;
+
 /** `/api/vision/shape` reply. `recipe` set only in `recipe` mode; `reason` only in `silhouette` mode. */
 export const ObjectShapeSchema = z.object({
   detectionId: z.string(),
@@ -126,6 +149,8 @@ export const ObjectShapeSchema = z.object({
   fit: z.object({ iou: z.number().min(0).max(1) }).optional(),
   /** Short cause with `provider_error` (`http_429`…), shown in the panel and the logs. */
   detail: z.string().max(40).optional(),
+  /** 2D imagined views across the 6 canonical angles before or alongside full 3D generation. */
+  imaginedViews: z.array(ImaginedAngleViewSchema).optional(),
 });
 export type ObjectShape = z.infer<typeof ObjectShapeSchema>;
 
@@ -195,6 +220,7 @@ export function fitRecipe(recipe: ObjectRecipe, boxAspect: number, yaw = 0): Obj
     },
     parts,
     ...(turn !== 0 ? { yaw: turn } : {}),
+    ...(recipe.swatches ? { swatches: recipe.swatches } : {}),
   };
 }
 

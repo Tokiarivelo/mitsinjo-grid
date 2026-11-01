@@ -1,6 +1,11 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SHAPE_OUTLINE_MAX, type ObjectShape, type ShapeTarget } from '@/lib/object-shape';
+import {
+  CANONICAL_ANGLES,
+  SHAPE_OUTLINE_MAX,
+  type ObjectShape,
+  type ShapeTarget,
+} from '@/lib/object-shape';
 vi.mock('../utils/prepare-image', () => ({
   prepareVisionImage: vi.fn(async () => new Blob([new Uint8Array(4)], { type: 'image/jpeg' })),
 }));
@@ -159,6 +164,46 @@ describe('useObjectShape (PV-T9)', () => {
     await act(async () => result.current.retry());
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(result.current.status).toBe('ready'));
+  });
+
+  it('regenerate asks Spark again for the same object, skipping the kept answer', async () => {
+    fetchMock.mockImplementation(async () => sse(recipeShape));
+    const { result } = renderHook(() => useObjectShape());
+    await act(() => result.current.requestShape('data:image/png;base64,AA', target));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await act(async () => result.current.regenerate());
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+  });
+
+  it('requestViews previews the 6 angles once per object; a failure keeps direct generation', async () => {
+    const views = CANONICAL_ANGLES.map((angle, i) => ({
+      angle,
+      labelKey: `angle${i}`,
+      angleDeg: i * 90,
+      description: `${angle} view`,
+      imageUrl: 'data:image/png;base64,AA',
+      features: ['a', 'b'],
+    }));
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, views, detectionId: 'det-1' }))
+    );
+    const { result } = renderHook(() => useObjectShape());
+    await act(() => result.current.requestViews('data:image/png;base64,AA', target));
+    expect(result.current).toMatchObject({ viewsStatus: 'ready', views });
+    expect(fetchMock.mock.calls[0]![0]).toBe('/api/vision/views');
+    await act(() => result.current.requestViews('data:image/png;base64,AA', target));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // A reselect shows the kept preview without a new call.
+    await act(() => result.current.peek({ ...target, id: 'det-2' }));
+    expect(result.current.viewsStatus).toBe('idle');
+    await act(() => result.current.peek(target));
+    expect(result.current).toMatchObject({ viewsStatus: 'ready', views });
+    // A failed preview falls back to idle: direct generation still works.
+    fetchMock.mockRejectedValueOnce(new Error('offline'));
+    const other = { ...target, id: 'det-3' };
+    await act(() => result.current.requestViews('data:image/png;base64,AA', other));
+    expect(result.current.viewsStatus).toBe('idle');
   });
 
   it('a box adjusted by hand is a new request; the flag is not sent', async () => {

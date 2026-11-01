@@ -16,13 +16,17 @@ import { RECIPE_MATERIALS, type ObjectRecipe, type RecipePart } from '@/lib/obje
  */
 
 export const SHAPE_SYSTEM_PROMPT = [
-  'You describe ONE object seen on a photo crop so a SIMULATED rural microgrid editor can build a simple 3D model.',
+  'You describe ONE object seen on a photo crop so a SIMULATED rural microgrid editor can build a 3D model with high fidelity.',
   'Answer fast and short: do not plan 3D coordinates, the editor has the templates.',
+  'IMAGINE and INTERPOLATE the complete 3D object even if partially hidden, occluded (by hedges, wireframes, fences, shadows, people), cropped, or seen from only one angle.',
+  'Reconstruct the unseen sides, symmetric features, depth, roof, and undercarriage with strong 3D imagination.',
   `archetype = the closest of: ${KIT_ARCHETYPES.join(', ')}.`,
-  'proportions = real width, height, depth of the object, largest = 1 (guess the depth from what it is).',
+  'For vehicles (cars, vintage cars, compacts, sedans, hatchbacks, trucks, vans, carts, vehicle topiary/sculptures): recognize as "vehicle" and imagine full vehicle anatomy (hood, windshield angle, cabin roof, trunk/rear, 4 wheels, bumpers, lights).',
+  'subtype = optional specific subtype: for vehicle: hatchback, sedan, vintage, compact, suv, van, truck, bus, cart, motorbike; for house: cottage, gable, hip, flat; for tree: round, conifer, palm.',
+  'proportions = real width, height, depth of the object, largest = 1 (guess the depth from what it is, e.g. car depth is typically 0.45-0.65 of its width).',
   'colors: main = the biggest surface (walls, body, canopy), secondary = roof, stand, trunk or frame,',
-  'accent = glass, windows, handle, lamp or wheels; each #rrggbb as seen.',
-  `materials: what main, secondary and accent are made of, each one of: ${RECIPE_MATERIALS.join(', ')} (e.g. stone walls, slate roof, glass windows).`,
+  'accent = glass, windows, handle, lamp or wheels; each #rrggbb as seen or inferred.',
+  `materials: what main, secondary and accent are made of, each one of: ${RECIPE_MATERIALS.join(', ')} (e.g. stone walls, slate roof, glass windows, metal body, rubber wheels).`,
   'details (optional, small integers): windows on the front face, doors, wheels, legs, floors, chimney, units (houses side by side in a row).',
   'Never give watts, kW or any energy value.',
 ].join(' ');
@@ -38,7 +42,7 @@ export function shapeQuestion(label: string, aspect?: number, hint?: KitArchetyp
       ? ` On the photo it is ${aspect.toFixed(2)} times as wide as it is high.`
       : '';
   const guess = hint ? ` It is probably a "${hint}".` : '';
-  return `Describe the "${name}" in the clear rectangle in the middle of this crop.${seen}${guess}`;
+  return `Describe the full 3D "${name}" in the clear rectangle in the middle of this crop with strong 3D imagination and interpolation, even if partially occluded.${seen}${guess}`;
 }
 
 const color = { type: 'string' };
@@ -51,6 +55,7 @@ export const SHAPE_JSON_SCHEMA = {
     type: 'object',
     properties: {
       archetype: { type: 'string', enum: [...KIT_ARCHETYPES] },
+      subtype: { type: 'string' },
       proportions: {
         type: 'object',
         properties: { w: { type: 'number' }, h: { type: 'number' }, d: { type: 'number' } },
@@ -68,6 +73,7 @@ export const SHAPE_JSON_SCHEMA = {
       details: {
         type: 'object',
         properties: {
+          subtype: { type: 'string' },
           windows: int,
           doors: int,
           wheels: int,
@@ -88,6 +94,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
 
 const ReplySchema = z.object({
   archetype: z.string(),
+  subtype: z.string().optional(),
   proportions: z.object({ w: z.number(), h: z.number(), d: z.number() }),
   colors: z.record(z.string(), z.unknown()).optional(),
   materials: z.record(z.string(), z.unknown()).optional(),
@@ -114,6 +121,19 @@ export function parseKit(content: string, fallback: KitArchetype = 'other'): Obj
   const max = Math.max(w, h, d);
   if (!(max > 0)) return null;
   const archetype = KIT_ARCHETYPES.find((a) => a === reply.data.archetype) ?? fallback;
+  const rawSubtype =
+    typeof reply.data.subtype === 'string'
+      ? reply.data.subtype
+      : typeof reply.data.details?.subtype === 'string'
+        ? reply.data.details.subtype
+        : undefined;
+  const subtype = rawSubtype
+    ? rawSubtype
+        .trim()
+        .toLowerCase()
+        .slice(0, 32)
+        .replace(/[\s-]+/g, '_')
+    : undefined;
   const pick = (k: string) => {
     const v = reply.data.colors?.[k];
     return typeof v === 'string' && HEX.test(v) ? v : NEUTRAL;
@@ -132,6 +152,7 @@ export function parseKit(content: string, fallback: KitArchetype = 'other'): Obj
   }
   const kit = ObjectKitSchema.safeParse({
     archetype,
+    ...(subtype ? { subtype } : {}),
     proportions: {
       w: clamp(w / max, 0.01, 1),
       h: clamp(h / max, 0.01, 1),
@@ -192,8 +213,16 @@ const part = (
   at: RecipePart['at'],
   size: RecipePart['size'],
   color: string,
-  axis?: RecipePart['axis']
-): RecipePart => ({ shape, at, size, color, ...(axis ? { axis } : {}) });
+  axis?: RecipePart['axis'],
+  apex?: number
+): RecipePart => ({
+  shape,
+  at,
+  size,
+  color,
+  ...(axis ? { axis } : {}),
+  ...(apex !== undefined ? { apex } : {}),
+});
 
 /** Offline recipes for scenery (no load), so houses, trees or cars also show in 3D. */
 const MOCK_SCENERY: Partial<Record<SceneryType, ObjectRecipe>> = {
@@ -223,10 +252,18 @@ const MOCK_SCENERY: Partial<Record<SceneryType, ObjectRecipe>> = {
   vehicle: {
     proportions: { w: 1, h: 0.45, d: 0.45 },
     parts: [
-      { ...body('#3f6fa8'), at: [0, -0.05, 0], size: [1, 0.5, 1] },
-      part('box', [-0.05, 0.32, 0], [0.55, 0.36, 0.9], '#2f5585'),
-      part('cylinder', [-0.3, -0.38, 0], [0.18, 0.36, 1], '#222831', 'z'),
-      part('cylinder', [0.3, -0.38, 0], [0.18, 0.36, 1], '#222831', 'z'),
+      { ...body('#3f6fa8'), at: [0, -0.08, 0], size: [1.0, 0.42, 0.9] },
+      part('box', [-0.04, 0.29, 0], [0.52, 0.32, 0.82], '#2f5585'),
+      part('prism', [0.29, 0.29, 0], [0.14, 0.32, 0.82], '#7ea8cf', undefined, 0),
+      part('prism', [-0.36, 0.29, 0], [0.12, 0.32, 0.82], '#7ea8cf', undefined, 1),
+      part('box', [0.5, -0.2, 0], [0.04, 0.12, 0.88], '#222831'),
+      part('box', [-0.5, -0.2, 0], [0.04, 0.12, 0.88], '#222831'),
+      part('cylinder', [0.3, -0.38, 0.44], [0.24, 0.24, 0.14], '#222831', 'z'),
+      part('cylinder', [0.3, -0.38, -0.44], [0.24, 0.24, 0.14], '#222831', 'z'),
+      part('cylinder', [-0.3, -0.38, 0.44], [0.24, 0.24, 0.14], '#222831', 'z'),
+      part('cylinder', [-0.3, -0.38, -0.44], [0.24, 0.24, 0.14], '#222831', 'z'),
+      part('cylinder', [0.49, 0.02, 0.28], [0.03, 0.09, 0.09], '#f0eed8', 'x'),
+      part('cylinder', [0.49, 0.02, -0.28], [0.03, 0.09, 0.09], '#f0eed8', 'x'),
     ],
   },
   person: {

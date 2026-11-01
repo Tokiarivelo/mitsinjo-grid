@@ -2,7 +2,8 @@
 
 export const REGION_SYSTEM_PROMPT = [
   'The operator of a SIMULATED rural solar microgrid outlined ONE object on a photo; you see a crop around it.',
-  'Parts dimmed in white are outside the outline. Name the main object inside the outline: a short English label,',
+  'Parts dimmed in white are outside the outline. Identify the main object inside the outline with strong visual recognition, looking past partial occlusions (e.g. hedges, fences, wires, shadows, people).',
+  'Name the main object inside the outline: a short English label,',
   'the same short name in French (label_fr) and in Malagasy (label_mg);',
   'kind "appliance" with a category from the enum (other if no category fits),',
   'or kind "scenery" for things without a plug (buildings, vehicles, trees, plants, people, animals, water);',

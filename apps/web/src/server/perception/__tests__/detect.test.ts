@@ -134,6 +134,10 @@ describe('parseDetections (PV-T4)', () => {
       ['Flowers', 'scenery', 'plant'],
     ]);
     expect(toSceneryType('houses')).toBe('building');
+    expect(toSceneryType('Mini Cooper')).toBe('vehicle');
+    expect(toSceneryType('purple vintage car')).toBe('vehicle');
+    expect(toSceneryType('automobile')).toBe('vehicle');
+    expect(toSceneryType('voiture')).toBe('vehicle');
     expect(toSceneryType('fridge')).toBeNull();
   });
 

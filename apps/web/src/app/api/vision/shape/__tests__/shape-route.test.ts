@@ -49,8 +49,10 @@ describe('POST /api/vision/shape (PV-T9)', () => {
     const body = ObjectShapeSchema.parse(list[3]!.data.shape);
     expect(body).toMatchObject({ detectionId: 'det-1', mode: 'recipe', source: 'mock' });
     expect(body.recipe).toEqual(mockRecipe('fridge'));
-    // Geometry and colours only: no power value.
-    expect(JSON.stringify(body)).not.toMatch(/watt|kw/i);
+    expect(body.imaginedViews).toHaveLength(6);
+    // Geometry and colours only: no power value (opaque base64 PNG previews excluded).
+    const text = JSON.stringify(body).replace(/data:image\/png;base64,[A-Za-z0-9+/=]+/g, '');
+    expect(text).not.toMatch(/watt|kw/i);
   });
 
   it('refuses a missing, unreadable or invalid target, and a missing image', async () => {

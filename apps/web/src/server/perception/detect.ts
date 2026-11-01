@@ -15,7 +15,10 @@ const GRID = 1000;
 
 export const DETECT_SYSTEM_PROMPT = [
   'You outline objects on a photo for the operator of a SIMULATED rural solar microgrid.',
-  'List up to 20 notable objects, electrical appliances first. For each: a short English label (also used to outline it),',
+  'Recognize all notable objects with strong visual acuity, even if partially occluded, viewed at an angle, in shadows, or vintage/custom.',
+  'List up to 20 notable objects: electrical appliances first, then scenery (vehicles of any kind, buildings, trees, plants, people, animals, water).',
+  'For vehicles (cars, vintage cars, compacts, sedans, hatchbacks, trucks, vans, carts, vehicle sculptures/topiary): identify them clearly as kind "scenery" with scenery "vehicle".',
+  'For each: a short English label (also used to outline it),',
   'the same short name in French (label_fr) and in Malagasy (label_mg);',
   'kind "appliance" with a category from the enum (street lights and lamp posts are "lamp", other if no category fits),',
   'or kind "scenery" for things without a plug (buildings, vehicles, trees, plants, people, animals, water) with a scenery type;',
@@ -25,7 +28,7 @@ export const DETECT_SYSTEM_PROMPT = [
 
 /** User turn sent with the photo: must ask for every object, not only appliances (the model follows it over the system prompt). */
 export const DETECT_QUESTION =
-  'List every notable object you can see on this photo: electrical appliances first, then buildings, vehicles, trees, plants, people, animals and water.';
+  'List every notable object you can see on this photo with strong recognition: electrical appliances first, then buildings, vehicles, trees, plants, people, animals and water.';
 
 export const DETECT_JSON_SCHEMA = {
   name: 'ApplianceDetections',
@@ -109,16 +112,83 @@ const CATEGORY_ALIASES: Record<string, ApplianceCategory> = {
 const SCENERY_ALIASES: Record<string, SceneryType> = {
   house: 'building',
   home: 'building',
+  cottage: 'building',
+  cottages: 'building',
+  cabin: 'building',
+  shed: 'building',
+  barn: 'building',
   shop: 'building',
   roof: 'building',
   wall: 'building',
   car: 'vehicle',
-  truck: 'vehicle',
-  bus: 'vehicle',
+  cars: 'vehicle',
+  automobile: 'vehicle',
+  automobiles: 'vehicle',
+  auto: 'vehicle',
+  autos: 'vehicle',
+  voiture: 'vehicle',
+  voitures: 'vehicle',
+  mini: 'vehicle',
+  cooper: 'vehicle',
+  mini_cooper: 'vehicle',
+  sedan: 'vehicle',
+  sedans: 'vehicle',
+  hatchback: 'vehicle',
+  hatchbacks: 'vehicle',
+  coupe: 'vehicle',
+  coupes: 'vehicle',
+  convertible: 'vehicle',
+  convertibles: 'vehicle',
+  suv: 'vehicle',
+  suvs: 'vehicle',
+  wagon: 'vehicle',
+  wagons: 'vehicle',
   van: 'vehicle',
-  bicycle: 'vehicle',
-  bike: 'vehicle',
+  vans: 'vehicle',
+  minivan: 'vehicle',
+  minivans: 'vehicle',
+  truck: 'vehicle',
+  trucks: 'vehicle',
+  pickup: 'vehicle',
+  pickups: 'vehicle',
+  lorry: 'vehicle',
+  lorries: 'vehicle',
+  motorcar: 'vehicle',
+  motorcars: 'vehicle',
+  buggy: 'vehicle',
+  cabriolet: 'vehicle',
+  kart: 'vehicle',
+  taxi: 'vehicle',
+  taxis: 'vehicle',
+  jeep: 'vehicle',
+  jeeps: 'vehicle',
+  camion: 'vehicle',
+  camions: 'vehicle',
+  fiara: 'vehicle',
+  tomobila: 'vehicle',
+  charette: 'vehicle',
+  charrette: 'vehicle',
+  tractor: 'vehicle',
+  tracteur: 'vehicle',
+  bus: 'vehicle',
+  buses: 'vehicle',
+  scooter: 'vehicle',
+  scooters: 'vehicle',
   motorcycle: 'vehicle',
+  motorcycles: 'vehicle',
+  motorbike: 'vehicle',
+  motorbikes: 'vehicle',
+  moto: 'vehicle',
+  bicycle: 'vehicle',
+  bicycles: 'vehicle',
+  bike: 'vehicle',
+  bikes: 'vehicle',
+  velo: 'vehicle',
+  vélo: 'vehicle',
+  vehicule: 'vehicle',
+  véhicule: 'vehicle',
+  topiary_car: 'vehicle',
+  wire_car: 'vehicle',
   bush: 'plant',
   shrub: 'plant',
   flower: 'plant',
@@ -137,6 +207,11 @@ const SCENERY_ALIASES: Record<string, SceneryType> = {
   river: 'water',
   pond: 'water',
   lake: 'water',
+  stream: 'water',
+  creek: 'water',
+  canal: 'water',
+  rano: 'water',
+  fleuve: 'water',
 };
 
 /** Appliance enum value for a model category; unknown → `other`. */
@@ -224,7 +299,11 @@ function classify(
   const category = fromCategory === 'other' ? toApplianceCategory(obj.label) : fromCategory;
   const scenery =
     toSceneryType(obj.scenery) ?? toSceneryType(obj.category) ?? toSceneryType(obj.label);
-  if (obj.kind === 'scenery' || (obj.kind !== 'appliance' && category === 'other' && scenery)) {
+  if (
+    obj.kind === 'scenery' ||
+    (obj.kind !== 'appliance' && category === 'other' && scenery) ||
+    (obj.kind === 'appliance' && category === 'other' && scenery === 'vehicle')
+  ) {
     return { kind: 'scenery', scenery: scenery ?? 'other' };
   }
   return { kind: 'appliance', category };

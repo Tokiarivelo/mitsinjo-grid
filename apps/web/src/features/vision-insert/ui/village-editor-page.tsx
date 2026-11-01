@@ -42,6 +42,7 @@ export function VillageEditorPage() {
   const nameOf = useDetectionLabel();
   const {
     requestShape,
+    requestViews,
     peek: peekShape,
     retry: retryShape,
     reset: resetShape,
@@ -87,6 +88,12 @@ export function VillageEditorPage() {
   }, [imageUrl, targetKey, peekShape, resetShape]);
   const generateShape = () => {
     if (imageUrl && shapeRequest) void requestShape(imageUrl, shapeRequest);
+  };
+  const previewViews = () => {
+    if (imageUrl && shapeRequest) void requestViews(imageUrl, shapeRequest);
+  };
+  const regenerateShape = () => {
+    if (imageUrl && shapeRequest) void requestShape(imageUrl, shapeRequest, undefined, true);
   };
 
   const pickPhoto = async (file: Blob) => {
@@ -231,7 +238,9 @@ export function VillageEditorPage() {
                   label={nameOf(shapeTarget)}
                   imageUrl={imageUrl}
                   onRetry={retryShape}
+                  onRegenerate={regenerateShape}
                   onGenerate={generateShape}
+                  onPreviewViews={previewViews}
                 />
               )}
               {shapeTarget && (

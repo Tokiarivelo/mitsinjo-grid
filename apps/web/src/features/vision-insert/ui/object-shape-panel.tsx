@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import {
   Box,
   Check,
   Circle,
+  Eye,
   Layers,
   Loader2,
   Move3d,
@@ -26,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { useElapsedSeconds } from '../hooks/use-elapsed-seconds';
 import type { ObjectShapeState } from '../hooks/use-object-shape';
 import { recipeMaterials } from '../utils/surface-look';
+import { ObjectViewsCarousel } from './object-views-carousel';
 
 /** Placeholder while the viewer chunk loads or Spark builds the recipe. */
 function ViewerSkeleton() {
@@ -105,25 +108,36 @@ export interface ObjectShapePanelProps extends ObjectShapeState {
   imageUrl: string;
   /** Ask Spark again (outline fallback only). */
   onRetry?: () => void;
+  /** « Regenerate the 3D model »: re-run Spark for an existing 3D model, skipping cache. */
+  onRegenerate?: () => void;
   /** « Generate the 3D model »: nothing is asked to Spark before (selecting only shows a kept model). */
   onGenerate?: () => void;
+  /** « Preview 6 angles »: cheap 2D imagination (no Spark call) shown before the 3D model. */
+  onPreviewViews?: () => void;
 }
 
+type ShapeTab = 'model' | 'views';
+
 /**
- * « 3D model » block of the selected appliance (PV-T10): built on demand (« Generate the 3D model »), then
- * Spark recipe (« AI shape », violet = AI output) or outline fallback (« Outline shape » + note), on a
- * studio backdrop that stays lighter than dark objects in both themes. No WebGL → a note.
+ * « 3D model » block of the selected appliance (PV-T10): first the AI imagines the object from 6 angles
+ * in 2D (cheap preview, validated with « Validate & Generate 3D »), then Spark builds the recipe
+ * (« AI shape », violet = AI output) or the outline fallback (« Outline shape » + note), on a studio
+ * backdrop that stays lighter than dark objects in both themes. No WebGL → a note.
  */
 export function ObjectShapePanel({
   status,
   shape,
   step,
   startedAt,
+  viewsStatus,
+  views,
   detection,
   label,
   imageUrl,
   onRetry,
+  onRegenerate,
   onGenerate,
+  onPreviewViews,
 }: ObjectShapePanelProps) {
   const t = useTranslations('features.visionInsert');
   const webgl = useWebGLAvailable();
@@ -131,6 +145,22 @@ export function ObjectShapePanel({
   const materials = ready && shape?.recipe ? recipeMaterials(shape.recipe) : [];
   const loading = status === 'loading';
   const seconds = useElapsedSeconds(startedAt, status === 'loading');
+  // The 3D answer carries its own 6 views (rendered from the final recipe); else the preview.
+  const shownViews =
+    ready && shape?.imaginedViews?.length
+      ? shape.imaginedViews
+      : viewsStatus === 'ready'
+        ? (views ?? [])
+        : [];
+  const hasViews = shownViews.length > 0;
+  const viewsBusy = viewsStatus === 'loading';
+  const showTabs = ready || hasViews || viewsBusy;
+  // Tab choice is per object: a new detection restarts on the model tab.
+  const [tabState, setTabState] = useState({ id: detection.id, tab: 'model' as ShapeTab });
+  const setTab = (tab: ShapeTab) => setTabState({ id: detection.id, tab });
+  const userTab = tabState.id === detection.id ? tabState.tab : 'model';
+  // Before the 3D exists the preview is the point: validating it builds the model.
+  const activeTab: ShapeTab = !ready && (hasViews || viewsBusy) ? 'views' : userTab;
 
   return (
     <section className="flex flex-col gap-2" aria-labelledby="object-3d-title">
@@ -163,6 +193,41 @@ export function ObjectShapePanel({
         </div>
       </div>
 
+      {showTabs && webgl && (
+        <div
+          className="flex gap-1 rounded-control border border-border bg-canvas-sunken p-1"
+          role="tablist"
+          aria-label={t('model3dTitle')}
+        >
+          {(
+            [
+              { id: 'model', label: t('model3dModelTab'), Icon: Box },
+              { id: 'views', label: t('model3dViewsTab'), Icon: Eye },
+            ] as const
+          ).map(({ id, label: tabLabel, Icon }) => {
+            const selected = activeTab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setTab(id)}
+                className={cn(
+                  'inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-xs font-medium cursor-pointer transition-colors',
+                  selected
+                    ? 'bg-surface text-text-primary shadow-xs'
+                    : 'text-text-muted hover:text-text-primary'
+                )}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">{tabLabel}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {!webgl ? (
         <p className="rounded-control border border-border bg-canvas-sunken p-3 text-xs text-text-muted">
           {t('model3dNoWebgl')}
@@ -170,14 +235,40 @@ export function ObjectShapePanel({
       ) : (
         <>
           {loading && step && <ShapeSteps step={step} seconds={seconds} />}
-          {!ready && !loading ? (
+          {activeTab === 'views' ? (
+            viewsBusy ? (
+              <p className="flex items-center justify-center gap-2 rounded-control border border-dashed border-border bg-canvas-sunken p-4 text-xs text-text-muted">
+                <Loader2
+                  className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+                {t('model3dViewsLoading')}
+              </p>
+            ) : hasViews ? (
+              <ObjectViewsCarousel
+                views={shownViews}
+                onValidate={!ready ? onGenerate : undefined}
+                isValidating={loading}
+              />
+            ) : null
+          ) : !ready && !loading ? (
             <div className="flex flex-col items-center gap-2 rounded-control border border-dashed border-border bg-canvas-sunken p-4 text-center">
               <p className="text-xs text-text-secondary">{t('model3dGenerateHint')}</p>
+              {onPreviewViews && (
+                <button
+                  type="button"
+                  onClick={onPreviewViews}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-ai-violet px-4 text-sm font-semibold text-surface hover:bg-ai-violet/90 cursor-pointer"
+                >
+                  <Eye className="h-4 w-4" aria-hidden="true" />
+                  {t('previewViews')}
+                </button>
+              )}
               {onGenerate && (
                 <button
                   type="button"
                   onClick={onGenerate}
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-ai-violet px-4 text-sm font-semibold text-surface hover:bg-ai-violet/90 cursor-pointer"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-4 text-xs font-medium text-text-primary hover:bg-surface-hover cursor-pointer"
                 >
                   <Sparkles className="h-4 w-4" aria-hidden="true" />
                   {t('model3dGenerate')}
@@ -210,16 +301,28 @@ export function ObjectShapePanel({
               </span>
             )}
           </p>
-          {onRetry && (
+          {(onRetry ?? onRegenerate) && (
             <button
               type="button"
-              onClick={onRetry}
+              onClick={onRetry ?? onRegenerate}
               className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-3 text-xs font-medium text-text-primary hover:bg-surface-hover cursor-pointer"
             >
               <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
               {t('model3dRetry')}
             </button>
           )}
+        </div>
+      )}
+      {ready && shape.mode === 'recipe' && (onRegenerate ?? onRetry) && (
+        <div className="flex justify-end pt-1">
+          <button
+            type="button"
+            onClick={onRegenerate ?? onRetry}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-3 text-xs font-medium text-text-primary hover:bg-surface-hover cursor-pointer"
+          >
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+            {t('model3dRegenerate')}
+          </button>
         </div>
       )}
       {ready && shape?.fit && (

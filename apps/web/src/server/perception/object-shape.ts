@@ -20,6 +20,8 @@ import { confidence, mixColors, mixNumber, mixRecipe, pickCount } from './fusion
 import { fitSilhouette } from './silhouette-fit';
 import { EDGE_COLUMNS, sampleObjectGray, sampleObjectPixels } from './shape-colors';
 import { cropForShape } from './shape-crop';
+import { extractSwatches } from './photo-swatches';
+import { generateImaginedViews } from './views-generation';
 
 export { SHAPE_TIMEOUT_MS };
 
@@ -100,6 +102,8 @@ export interface ObjectShapeOptions {
   timeoutMs?: number;
   /** Live progress (SSE `shape_step`). */
   onStep?: (step: ShapeStep) => void;
+  /** Whether to render the 6 canonical 2D imagined views (defaults to false so core math stays in budget). */
+  withViews?: boolean;
 }
 
 /**
@@ -118,7 +122,7 @@ export async function runObjectShape(
   photo: PhotoForRegions | null,
   fullImageUrl: string,
   target: ShapeTarget,
-  { signal, timeoutMs = SHAPE_TIMEOUT_MS, onStep }: ObjectShapeOptions = {}
+  { signal, timeoutMs = SHAPE_TIMEOUT_MS, onStep, withViews }: ObjectShapeOptions = {}
 ): Promise<ObjectShape> {
   const base = { detectionId: target.id };
   const silhouette = (
@@ -254,18 +258,51 @@ export async function runObjectShape(
         console.info(`[vision] 3D recipe for "${target.label}" rejected (${issue}), silhouette`);
         return silhouette(issue, source);
       }
+      if (photo) {
+        try {
+          const swatches = await extractSwatches(photo, target, recipe);
+          if (Object.keys(swatches).length > 0) {
+            recipe.swatches = swatches;
+          }
+        } catch (err) {
+          console.warn('[vision] swatches failed:', err instanceof Error ? err.message : err);
+        }
+      }
       console.info(
-        `[vision] 3D recipe for "${target.label}": ${recipe.parts.length} parts in ${seconds} s (${found.model})${found.kit?.materials ? `, materials ${Object.values(found.kit.materials).join('/')}` : ''}`
+        `[vision] 3D recipe for "${target.label}": ${recipe.parts.length} parts in ${seconds} s (${found.model})${found.kit?.materials ? `, materials ${Object.values(found.kit.materials).join('/')}` : ''}${recipe.swatches ? `, swatches ${Object.keys(recipe.swatches).join('/')}` : ''}`
       );
+      let imaginedViews: import('@/lib/object-shape').ImaginedAngleView[] | undefined;
+      if (withViews) {
+        try {
+          imaginedViews = await generateImaginedViews(recipe, target, aspect);
+        } catch (err) {
+          console.warn('[vision] 6-angle views generation failed:', err);
+        }
+      }
       return {
         ...base,
         mode: 'recipe',
         recipe,
+        ...(imaginedViews ? { imaginedViews } : {}),
         ...(fit ? { fit: { iou: fit.iou } } : {}),
         ...source,
       };
     }
-    return { ...base, mode: 'recipe', recipe: found.recipe, ...source };
+    let fallbackViews: import('@/lib/object-shape').ImaginedAngleView[] | undefined;
+    if (withViews) {
+      try {
+        fallbackViews = await generateImaginedViews(found.recipe, target, aspect);
+      } catch {
+        // Best effort for mock
+      }
+    }
+    return {
+      ...base,
+      mode: 'recipe',
+      recipe: found.recipe,
+      ...(fallbackViews ? { imaginedViews: fallbackViews } : {}),
+      ...source,
+    };
   } catch (err) {
     console.warn('[vision] shape failed:', err instanceof Error ? err.message : err);
     return silhouette('provider_error', { source: 'mock', model: 'none' });

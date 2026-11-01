@@ -30,6 +30,18 @@ describe('parseKit (PV-T9b)', () => {
     });
   });
 
+  it('reads and preserves subtype when provided (e.g. vintage car, hatchback)', () => {
+    const k = parseKit(
+      reply({
+        archetype: 'vehicle',
+        subtype: 'vintage',
+        proportions: { w: 200, h: 100, d: 100 },
+        colors: { main: '#784384', secondary: '#ffffff', accent: '#222222' },
+      })
+    );
+    expect(k?.subtype).toBe('vintage');
+  });
+
   it('unknown archetype → the hint, bad colours → grey, counts rounded and clamped', () => {
     const k = parseKit(
       reply({

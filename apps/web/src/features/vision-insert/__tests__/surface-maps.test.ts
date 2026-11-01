@@ -65,6 +65,12 @@ describe('surfaceMaps (PR-1.4)', () => {
     expect(mean(shade)).toBeGreaterThan(220);
     expect(MAP_SIZE).toBe(128);
   });
+
+  it('carries a brightness gain to compensate for the shade map darkening (PR-1.5)', () => {
+    const m = surfaceMaps('brick', N)!;
+    expect(m.gain).toBeGreaterThan(1.1);
+    expect(m.gain).toBeLessThan(1.4);
+  });
 });
 
 describe('planarUvs (PR-1.4)', () => {

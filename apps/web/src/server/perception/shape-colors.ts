@@ -16,7 +16,7 @@ export const COLOR_SAMPLE_PX = 96;
 const COLOR_SAMPLE_AREA = COLOR_SAMPLE_PX * COLOR_SAMPLE_PX;
 
 /** Box of the object in photo pixels, clamped inside the photo. */
-function pixelBox(photo: PhotoForRegions, box: NormBox) {
+export function pixelBox(photo: PhotoForRegions, box: NormBox) {
   const left = Math.max(0, Math.min(photo.width - 1, Math.floor(box.x * photo.width)));
   const top = Math.max(0, Math.min(photo.height - 1, Math.floor(box.y * photo.height)));
   const width = Math.max(1, Math.min(photo.width - left, Math.round(box.w * photo.width)));

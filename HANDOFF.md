@@ -1,38 +1,31 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-01 (PR-0.1…0.3 measure, PR-1.1 light + colour fix, PR-1.2 rounded boxes, PR-1.3 overhang, PR-1.4 maps) · **By:** Claude Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-01 (PR-0.7 6-angle preview + validation, tree canopy, typecheck/lint green) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
-- Plan `docs/tasks/PV-vision-insert.md`: PV-T1…T13, T8b, T9b done. Other plans: `docs/tasks/PM-meta-models.md` (M1-T1…T5, M2-T1/T2, M3-T1/T2).
-- **3D shape (user reports):** `fitRecipe` stretches parts to the photo box; crop `shape-crop.ts` 640–768 px. Spark now answers an
-  `ObjectKit` (archetype, proportions, 3 colours, counts; `@/lib/object-kit` → `kitToRecipe` templates), standard model only,
-  because a free 12-part recipe took > 60 s on a building. 60 s limit, `failureOf` causes (`timeout`/`http_n`/`network`),
-  SSE steps crop → model → fit on `/api/vision/shape` (`sseResponse`), only lasting answers cached (`keepShape`).
-- **3D on demand:** select = `peek`, Spark only on « Generate the 3D model »; `.viewer-studio` backdrop, rim light, contact shadow.
-- **Add to the simulation:** `useApplianceDraft`, `ApplianceInsert(Panel)`, engine `applianceSummary`; AI = category → catalog W.
-- **PV-T13:** `SceneModel.appliances`, `ui/appliance-markers.tsx`, 2D « n added », `ApplianceList` on /village and /simulation.
-- Checks: tsc ✓, eslint ✓, i18n ✓, vitest (lib, perception, vision api, vision-insert, microgrid-3d) ✓. Live Meta not checked: V47–V48, V53–V54.
+- Plan `docs/tasks/PV-vision-insert.md`: PV-T1…T13 done. Plan `docs/tasks/PV-shape-realism.md`: PR-0.1…PR-1.6, PR-3.2…3.3, **PR-0.7** done.
+- **PR-0.7 (user):** `POST /api/vision/views` renders the archetype template (measured colours, box proportions, no Spark) at 6 angles; panel shows a carousel first, « Validate & Generate 3D » builds the model; after build, tabs Model | 6 views (`shape.imaginedViews`, `withViews` in shape route).
+- **Quality:** tree template = 5-sphere multi-tier canopy; tree score 88 → 89, car steady 92, mean 90 (IoU 0.96, edge F1 0.84, ΔE 3.3). Views are score-neutral (rendered from the recipe).
+- **Fixes:** shape-route no-watts test now strips base64 PNGs (false `kw` match) + asserts 6 views; `ImaginedViewsResponseSchema` added; hook caches previews per `shapeKey`.
+- **Checks:** `make typecheck` ✓, `make lint` ✓, `make check-i18n` ✓, `make format-check` ✓, `make test-shape` ✓ (5/5), `make shape-report` ✓. Touched-area tests green (panel, hook, views, shape-route). Full parallel suite flakes on image-heavy tests (timeouts, 1 GB free RAM: model-score, golden-shape fail in different runs, all pass alone). Engine 264/264 ✓.
 
 ## Next task
 
-- **3D realism (priority, user)**: task file `docs/tasks/PV-shape-realism.md` → PR-0.1…0.3, PR-1.1, PR-1.2…1.4 done → next **PR-1.5 photo swatches** (server, S1); PR-0.4/0.5 wait for live Meta + user photos; then **PR-0.6 Spark critic** (user: Meta model compares crop | flat render, returns kit patch). Work with `/shape-3d`, judge with `/shape-loop` (or `/loop /shape-loop`). Meta only; photo never pasted, 64 px tileable swatches OK. Needs ~10 user photos for PR-0.5.
-- Done before it: `PV-shape-fidelity.md` PF-T1…T9 (colours, roofline, rows, yaw, fit, fusion, golden set `make test-shape`); PF-T10 folded into PR-5.1/5.2.
-- **Free placement** (user: « Sector » too static): plan `docs/tasks/PV-free-placement.md` (position + feeder, PP-T1…T8).
-- **PV-T14** copilot tools report `appliances`; then **PV-T11b** (usage-hours chart, `edit_appliance`). Not done: screenshots, `make e2e`.
+- **Commit** this branch (staged + unstaged 6-angle work from two agents; e2e does not cover /village, manual V68–V69).
+- **3D realism:** `docs/tasks/PV-shape-realism.md` → PR-0.4 Capture / PR-0.6 Spark critic; then S2 (PR-2.1 `extrude`, PR-2.2 profile body); S4 (Muse Image multi-view → hull) is the structural fix for « toy look ».
+- **Free placement**: `docs/tasks/PV-free-placement.md` (PP-T1…T8). **PV-T14** copilot tools report `appliances`; then **PV-T11b** (usage-hours chart).
 
 ## Decisions taken
 
-- Spark classifies (kit), templates build geometry; the photo box is the truth for width / height.
-- « AI » power = the AI's category → engine catalog watts. The LLM never sends watts.
-- Appliance id `vision-<photoKey>-<det id>`. Insert applies directly (removable at once).
-- Roof = measured only (SAM outline skyline, segmented LSQ + BIC); pitched `building` → `house`; flat / no outline → stepped roof.
-  Units = gables (≥ 2) > roof-band edge period > Spark; never on a flat `building`; 12-part budget trims windows first.
-- Perspective: model turned by yaw (no homography); dead zone 6°.
-- No photo on the 3D model (user, 2026-11-01): `recipeMesh` / `silhouetteMesh` return one geometry; `photo-mask.ts` removed.
+- Preview renders the template, not Muse Image views (cheap, offline, score-neutral); S4 stays the real multi-view bet.
+- Preview colours measured on the crop (fallback neutral greys); proportions from the detection box.
+- Views tab forced before the 3D exists (validation flow); user tab choice respected once built, reset per object.
+- No `window.__*` hooks; peer-session messaging unavailable (unsupported_intent), continued solo.
 
 ## Files touched this session
 
-- PR-0.1: `perception/flat-render.ts` (`renderFlat`, ray per pixel, z-buffer, Lambert), `partTransform` shared in `silhouette-fit.ts`, `hexToRgb`; PR-0.2: `model-score.ts` (`scoreModel`), `score-shape.ts` (`scoreRecipe`), `sampleObjectRgb`, `maskEdges`/`distanceTo`/`fitGrid`, test helper `__tests__/golden-run.ts`; PR-0.3: `shape-report.ts` (table, `worstMetric`, `contactSheet`), `renderFlat(…, view)` + `THREE_QUARTER`, z-tie fix, `make shape-report`; PR-1.1: `StudioEnvironment` in `object-editor-3d.tsx`, Neutral tone map, `recipeMesh` double sRGB fix, `scripts/object-viewer-shot.mjs` + `make shape-shots`, PR-1.2: `roundedBox`, `SURFACE_LOOK.radius`; PR-1.3: `ROOF_OVERHANG`, `SPHERE_SEGMENTS`; PR-1.4: `surface-maps.ts`, `surface-textures.ts`, `planarUvs`, golden priors with materials; `.claude/settings.json` deny narrowed to `apps/*/test-results` (user); skills shape-3d/shape-loop « Meta in the render loop ».
-
-- Earlier (PF): roofline, repetition, silhouette-fit, fusion, golden set, perspective, photo removed — see `PV-shape-fidelity.md`.
+- `app/api/vision/views/route.ts` (measured colours), `lib/object-shape.ts` (views response schema).
+- `hooks/use-object-shape.ts` (`requestViews` + cache), `ui/object-shape-panel.tsx` (tabs + validation), `ui/village-editor-page.tsx` (wiring).
+- Tests: `use-object-shape.test.ts`, `object-shape-panel.test.tsx`, `shape-route.test.ts`; i18n `model3dViewsLoading` en/fr/mg.
+- Docs: `contracts.md`, `PV-shape-realism.md` (PR-0.7 + loop row), `test-scenarios/06-village.md` (V68–V69).

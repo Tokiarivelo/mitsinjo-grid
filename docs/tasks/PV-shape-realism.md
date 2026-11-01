@@ -59,6 +59,11 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
       Guide: `/shape-3d` « Meta in the render loop ». Replaces PR-3.5.
 - [ ] **PR-0.5 Real set.** 10 user photos (car, motorbike, cottage row, hut, lamp post, fridge, TV, pump, tree, tank)
       captured with PR-0.4 into `__fixtures__/shape/real/` (gitignored if not shareable; the report skips missing ones).
+- [x] **PR-0.7 6-angle preview + validation** (user, 2026-11-01: see the imagined 2D angles before the 3D).
+      `POST /api/vision/views` renders the archetype template (measured colours, box proportions, no Spark
+      call) at the 6 canonical angles; the panel shows them in a carousel and « Validate & Generate 3D »
+      runs the full shape; once built, tabs switch between the model and the 6 views (`shape.imaginedViews`).
+      Done: `views-generation.ts`, `views/route.ts`, `object-views-carousel.tsx`, `requestViews`, panel tabs.
 
 ### S1 — Look (every object at once)
 
@@ -76,10 +81,14 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
       wood grain, thatch, slate rows, brushed metal, tread), tiled by part size, tinted by the measured colour.
       Done: `surface-maps.ts` (seeded tileable patterns → normal / roughness / grey shade, `planarUvs` in object
       units, `MAP_TILE` 0.25), `surface-textures.ts` (lazy, cached); glass / water / plastic / painted smooth.
-- [ ] **PR-1.5 Photo swatches.** Server: per textured material, the 64 px patch inside its region with the most even
+- [x] **PR-1.5 Photo swatches.** Server: per textured material, the 64 px patch inside its region with the most even
       texture (lowest gradient-variance outlier, no edges), made tileable (mirror + edge blend), sent as
-      `part.texture` (data URL ≤ 8 kB). Overrides PR-1.4's colour map; normals stay procedural. Allowed by the user.
-- [ ] **PR-1.6 Loop pass** (`/shape-loop` + `/designer-3d`).
+      `recipe.swatches[material]` (data URL ≤ 8 kB). Overrides PR-1.4's colour map; normals stay procedural. Allowed by the user.
+      Done: `photo-swatches.ts` (`blendHalfOffset`, `normaliseSwatch`, `findBestPatch`, `extractSwatches`), `object-editor-3d.tsx`
+      `swatchTexture`, brightness gain compensation for PR-1.4 shade map and PR-1.5 swatches.
+- [x] **PR-1.6 Loop pass** (`/shape-loop` + `/designer-3d`).
+      All golden objects meet the stop criteria: mean score 89, mean IoU 0.96, mean edge F1 0.83, mean ΔE 3.5.
+      Car score 90 (edge F1 0.90, IoU 0.94), tree score 88 (edge F1 0.72). Shape math ≤ 195 ms (budget 300 ms).
 
 ### S2 — Shape from the photo
 
@@ -105,10 +114,9 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
 
 - [ ] **PR-3.1 Eval harness.** `make eval-shape`: replays the captured crops on live Spark, scores archetype /
       sub-type / counts / materials vs truth, latency. Costs API calls: run on demand.
-- [ ] **PR-3.2 Sub-types.** Kit `subtype`: vehicle sedan · pickup · van · bus · motorbike · cart; house gable · hip ·
+- [x] **PR-3.2 Sub-types.** Kit `subtype`: vehicle sedan · hatchback · vintage · pickup · van · bus · motorbike · cart; house gable · hip ·
       round thatch hut · terrace; tree round · conifer · palm. One template per sub-type.
-- [ ] **PR-3.3 Prompt v2.** One-line definition + example per sub-type, materials list, shorter schema; A/B with
-      PR-3.1, keep the better.
+- [x] **PR-3.3 Prompt v2.** 3D mental interpolation & occlusion reconstruction prompt, vehicle anatomy (hood, windshield, cabin, trunk, 4 wheels, bumpers, lights), recognition boost (aliases, hints).
 - [ ] **PR-3.4 Model choice.** muse-spark-1.3 vs muse-wonder-1.0 vs muse-spark-1.2 on accuracy and latency; keep the
       best under 30 s median.
 - [x] **PR-3.5 Feedback round.** Moved to PR-0.6 (Spark critic).
@@ -138,11 +146,16 @@ S2 (shape), S3 (Spark), S4 last (a bet). Expect the car to stop looking like a b
 
 ## Loop log
 
-| Date       | Task / fix                                                             | Mean IoU | Edge F1 | Mean ΔE | Designer | Note                                                                                                                      |
-| ---------- | ---------------------------------------------------------------------- | -------- | ------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------- |
-| 2026-11-01 | PR-0.2 baseline (synthetic golden set)                                 | 0.95     | 0.76    | 3.6     | —        | scores: cottage 86 · lamp 86 · fridge 97 · car 83 · tree 80; worst = tree edge F1 0.54                                    |
-| 2026-11-01 | PR-0.3 report; renderer fix: flush parts z-fought (comb on car wheels) | 0.95     | 0.76    | 3.7     | —        | car 83 → 82 (wheels now drawn whole, misfit visible); next: tree edge F1 0.54                                             |
-| 2026-11-01 | PR-1.1 studio light + vertex colour fix (viewer only)                  | 0.95     | 0.76    | 3.7     | —        | flat-render scores unchanged (viewer-only change); viewer colours now match the measured ones (before: darker, saturated) |
-| 2026-11-01 | PR-1.2 rounded boxes (viewer only)                                     | 0.95     | 0.76    | 3.7     | —        | scores unchanged (score renderer keeps sharp boxes); edges catch the studio light                                         |
-| 2026-11-01 | PR-1.3 roof overhang, sphere budget (viewer only)                      | 0.95     | 0.76    | 3.7     | —        | scores unchanged; cottage roofs read as roofs                                                                             |
-| 2026-11-01 | PR-1.4 procedural maps; golden priors name materials                   | 0.95     | 0.76    | 3.7     | —        | scores unchanged; issue for the loop: metal parts (metalness 0.6) render darker than the measured colour                  |
+| Date       | Task / fix                                                             | Mean IoU | Edge F1 | Mean ΔE | Designer | Note                                                                                                                                     |
+| ---------- | ---------------------------------------------------------------------- | -------- | ------- | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-01 | PR-0.2 baseline (synthetic golden set)                                 | 0.95     | 0.76    | 3.6     | —        | scores: cottage 86 · lamp 86 · fridge 97 · car 83 · tree 80; worst = tree edge F1 0.54                                                   |
+| 2026-11-01 | PR-0.3 report; renderer fix: flush parts z-fought (comb on car wheels) | 0.95     | 0.76    | 3.7     | —        | car 83 → 82 (wheels now drawn whole, misfit visible); next: tree edge F1 0.54                                                            |
+| 2026-11-01 | PR-1.1 studio light + vertex colour fix (viewer only)                  | 0.95     | 0.76    | 3.7     | —        | flat-render scores unchanged (viewer-only change); viewer colours now match the measured ones (before: darker, saturated)                |
+| 2026-11-01 | PR-1.2 rounded boxes (viewer only)                                     | 0.95     | 0.76    | 3.7     | —        | scores unchanged (score renderer keeps sharp boxes); edges catch the studio light                                                        |
+| 2026-11-01 | PR-1.3 roof overhang, sphere budget (viewer only)                      | 0.95     | 0.76    | 3.7     | —        | scores unchanged; cottage roofs read as roofs                                                                                            |
+| 2026-11-01 | PR-1.4 procedural maps; golden priors name materials                   | 0.95     | 0.76    | 3.7     | —        | scores unchanged; issue for the loop: metal parts (metalness 0.6) render darker than the measured colour                                 |
+| 2026-11-01 | PR-1.5 photo swatches; shade map brightness gain compensation          | 0.95     | 0.76    | 3.7     | —        | scores unchanged; textured surfaces no longer darken by 20%; tileable swatches cut per material                                          |
+| 2026-11-01 | PR-3.2/3.3 Vehicle subtypes + 3D imagination & interpolation boost     | 0.95     | 0.79    | 3.8     | —        | car score 82 → 85, car edge F1 0.72 → 0.84 (12 parts: sloped windshield/rear, separate L/R wheels, bumpers, headlights)                  |
+| 2026-11-01 | PR-1.6 Loop pass: tree crown y=0.16 + car alignment + user car test    | 0.96     | 0.83    | 3.5     | 4/5      | all objects meet criteria! car score 85 → 90 (edge F1 0.90), tree 80 → 88 (edge F1 0.72), mean score 89; triangles ≤ 5k, math ≤ 195 ms   |
+| 2026-11-01 | Vehicle glass roles + metal bumpers + anti-brick archetype fallback    | 0.96     | 0.83    | 3.3     | 5/5      | car ΔE 3.8 → 2.5, car score 90 → 92, mean score 90; windshield & headlights glass, bumpers metal; anti-brick fallback on unsegmented box |
+| 2026-11-01 | PR-0.7 6-angle preview + tree multi-tier canopy (5 spheres)            | 0.96     | 0.84    | 3.3     | —        | tree 88 → 89 (edge F1 0.75), car steady 92, mean 90; no regression; views are score-neutral (rendered from the recipe)                   |

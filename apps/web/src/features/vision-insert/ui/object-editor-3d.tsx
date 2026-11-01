@@ -6,15 +6,24 @@ import { ContactShadows, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { TOKEN_HEX } from '@/features/microgrid-3d/utils/scene-palette';
-import { silhouetteRings, type ObjectShape } from '@/lib/object-shape';
+import { defaultArchetype, kitToRecipe, type ObjectKit } from '@/lib/object-kit';
+import {
+  fitRecipe,
+  silhouetteRings,
+  type ObjectShape,
+  type RecipeMaterial,
+} from '@/lib/object-shape';
 import type { ApplianceDetection } from '@/lib/vision';
 import { recipeMesh, silhouetteDepth, silhouetteMesh } from '../utils/object-geometry';
 import { SURFACE_LOOK, SURFACES } from '../utils/surface-look';
-import { surfaceTextures } from '../utils/surface-textures';
+import { SWATCH_GAIN } from '../utils/surface-maps';
+import { surfaceTextures, swatchTexture } from '../utils/surface-textures';
 
 export interface ObjectEditor3dProps {
   shape: ObjectShape;
-  detection: Pick<ApplianceDetection, 'box' | 'outline' | 'category' | 'scenery'>;
+  detection: Pick<ApplianceDetection, 'box' | 'outline' | 'category' | 'scenery'> & {
+    label?: string;
+  };
   /** The photo the object was found on: only its size is read (the photo is never pasted on the model). */
   imageUrl: string;
 }
@@ -55,35 +64,59 @@ function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
   const image = useLoader(THREE.ImageLoader, imageUrl);
   const photoAspect = image.width && image.height ? image.width / image.height : 1;
 
+  const fallbackRecipe = useMemo(() => {
+    if (shape.mode === 'recipe' && shape.recipe) return null;
+    if (detection.outline) return null;
+    const archetype = defaultArchetype(detection.category, detection.scenery, detection.label);
+    const fallbackKit: ObjectKit = {
+      archetype,
+      proportions: { w: 1, h: 0.6, d: 0.5 },
+      colors: { main: '#6a6c72', secondary: '#333538', accent: '#1a1b1e' },
+      materials: { main: 'metal', secondary: 'glass', accent: 'rubber' },
+    };
+    return fitRecipe(kitToRecipe(fallbackKit), photoAspect);
+  }, [shape, detection, photoAspect]);
+
+  const activeRecipe = shape.mode === 'recipe' && shape.recipe ? shape.recipe : fallbackRecipe;
+
   const mesh = useMemo(
     () =>
-      shape.mode === 'recipe' && shape.recipe
-        ? recipeMesh(shape.recipe)
+      activeRecipe
+        ? recipeMesh(activeRecipe)
         : silhouetteMesh(
             silhouetteRings(detection),
             detection.box,
             photoAspect,
             silhouetteDepth(detection)
           ),
-    [shape, detection, photoAspect]
+    [activeRecipe, detection, photoAspect]
   );
   useEffect(() => () => mesh.dispose(), [mesh]);
-  const vertexColors = shape.mode === 'recipe';
+  const invalidate = useThree((s) => s.invalidate);
+  const vertexColors = Boolean(activeRecipe);
+  const swatches = activeRecipe?.swatches;
   // One material per surface (stone matte, glass shiny…), indexed by the geometry groups. Surfaces the
-  // model uses get their relief maps (PR-1.4: stone blocks, slate rows…), tinted by the measured colours.
+  // model uses get their relief maps (PR-1.4: stone blocks, slate rows…) or photo swatches (PR-1.5),
+  // tinted by the measured colours and compensated with a brightness gain so surfaces do not darken.
   const surfaces = useMemo(() => {
     const used = new Set(mesh.groups.map((g) => g.materialIndex));
     return SURFACES.map((s, i) => {
       const { roughness, metalness } = SURFACE_LOOK[s];
       const maps = vertexColors && used.has(i) ? surfaceTextures(s) : null;
+      const swatch = vertexColors && swatches?.[s as RecipeMaterial];
+      const swatchTex = swatch ? swatchTexture(swatch, invalidate) : null;
+      const map = swatchTex ?? maps?.map;
+      const gain = swatchTex ? SWATCH_GAIN : (maps?.gain ?? 1);
       return new THREE.MeshStandardMaterial({
         vertexColors: true,
         roughness,
         metalness,
-        ...(maps ?? {}),
+        color: new THREE.Color(gain, gain, gain),
+        ...(maps ? { normalMap: maps.normalMap, roughnessMap: maps.roughnessMap } : {}),
+        ...(map ? { map } : {}),
       });
     });
-  }, [mesh, vertexColors]);
+  }, [mesh, vertexColors, swatches, invalidate]);
   useEffect(() => () => surfaces.forEach((m) => m.dispose()), [surfaces]);
   // Ground under the object (shadow sits on it), from the real geometry.
   const floorY = useMemo(() => {

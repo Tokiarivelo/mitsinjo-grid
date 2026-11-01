@@ -31,6 +31,10 @@ describe('golden shapes (PF-T9)', () => {
     if (c.expect.gables) {
       expect(recipe.parts.filter((p) => p.shape === 'prism')).toHaveLength(c.expect.gables);
     }
+    if (c.name === 'cottage row') {
+      expect(recipe.swatches?.stone).toBeDefined();
+      expect(recipe.swatches?.slate).toBeDefined();
+    }
     // All the math (crop, samples, colours, roof, repetition, perspective, fit) inside the budget.
     expect(ms).toBeLessThan(BUDGET_MS);
   });

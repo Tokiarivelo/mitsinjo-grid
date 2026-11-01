@@ -12,6 +12,13 @@ export const MAP_SIZE = 128;
 /** Object units covered by one texture repeat (largest object side = 1). */
 export const MAP_TILE = 0.25;
 
+/** Texture side for photo swatches (PR-1.5), pixels. */
+export const SWATCH_SIZE = 64;
+/** Baseline grey level of the normalised swatch (0–255), keeps highlights and shadows without clipping. */
+export const SWATCH_BASELINE = 200;
+/** Brightness multiplier so a swatch at SWATCH_BASELINE averages to 1 in linear space. */
+export const SWATCH_GAIN = 1.74;
+
 /** Height pattern 0–1 at integer pixel (x, y) of a `n`-pixel tile; wraps at n (tileable). */
 type Pattern = (x: number, y: number, n: number) => number;
 
@@ -141,6 +148,8 @@ export interface SurfaceMaps {
   roughness: Uint8Array;
   /** RGBA bytes, grey 205–255: grooves slightly darker (cheap occlusion), multiplies the part colour. */
   shade: Uint8Array;
+  /** Brightness multiplier so the shade map does not darken the measured colour on average (PR-1.5). */
+  gain: number;
 }
 
 /** Height field of a material's pattern, 0–1, `size`² row-major; null for smooth surfaces. */
@@ -162,6 +171,7 @@ export function surfaceMaps(surface: Surface, size = MAP_SIZE): SurfaceMaps | nu
   const normal = new Uint8Array(size * size * 4);
   const roughness = new Uint8Array(size * size * 4);
   const shade = new Uint8Array(size * size * 4);
+  let sumLinear = 0;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const i = (y * size + x) * 4;
@@ -176,9 +186,13 @@ export function surfaceMaps(surface: Surface, size = MAP_SIZE): SurfaceMaps | nu
       roughness.set([r, r, r, 255], i);
       const s = Math.round(205 + 50 * v);
       shade.set([s, s, s, 255], i);
+      const srgb = s / 255;
+      sumLinear += srgb <= 0.04045 ? srgb / 12.92 : Math.pow((srgb + 0.055) / 1.055, 2.4);
     }
   }
-  return { size, normal, roughness, shade };
+  const meanLinear = sumLinear / (size * size);
+  const gain = Math.round((1 / meanLinear) * 1000) / 1000;
+  return { size, normal, roughness, shade, gain };
 }
 
 /**

@@ -281,7 +281,7 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     target: ShapeSubject,
     signal?: AbortSignal
   ): Promise<PerceptionCall<ShapeResult>> {
-    const hint = defaultArchetype(target.category, target.scenery);
+    const hint = defaultArchetype(target.category, target.scenery, target.label);
     // Standard id, not the contributor one: the operator waits on this answer (≈ 15 s vs ≈ 25 s measured).
     const { content, model, usage } = await this.visionJson(
       SHAPE_SYSTEM_PROMPT,

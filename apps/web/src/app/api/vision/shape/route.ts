@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
     const shape = await runObjectShape(perception, size, fullUrl, target, {
       signal: req.signal,
       onStep: (step) => send('shape_step', { step }),
+      withViews: true,
     });
     send('shape_result', { shape });
   });

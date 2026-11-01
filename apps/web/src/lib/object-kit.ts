@@ -56,6 +56,8 @@ const count = (max: number) => z.number().int().min(0).max(max);
 
 export const ObjectKitSchema = z.object({
   archetype: z.enum(KIT_ARCHETYPES),
+  /** Optional subtype (vehicle: sedan, hatchback, vintage, van, truck; house: cottage, gable; tree: round, conifer). */
+  subtype: z.string().max(32).optional(),
   /** Real proportions, largest side = 1. */
   proportions: z.object({
     w: z.number().min(0.01).max(1),
@@ -75,6 +77,7 @@ export const ObjectKitSchema = z.object({
   /** Front windows (houses: per floor), doors, wheels, legs, floors. Absent = template default. */
   details: z
     .object({
+      subtype: z.string().max(32).optional(),
       windows: count(8).optional(),
       doors: count(3).optional(),
       wheels: count(6).optional(),
@@ -91,8 +94,12 @@ export const ObjectKitSchema = z.object({
 export type ObjectKit = z.infer<typeof ObjectKitSchema>;
 
 /** Archetype the detection already implies (mock mode, and the hint sent to Spark). */
-export function defaultArchetype(category: ApplianceCategory, scenery?: SceneryType): KitArchetype {
-  if (scenery) {
+export function defaultArchetype(
+  category: ApplianceCategory,
+  scenery?: SceneryType,
+  label?: string
+): KitArchetype {
+  if (scenery && scenery !== 'other') {
     const byScenery: Record<SceneryType, KitArchetype> = {
       building: 'house',
       vehicle: 'vehicle',
@@ -104,6 +111,33 @@ export function defaultArchetype(category: ApplianceCategory, scenery?: SceneryT
       other: 'other',
     };
     return byScenery[scenery];
+  }
+  // Check label if scenery is missing or 'other', or category is 'other'
+  if (label) {
+    const norm = label.trim().toLowerCase();
+    if (
+      /\b(car|cars|vehicle|vehicles|automobile|automobiles|auto|autos|mini|cooper|sedan|sedans|hatchback|hatchbacks|suv|suvs|truck|trucks|pickup|pickups|van|vans|bus|buses|cart|carts|coupe|convertible|motorcar|jeep|taxi|wagon|buggy|motorbike|motorcycle|bike|bicycle|scooter|voiture|camion|fiara|tomobila|topiary_car)\b/i.test(
+        norm
+      )
+    ) {
+      return 'vehicle';
+    }
+    if (
+      /\b(house|cottage|building|roof|wall|barn|shed|cabin|hut|shop|maison|trano|batiment)\b/i.test(
+        norm
+      )
+    ) {
+      return 'house';
+    }
+    if (/\b(tree|trees|palm|pine|conifer|willow|hazo|arbre)\b/i.test(norm)) {
+      return 'tree';
+    }
+    if (/\b(bush|plant|hedge|shrub|flower|flowers|grass|topiary)\b/i.test(norm)) {
+      return 'bush';
+    }
+    if (/\b(lamp|light|lantern|street_light|lamppost|lamp_post|jiro)\b/i.test(norm)) {
+      return 'lamp_post';
+    }
   }
   const byCategory: Record<ApplianceCategory, KitArchetype> = {
     fridge: 'cabinet',
@@ -238,7 +272,7 @@ function measuredHouse({ colors: c, details: d }: ObjectKit, roof: KitRoof): Rec
   return [...structure, ...facade(c, d, -0.5, eave, MAX_PARTS - structure.length)];
 }
 
-const TEMPLATES: Record<KitArchetype, Template> = {
+export const TEMPLATES: Record<KitArchetype, Template> = {
   cabinet: ({ colors: c, details: d }) => [
     part('box', [0, 0, 0], [1, 1, 1], c.main, { front: true }),
     part('box', [0.38, 0.1, 0.51], [0.05, 0.3, 0.04], c.accent),
@@ -301,22 +335,84 @@ const TEMPLATES: Record<KitArchetype, Template> = {
     ].slice(0, 12);
   },
   tree: ({ colors: c }) => [
-    part('sphere', [0, 0.18, 0], [1, 0.64, 1], c.main, { front: true }),
-    part('cylinder', [0, -0.3, 0], [0.14, 0.4, 0.14], c.secondary),
+    part('sphere', [0, 0.16, 0], [0.96, 0.64, 0.96], c.main, { front: true }),
+    part('cylinder', [0, -0.28, 0], [0.14, 0.44, 0.14], c.secondary),
+    // Organic multi-tier canopy volume:
+    part('sphere', [-0.18, 0.18, 0.12], [0.52, 0.42, 0.52], c.main),
+    part('sphere', [0.18, 0.22, -0.1], [0.48, 0.38, 0.48], c.main),
+    part('sphere', [0.04, 0.32, 0.08], [0.44, 0.3, 0.44], c.main),
   ],
   bush: ({ colors: c }) => [
     part('sphere', [0, 0.05, 0], [1, 0.9, 1], c.main, { front: true }),
     part('sphere', [0.25, 0.25, 0.1], [0.4, 0.4, 0.4], c.accent),
   ],
-  vehicle: ({ colors: c, details: d }) => {
+  vehicle: ({ colors: c, details: d, subtype: rawSubtype }) => {
+    const sub = (rawSubtype ?? d?.subtype ?? '').toLowerCase();
     const wheels = Math.max(2, Math.min(6, d?.wheels ?? 4));
-    const perSide = Math.ceil(wheels / 2);
+
+    // Two-wheel vehicle (motorbike, scooter, bicycle):
+    if (wheels === 2 || sub === 'motorbike' || sub === 'bike' || sub === 'scooter') {
+      return [
+        part('box', [0, -0.06, 0], [0.55, 0.28, 0.22], c.main, { front: true }),
+        part('cylinder', [0.34, -0.32, 0], [0.32, 0.32, 0.08], c.accent, { axis: 'z' }),
+        part('cylinder', [-0.34, -0.32, 0], [0.32, 0.32, 0.08], c.accent, { axis: 'z' }),
+        part('cylinder', [0.22, 0.16, 0], [0.08, 0.52, 0.08], c.secondary),
+        part('sphere', [0.06, 0.14, 0], [0.28, 0.2, 0.22], c.main),
+        part('box', [-0.14, 0.12, 0], [0.24, 0.08, 0.18], c.secondary),
+        part('cylinder', [0.32, 0.26, 0], [0.08, 0.08, 0.08], c.accent, { axis: 'x' }),
+      ];
+    }
+
+    // Van / bus / minivan:
+    if (sub === 'van' || sub === 'bus' || sub === 'minivan') {
+      const perSide = Math.ceil(wheels / 2);
+      return [
+        part('box', [0, -0.08, 0], [1.0, 0.44, 0.9], c.main, { front: true }),
+        part('box', [-0.04, 0.28, 0], [0.84, 0.36, 0.84], c.secondary),
+        part('prism', [0.44, 0.28, 0], [0.12, 0.36, 0.84], c.accent, { apex: 0 }),
+        part('box', [0.5, -0.18, 0], [0.04, 0.14, 0.88], c.accent),
+        part('box', [-0.5, -0.18, 0], [0.04, 0.14, 0.88], c.accent),
+        part('cylinder', [0.49, 0.02, 0.3], [0.03, 0.09, 0.09], c.accent, { axis: 'x' }),
+        part('cylinder', [0.49, 0.02, -0.3], [0.03, 0.09, 0.09], c.accent, { axis: 'x' }),
+        ...spread(perSide, 0.6).flatMap((x) => [
+          part('cylinder', [x, -0.38, 0.44], [0.22, 0.22, 0.14], c.accent, { axis: 'z' }),
+          part('cylinder', [x, -0.38, -0.44], [0.22, 0.22, 0.14], c.accent, { axis: 'z' }),
+        ]),
+      ].slice(0, 12);
+    }
+
+    // Pickup / truck:
+    if (sub === 'pickup' || sub === 'truck') {
+      return [
+        part('box', [0, -0.1, 0], [1.0, 0.4, 0.9], c.main, { front: true }),
+        part('box', [0.14, 0.28, 0], [0.44, 0.36, 0.84], c.secondary),
+        part('prism', [0.42, 0.28, 0], [0.14, 0.36, 0.84], c.accent, { apex: 0 }),
+        part('box', [-0.25, 0.14, 0], [0.46, 0.08, 0.86], c.secondary),
+        part('box', [0.5, -0.2, 0], [0.04, 0.14, 0.88], c.accent),
+        part('cylinder', [0.32, -0.38, 0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
+        part('cylinder', [0.32, -0.38, -0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
+        part('cylinder', [-0.3, -0.38, 0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
+        part('cylinder', [-0.3, -0.38, -0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
+        part('cylinder', [0.49, 0.02, 0.3], [0.03, 0.09, 0.09], c.accent, { axis: 'x' }),
+        part('cylinder', [0.49, 0.02, -0.3], [0.03, 0.09, 0.09], c.accent, { axis: 'x' }),
+      ];
+    }
+
+    // Classic car / vintage / hatchback / sedan (Mini Cooper, etc.):
+    // Sleek, recognizable vehicle with sloped windshield, sloped rear, 4 wheels, bumpers, headlights.
     return [
-      part('box', [0, -0.05, 0], [1, 0.5, 1], c.main, { front: true }),
-      part('box', [-0.05, 0.32, 0], [0.55, 0.36, 0.9], c.secondary),
-      ...spread(perSide, 0.6).map((x) =>
-        part('cylinder', [x, -0.38, 0], [0.18, 0.36, 1], c.accent, { axis: 'z' })
-      ),
+      part('box', [0, -0.06, 0], [1.0, 0.48, 0.9], c.main, { front: true }),
+      part('box', [-0.03, 0.32, 0], [0.52, 0.36, 0.82], c.secondary),
+      part('prism', [0.26, 0.32, 0], [0.14, 0.36, 0.82], c.secondary, { apex: 0 }),
+      part('prism', [-0.33, 0.32, 0], [0.14, 0.36, 0.82], c.secondary, { apex: 1 }),
+      part('box', [0.49, -0.16, 0], [0.02, 0.12, 0.88], c.main),
+      part('box', [-0.49, -0.16, 0], [0.02, 0.12, 0.88], c.main),
+      part('cylinder', [0.25, -0.38, 0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
+      part('cylinder', [0.25, -0.38, -0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
+      part('cylinder', [-0.25, -0.38, 0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
+      part('cylinder', [-0.25, -0.38, -0.44], [0.24, 0.24, 0.14], c.accent, { axis: 'z' }),
+      part('cylinder', [0.49, 0.04, 0.28], [0.02, 0.08, 0.08], c.secondary, { axis: 'x' }),
+      part('cylinder', [0.49, 0.04, -0.28], [0.02, 0.08, 0.08], c.secondary, { axis: 'x' }),
     ];
   },
   person: ({ colors: c }) => [

@@ -43,6 +43,7 @@ const renderPanel = (props: Partial<Parameters<typeof ObjectShapePanel>[0]> = {}
       <ObjectShapePanel
         status="ready"
         shape={shape('recipe')}
+        viewsStatus="idle"
         detection={fridge}
         label="Fridge"
         imageUrl="data:image/png;base64,AA"
@@ -50,6 +51,25 @@ const renderPanel = (props: Partial<Parameters<typeof ObjectShapePanel>[0]> = {}
       />
     </I18nProvider>
   );
+
+const LABEL_KEYS = [
+  'angleFront',
+  'angleBack',
+  'angleLeft',
+  'angleRight',
+  'angleTop',
+  'angleThreeQuarter',
+] as const;
+const previewViews = (['front', 'back', 'left', 'right', 'top', 'three_quarter'] as const).map(
+  (angle, i) => ({
+    angle,
+    labelKey: LABEL_KEYS[i]!,
+    angleDeg: i * 60,
+    description: `${angle} imagined`,
+    imageUrl: 'data:image/png;base64,AA',
+    features: ['hood', 'wheels'],
+  })
+);
 
 describe('ObjectShapePanel (PV-T10)', () => {
   it('idle: « Not built yet » and the Generate button, no viewer', () => {
@@ -144,5 +164,55 @@ describe('ObjectShapePanel (PV-T10)', () => {
     ).toBeTruthy();
     expect(screen.queryByRole('img')).toBeNull();
     webgl.on = true;
+  });
+
+  it('recipe: shows « Regenerate the 3D model » when onRegenerate is provided', () => {
+    const onRegenerate = vi.fn();
+    renderPanel({ onRegenerate });
+    const btn = screen.getByRole('button', { name: 'Regenerate the 3D model' });
+    expect(btn).toBeTruthy();
+    fireEvent.click(btn);
+    expect(onRegenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it('idle: « Preview 6 angles » asks for the cheap 2D imagination first', () => {
+    const onPreviewViews = vi.fn();
+    renderPanel({ status: 'idle', shape: undefined, onPreviewViews, onGenerate: vi.fn() });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 6 angles of 2D imagination' }));
+    expect(onPreviewViews).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  it('previewed: the 6 angles show with « Validate & Generate 3D model »', () => {
+    const onGenerate = vi.fn();
+    renderPanel({
+      status: 'idle',
+      shape: undefined,
+      viewsStatus: 'ready',
+      views: previewViews,
+      onGenerate,
+    });
+    expect(screen.getByRole('tab', { name: 'Imagined 2D views (6 angles)' })).toBeTruthy();
+    expect(screen.getByText('front imagined')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: /Back \(180°\)/ }));
+    expect(screen.getByText('back imagined')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Validate & Generate 3D model' }));
+    expect(onGenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it('ready with views: tabs switch between the 3D model and the 6 angles', () => {
+    renderPanel({
+      shape: { ...shape('recipe'), imaginedViews: previewViews },
+      viewsStatus: 'ready',
+      views: previewViews,
+    });
+    // Model tab first: the viewer shows, the preview hides.
+    expect(screen.getByText('viewer')).toBeTruthy();
+    expect(screen.queryByText('front imagined')).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Imagined 2D views (6 angles)' }));
+    expect(screen.getByText('front imagined')).toBeTruthy();
+    expect(screen.queryByText('viewer')).toBeNull();
+    // Validated already: no second validate button on the views tab.
+    expect(screen.queryByRole('button', { name: 'Validate & Generate 3D model' })).toBeNull();
   });
 });

@@ -7,6 +7,8 @@ export interface SurfaceTextures {
   roughnessMap: THREE.DataTexture;
   /** Grey light variation, multiplies the measured vertex colour. */
   map: THREE.DataTexture;
+  /** Brightness gain to compensate for the shade map's average darkening (PR-1.5). */
+  gain: number;
 }
 
 const cache = new Map<Surface, SurfaceTextures | null>();
@@ -36,8 +38,35 @@ export function surfaceTextures(surface: Surface): SurfaceTextures | null {
         normalMap: texture(m.normal, m.size, false),
         roughnessMap: texture(m.roughness, m.size, false),
         map: texture(m.shade, m.size, true),
+        gain: m.gain,
       }
     );
   }
   return cache.get(surface)!;
+}
+
+const swatchCache = new Map<string, THREE.Texture>();
+
+/**
+ * Texture loaded from a photo swatch data URL (PR-1.5), cached by URL.
+ * Wraps seamlessly with sRGB color space and anisotropic filtering.
+ */
+export function swatchTexture(dataUrl: string, onLoad?: () => void): THREE.Texture {
+  let t = swatchCache.get(dataUrl);
+  if (!t) {
+    t = new THREE.TextureLoader().load(dataUrl, () => {
+      t!.needsUpdate = true;
+      onLoad?.();
+    });
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.magFilter = THREE.LinearFilter;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.generateMipmaps = true;
+    t.anisotropy = 4;
+    t.colorSpace = THREE.SRGBColorSpace;
+    swatchCache.set(dataUrl, t);
+  } else if (onLoad && (t.image as HTMLImageElement | undefined)?.complete) {
+    onLoad();
+  }
+  return t;
 }
