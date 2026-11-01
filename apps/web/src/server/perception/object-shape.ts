@@ -29,6 +29,7 @@ import { cropForShape, cropRectForShape } from './shape-crop';
 import { extractSwatches } from './photo-swatches';
 import { withLatheBody } from './lathe-body';
 import { fetchPartMasks } from './part-masks';
+import { fitPartParams, hasPartGroups, preparePartFit } from './part-fit';
 import { REGION_GRID, measureRegionColors, withRegionColors } from './region-colors';
 import { withMaskPanels } from './mask-panels';
 import { withMaskWheels } from './mask-wheels';
@@ -288,7 +289,8 @@ export async function runObjectShape(
       // wheels and panels follow their masks; the shipped silhouette is re-scored.
       let fitIou = fit?.iou;
       if (finalKit) {
-        let reshaped: 'profile' | 'lathe' | 'wheels' | 'panels' | null = null;
+        let reshaped: 'profile' | 'lathe' | 'wheels' | 'panels' | 'fit' | null = null;
+        let fitGains = '';
         const profiled = withProfileBody(finalKit.archetype, recipe, target, aspect);
         if (profiled !== recipe) {
           recipe = profiled;
@@ -336,6 +338,23 @@ export async function runObjectShape(
             console.warn('[vision] region colours failed:', err);
           }
         }
+        // PR-2.9: per-part parameters (wheels, cabin, eave) by coordinate descent on the
+        // model score. Best effort, kept only when the score rises; no groups = no cost.
+        if (photo && target.outline && hasPartGroups(finalKit.archetype, recipe)) {
+          try {
+            const terms = await preparePartFit(photo, target);
+            if (terms) {
+              const fitted = fitPartParams(recipe, finalKit.archetype, terms);
+              if (fitted.recipe !== recipe) {
+                recipe = fitted.recipe;
+                reshaped = 'fit';
+                fitGains = fitted.groups.map((g) => `${g.name} +${g.gain.toFixed(1)}`).join(', ');
+              }
+            }
+          } catch (err) {
+            console.warn('[vision] part fit failed:', err);
+          }
+        }
         if (reshaped) {
           const main = recipe.parts[frontPartIndex(recipe)]!;
           const panelCounts = (partMasks ?? [])
@@ -351,11 +370,13 @@ export async function runObjectShape(
                 ? `[vision] 3D lathe for "${target.label}": outline body, ${main.profile?.length ?? 0} rows`
                 : reshaped === 'wheels'
                   ? `[vision] 3D wheels for "${target.label}": ${partMasks?.filter((m) => m.concept === 'wheel').length ?? 0} mask(s), ${recipe.parts.length} parts`
-                  : `[vision] 3D panels for "${target.label}": ${
-                      Object.entries(panelCounts)
-                        .map(([c, n]) => `${c}×${n}`)
-                        .join(', ') || 'none'
-                    }, ${recipe.parts.length} parts`
+                  : reshaped === 'fit'
+                    ? `[vision] 3D part fit for "${target.label}": ${fitGains}`
+                    : `[vision] 3D panels for "${target.label}": ${
+                        Object.entries(panelCounts)
+                          .map(([c, n]) => `${c}×${n}`)
+                          .join(', ') || 'none'
+                      }, ${recipe.parts.length} parts`
           );
           if (photo) {
             try {

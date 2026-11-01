@@ -27,6 +27,53 @@ never paste the photo on the model, **but small tileable swatches cut from it (�
 - LLM CAD code + visual feedback (CAD-Coder, CAD-Designer): Spark is multimodal → render, show it, correct once.
 - Part masks by concept: SAM 3.1 `segmentImage(url, concept)` is already wired → wheels, windows, doors, chimneys.
 - Rendering: three.js `RoomEnvironment` + PMREM image-based light, ACES, rounded geometry.
+- Archi reconstruction workflow (`docs/setup/example-3D-workflow.md`, 2026-11-01): staged pipeline
+  Perception → Segmentation → Spatial reasoning (coords, dims, parent-child graph, depth,
+  uncertainties) → Generation (parametric volumes) → Validation (camera render vs photo, silhouette
+  - reprojection error, iterative correction) → Export. Main rule, kept: the LLM reasons, the
+    geometry engine builds, the validation engine verifies, the renderer visualises — never delegate
+    the whole reconstruction to one free-form LLM answer (already our kit rule, PV-T9b).
+
+## Target pipeline & skills (archi workflow, 2026-11-01)
+
+Target stages (orchestrator = `runObjectShape`; chat side = copilot `loop.ts`):
+
+1. **Perception** (Spark + SAM): box → outline, kit, part masks. Done (PV-T9…PR-2.5).
+2. **Reasoning**: object graph (parent → child: panel → wall, chimney → roof, wheel → body),
+   constraints (windows in walls, chimney on roof, parts inside parents), depth/order. Missing:
+   PR-2.14 builds it; PR-2.16 deduces hidden sides from it (pre-S4, rule-based).
+3. **Generation**: templates + measured bodies + fits → recipe. Done through PR-2.13.
+4. **Validation**: flat render vs crop (IoU + edge + ΔE + landmarks PR-0.8), constraint check,
+   Spark critic PR-0.6, `make shape-report`. Panel labels every part and key dim **measured /
+   estimated / inferred / unknown** — estimates never shown as measured: PR-2.15.
+5. **Viewer**: R3F is the output (no Blender, no GLB export — non-goals). VGGT-style research
+   models are out (not on the Meta API); Meta models only, per the user decision.
+
+**Scene description** (archi `ArchitecturalScene`): no separate scene file — the kit (what) +
+recipe (parts) + graph (relations, PR-2.14) + validation report (constraints, assumptions,
+errors) together ARE the interpretable geometric description. The LLM produces kit + graph
+params only, never vertices; the deterministic engine builds all geometry.
+
+**Invariants (archi rules):** (1) no incoherent geometry — openings belong to walls and are
+really cut (PR-2.17); (2) no invented dimension shown as real — every dim carries its status
+(PR-2.15); (3) edits are parametric — `applyEdit` re-solves constraints, never rebuilds
+arbitrarily (PR-2.18).
+
+Skills map (archi 12 → ours; agent skills stay procedures, models/engines stay tools):
+
+| Archi skill                      | Here (code or agent skill)                                   | State    |
+| -------------------------------- | ------------------------------------------------------------ | -------- |
+| image-analysis, object-detection | `shape.ts` prompt, `detect.ts`, `part-masks.ts`              | done     |
+| segmentation                     | SAM 3.1 `segmentImage` + `mask-outline.ts` (not SAM 2)       | done     |
+| depth-estimation                 | yaw + box proportions only; true depth via S4                | S4 bet   |
+| geometry-reconstruction          | `silhouette-fit`, `profile-body`, `lathe-body`, `part-fit`   | done     |
+| roof-reconstruction              | `roofline`, `measuredHouse`, PR-2.10 chimney                 | S2       |
+| multiview-reasoning              | mirror + imagined re-renders only                            | PR-2.16  |
+| procedural-generation            | `kitToRecipe` + `object-geometry.ts` (Three.js, no Blender)  | done     |
+| material-generation              | `surface-look`, `surface-maps`, swatches (viewer PBR-ish)    | done     |
+| threejs-scene-generation         | `object-editor-3d.tsx` + `/scene-3d`                         | done     |
+| gltf-export                      | — (viewer is the output)                                     | non-goal |
+| 3d-validation                    | `/shape-loop`, `scoreModel`, PR-0.8 landmarks, PR-0.6 critic | S0       |
 
 ## The loop (how every task is judged) — `/shape-loop`
 
@@ -38,7 +85,8 @@ never paste the photo on the model, **but small tileable swatches cut from it (�
    Autonomous: `/loop /shape-loop` (self-paced) until the stop criteria hold.
 
 **Stop criteria (per object of the real set):** silhouette IoU ≥ 0.85 · edge F1 ≥ 0.6 · region ΔE2000 ≤ 8 ·
-part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape math ≤ 300 ms · request ≤ 45 s.
+part counts exact (wheels, windows, gables) · constraints hold (0 violations: parts inside parents,
+chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request ≤ 45 s.
 
 ## Tasks (small: ≤ ½ day each, one commit each)
 
@@ -67,6 +115,10 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
       call) at the 6 canonical angles; the panel shows them in a carousel and « Validate & Generate 3D »
       runs the full shape; once built, tabs switch between the model and the 6 views (`shape.imaginedViews`).
       Done: `views-generation.ts`, `views/route.ts`, `object-views-carousel.tsx`, `requestViews`, panel tabs.
+- [ ] **PR-0.8 Landmark term** (archi loss `L = a·silhouette + b·edges + c·landmarks + d·geometry`).
+      When part masks exist: mean distance of rendered part centres (wheels, windows, doors) to their
+      mask centres, as a fourth `scoreModel` term with rebalanced `SCORE_WEIGHTS`. Goldens stay neutral
+      (no masks offline); live-car e2e must not drop. Test: shifted wheel scores lower.
 
 ### S1 — Look (every object at once)
 
@@ -152,9 +204,54 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
       region, mixed by pixel confidence (untrusted below 64 px). No rescore (colours don't move
       IoU). Lamp/rims stay role colours (no suitable mask/part split yet). Live-car e2e: glass +
       body remeasured, IoU 0.97 → 0.97; goldens identical (no masks offline).
-- [ ] **PR-2.9 Fit v2.** Per-part parameters (wheel radius, cabin box, eave) by coordinate descent on `scoreModel`,
+- [x] **PR-2.9 Fit v2.** Per-part parameters (wheel radius, cabin box, eave) by coordinate descent on `scoreModel`,
       multi-start Nelder–Mead (3 seeded starts), still ≤ 300 ms.
-- [ ] **PR-2.10 Loop pass.**
+      Done: `part-fit.ts` — one pass over the archetype's groups (vehicle: wheels 1D + cabin 2D;
+      house: eave 1D), 3 seeded starts × 8 evals on the raw score at a 48-col grid with cached
+      photo terms (`photoTerms` + `scoreRender`, `scoreModel` identical), kept iff +0.05. Others:
+      no groups, no cost. Live-car e2e: wheels +0.9, cabin +0.5 (coarse pts), fine score steady 93.
+- [ ] **PR-2.10 Chimney from masks** (investigation rank 1). PR-2.5 fetches the chimney concept but nothing
+      places it (template chimney is a static boolean at fixed x = 0.3). Min-area rect per chimney mask →
+      stack box on the roof at the mask's x (house only, eave to eave + height, tilt/limits like panels),
+      funded by the part-budget backstop. Test: mask → stack on the roof plane; goldens unchanged (no
+      chimney there), live e2e IoU stable, math ≤ 300 ms.
+- [ ] **PR-2.11 Asymmetric vehicle rears** (investigation rank 2). Templates put headlights at +x only, so
+      backs read as front copies (grep: no taillight in `object-kit.ts`). Red lens cylinders at −x plus a
+      distinct rear bumper/trunk per vehicle subtype (sedan, van, pickup, motorbike: none), funded by the
+      budget backstop (structure protected). Test: rear parts per subtype; ¾ sheet shows red rears; no
+      golden metric down > 2.
+- [ ] **PR-2.12 House backs + yaw gates** (investigation rank 3). Measured house panels are front-only: mirror
+      them to the back like vehicle glass when the budget allows. Unify the yaw gates (profile 0.26,
+      mirror 0.3) into one shared constant with defined 17–60° behaviour (panels near-only, no mirror,
+      template kept). Test: yawed-house fixture renders backs; gates documented in a code comment.
+- [ ] **PR-2.13 Loop pass** (covers PR-2.10…2.12).
+- [ ] **PR-2.14 Object graph + constraints** (archi reasoning). Parent → child graph per recipe
+      (panel → wall, chimney → roof, wheel → body, gable → wall) built once after the masks; a
+      constraint pass after every reshape (panels/wheels/fit): parts clamped into their parent span,
+      chimney feet on a roof plane, no incoherent intersections. Generalises the panels clamp.
+      Each node param carries a dimension status (measured / estimated / inferred / unknown).
+      Test: floating panel pulled into the wall; violation count in the report; no golden −2.
+- [ ] **PR-2.15 Dimension status** (archi rule 2). Every part and key dim (eave, depth, yaw, scale)
+      carries measured / estimated / inferred / unknown (unified vocabulary; estimates never shown
+      as measured). Stored on the recipe, shown in the panel next to each part and dim (extends the
+      AI-vs-computed distinction), counted in the report. Test: golden car wheels measured-with-masks
+      / inferred-without, depth estimated; i18n keys + parity.
+- [ ] **PR-2.16 Hidden-side deduction** (archi multiview, pre-S4, rule-based). From the graph + yaw +
+      archetype symmetry rules, derive the hidden-side part list (rear door opposite front door,
+      back windows, roof far slope) as **inferred** parts (feeds PR-2.15), without generative views.
+      Gated like mirrors (low yaw only). Test: sedan gains an inferred rear door; backs stop being
+      empty on the ¾ sheet; budget held.
+  - [ ] **PR-2.17 Real openings** (archi rule 1). Windows/doors stop being decal boxes ON walls:
+        walls with observed openings are segmented around each hole (strips between/above/below, no
+        CSG dependency), glass inset in the hole; template-only walls keep decals. Openings belong to
+        their wall node (PR-2.14 graph). Budget via the backstop (decals fund segments, structure
+        protected). Test: wall rect tiled minus openings; inset glass, no overlay z-fight; no golden −2.
+- [ ] **PR-2.18 Parametric edits** (archi rule 3). Engine API `applyEdit(graph, { node, param, value })`:
+      resize/move an opening, chimney or part → constraints re-solve (PR-2.14), recipe rebuilt
+      deterministically, never arbitrarily. Metric values via the estimated scale (status estimated).
+      UI/copilot wiring explicitly out. Test: enlarge window 20 % → glass + hole grow, wall bounds
+      kept, 0 violations.
+      (PR-2.14…2.18 each follow the loop: measure → log a row; the next loop pass covers them.)
 
 ### S3 — Smarter Spark (model optimisation)
 
@@ -181,14 +278,16 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
 
 ### Close
 
-- [ ] **PR-5.1 Docs** (absorbs PF-T10): contracts (primitives, `texture`, part masks, `subtype`, views flag), copilot
+- [ ] **PR-5.1 Docs** (absorbs PF-T10): contracts (primitives, `texture`, part masks, `subtype`, views flag, graph, part status, openings, edits), copilot
       (prompt v2, model choice), performance (render + math budgets).
 - [ ] **PR-5.2 Scenarios** in `test-scenarios/06-village.md` for each visible step (car, hut, tree, mock unchanged).
 
 ## Order
 
 S0 first (½–1 day): without the score the loop is guesswork. Then S1 (biggest visible change for every object),
-S2 (shape), S3 (Spark), S4 last (a bet). Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6.
+S2 (shape), S3 (Spark), S4 last (a bet). Archi-workflow additions slot in: PR-0.8 with S0, PR-2.14…2.18
+after PR-2.13 in rank order (graph → status → hidden sides → openings → edits), each judged by the loop.
+Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6.
 
 ## Loop log
 
@@ -213,3 +312,4 @@ S2 (shape), S3 (Spark), S4 last (a bet). Expect the car to stop looking like a b
 | 2026-11-01 | PR-2.6 wheels from masks (Kasa fit + mirror + budget)                  | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); live-car e2e IoU 0.97 → 0.97, parts 12 → 12 (headlights fund the rims)                                           |
 | 2026-11-01 | PR-2.7 panels from masks (calipers + shell + room)                     | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); live-car e2e IoU 0.97 → 0.97; fixed mid-PR: wheels/roof protected, sides decided before dropping                 |
 | 2026-11-01 | PR-2.8 region colours (median per mask + rest)                         | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); live-car e2e stable; fixed mid-PR: median not mean (rest-mean went mauve #a0545c, median reads pure #b0302f)     |
+| 2026-11-01 | PR-2.9 Fit v2 (coordinate descent on the raw score)                    | 0.98     | 0.91    | 3.4     | —        | car 93 → 93 (edge +0.01, IoU −0.01; coarse +1.4); cottage eave no gain; car math 174 → 257 ms; panels e2e fixed                                        |

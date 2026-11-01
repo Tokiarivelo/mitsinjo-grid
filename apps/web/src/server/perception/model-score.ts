@@ -132,35 +132,63 @@ const union = (a: Mask, b: Mask): Mask => {
   return m;
 };
 
-/** Edge F1 of the render against the photo, photo edges counted only near the outline (no background). */
-export function edgeF1(render: FlatRender, crop: RgbGrid, outline: Mask): number {
+/**
+ * Photo side of the score, fixed while a fit loop tries renders (PR-2.9): photo edges (union with
+ * the outline edges) with their distance map, and the CIELAB of every crop pixel.
+ */
+export interface PhotoTerms {
+  cols: number;
+  rows: number;
+  edges: Mask;
+  edgeDistance: Float32Array;
+  /** CIELAB triples, row-major, one per crop pixel. */
+  lab: Float64Array;
+}
+
+export function photoTerms(crop: RgbGrid, outline: Mask): PhotoTerms {
   const { cols, rows } = outline;
   const tol = edgeTolerance(cols);
   const near = emptyMask(cols, rows);
   const toOutline = distanceTo(outline);
   for (let i = 0; i < near.data.length; i++) near.data[i] = toOutline[i]! <= tol ? 1 : 0;
+  const edges = union(edgeMap(crop, near, PHOTO_EDGE_SHARE), maskEdges(outline));
+  const lab = new Float64Array(cols * rows * 3);
+  for (let i = 0; i < cols * rows; i++) {
+    lab.set(
+      linearToLab(...srgbToLinear(crop.rgb[i * 3]!, crop.rgb[i * 3 + 1]!, crop.rgb[i * 3 + 2]!)),
+      i * 3
+    );
+  }
+  return { cols, rows, edges, edgeDistance: distanceTo(edges), lab };
+}
+
+/** Unrounded score: the smooth objective a fit loop minimises (`score` 0–100, higher = closer). */
+export interface RawScore {
+  iou: number;
+  edgeF1: number;
+  deltaE: number;
+  score: number;
+}
+
+/** The score of one render with precomputed photo terms (same numbers as `scoreModel`, unrounded). */
+export function scoreRender(render: FlatRender, outline: Mask, terms: PhotoTerms): RawScore {
+  const { cols, rows } = terms;
+  const silhouette = iou(render.mask, outline);
   // Silhouettes count on both sides: the render's black background would otherwise draw an outline the
   // photo only shows on contrasted backgrounds, and a box filling the grid would show none.
   const model = union(edgeMap({ cols, rows, rgb: render.rgb }), maskEdges(render.mask));
-  const photo = union(edgeMap(crop, near, PHOTO_EDGE_SHARE), maskEdges(outline));
-  const precision = matched(model, distanceTo(photo), tol);
-  const recall = matched(photo, distanceTo(model), tol);
-  return precision + recall ? (2 * precision * recall) / (precision + recall) : 0;
-}
-
-/** Area-weighted ΔE2000 of each part's colour against the mean Lab of the photo pixels it covers. */
-export function regionDeltaE(render: FlatRender, crop: RgbGrid, outline: Mask): number {
+  const tol = edgeTolerance(cols);
+  const precision = matched(model, terms.edgeDistance, tol);
+  const recall = matched(terms.edges, distanceTo(model), tol);
+  const edges = precision + recall ? (2 * precision * recall) / (precision + recall) : 0;
   const sums = render.colors.map((): [number, number, number, number] => [0, 0, 0, 0]);
   for (let i = 0; i < render.part.length; i++) {
     const k = render.part[i]!;
     if (k < 0 || !outline.data[i]) continue;
-    const lab = linearToLab(
-      ...srgbToLinear(crop.rgb[i * 3]!, crop.rgb[i * 3 + 1]!, crop.rgb[i * 3 + 2]!)
-    );
     const s = sums[k]!;
-    s[0] += lab[0];
-    s[1] += lab[1];
-    s[2] += lab[2];
+    s[0] += terms.lab[i * 3]!;
+    s[1] += terms.lab[i * 3 + 1]!;
+    s[2] += terms.lab[i * 3 + 2]!;
     s[3]++;
   }
   let total = 0;
@@ -170,20 +198,34 @@ export function regionDeltaE(render: FlatRender, crop: RgbGrid, outline: Mask): 
     total += count * deltaE2000(hexToLab(render.colors[k]!), [L / count, a / count, b / count]);
     n += count;
   });
-  return n ? total / n : 100;
+  const dE = n ? total / n : 100;
+  const color = Math.max(0, 1 - dE / SCORE_DELTA_E_MAX);
+  const w = SCORE_WEIGHTS;
+  return {
+    iou: silhouette,
+    edgeF1: edges,
+    deltaE: dE,
+    score: 100 * (w.iou * silhouette + w.edge * edges + w.color * color),
+  };
+}
+
+/** Edge F1 of the render against the photo, photo edges counted only near the outline (no background). */
+export function edgeF1(render: FlatRender, crop: RgbGrid, outline: Mask): number {
+  return scoreRender(render, outline, photoTerms(crop, outline)).edgeF1;
+}
+
+/** Area-weighted ΔE2000 of each part's colour against the mean Lab of the photo pixels it covers. */
+export function regionDeltaE(render: FlatRender, crop: RgbGrid, outline: Mask): number {
+  return scoreRender(render, outline, photoTerms(crop, outline)).deltaE;
 }
 
 /** The score of a flat render against the photo crop and the SAM mask, all on the same grid. */
 export function scoreModel(render: FlatRender, crop: RgbGrid, outline: Mask): ModelScore {
-  const silhouette = iou(render.mask, outline);
-  const edges = edgeF1(render, crop, outline);
-  const dE = regionDeltaE(render, crop, outline);
-  const color = Math.max(0, 1 - dE / SCORE_DELTA_E_MAX);
-  const w = SCORE_WEIGHTS;
+  const r = scoreRender(render, outline, photoTerms(crop, outline));
   return {
-    iou: round(silhouette, 2),
-    edgeF1: round(edges, 2),
-    deltaE: round(dE, 1),
-    score: Math.round(100 * (w.iou * silhouette + w.edge * edges + w.color * color)),
+    iou: round(r.iou, 2),
+    edgeF1: round(r.edgeF1, 2),
+    deltaE: round(r.deltaE, 1),
+    score: Math.round(r.score),
   };
 }

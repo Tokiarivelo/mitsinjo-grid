@@ -14,6 +14,7 @@ import {
 } from '@/lib/object-shape';
 import { polygonPath } from '@/lib/vision';
 import { GOLDEN_SHAPES, goldenBox, goldenOutline, goldenSvg, PHOTO } from '../__fixtures__/shape';
+import { deltaE2000, hexToLab } from '../color-measure';
 import type { MaskMapGeom } from '../mask-geometry';
 import { runObjectShape } from '../object-shape';
 import { cropRectForShape } from '../shape-crop';
@@ -387,12 +388,17 @@ describe('withMaskPanels (PR-2.7)', () => {
     expect(measured.partMasks!.filter((m) => m.concept === 'window')).toHaveLength(2);
     expect(measured.recipe!.parts.length).toBeLessThanOrEqual(MAX_RECIPE_PARTS);
     // Shell recolored to the body, four glass panels (both sides) at the old glass colour.
-    const outShell = measured.recipe!.parts.find(
-      (p) => p.shape === 'box' && Math.abs(p.at[1] - shell.at[1]) < 0.01 && p.size[2] > 0.1
-    )!;
+    // Biggest box above the main body, like the plain locator: Fit v2 (PR-2.9) may shift the
+    // cabin in y, so the shell is not matched by its height anymore.
+    const outMain = measured.recipe!.parts.find((p) => p.front)!;
+    const outShell = measured
+      .recipe!.parts.filter((p) => p.shape === 'box' && p !== outMain && p.at[1] > outMain.at[1])
+      .sort((a, b) => b.size[0] * b.size[1] * b.size[2] - a.size[0] * a.size[1] * a.size[2])[0]!;
     expect(outShell.color).toBe(main.color);
+    // Glass colour within ΔE 3 of the shell's (region medians move a bit when Fit v2 shifts the shell).
+    const glassLab = hexToLab(shell.color);
     const glassPanels = measured.recipe!.parts.filter(
-      (p) => p.shape === 'box' && p.color === shell.color && p.size[2] < 0.05
+      (p) => p.shape === 'box' && p.size[2] < 0.05 && deltaE2000(hexToLab(p.color), glassLab) < 3
     );
     expect(glassPanels).toHaveLength(4);
     expect(ObjectRecipeSchema.safeParse(measured.recipe!).success).toBe(true);

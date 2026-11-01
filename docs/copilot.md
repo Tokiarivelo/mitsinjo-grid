@@ -55,7 +55,9 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
   Streams `shape_step` crop → model → fit; logs `[vision] 3D kit … in n s` or the cause. `parseKit` is lenient (archetype from the
   hint when unknown, grey for bad colours, counts clamped); `fitRecipe` (shared) repairs instead of
   rejecting: parts stretched to fill the object box, w/h taken from the photo box (thin poles were rejected before);
-  `recipeIssue` only refuses a near-empty recipe (< 0.5 % volume). Meta failure, spend cap,
+  `recipeIssue` only refuses a near-empty recipe (< 0.5 % volume). After the masks, Fit v2 (`part-fit.ts`) refines
+  wheel radius, cabin box (vehicles) and eave (houses) by coordinate descent on the raw model score (multi-start
+  Nelder–Mead, kept only when the score rises). Meta failure, spend cap,
   timeout, unreadable or empty recipe → `silhouette` mode (the browser extrudes the SAM outline, else the box; no extra call).
   Every object is modelled, scenery too (`scenery` sent with the target; silhouette depth per scenery type).
   Mock: fixed recipes (fridge, TV, fan, lamp; house, tree, plant, car, person, animal, water; else a box), not checked.
