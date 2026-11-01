@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MAX_DETECTIONS } from '../detect';
-import { iou, refineDetections, samBoxToNorm } from '../outline';
+import { conceptOf, fetchOutlineForBox, iou, refineDetections, samBoxToNorm } from '../outline';
 import { boxUnionCoverage, parseSamOutput } from '../parse-sam';
 import type { ApplianceDetection, SegmentResult } from '../schemas';
 
@@ -64,7 +64,64 @@ describe('box helpers', () => {
   });
 });
 
+describe('conceptOf (PR-2.21)', () => {
+  const c = (label: string) => conceptOf({ label });
+  it('reduces descriptive labels to one SAM noun', () => {
+    expect(c('mini vintage')).toBe('car');
+    expect(c('Mini Cooper')).toBe('car');
+    expect(c('cottages en pierre à droite')).toBe('house');
+    expect(c('Street lamp')).toBe('street lamp');
+    expect(c('Réfrigérateur')).toBe('fridge');
+    expect(c('Panneau solaire')).toBe('solar panel');
+    expect(c('power plant')).toBe('building');
+    expect(c('Main street')).toBe('main street');
+  });
+  it('keeps short labels and unknown ones untouched', () => {
+    expect(c('fridge')).toBe('fridge');
+    expect(c('lamp')).toBe('lamp');
+    expect(c('xyz unknown thing')).toBe('xyz unknown thing');
+  });
+});
+
+describe('fetchOutlineForBox (PR-2.20)', () => {
+  const OUTLINE = 'M0.61 0.46L0.99 0.46L0.99 0.84L0.61 0.84Z';
+  const car = { x: 0.6, y: 0.45, w: 0.4, h: 0.4 };
+  const outlined = () => {
+    const seg = samResult('car');
+    seg.instances[0] = { ...seg.instances[0]!, outline: OUTLINE };
+    return seg;
+  };
+  it('best-matching instance lends its outline', async () => {
+    const out = await fetchOutlineForBox(async () => outlined(), 'data:x', 'car', car);
+    expect(out).toBe(OUTLINE);
+  });
+  it('no match, mock answer or failure → null, never throws', async () => {
+    const far = { x: 0, y: 0, w: 0.1, h: 0.1 };
+    expect(await fetchOutlineForBox(async () => outlined(), 'data:x', 'car', far)).toBeNull();
+    const mock = { ...outlined(), source: 'mock' as const };
+    expect(await fetchOutlineForBox(async () => mock, 'data:x', 'car', car)).toBeNull();
+    expect(
+      await fetchOutlineForBox(
+        async () => {
+          throw new Error('boom');
+        },
+        'data:x',
+        'car',
+        car
+      )
+    ).toBeNull();
+  });
+});
+
 describe('refineDetections (PV-T5)', () => {
+  it('groups SAM calls by normalized concept (one call for two car wordings)', async () => {
+    const segmentImage = vi.fn(async (_url: string, _concept: string) => samResult(_concept, ''));
+    const a = det('det-1', 'mini vintage', { x: 0.01, y: 0.45, w: 0.38, h: 0.41 });
+    const b = det('det-2', 'Mini Cooper', { x: 0.62, y: 0.46, w: 0.37, h: 0.38 });
+    await refineDetections({ segmentImage }, 'data:x', [a, b]);
+    expect(segmentImage.mock.calls.map((c) => c[1])).toEqual(['car']);
+  });
+
   it('one SAM call per distinct label, in parallel; matched boxes take the SAM box', async () => {
     const segmentImage = vi.fn(async (_url: string, concept: string) =>
       concept === 'fridge' ? samResult(concept) : samResult(concept, '')

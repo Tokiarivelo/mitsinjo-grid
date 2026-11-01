@@ -25,6 +25,7 @@ import {
   sampleObjectPixels,
   sampleObjectRgb,
 } from './shape-colors';
+import { conceptOf, fetchOutlineForBox } from './outline';
 import { cropForShape, cropRectForShape } from './shape-crop';
 import { extractSwatches } from './photo-swatches';
 import { withLatheBody } from './lathe-body';
@@ -160,26 +161,25 @@ export async function runObjectShape(
         console.warn('[vision] shape crop failed, sending the whole photo:', err);
       }
     }
-    // Pixels sampled in parallel with Spark (sharp, a few ms); a failure only keeps Spark's colours.
-    const pixels: Promise<ObjectPixels | null> = photo
-      ? sampleObjectPixels(photo, target.box, target.outline).catch((err) => {
-          console.warn('[vision] colour sample failed:', err instanceof Error ? err.message : err);
-          return null;
-        })
-      : Promise.resolve(null);
-    const gray: Promise<GrayGrid | null> = photo
-      ? sampleObjectGray(photo, target.box, target.outline).catch((err) => {
-          console.warn('[vision] grey sample failed:', err instanceof Error ? err.message : err);
-          return null;
-        })
-      : Promise.resolve(null);
-    const edges: Promise<GrayGrid | null> = photo
-      ? sampleObjectGray(photo, target.box, target.outline, EDGE_COLUMNS).catch(() => null)
-      : Promise.resolve(null);
+    // PR-2.20: without an outline every box pixel counts (hedge outvotes the car): segment the
+    // photo for this object while Spark thinks. Best effort, usually free (SAM's 8 s deadline
+    // resolves long before Spark answers); the box is always kept, only the outline is adopted.
+    const fetchedOutline: Promise<string | undefined> =
+      !target.outline && photo && perception.segmentImage
+        ? fetchOutlineForBox(
+            perception.segmentImage,
+            fullImageUrl,
+            conceptOf(target),
+            target.box
+          ).then(
+            (hit) => hit ?? undefined,
+            () => undefined
+          )
+        : Promise.resolve(target.outline);
     onStep?.('model');
     const started = Date.now();
     const timeout = AbortSignal.timeout(timeoutMs);
-    const found = await perception.describeShape(
+    const shapeCall = perception.describeShape(
       imageUrl,
       {
         label: target.label,
@@ -189,6 +189,28 @@ export async function runObjectShape(
       },
       signal ? AbortSignal.any([signal, timeout]) : timeout
     );
+    const fetched = await fetchedOutline;
+    const shaped = fetched && !target.outline ? { ...target, outline: fetched } : target;
+    if (shaped !== target) {
+      console.info(`[vision] 3D outline for "${target.label}" segmented on demand`);
+    }
+    // Pixels sampled in parallel with Spark (sharp, a few ms); a failure only keeps Spark's colours.
+    const pixels: Promise<ObjectPixels | null> = photo
+      ? sampleObjectPixels(photo, shaped.box, shaped.outline).catch((err) => {
+          console.warn('[vision] colour sample failed:', err instanceof Error ? err.message : err);
+          return null;
+        })
+      : Promise.resolve(null);
+    const gray: Promise<GrayGrid | null> = photo
+      ? sampleObjectGray(photo, shaped.box, shaped.outline).catch((err) => {
+          console.warn('[vision] grey sample failed:', err instanceof Error ? err.message : err);
+          return null;
+        })
+      : Promise.resolve(null);
+    const edges: Promise<GrayGrid | null> = photo
+      ? sampleObjectGray(photo, shaped.box, shaped.outline, EDGE_COLUMNS).catch(() => null)
+      : Promise.resolve(null);
+    const found = await shapeCall;
     const seconds = ((Date.now() - started) / 1000).toFixed(1);
     if (found.kit) onKit?.(found.kit);
     const source = {
@@ -211,7 +233,11 @@ export async function runObjectShape(
       let finalKit = found.kit;
       const px = found.kit ? await pixels : null;
       const measuredColors = found.kit && px ? measureKitColors(px, found.kit.archetype) : null;
-      const conf = { colors: px ? confidence.colors(px.y.length) : 0, yaw: 0, fit: 0 };
+      const conf = {
+        colors: px ? confidence.colors(px.y.length, !!shaped.outline) : 0,
+        yaw: 0,
+        fit: 0,
+      };
       // PF-T7: measured colours mixed with Spark's by mask coverage.
       const colors =
         found.kit && measuredColors
@@ -225,7 +251,7 @@ export async function runObjectShape(
       if (found.kit) {
         const { kit, measure } = withMeasuredRoof(
           colors ? { ...found.kit, colors } : found.kit,
-          target,
+          shaped,
           aspect
         );
         if (measure) {
@@ -263,7 +289,7 @@ export async function runObjectShape(
           `[vision] 3D perspective for "${target.label}": yaw=${Math.round((persp.yaw * 180) / Math.PI)}° (${persp.inliers}${persp.inliersSide ? ` + ${persp.inliersSide}` : ''} lines, f=${persp.focal}${persp.focalMeasured ? ' measured' : ''})`
         );
       }
-      const rings = target.outline ? pathToRings(target.outline).filter((r) => r.length >= 3) : [];
+      const rings = shaped.outline ? pathToRings(shaped.outline).filter((r) => r.length >= 3) : [];
       conf.yaw = persp ? confidence.perspective(persp.inliers) : 0;
       // Spark gives no yaw: its prior is « facing the camera ».
       const yaw0 = persp ? mixNumber(persp.yaw, 0, conf.yaw) : 0;
@@ -349,7 +375,7 @@ export async function runObjectShape(
         // model score. Best effort, kept only when the score rises; no groups = no cost.
         if (photo && target.outline && hasPartGroups(finalKit.archetype, recipe)) {
           try {
-            const terms = await preparePartFit(photo, target);
+            const terms = await preparePartFit(photo, shaped);
             if (terms) {
               const fitted = fitPartParams(recipe, finalKit.archetype, terms);
               if (fitted.recipe !== recipe) {
@@ -391,7 +417,7 @@ export async function runObjectShape(
             try {
               const re = await scoreRecipe(
                 photo,
-                { box: target.box, outline: target.outline },
+                { box: shaped.box, outline: shaped.outline },
                 recipe
               );
               if (re) fitIou = re.score.iou;
@@ -408,7 +434,7 @@ export async function runObjectShape(
       }
       if (photo) {
         try {
-          const swatches = await extractSwatches(photo, target, recipe);
+          const swatches = await extractSwatches(photo, shaped, recipe);
           if (Object.keys(swatches).length > 0) {
             recipe.swatches = swatches;
           }

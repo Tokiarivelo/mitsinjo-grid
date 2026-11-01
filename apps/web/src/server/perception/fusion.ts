@@ -13,16 +13,25 @@ const round2 = (v: number) => Math.round(v * 100) / 100;
 /** Pixels from which measured colours are fully trusted. */
 export const FULL_COLOR_PIXELS = 1000;
 
+/**
+ * Without a SAM outline the box mixes the object with its background, so the measured colours only
+ * nudge Spark's (the green Mini, 2026-11-01: hedge pixels outvoted the car at confidence 1).
+ */
+export const BOX_COLOR_CONFIDENCE_MAX = 0.3;
+
 /** Confidence of each measurement, from what it saw. */
 export const confidence = {
   /** Colours: ≥ ½ once measured (enough pixels to cluster), 1 from `FULL_COLOR_PIXELS` (mask coverage). */
-  colors: (pixels: number) =>
+  colors: (pixels: number, hasOutline = true) =>
     pixels < MIN_MEASURED_PIXELS
       ? 0
       : round2(
-          0.5 +
-            0.5 *
-              clamp01((pixels - MIN_MEASURED_PIXELS) / (FULL_COLOR_PIXELS - MIN_MEASURED_PIXELS))
+          Math.min(
+            hasOutline ? 1 : BOX_COLOR_CONFIDENCE_MAX,
+            0.5 +
+              0.5 *
+                clamp01((pixels - MIN_MEASURED_PIXELS) / (FULL_COLOR_PIXELS - MIN_MEASURED_PIXELS))
+          )
         ),
   /**
    * Repetition: autocorrelation peak `R(P)`. A peak only counts above 0.35 (already a significance test),

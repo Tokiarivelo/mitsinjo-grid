@@ -33,9 +33,43 @@ export function samBoxToNorm(
   return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
 }
 
-/** SAM text prompt for a detection: its label as a short lowercase noun phrase. */
-export function conceptOf(d: ApplianceDetection): string {
-  return d.label.trim().toLowerCase();
+/**
+ * Label words → the SAM noun (EN or FR, singular or plural): SAM segments "car", not the
+ * detection wording "mini vintage". Phrases first, then nouns; first match wins.
+ */
+const CONCEPT_NOUNS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/street lamps?/, 'street lamp'],
+  [/power plants?/, 'building'],
+  [/solar panels?|panneaus? solaires?/, 'solar panel'],
+  [/motorbikes?|motorcycles?|scooters?|bicycles?|\bmotos?\b|\bbikes?\b/, 'motorbike'],
+  [/trucks?|lorr(y|ies)|pickups?|camions?/, 'truck'],
+  [/minibus(es)?/, 'van'],
+  [/\bvan(s)?\b/, 'van'],
+  [/\bbus(es)?\b/, 'bus'],
+  [/cars?|vehicles?|autos?|sedans?|hatchbacks?|vintage|cooper|suv|4x4|voitures?/, 'car'],
+  [/\bcarts?\b|trailers?|remorques?/, 'cart'],
+  [/cottages?|\bhuts?\b|houses?|homes?|villas?|maisons?|cases?/, 'house'],
+  [/buildings?|shops?|schools?|magasins?|écoles?/, 'building'],
+  [/\btrees?\b|palms?|pines?|arbres?/, 'tree'],
+  [/bush(es)?|plants?|hedges?|flowers?/, 'bush'],
+  [/lamps?|lanterns?|lampes?|lampadaires?/, 'lamp'],
+  [/fridges?|refrigerators?|réfrigérateurs?|freezers?|congélateurs?/, 'fridge'],
+  [/\btvs?\b|televisions?|télévisions?|monitors?|screens?|computers?/, 'tv'],
+  [/\bfans?\b|ventilateurs?/, 'fan'],
+  [/tanks?|barrels?/, 'tank'],
+  [/poles?|antennas?|masts?|poteaux?/, 'pole'],
+  [/persons?|women|\bmen\b|\bman\b|children|personnes?|hommes?|femmes?/, 'person'],
+  [/pumps?|pompes?/, 'pump'],
+];
+
+/**
+ * SAM text prompt for a detection: the first known object noun in its label, else the label
+ * itself trimmed and lowercased (today's behaviour for unknown wordings).
+ */
+export function conceptOf(d: Pick<ApplianceDetection, 'label'>): string {
+  const label = d.label.trim().toLowerCase();
+  for (const [re, noun] of CONCEPT_NOUNS) if (re.test(label)) return noun;
+  return label;
 }
 
 /** Resolves to null after `ms` (the client also gets the abort signal). */
@@ -93,6 +127,35 @@ export interface RefineResult {
   refined: number;
   /** Concepts whose SAM call failed, timed out or answered from the mock (box kept). */
   skipped: string[];
+}
+
+/**
+ * Mask outline for one box on demand (PR-2.20): SAM segments the full photo for `concept`
+ * (already normalized), and the best-matching instance (IoU ≥ 0.3) lends its outline. Photo
+ * fractions, like detection outlines — no remap. Best effort: failure, timeout, a mock answer,
+ * no match, or a match without a readable mask → null. Never throws.
+ */
+export async function fetchOutlineForBox(
+  segmentImage: PerceptionClient['segmentImage'],
+  imageUrl: string,
+  concept: string,
+  box: NormBox,
+  { timeoutMs = SEGMENT_TIMEOUT_MS }: { timeoutMs?: number } = {}
+): Promise<string | null> {
+  const seg = await withTimeout((signal) => segmentImage(imageUrl, concept, signal), timeoutMs);
+  // Only a real SAM answer counts (the mock's boxes belong to another image).
+  if (!seg || seg.source !== 'meta' || seg.fallback) return null;
+  let best: { outline: string; score: number } | null = null;
+  for (const inst of seg.instances) {
+    if (!inst.outline) continue;
+    const found = samBoxToNorm(inst.box, seg.imageWidth, seg.imageHeight);
+    if (!found) continue;
+    const score = iou(box, found);
+    if (score >= MATCH_MIN_IOU && (!best || score > best.score)) {
+      best = { outline: inst.outline, score };
+    }
+  }
+  return best?.outline ?? null;
 }
 
 /**

@@ -3,6 +3,7 @@ import sharp from 'sharp';
 import { describe, expect, it, vi } from 'vitest';
 import { ObjectShapeSchema, type ObjectRecipe, type ShapeTarget } from '@/lib/object-shape';
 vi.mock('server-only', () => ({}));
+import { srgbToLinear } from '../color-measure';
 import { runObjectShape, SHAPE_TIMEOUT_MS } from '../object-shape';
 import type { ShapeResult } from '../schemas';
 import type { GrayGrid } from '../repetition';
@@ -223,6 +224,58 @@ describe('runObjectShape measured colours (PF-T2)', () => {
     const out = await runObjectShape(p, null, 'data:full', cottage);
     expect(out.recipe!.parts.some((x) => x.color === '#000000')).toBe(true);
   });
+
+  it('missing outline is segmented on demand: full measurement restored', async () => {
+    const seg = {
+      source: 'meta' as const,
+      model: 'sam-3.1',
+      concept: 'house',
+      imageWidth: 200,
+      imageHeight: 100,
+      instances: [
+        {
+          box: { x1: 0, y1: 30, x2: 199, y2: 99 },
+          confidence: 0.9,
+          outline: 'M0 0.3L1 0.3L1 1L0 1Z',
+        },
+      ],
+      count: 1,
+      boxCoverage: 0.7,
+    };
+    const segmentImage = vi.fn(async (_url: string, concept: string) =>
+      concept === 'house' ? seg : { ...seg, concept, instances: [], count: 0 }
+    );
+    const p = {
+      describeShape: client(meta(kitToRecipe(guessed), { kit: guessed })).describeShape,
+      segmentImage,
+    };
+    const { outline: _dropped, ...boxOnly } = cottage;
+    const out = await runObjectShape(p, await street(), 'data:full', boxOnly);
+    expect(segmentImage).toHaveBeenCalledWith('data:full', 'house', expect.any(AbortSignal));
+    // The fetched outline focuses sampling (stone walls) and enables the fit.
+    expect(out.mode).toBe('recipe');
+    expect(out.recipe!.parts.find((x) => x.front)!.color).toSatisfy((c: string) =>
+      near(c, '#c8aa78')
+    );
+    expect(out.fit!.iou).toBeGreaterThan(0);
+  });
+
+  it('no outline → the guess dominates the box mix (regression: green Mini)', async () => {
+    const p = client(meta(kitToRecipe(guessed), { kit: guessed }));
+    const { outline: _dropped, ...boxOnly } = cottage;
+    const out = await runObjectShape(p, await street(), 'data:full', boxOnly);
+    expect(out.mode).toBe('recipe');
+    const walls = out.recipe!.parts.find((x) => x.front)!.color;
+    // Not the measured stone: the unfiltered box (sky included) only gets a 0.3 vote.
+    expect(near(walls, '#c8aa78')).toBe(false);
+    // In linear light (where the mix happens) the 0.3 vote sits near the guess.
+    const lin = (h: string) => {
+      const [r, g, b] = hexRgb(h);
+      return srgbToLinear(r!, g!, b!);
+    };
+    const dist = (a: string, b: string) => lin(a).reduce((s, v, i) => s + (v - lin(b)[i]!) ** 2, 0);
+    expect(dist(walls, '#202020')).toBeLessThan(dist(walls, '#c8aa78'));
+  });
 });
 
 describe('runObjectShape measured roof (PF-T3)', () => {
@@ -399,7 +452,9 @@ describe('runObjectShape perspective (PF-T5)', () => {
     };
     const out = await runObjectShape(withSeg, await photo(), 'data:full', car);
     expect(out.mode).toBe('recipe');
-    expect(segmentImage.mock.calls.map((c) => c[1]).sort()).toEqual(['wheel', 'window']);
+    // 'car' first: the missing outline is segmented on demand (PR-2.20, no match here),
+    // then the part concepts on the crop.
+    expect(segmentImage.mock.calls.map((c) => c[1]).sort()).toEqual(['car', 'wheel', 'window']);
     expect(out.partMasks!.map((m) => m.concept).sort()).toEqual(['wheel', 'window']);
     expect(ObjectShapeSchema.safeParse(out).success).toBe(true);
 

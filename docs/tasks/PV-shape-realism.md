@@ -262,6 +262,25 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
       UI/copilot wiring explicitly out. Test: enlarge window 20 % → glass + hole grow, wall bounds
       kept, 0 violations.
       (PR-2.14…2.18 each follow the loop: measure → log a row; the next loop pass covers them.)
+- [x] **PR-2.19 Cap box-only colour confidence** (green-Mini fix 1, inserted 2026-11-01).
+      Without an outline every box pixel counts, and pixel-count confidence hit 1.0, so hedge
+      pixels fully overwrote Spark's car colour. `confidence.colors` takes `hasOutline`: box-only
+      mixes cap at 0.3 (Spark leads, measurement nudges). Test: fusion cap + box-only e2e keeps
+      mostly the guess.
+      Done: `BOX_COLOR_CONFIDENCE_MAX = 0.3`, call site passes `!!outline`; region mixes keep
+      the full curve (masks are trusted). Goldens identical (all outlined).
+- [x] **PR-2.20 Segment on demand at shape time** (green-Mini fix 2, inserted 2026-11-01).
+      Outline-less targets (drawn boxes, > 8 concepts, SAM skipped) get one SAM call on the full
+      photo with the normalized concept while Spark thinks; best IoU ≥ 0.3 match lends its outline
+      (box always kept), focusing sampling + profile + fit + swatches. Test: unit (match / no
+      match / mock / throw) + e2e (fetched outline → stone walls + fit).
+      Done: `fetchOutlineForBox` in `outline.ts`, launched before Spark, sampling awaits it
+      (usually free). Part-mask call test updated (leading concept call).
+- [x] **PR-2.21 Normalize SAM concepts** (green-Mini fix 3, inserted 2026-11-01).
+      `conceptOf` sent raw labels ("mini vintage") to SAM. Now: first known object noun wins
+      (EN + FR, phrases first, guarded plurals), else the raw label. `Pick<…, 'label'>` so shape
+      targets reuse it. Test: wordings → nouns, guard cases, grouping by normalized concept.
+      Done: `CONCEPT_NOUNS` table in `outline.ts`. Existing refine tests unaffected.
 
 ### S3 — Smarter Spark (model optimisation)
 
@@ -325,3 +344,6 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-01 | PR-2.9 Fit v2 (coordinate descent on the raw score)                    | 0.98     | 0.91    | 3.4     | —        | car 93 → 93 (edge +0.01, IoU −0.01; coarse +1.4); cottage eave no gain; car math 174 → 257 ms; panels e2e fixed                                        |
 | 2026-11-01 | PR-2.10 chimney from masks (min-area rect → stack on the roof)         | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); cottage e2e IoU 0.98 → 0.96, parts 9 → 10; fixed mid-PR: e2e mask shrunk (golden outline has no chimney)         |
 | 2026-11-01 | PR-2.11 asymmetric vehicle rears (red lenses + rear bumper/trunk)      | 0.98     | 0.91    | 3.4     | —        | goldens identical (bumpers were coplanar-invisible); masks funding tests re-pointed at the lights; probe: rear 136 px, ¾ 37 px red (deleted after)     |
+| 2026-11-01 | PR-2.19 box-only colour cap (0.3, guess leads)                         | 0.98     | 0.91    | 3.4     | —        | goldens identical (all outlined); box-only e2e keeps mostly the guess; fixed mid-PR: linear-space closeness (sRGB gamma fooled the first assertion)    |
+| 2026-11-01 | PR-2.21 SAM concept normalization (noun table)                         | 0.98     | 0.91    | 3.4     | —        | goldens identical; refine + grouping tests green; fixed mid-PR: guarded regexes (street→tree, power plant→bush, bare mini dropped)                     |
+| 2026-11-01 | PR-2.20 on-demand outline at shape time                                | 0.98     | 0.91    | 3.4     | —        | goldens identical (all outlined); e2e fetched outline → stone walls + fit; region concept test re-pointed (water pump → pump                           |

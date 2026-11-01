@@ -123,7 +123,7 @@ describe('runRegionPipeline (PV-T8)', () => {
     const seg: SegmentResult = {
       source: 'meta',
       model: 'sam',
-      concept: 'water pump',
+      concept: 'pump',
       imageWidth: 200,
       imageHeight: 100,
       instances: [
@@ -144,7 +144,8 @@ describe('runRegionPipeline (PV-T8)', () => {
 
     expect(identifyRegion).toHaveBeenCalledTimes(2);
     expect(identifyRegion.mock.calls[0]![0]).toMatch(/^data:image\/jpeg/);
-    expect(segmentImage).toHaveBeenCalledWith('https://r2/x.jpg', 'water pump', expect.anything());
+    // Concept normalized (PR-2.21): SAM gets 'pump', not the raw 'Water pump' label.
+    expect(segmentImage).toHaveBeenCalledWith('https://r2/x.jpg', 'pump', expect.anything());
     const [boxes, outlines] = emit.mock.calls.map((c) => c[1]);
     expect(emit.mock.calls.map((c) => c[0])).toEqual(['vision_regions', 'vision_regions']);
     expect(boxes.phase).toBe('boxes');

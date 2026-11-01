@@ -18,6 +18,14 @@ describe('confidence (PF-T7)', () => {
     expect(confidence.fit(0.6)).toBe(0.5);
     expect(confidence.fit(0.95)).toBe(1);
   });
+
+  it('box-only colours (no outline) never fully replace the prior (green Mini)', () => {
+    expect(confidence.colors(10, false)).toBe(0);
+    expect(confidence.colors(64, false)).toBe(0.3);
+    expect(confidence.colors(5000, false)).toBe(0.3);
+    expect(confidence.colors(5000, true)).toBe(1);
+    expect(confidence.colors(5000)).toBe(1);
+  });
 });
 
 describe('mix', () => {
