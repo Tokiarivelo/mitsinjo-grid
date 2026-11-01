@@ -82,9 +82,57 @@ export function setPhotoUv(geometry: THREE.BufferGeometry, box: NormBox, bounds:
   geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
 }
 
+/**
+ * Unit gable prism (PF-T3): triangle (base at y −0.5, ridge at x `apex − 0.5`, y 0.5) extruded along z.
+ * Non-indexed with flat normals and empty UVs, the same attributes as the other primitives so they merge.
+ */
+export function unitPrism(apex = 0.5): THREE.BufferGeometry {
+  const r = Math.min(1, Math.max(0, apex)) - 0.5;
+  const tri = (z: number) => [-0.5, -0.5, z, 0.5, -0.5, z, r, 0.5, z];
+  const [a, b, c] = [0, 1, 2].map((k) => tri(0.5).slice(k * 3, k * 3 + 3)) as [
+    number[],
+    number[],
+    number[],
+  ];
+  const [a2, b2, c2] = [0, 1, 2].map((k) => tri(-0.5).slice(k * 3, k * 3 + 3)) as [
+    number[],
+    number[],
+    number[],
+  ];
+  const quad = (p: number[], q: number[], s: number[], t: number[]) => [
+    ...p,
+    ...q,
+    ...s,
+    ...p,
+    ...s,
+    ...t,
+  ];
+  const positions = [
+    ...a,
+    ...b,
+    ...c, // front (+z)
+    ...a2,
+    ...c2,
+    ...b2, // back (−z)
+    ...quad(a2, b2, b, a), // bottom
+    ...quad(b, b2, c2, c), // right slope
+    ...quad(c, c2, a2, a), // left slope
+  ];
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.setAttribute(
+    'uv',
+    new THREE.Float32BufferAttribute(new Float32Array((positions.length / 3) * 2), 2)
+  );
+  g.computeVertexNormals();
+  return g;
+}
+
 /** Unit primitive (1 × 1 × 1 bounds) along y, non-indexed so parts merge. */
-function unitPart(shape: RecipePart['shape']): THREE.BufferGeometry {
+function unitPart(shape: RecipePart['shape'], apex?: number): THREE.BufferGeometry {
   switch (shape) {
+    case 'prism':
+      return unitPrism(apex);
     case 'box':
       return new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
     case 'cylinder':
@@ -125,7 +173,7 @@ export function frontFacing(g: THREE.BufferGeometry, minNz = FRONT_MIN_NZ): THRE
 export function recipeMesh(recipe: ObjectRecipe, box: NormBox): PhotoMesh {
   const dims = [recipe.proportions.w, recipe.proportions.h, recipe.proportions.d] as const;
   const parts = recipe.parts.map((p) => {
-    const g = unitPart(p.shape);
+    const g = unitPart(p.shape, p.apex);
     // Round parts turn to their axis before taking the part's own x / y / z extent.
     if (p.axis === 'x') g.rotateZ(Math.PI / 2);
     else if (p.axis === 'z') g.rotateX(Math.PI / 2);

@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-01 (3D kit for Spark + free-placement plan) · **By:** Claude Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-01 (PF-T3 roofline) · **By:** Claude Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
@@ -18,7 +18,7 @@
 
 ## Next task
 
-- **3D fidelity (priority, user)**: plan `docs/tasks/PV-shape-fidelity.md`; PF-T1 (photo projected + SAM mask) and PF-T2 (measured colours) done → PF-T3 roofline next.
+- **3D fidelity (priority, user)**: plan `docs/tasks/PV-shape-fidelity.md`; PF-T1 (photo + SAM mask), PF-T2 (colours), PF-T3 (roofline → `prism` gables, `server/perception/roofline.ts`) done → PF-T4 repetition next.
 - **Free placement** (user: « Sector » too static): plan `docs/tasks/PV-free-placement.md` (position + feeder, PP-T1…T8).
 - **PV-T14** copilot tools report `appliances`; then **PV-T11b** (usage-hours chart, `edit_appliance`).
 - Screenshots not taken: /village insert form, colours, viewer (dark + light, 1440 / 390). `make e2e` when convenient.
@@ -28,11 +28,13 @@
 - Spark classifies (kit), templates build geometry; the photo box is the truth for width / height.
 - « AI » power = the AI's category → engine catalog watts. The LLM never sends watts.
 - Appliance id `vision-<photoKey>-<det id>`. Insert applies directly (removable at once).
+- Roof = measured only (SAM outline skyline, segmented LSQ + BIC); pitched `building` → `house`; flat / no outline → stepped roof.
 - Free placement: visual `position` separate from the feeder `sector`; engine sectors stay 6 (plan only).
 
 ## Files touched this session
 
-- Shape: `lib/object-shape.ts`, `lib/object-kit.ts`, `server/perception/{shape,meta,client,object-shape,shape-crop,vision-request}.ts`,
+- PF-T3: `perception/roofline.ts` (+test), `object-shape.ts` (`withMeasuredRoof`), `lib/object-{kit,shape}.ts` (`KitRoof`, `prism`, `apex`),
+  `utils/object-geometry.ts` (`unitPrism`), contracts, PV-shape-fidelity, scenario V57.
+- Earlier — shape: `lib/object-shape.ts`, `lib/object-kit.ts`, `server/perception/{shape,meta,client,object-shape,shape-crop,vision-request}.ts`,
   `app/api/vision{,/shape}/route.ts`, `hooks/use-{object-shape,elapsed-seconds}.ts`, `ui/object-{shape-panel,editor-3d}.tsx`.
-- Boxes: `utils/stacking.ts`, `detection-canvas`, `draw-overlay`, `globals.css`, `village-editor-page`.
-- Docs: copilot, contracts, PV task, PV-free-placement (new), tasks README; messages ×3; scenarios V47–V54.
+- Boxes: `utils/stacking.ts`, `detection-canvas`, `draw-overlay`, `globals.css`, `village-editor-page`; docs: copilot, contracts, PV task, PV-free-placement (new), tasks README; messages ×3; scenarios V47–V54.

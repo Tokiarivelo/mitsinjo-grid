@@ -3,7 +3,7 @@
 **Why (user, 2026-11-01):** for `det-4` « stone cottages row » (Bourton-on-the-Water, box x 0.18 y 0.10 w 0.82 h 0.58),
 the 3D model does not look like the photo: one box with a black stepped roof, a grey bar across the front, and the whole
 photo (sky, roofs, cars) squashed onto the walls.
-**Status:** 🟡 PF-T1, PF-T2 done (`recipeMesh` projects the photo on every front face, `photo-mask.ts`, `decalWidth`; `color-measure.ts` + `shape-colors.ts`, target `outline`). Next: PF-T3.
+**Status:** 🟡 PF-T1…T3 done (`roofline.ts`: skyline from the SAM rings, segmented LSQ + BIC, `KitRoof`, `prism` part; `recipeMesh` projects the photo on every front face, `photo-mask.ts`, `decalWidth`; `color-measure.ts` + `shape-colors.ts`, target `outline`). Next: PF-T4.
 **Rule kept:** Meta models only. All math is pure, seeded TS and deterministic (same photo → same model), with tests.
 It runs on the server on a ≤ 256 px copy of the crop, inside the 60 s budget (target < 300 ms).
 
@@ -44,7 +44,7 @@ photo crop ─┬─ SAM mask M(x,y) ──┬─ colours (k-means Lab per band)
       seeded PRNG, 10 iterations), then assign roles by vertical position: the top-band cluster = `secondary` (roof), the
       largest middle cluster = `main` (walls), the darkest small cluster = `accent` (glass). The LLM colours become a
       fallback only when the mask covers fewer than 2 % of pixels. Metric: ΔE2000 to a hand-picked colour < 10 on the golden set.
-- [ ] **PF-T3 Roofline from the mask.** Skyline `s(x)` = first mask row per column (upper envelope), smoothed (median 5).
+- [x] **PF-T3 Roofline from the mask.** Skyline `s(x)` = first mask row per column (upper envelope), smoothed (median 5).
       **Segmented least squares** (dynamic programming, O(n²) on 128 columns), with the number of segments chosen by **BIC**,
       gives the slopes and breakpoints. Rising/falling pairs = gables → pitch angle, ridge height, gable count. The
       template gets `roofHeight`, `pitch` and `gables[]` instead of 3 fixed slabs (new part: `prism` = extruded triangle).

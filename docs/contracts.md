@@ -518,12 +518,13 @@ kind / category / box; drawn outline kept until SAM sends one. Failure → `iden
 'spend_cap'|'malformed'|'no_body'|'timeout' (Spark past SHAPE_TIMEOUT_MS = 60 s)|'network' (browser side)*/, source, model,
 fallback?, detail? /*'http_429', 'timeout', 'offline'…*/ }`; 400 (JSON) missing / invalid target.
 Client state: `{ status, shape?, step?, startedAt? }`; `peek(target)` on select (kept shape or idle), `requestShape` on « Generate »; only lasting answers are cached (`keepShape`), failures are asked again.
-`ObjectRecipe { proportions: {w,h,d} (largest = 1), parts: { shape: 'box'|'cylinder'|'sphere'|'cone', at: [x,y,z] (−0.6…0.6),
-size: [x,y,z] (0.01–1), axis?: 'x'|'y'|'z', color: '#rrggbb', front?: true }[] (1–12) }`: object centred, x right, y up, z to the camera,
+`ObjectRecipe { proportions: {w,h,d} (largest = 1), parts: { shape: 'box'|'cylinder'|'sphere'|'cone'|'prism', at: [x,y,z] (−0.6…0.6),
+size: [x,y,z] (0.01–1), axis?: 'x'|'y'|'z', apex? /*prism ridge x, 0–1 of its width*/, color: '#rrggbb', front?: true }[] (1–12) }`: object centred, x right, y up, z to the camera,
 in fractions of its own size. Shared Zod + `fitRecipe`, `recipeIssue`, `frontPartIndex`, `silhouetteRings` in `@/lib/object-shape`; no power value.
 Spark answers `ObjectKit { archetype: KIT_ARCHETYPES (cabinet…house, building, tree…other), proportions {w,h,d}, colors { main, secondary,
-accent: '#rrggbb' }, details?: { windows?, doors?, wheels?, legs?, floors?, chimney? } }` (`@/lib/object-kit`); `kitToRecipe(kit)` → `ObjectRecipe` (pure, ≤ 12 parts).
-`ShapeResult.kit?` (Meta only): the server rebuilds the recipe with colours measured on the photo (`measureKitColors`, PF-T2); `kit` is not sent to the browser.
+accent: '#rrggbb' }, details?: { windows?, doors?, wheels?, legs?, floors?, chimney? }, roof?: KitRoof }` (`@/lib/object-kit`;
+`KitRoof { eave, gables: { x0, x1, peak, top }[1–6] }` in box fractions, y down, measured on the SAM outline by `server/perception/roofline.ts`, never from Spark → one `prism` per gable); `kitToRecipe(kit)` → `ObjectRecipe` (pure, ≤ 12 parts).
+`ShapeResult.kit?` (Meta only): the server rebuilds the recipe with colours measured on the photo (`measureKitColors`, PF-T2) and, for `house`/`building` with an outline, the roofline (`withMeasuredRoof`, PF-T3; a pitched building becomes `house`); `kit` is not sent to the browser.
 Client: `useObjectShape().requestShape(photo, target & { adjusted? }, sessionId?, force?)` + `retry()` (box in the cache key once adjusted) → `{ status: 'idle'|'loading'|'ready', shape? }`; a network or
 HTTP failure also ends in `silhouette` (`reason: 'provider_error'`), never an error state. Answers kept per `shapeKey` (id, label,
 category) until `clear()` (new photo); offline silhouettes are not kept. Viewer geometry: `features/vision-insert/utils/object-geometry.ts`. Nothing is stored (crop sent inline).

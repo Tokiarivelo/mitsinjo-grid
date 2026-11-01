@@ -61,3 +61,48 @@ describe('decalWidth (PF-T1)', () => {
     expect(decalWidth(1, 0.76, 0.11)).toBe(0.11);
   });
 });
+
+describe('measured roof (PF-T3)', () => {
+  const roof = {
+    eave: 0.5,
+    gables: [0, 1, 2].map((i) => ({ x0: i / 3, x1: (i + 1) / 3, peak: (i + 0.5) / 3, top: 0.1 })),
+  };
+
+  it('replaces the stepped slabs with one prism per gable, walls up to the eave', () => {
+    const r = kitToRecipe({ ...kit('house', { windows: 3, chimney: true }), roof });
+    expect(ObjectRecipeSchema.safeParse(r).success).toBe(true);
+    const prisms = r.parts.filter((p) => p.shape === 'prism');
+    expect(prisms).toHaveLength(3);
+    // Walls: bottom of the box (−0.5) to the eave (0.5 − 0.5 = 0).
+    expect(r.parts[0]).toMatchObject({ at: [0, -0.25, 0], size: [1, 0.5, 1], front: true });
+    prisms.forEach((p, i) => {
+      expect(p.at[0]).toBeCloseTo((i + 0.5) / 3 - 0.5, 6);
+      expect(p.at[1] - p.size[1] / 2).toBeCloseTo(0, 6);
+      expect(p.at[1] + p.size[1] / 2).toBeCloseTo(0.4, 6);
+      expect(p.apex).toBeCloseTo(0.5, 6);
+      expect(p.color).toBe('#6e6a62');
+    });
+    // Windows stay on the walls.
+    for (const w of r.parts.filter((p) => p.color === '#ffffff')) expect(w.at[1]).toBeLessThan(0);
+    expect(recipeIssue(fitRecipe(r, 2))).toBeNull();
+  });
+
+  it('6 gables + chimney + windows + door stay within 12 parts', () => {
+    const six = {
+      eave: 0.5,
+      gables: Array.from({ length: 6 }, (_, i) => ({
+        x0: i / 6,
+        x1: (i + 1) / 6,
+        peak: (i + 0.5) / 6,
+        top: 0.1,
+      })),
+    };
+    const r = kitToRecipe({ ...kit('house', { windows: 8, chimney: true }), roof: six });
+    expect(r.parts.length).toBeLessThanOrEqual(12);
+    expect(r.parts.filter((p) => p.shape === 'prism')).toHaveLength(6);
+  });
+
+  it('no roof → the stepped house is unchanged', () => {
+    expect(kitToRecipe(kit('house')).parts.some((p) => p.shape === 'prism')).toBe(false);
+  });
+});

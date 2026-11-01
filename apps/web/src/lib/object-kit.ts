@@ -31,6 +31,26 @@ export const KIT_ARCHETYPES = [
 ] as const;
 export type KitArchetype = (typeof KIT_ARCHETYPES)[number];
 
+/**
+ * Roof measured on the SAM outline (PF-T3, never from the LLM), box fractions (x 0 = left, y 0 = top):
+ * `eave` = where the walls end; each gable spans [x0, x1] with its ridge at x `peak`, height `top`.
+ */
+export const KitRoofSchema = z.object({
+  eave: z.number().min(0).max(1),
+  gables: z
+    .array(
+      z.object({
+        x0: z.number().min(0).max(1),
+        x1: z.number().min(0).max(1),
+        peak: z.number().min(0).max(1),
+        top: z.number().min(0).max(1),
+      })
+    )
+    .min(1)
+    .max(6),
+});
+export type KitRoof = z.infer<typeof KitRoofSchema>;
+
 const hex = z.string().regex(/^#[0-9a-f]{6}$/i);
 const count = (max: number) => z.number().int().min(0).max(max);
 
@@ -55,6 +75,8 @@ export const ObjectKitSchema = z.object({
       chimney: z.boolean().optional(),
     })
     .optional(),
+  /** Measured roofline (houses): replaces the stepped roof with one prism per gable. */
+  roof: KitRoofSchema.optional(),
 });
 export type ObjectKit = z.infer<typeof ObjectKitSchema>;
 
@@ -99,7 +121,7 @@ const part = (
   at: Vec,
   size: Vec,
   color: string,
-  extra: Partial<Pick<RecipePart, 'axis' | 'front'>> = {}
+  extra: Partial<Pick<RecipePart, 'axis' | 'front' | 'apex'>> = {}
 ): RecipePart => ({ shape, at, size, color, ...extra });
 
 /** `n` centres spread evenly over [-span/2, span/2]. */
@@ -111,6 +133,65 @@ export const decalWidth = (n: number, span: number, max: number) =>
   n <= 1 ? max : Math.min(max, (0.7 * span) / (n - 1));
 
 type Template = (k: ObjectKit) => RecipePart[];
+
+/** Front windows spread over the wall band [`bottom`, `top`] (y), doors standing on the ground. */
+function facade(c: ObjectKit['colors'], d: ObjectKit['details'], bottom: number, top: number) {
+  const windows = Math.min(8, d?.windows ?? 3);
+  const doors = Math.min(3, d?.doors ?? 1);
+  const wall = top - bottom;
+  const doorH = Math.min(0.28, 0.47 * wall);
+  return [
+    ...spread(windows, 0.76).map((x) =>
+      part(
+        'box',
+        [x, bottom + (0.44 / 0.6) * wall, 0.505],
+        [decalWidth(windows, 0.76, 0.11), Math.min(0.14, 0.24 * wall), 0.02],
+        c.accent
+      )
+    ),
+    ...spread(doors, 0.5).map((x) =>
+      part(
+        'box',
+        [x, bottom + doorH / 2, 0.505],
+        [decalWidth(doors, 0.5, 0.1), doorH, 0.02],
+        c.secondary
+      )
+    ),
+  ];
+}
+
+/** House without a measured roof: walls + three slabs that read as a pitched roof. */
+const steppedHouse: Template = ({ colors: c, details: d }) => [
+  part('box', [0, -0.2, 0], [1, 0.6, 1], c.main, { front: true }),
+  part('box', [0, 0.16, 0], [1, 0.12, 1], c.secondary),
+  part('box', [0, 0.28, 0], [0.72, 0.12, 0.74], c.secondary),
+  part('box', [0, 0.4, 0], [0.42, 0.12, 0.48], c.secondary),
+  ...(d?.chimney ? [part('box', [0.3, 0.38, 0], [0.08, 0.24, 0.1], c.main)] : []),
+  ...facade(c, d, -0.5, 0.1),
+];
+
+/** House with the measured roofline (PF-T3): walls up to the eave, one prism per gable on top. */
+function measuredHouse({ colors: c, details: d }: ObjectKit, roof: KitRoof): RecipePart[] {
+  const eave = 0.5 - roof.eave;
+  const ridges = roof.gables.map((g) => 0.5 - g.top);
+  const highest = Math.max(...ridges);
+  const gables = roof.gables.map((g, i) => {
+    const w = Math.max(0.01, g.x1 - g.x0);
+    const h = Math.max(0.01, ridges[i]! - eave);
+    return part('prism', [(g.x0 + g.x1) / 2 - 0.5, eave + h / 2, 0], [w, h, 1], c.secondary, {
+      apex: Math.min(1, Math.max(0, (g.peak - g.x0) / w)),
+    });
+  });
+  const chimneyTop = eave + 0.85 * (highest - eave) + 0.06;
+  return [
+    part('box', [0, (eave - 0.5) / 2, 0], [1, eave + 0.5, 1], c.main, { front: true }),
+    ...gables,
+    ...(d?.chimney
+      ? [part('box', [0.3, (eave + chimneyTop) / 2, 0], [0.08, chimneyTop - eave, 0.1], c.main)]
+      : []),
+    ...facade(c, d, -0.5, eave),
+  ];
+}
 
 const TEMPLATES: Record<KitArchetype, Template> = {
   cabinet: ({ colors: c, details: d }) => [
@@ -155,24 +236,7 @@ const TEMPLATES: Record<KitArchetype, Template> = {
       part('box', [x, -0.35, 0], [0.06, 0.3, 0.12], c.secondary)
     ),
   ],
-  house: ({ colors: c, details: d }) => {
-    const windows = Math.min(8, d?.windows ?? 3);
-    const doors = Math.min(3, d?.doors ?? 1);
-    return [
-      part('box', [0, -0.2, 0], [1, 0.6, 1], c.main, { front: true }),
-      // Stepped roof: three slabs read as a pitched roof with box primitives only.
-      part('box', [0, 0.16, 0], [1, 0.12, 1], c.secondary),
-      part('box', [0, 0.28, 0], [0.72, 0.12, 0.74], c.secondary),
-      part('box', [0, 0.4, 0], [0.42, 0.12, 0.48], c.secondary),
-      ...(d?.chimney ? [part('box', [0.3, 0.38, 0], [0.08, 0.24, 0.1], c.main)] : []),
-      ...spread(windows, 0.76).map((x) =>
-        part('box', [x, -0.06, 0.505], [decalWidth(windows, 0.76, 0.11), 0.14, 0.02], c.accent)
-      ),
-      ...spread(doors, 0.5).map((x) =>
-        part('box', [x, -0.36, 0.505], [decalWidth(doors, 0.5, 0.1), 0.28, 0.02], c.secondary)
-      ),
-    ];
-  },
+  house: (k) => (k.roof ? measuredHouse(k, k.roof) : steppedHouse(k)),
   building: ({ colors: c, details: d }) => {
     const floors = Math.max(1, Math.min(4, d?.floors ?? 2));
     const windows = Math.max(1, Math.min(8, d?.windows ?? 4));

@@ -8,14 +8,32 @@ import {
   type ShapeStep,
   type ShapeTarget,
 } from '@/lib/object-shape';
-import { kitToRecipe } from '@/lib/object-kit';
+import { kitToRecipe, type ObjectKit } from '@/lib/object-kit';
+import { pathToRings } from '@/lib/vision';
 import type { PerceptionClient } from './client';
 import { measureKitColors, type ObjectPixels } from './color-measure';
 import type { PhotoForRegions } from './region';
+import { measureRoof, type RoofMeasure } from './roofline';
 import { sampleObjectPixels } from './shape-colors';
 import { cropForShape } from './shape-crop';
 
 export { SHAPE_TIMEOUT_MS };
+
+/** Archetypes whose roof is read on the outline (PF-T3). A pitched `building` becomes a `house`. */
+const ROOFED: ReadonlyArray<ObjectKit['archetype']> = ['house', 'building'];
+
+/** Kit + roofline measured on the SAM outline, or the kit unchanged (no outline, flat top, not a house). */
+export function withMeasuredRoof(
+  kit: ObjectKit,
+  target: Pick<ShapeTarget, 'box' | 'outline'>,
+  aspect: number
+): { kit: ObjectKit; measure: RoofMeasure | null } {
+  if (!target.outline || !ROOFED.includes(kit.archetype)) return { kit, measure: null };
+  const rings = pathToRings(target.outline).filter((r) => r.length >= 3);
+  const measure = rings.length ? measureRoof(rings, target.box, aspect) : null;
+  if (!measure) return { kit, measure };
+  return { kit: { ...kit, archetype: 'house', roof: measure.roof }, measure };
+}
 
 export interface ObjectShapeOptions {
   signal?: AbortSignal;
@@ -27,7 +45,8 @@ export interface ObjectShapeOptions {
 /**
  * Selected object → its 3D shape (PV-T9), Meta models only. One Spark call on a crop around the object
  * returns a kit → parts recipe, fitted to the photo box (`fitRecipe`). Colours are measured on the photo
- * pixels inside the SAM outline while Spark thinks (PF-T2), and replace Spark's guessed colours. Fallbacks → `silhouette` mode, built in
+ * pixels inside the SAM outline while Spark thinks (PF-T2), and replace Spark's guessed colours; houses get the roofline
+ * read on that outline (PF-T3). Fallbacks → `silhouette` mode, built in
  * the browser from the SAM outline (no extra call), with a precise `reason`: `timeout` (past
  * `SHAPE_TIMEOUT_MS`), `provider_error` + `detail` (`http_429`…), `spend_cap`, `malformed`, `no_body`.
  * Mock mode: fixed recipe per category, not checked. Never throws.
@@ -98,10 +117,22 @@ export async function runObjectShape(
       const px = found.kit ? await pixels : null;
       const colors = found.kit && px ? measureKitColors(px, found.kit.archetype) : null;
       if (found.kit && colors) {
-        built = kitToRecipe({ ...found.kit, colors });
         console.info(
           `[vision] 3D colours measured for "${target.label}" (${px!.y.length} px${target.outline ? ', outline' : ''}): ${colors.main} ${colors.secondary} ${colors.accent}`
         );
+      }
+      if (found.kit) {
+        const { kit, measure } = withMeasuredRoof(
+          colors ? { ...found.kit, colors } : found.kit,
+          target,
+          aspect
+        );
+        if (measure) {
+          console.info(
+            `[vision] 3D roof measured for "${target.label}": ${measure.roof.gables.length} gables, pitch ${measure.pitch}°, eave ${measure.roof.eave}`
+          );
+        }
+        if (colors || measure) built = kitToRecipe(kit);
       }
       const recipe = fitRecipe(built, aspect);
       const issue = recipeIssue(recipe);

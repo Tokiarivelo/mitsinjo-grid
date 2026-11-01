@@ -15,7 +15,8 @@ import {
  * with the photo on the front. Geometry and colors only: never a power value.
  */
 
-export const RECIPE_SHAPES = ['box', 'cylinder', 'sphere', 'cone'] as const;
+/** `prism` = triangle extruded along z (gable roof, PF-T3), apex at `apex` of its width. */
+export const RECIPE_SHAPES = ['box', 'cylinder', 'sphere', 'cone', 'prism'] as const;
 export const MAX_RECIPE_PARTS = 12;
 /** A part may stick out of the object box by this much (handles, feet) before the recipe counts as poor. */
 export const RECIPE_BOUND = 0.6;
@@ -38,6 +39,8 @@ export const RecipePartSchema = z.object({
   size: z.tuple([extent, extent, extent]),
   /** Axis of a cylinder or cone (default `y`). */
   axis: z.enum(['x', 'y', 'z']).optional(),
+  /** Prism only: x of the ridge, share of the part width from its left edge (default 0.5). */
+  apex: z.number().min(0).max(1).optional(),
   color: z.string().regex(/^#[0-9a-f]{6}$/i),
   /** This part's front face shows the photo of the object (usually the main body). */
   front: z.boolean().optional(),

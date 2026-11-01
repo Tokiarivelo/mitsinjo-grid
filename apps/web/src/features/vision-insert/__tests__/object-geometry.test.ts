@@ -11,6 +11,7 @@ import {
   silhouetteMesh,
   silhouetteSize,
   triangleCount,
+  unitPrism,
 } from '../utils/object-geometry';
 
 const box = { x: 0.2, y: 0.1, w: 0.4, h: 0.5 };
@@ -178,5 +179,34 @@ describe('photo mask (PF-T1)', () => {
         1.5
       )
     ).toBeNull();
+  });
+});
+
+describe('unitPrism (PF-T3)', () => {
+  it('fills the unit box with the ridge at the apex, front face turned to the camera', () => {
+    const g = unitPrism(0.25);
+    const b = bounds(g);
+    expect(b.min.toArray()).toEqual([-0.5, -0.5, -0.5]);
+    expect(b.max.toArray()).toEqual([0.5, 0.5, 0.5]);
+    const pos = g.getAttribute('position');
+    const top = Array.from({ length: pos.count }, (_, i) => i).filter((i) => pos.getY(i) === 0.5);
+    for (const i of top) expect(pos.getX(i)).toBe(-0.25);
+    expect(triangleCount(g)).toBe(8);
+    expect(frontFacing(g).getAttribute('position').count).toBe(3);
+  });
+
+  it('merges with the other primitives in a recipe (gable roof on walls)', () => {
+    const house: ObjectRecipe = {
+      proportions: { w: 1, h: 0.8, d: 0.6 },
+      parts: [
+        { shape: 'box', at: [0, -0.25, 0], size: [1, 0.5, 1], color: '#c9a36a', front: true },
+        { shape: 'prism', at: [0, 0.25, 0], size: [1, 0.5, 1], color: '#6e6a62', apex: 0.5 },
+      ],
+    };
+    const { body, front } = recipeMesh(house, box);
+    expect(body.getAttribute('position').count).toBe(36 + 24);
+    expect(bounds(body).max.y).toBeCloseTo(0.4, 6);
+    // Walls front (2 triangles) + gable triangle carry the photo.
+    expect(front.getAttribute('position').count).toBe(9);
   });
 });

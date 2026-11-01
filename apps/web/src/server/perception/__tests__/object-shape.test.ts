@@ -222,3 +222,44 @@ describe('runObjectShape measured colours (PF-T2)', () => {
     expect(out.recipe!.parts.some((x) => x.color === '#000000')).toBe(true);
   });
 });
+
+describe('runObjectShape measured roof (PF-T3)', () => {
+  const kitOf = (archetype: ObjectKit['archetype']): ObjectKit => ({
+    archetype,
+    proportions: { w: 1, h: 0.5, d: 0.4 },
+    colors: { main: '#202020', secondary: '#000000', accent: '#ff8800' },
+  });
+  /** Row of 3 gabled cottages: walls to y 0.55, ridges at y 0.3 (photo fractions, whole box). */
+  const row = (outline?: string): ShapeTarget => ({
+    id: 'det-4',
+    label: 'stone cottages row',
+    category: 'other',
+    scenery: 'building',
+    box: { x: 0, y: 0, w: 1, h: 1 },
+    ...(outline ? { outline } : {}),
+  });
+  const gabled = 'M0 1L0 0.55L0.1667 0.3L0.3333 0.55L0.5 0.3L0.6667 0.55L0.8333 0.3L1 0.55L1 1Z';
+
+  it('gabled outline → one prism per gable; a pitched « building » becomes a house', async () => {
+    const p = client(meta(kitToRecipe(kitOf('building')), { kit: kitOf('building') }));
+    const out = await runObjectShape(p, await street(), 'data:full', row(gabled));
+    expect(out.mode).toBe('recipe');
+    expect(out.recipe!.parts.filter((x) => x.shape === 'prism')).toHaveLength(3);
+  });
+
+  it('flat outline, no outline, or not a building → no prism (template unchanged)', async () => {
+    for (const [kit, t] of [
+      [kitOf('house'), row('M0 0.3L1 0.3L1 1L0 1Z')],
+      [kitOf('house'), row()],
+      [kitOf('cabinet'), row(gabled)],
+    ] as const) {
+      const out = await runObjectShape(
+        client(meta(kitToRecipe(kit), { kit })),
+        await street(),
+        'data:full',
+        t
+      );
+      expect(out.recipe!.parts.some((x) => x.shape === 'prism')).toBe(false);
+    }
+  });
+});
