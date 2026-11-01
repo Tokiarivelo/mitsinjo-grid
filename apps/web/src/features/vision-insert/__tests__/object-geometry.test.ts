@@ -12,6 +12,7 @@ import {
   silhouetteSize,
   triangleCount,
   unitExtrude,
+  unitLathe,
   unitPrism,
 } from '../utils/object-geometry';
 import { SURFACE_LOOK } from '../utils/surface-look';
@@ -291,5 +292,60 @@ describe('unitExtrude (PR-2.1)', () => {
     });
     expect(triangleCount(unitExtrude([...ring].reverse()))).toBe(triangleCount(unitExtrude(ring)));
     expect(triangleCount(unitExtrude(ring))).toBeLessThan(1000);
+  });
+});
+
+describe('unitLathe (PR-2.3)', () => {
+  const tube: [number, number][] = [
+    [0, -0.5],
+    [0.5, -0.5],
+    [0.5, 0.5],
+    [0, 0.5],
+  ];
+
+  it('spans the profile with outward normals and merges into a recipe', () => {
+    const g = unitLathe(tube);
+    expect(g.index).toBeNull();
+    const bb = bounds(g);
+    expect(bb.min.x).toBeCloseTo(-0.5, 2);
+    expect(bb.max.x).toBeCloseTo(0.5, 2);
+    expect(bb.min.y).toBeCloseTo(-0.5, 6);
+    expect(bb.max.y).toBeCloseTo(0.5, 6);
+    // A side vertex faces outward (not into the tube).
+    const mid = unitLathe([
+      [0, -0.5],
+      [0.5, -0.5],
+      [0.5, 0],
+      [0.5, 0.5],
+      [0, 0.5],
+    ]);
+    const pos = mid.getAttribute('position');
+    const nrm = mid.getAttribute('normal');
+    let outward = 0;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      const r = Math.hypot(x, z);
+      if (Math.abs(y) < 0.01 && r > 0.4) {
+        const dot = (nrm.getX(i) * x + nrm.getZ(i) * z) / r;
+        expect(dot).toBeGreaterThan(0.5);
+        outward++;
+      }
+    }
+    expect(outward).toBeGreaterThan(0);
+    const body = recipeMesh({
+      proportions: { w: 1, h: 1, d: 1 },
+      parts: [{ shape: 'lathe', at: [0, 0, 0], size: [1, 1, 1], color: '#ffffff', profile: tube }],
+    });
+    expect(body.getAttribute('position').count).toBe(g.getAttribute('position').count);
+  });
+
+  it('a 32-point barrel stays light', () => {
+    const barrel = Array.from({ length: 32 }, (_, i) => {
+      const y = -0.5 + i / 31;
+      return [0.5 * (0.9 + 0.1 * Math.cos(y * Math.PI)), y] as [number, number];
+    });
+    expect(triangleCount(unitLathe(barrel))).toBeLessThan(2000);
   });
 });

@@ -198,3 +198,38 @@ describe('extrude points (PR-2.1)', () => {
     expect(parse([part({ points: [...tri, [0.6, 0]] })])).toBe(false);
   });
 });
+
+describe('lathe profile (PR-2.3)', () => {
+  const prof: [number, number][] = [
+    [0, -0.5],
+    [0.5, -0.5],
+    [0.5, 0.5],
+    [0, 0.5],
+  ];
+  const part = (over: Record<string, unknown>) => ({
+    shape: 'lathe',
+    at: [0, 0, 0],
+    size: [1, 1, 1],
+    color: '#eeeeee',
+    ...over,
+  });
+  const parse = (parts: unknown[]) =>
+    ObjectRecipeSchema.safeParse({ proportions: { w: 1, h: 1, d: 1 }, parts }).success;
+
+  it('lathe takes a non-decreasing 2–32 point profile, and only lathe takes one', () => {
+    expect(parse([part({ profile: prof })])).toBe(true);
+    expect(parse([part({})])).toBe(false);
+    expect(parse([{ ...part({ profile: prof }), shape: 'cylinder' }])).toBe(false);
+    expect(parse([part({ profile: prof.slice(0, 1) })])).toBe(false);
+    expect(
+      parse([
+        part({
+          profile: Array.from({ length: 33 }, (_, i) => [0.5, -0.5 + i / 32] as [number, number]),
+        }),
+      ])
+    ).toBe(false);
+    expect(parse([part({ profile: [...prof.slice(0, 2), [0.5, -0.5]] })])).toBe(true);
+    expect(parse([part({ profile: [...prof.slice(0, 3), [0.5, 0]] })])).toBe(false);
+    expect(parse([part({ profile: [...prof.slice(0, 3), [0.6, 0.5]] })])).toBe(false);
+  });
+});

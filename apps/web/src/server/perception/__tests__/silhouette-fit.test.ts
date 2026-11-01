@@ -205,4 +205,38 @@ describe('extrude points (PR-2.1)', () => {
     expect(filled).toBeLessThan(650);
     expect(m.data[16 * 32 + 16]).toBe(1);
   });
+
+  it('a cone-profile lathe hulls exactly like a cone', () => {
+    const at = { proportions: { w: 1, h: 1, d: 1 } } as const;
+    const lathe = renderRecipe(
+      {
+        ...at,
+        parts: [
+          {
+            shape: 'lathe',
+            at: [0, 0, 0],
+            size: [1, 1, 1],
+            color: '#cccccc',
+            profile: [
+              [0.5, -0.5],
+              [0, 0.5],
+            ],
+          },
+        ],
+      },
+      1,
+      32,
+      32
+    );
+    const cone = renderRecipe(
+      {
+        ...at,
+        parts: [{ shape: 'cone', at: [0, 0, 0], size: [1, 1, 1], color: '#cccccc' }],
+      },
+      1,
+      32,
+      32
+    );
+    expect([...lathe.data]).toEqual([...cone.data]);
+  });
 });

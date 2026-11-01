@@ -156,17 +156,42 @@ export function unitExtrude(
   return g;
 }
 
+/** Radial segments of a lathe profile (PR-2.3): round tanks, cheap enough to merge. */
+export const LATHE_SEGMENTS = 16;
+
+/**
+ * Unit body of revolution (PR-2.3): `profile` ([radius, height], rising y) revolved around y.
+ * Non-indexed so parts merge; smooth normals so tanks read round.
+ */
+export function unitLathe(profile: ReadonlyArray<readonly [number, number]>): THREE.BufferGeometry {
+  const raw =
+    profile.length >= 2
+      ? profile
+      : ([
+          [0, -0.5],
+          [0, 0.5],
+        ] as const);
+  const pts = raw.map(([r, y]) => new THREE.Vector2(Math.max(0, r), y));
+  const g = new THREE.LatheGeometry(pts, LATHE_SEGMENTS);
+  const flat = g.index ? g.toNonIndexed() : g;
+  if (flat !== g) g.dispose();
+  return flat;
+}
+
 /** Unit primitive (1 × 1 × 1 bounds) along y, non-indexed so parts merge. */
 function unitPart(
   shape: RecipePart['shape'],
   apex?: number,
-  points?: RecipePart['points']
+  points?: RecipePart['points'],
+  profile?: RecipePart['profile']
 ): THREE.BufferGeometry {
   switch (shape) {
     case 'prism':
       return unitPrism(apex);
     case 'extrude':
       return unitExtrude(points ?? []);
+    case 'lathe':
+      return unitLathe(profile ?? []);
     case 'box':
       return new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
     case 'cylinder':
@@ -196,7 +221,7 @@ export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
     if (p.shape === 'box') {
       g = roundedBox(sx, sy, sz, SURFACE_LOOK[SURFACES[surface]!].radius);
     } else {
-      g = unitPart(p.shape, p.apex, p.points);
+      g = unitPart(p.shape, p.apex, p.points, p.profile);
       // Round parts turn to their axis before taking the part's own x / y / z extent.
       if (p.axis === 'x') g.rotateZ(Math.PI / 2);
       else if (p.axis === 'z') g.rotateX(Math.PI / 2);

@@ -183,3 +183,53 @@ describe('extrude profile (PR-2.1)', () => {
     }
   });
 });
+
+describe('lathe body (PR-2.3)', () => {
+  const lathe = (profile: [number, number][]): RecipePart => part({ shape: 'lathe', profile });
+
+  it('a tube profile matches the cylinder pixel for pixel', () => {
+    const tube: [number, number][] = [
+      [0.5, -0.5],
+      [0.5, 0.5],
+    ];
+    for (const view of [undefined, THREE_QUARTER]) {
+      const l = renderFlat(recipe([lathe(tube)]), 1, 40, 40, view);
+      const c = renderFlat(recipe([part({ shape: 'cylinder' })]), 1, 40, 40, view);
+      expect([...l.mask.data]).toEqual([...c.mask.data]);
+      expect([...l.rgb]).toEqual([...c.rgb]);
+    }
+  });
+
+  it('a cone profile matches the cone pixel for pixel', () => {
+    const tip: [number, number][] = [
+      [0.5, -0.5],
+      [0, 0.5],
+    ];
+    const l = renderFlat(recipe([lathe(tip)]), 1, 40, 40);
+    const c = renderFlat(recipe([part({ shape: 'cone' })]), 1, 40, 40);
+    expect([...l.mask.data]).toEqual([...c.mask.data]);
+    expect([...l.rgb]).toEqual([...c.rgb]);
+  });
+
+  it('a bowl stays inside the tube silhouette', () => {
+    const bowl: [number, number][] = [
+      [0, -0.5],
+      [0.4, -0.5],
+      [0.5, -0.2],
+      [0.5, 0.5],
+      [0, 0.5],
+    ];
+    const tube: [number, number][] = [
+      [0.5, -0.5],
+      [0.5, 0.5],
+    ];
+    const b = renderFlat(recipe([lathe(bowl)]), 1, 40, 40);
+    const t = renderFlat(recipe([lathe(tube)]), 1, 40, 40);
+    const filled = (r: ReturnType<typeof renderFlat>) => r.mask.data.reduce((s, v) => s + v, 0);
+    expect(filled(b)).toBeGreaterThan(0);
+    expect(filled(b)).toBeLessThan(filled(t));
+    b.mask.data.forEach((v, i) => {
+      if (v) expect(t.mask.data[i]).toBe(1);
+    });
+  });
+});

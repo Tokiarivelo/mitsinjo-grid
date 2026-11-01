@@ -215,6 +215,70 @@ function clipPolygon(s: Span, o: V3, d: V3, ring: ReadonlyArray<Pt2>): void {
   s.n = n;
 }
 
+/**
+ * Front-most ray hit on a lathe profile (PR-2.3): each segment is a cone frustum (or tube when
+ * both radii match), solved with the tested quadric clipper inside its own y-slab; the nearest
+ * segment wins. Slab entries lose the merge except at true rims (caps), where the plane normal
+ * is the cap normal — so no flat bands at profile joints.
+ */
+function clipLathe(s: Span, o: V3, d: V3, profile: ReadonlyArray<Pt2>): void {
+  const [ox, oy, oz] = o;
+  let best: Span | null = null;
+  for (let i = 0; i + 1 < profile.length; i++) {
+    const [r0, y0] = profile[i]!;
+    const [r1, y1] = profile[i + 1]!;
+    if (!(y1 > y0)) {
+      // Flat annulus (rim or flange): disk hit at the plane, normal facing the ray.
+      if (Math.abs(d[1]) < 1e-12) continue;
+      const tHit = (y0 - oy) / d[1];
+      if (!(tHit > s.tin) || !(tHit < s.tout)) continue;
+      const px = ox + d[0] * tHit;
+      const pz = oz + d[2] * tHit;
+      const rr = px * px + pz * pz;
+      const a0 = Math.min(r0, r1);
+      const a1 = Math.max(r0, r1);
+      if (rr < a0 * a0 || rr > a1 * a1) continue;
+      if (!best || tHit < best.tin)
+        best = { tin: tHit, tout: tHit + 1e-9, n: [0, d[1] > 0 ? -1 : 1, 0] };
+      continue;
+    }
+    // Carry the incoming normal: a slab coinciding with an already-clipped plane keeps
+    // its tin, and the cap normal with it (dropping it punches cap holes from above).
+    const t: Span = { tin: s.tin, tout: s.tout, n: s.n };
+    clipPlane(t, o, d, [0, 1, 0], y1);
+    clipPlane(t, o, d, [0, -1, 0], -y0);
+    if (!(t.tin < t.tout)) continue;
+    // Radius along the ray: r(t) = q0 + q1·t, linear in y like the cone case.
+    const dr = r1 - r0;
+    const u = (oy - y0) / (y1 - y0);
+    const v = d[1] / (y1 - y0);
+    const q0 = r0 + dr * u;
+    const q1 = dr === 0 ? 0 : dr * v;
+    const m = dr === 0 ? 0 : dr / (y1 - y0);
+    clipQuadric(
+      t,
+      d[0] * d[0] + d[2] * d[2] - q1 * q1,
+      2 * (ox * d[0] + oz * d[2] - q0 * q1),
+      ox * ox + oz * oz - q0 * q0,
+      (tt) => {
+        const px = ox + d[0] * tt;
+        const py = oy + d[1] * tt;
+        const pz = oz + d[2] * tt;
+        const rr = r0 + dr * ((py - y0) / (y1 - y0));
+        return [px, 0 - m * rr, pz];
+      }
+    );
+    if (t.tin < t.tout && (!best || t.tin < best.tin)) best = t;
+  }
+  if (!best) {
+    s.tout = -Infinity;
+    return;
+  }
+  s.tin = best.tin;
+  s.tout = best.tout;
+  s.n = best.n;
+}
+
 /** Ray (unit space) through one unit primitive (1 × 1 × 1 bounds, as the viewer's `unitPart`). */
 function intersect(p: RecipePart, o: V3, d: V3): Span | null {
   const s: Span = { tin: -Infinity, tout: Infinity, n: null };
@@ -269,6 +333,9 @@ function intersect(p: RecipePart, o: V3, d: V3): Span | null {
     }
     case 'sphere':
       clipQuadric(s, dot(d, d), 2 * dot(o, d), dot(o, o) - H * H, pt);
+      break;
+    case 'lathe':
+      clipLathe(s, o, d, p.profile ?? []);
       break;
   }
   return s.n && s.tin < s.tout ? s : null;

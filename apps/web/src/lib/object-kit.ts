@@ -165,7 +165,7 @@ const part = (
   at: Vec,
   size: Vec,
   color: string,
-  extra: Partial<Pick<RecipePart, 'axis' | 'front' | 'apex'>> = {}
+  extra: Partial<Pick<RecipePart, 'axis' | 'front' | 'apex' | 'profile'>> = {}
 ): RecipePart => ({ shape, at, size, color, ...extra });
 
 /** `n` centres spread evenly over [-span/2, span/2]. */
@@ -297,7 +297,16 @@ export const TEMPLATES: Record<KitArchetype, Template> = {
   ],
   lamp_post: ({ colors: c }) => [
     part('cylinder', [0, -0.06, 0], [0.16, 0.86, 0.16], c.main),
-    part('box', [0, 0.4, 0], [0.9, 0.18, 0.9], c.accent, { front: true }),
+    part('lathe', [0, 0.4, 0], [0.9, 0.18, 0.9], c.accent, {
+      front: true,
+      profile: [
+        [0, -0.5],
+        [0.46, -0.5],
+        [0.5, -0.42],
+        [0.5, 0.5],
+        [0, 0.5],
+      ],
+    }),
     part('cone', [0, 0.47, 0], [1, 0.06, 1], c.secondary),
     part('cylinder', [0, -0.47, 0], [0.4, 0.06, 0.4], c.secondary),
   ],
@@ -306,7 +315,16 @@ export const TEMPLATES: Record<KitArchetype, Template> = {
     part('box', [0, 0.4, 0], [1, 0.05, 0.15], c.secondary),
   ],
   tank: ({ colors: c }) => [
-    part('cylinder', [0, -0.03, 0], [1, 0.94, 1], c.main, { front: true }),
+    part('lathe', [0, -0.03, 0], [1, 0.94, 1], c.main, {
+      front: true,
+      profile: [
+        [0, -0.5],
+        [0.5, -0.5],
+        [0.5, 0.34],
+        [0.4, 0.5],
+        [0, 0.5],
+      ],
+    }),
     part('cylinder', [0, 0.47, 0], [0.96, 0.06, 0.96], c.secondary),
   ],
   panel: ({ colors: c, details: d }) => [

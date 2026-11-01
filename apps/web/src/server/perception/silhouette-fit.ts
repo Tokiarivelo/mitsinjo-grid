@@ -105,6 +105,13 @@ function unitPoints(p: RecipePart): Array<[number, number, number]> {
         ring.map(([x, y]) => [x, y, z] as [number, number, number])
       );
     }
+    case 'lathe': {
+      const profile = p.profile ?? [];
+      if (profile.length < 2) return unitPoints({ ...p, shape: 'box' });
+      return profile.flatMap(([r, y]) =>
+        r > 1e-9 ? circle(y, r) : [[0, y, 0] as [number, number, number]]
+      );
+    }
     case 'cylinder':
       return [...circle(-0.5), ...circle(0.5)];
     case 'cone':

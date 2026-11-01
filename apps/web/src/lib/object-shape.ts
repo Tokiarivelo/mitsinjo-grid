@@ -16,9 +16,19 @@ import {
  */
 
 /** `prism` = triangle extruded along z (gable roof, PF-T3), apex at `apex` of its width. */
-export const RECIPE_SHAPES = ['box', 'cylinder', 'sphere', 'cone', 'prism', 'extrude'] as const;
+export const RECIPE_SHAPES = [
+  'box',
+  'cylinder',
+  'sphere',
+  'cone',
+  'prism',
+  'extrude',
+  'lathe',
+] as const;
 /** Polygon points of an `extrude` part (PR-2.1): closed ring, simplified before storing. */
 export const EXTRUDE_POINTS_MAX = 64;
+/** Profile points of a `lathe` part (PR-2.3): radius-vs-height, non-decreasing y. */
+export const LATHE_PROFILE_MAX = 32;
 export const MAX_RECIPE_PARTS = 12;
 /** A part may stick out of the object box by this much (handles, feet) before the recipe counts as poor. */
 export const RECIPE_BOUND = 0.6;
@@ -64,6 +74,8 @@ const extent = z.number().min(0.01).max(1);
  */
 /** Closed ring in unit space (fractions of the part size, centred, y up), extruded along z. */
 const unitPoint = z.tuple([z.number().min(-0.5).max(0.5), z.number().min(-0.5).max(0.5)]);
+/** Lathe profile point: [radius 0–0.5, height −0.5–0.5], revolved around y. */
+const unitProfilePoint = z.tuple([z.number().min(0).max(0.5), z.number().min(-0.5).max(0.5)]);
 
 export const RecipePartSchema = z
   .object({
@@ -76,6 +88,8 @@ export const RecipePartSchema = z
     apex: z.number().min(0).max(1).optional(),
     /** Extrude only (PR-2.1): the profile ring, 3–64 points, built server-side (never from Spark). */
     points: z.array(unitPoint).min(3).max(EXTRUDE_POINTS_MAX).optional(),
+    /** Lathe only (PR-2.3): radius-vs-height profile, 2–32 points, y never decreases. */
+    profile: z.array(unitProfilePoint).min(2).max(LATHE_PROFILE_MAX).optional(),
     color: z.string().regex(/^#[0-9a-f]{6}$/i),
     /** What the part is made of (AI), sets its surface in the 3D view. */
     material: RecipeMaterialSchema.optional(),
@@ -87,6 +101,12 @@ export const RecipePartSchema = z
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'extrude needs points' });
     if (p.shape !== 'extrude' && p.points)
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'points need extrude' });
+    if (p.shape === 'lathe' && !p.profile)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'lathe needs profile' });
+    if (p.shape !== 'lathe' && p.profile)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'profile needs lathe' });
+    if (p.profile && !p.profile.every((pt, i) => i === 0 || pt[1] >= p.profile![i - 1]![1]))
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'profile y must not fall' });
   });
 export type RecipePart = z.infer<typeof RecipePartSchema>;
 
