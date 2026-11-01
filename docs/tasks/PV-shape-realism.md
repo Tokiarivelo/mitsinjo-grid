@@ -274,7 +274,7 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
         CSG dependency), glass inset in the hole; template-only walls keep decals. Openings belong to
         their wall node (PR-2.14 graph). Budget via the backstop (decals fund segments, structure
         protected). Test: wall rect tiled minus openings; inset glass, no overlay z-fight; no golden −2.
-- [ ] **PR-2.18 Parametric edits** (archi rule 3). Engine API `applyEdit(graph, { node, param, value })`:
+- [x] **PR-2.18 Parametric edits** (archi rule 3). Engine API `applyEdit(graph, { node, param, value })`:
       resize/move an opening, chimney or part → constraints re-solve (PR-2.14), recipe rebuilt
       deterministically, never arbitrarily. Metric values via the estimated scale (status estimated).
       UI/copilot wiring explicitly out. Test: enlarge window 20 % → glass + hole grow, wall bounds
@@ -371,3 +371,4 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-01 | PR-2.15 dimension statuses on recipe + panel + report Status col       | 0.98     | 0.91    | 3.4     | —        | goldens identical + Status col (car M1 I11, cottage I9); wheels inferred-without-masks, glass measured-with; fixed mid-PR: tuple types, lint _dropped warnings                                               |
 | 2026-11-01 | PR-2.16 hidden-side deduction (back facade, end windows, rear door)    | 0.98     | 0.91    | 3.4     | —        | cottage 9 → 11 (end pair, back set waits on room), scores identical, Viol 0; sedan rule unit-tested (golden car gated at side yaw); roof far slope already full-depth, no rule needed                        |
 | 2026-11-01 | PR-2.17 real openings (segmentWall + house wire + panel class)         | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); cottage e2e 86 → 90, IoU 0.98, leaf measured, Viol 0; vehicles keep overlays (sedan cannot fund strips); fixed mid-PR: test arithmetic (union/clamp), strip re-tint ΔE |
+| 2026-11-01 | PR-2.18 parametric edits (applyEdit: openings/chimney/parts)           | 0.98     | 0.91    | 3.4     | —        | API-only, goldens identical; window +20% re-tiles, bounds kept, Viol 0; metric via scale; fixed mid-PR: wall membership (slabs absorbed), chimney boolean                                                    |
