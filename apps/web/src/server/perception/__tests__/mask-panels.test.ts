@@ -17,6 +17,7 @@ import { GOLDEN_SHAPES, goldenBox, goldenOutline, goldenSvg, PHOTO } from '../__
 import { deltaE2000, hexToLab } from '../color-measure';
 import type { MaskMapGeom } from '../mask-geometry';
 import { runObjectShape } from '../object-shape';
+import { scoreRecipe } from '../score-shape';
 import { cropRectForShape } from '../shape-crop';
 import { convexHull, minAreaRect, withMaskPanels } from '../mask-panels';
 
@@ -437,5 +438,14 @@ describe('withMaskPanels (PR-2.7)', () => {
       `[test] car panels: iou ${plain.fit!.iou} → ${measured.fit!.iou}, parts ${plain.recipe!.parts.length} → ${measured.recipe!.parts.length}`
     );
     expect(Math.abs(measured.fit!.iou - plain.fit!.iou)).toBeLessThanOrEqual(0.03);
+    // Landmarks (PR-0.8): the glass sits on its masks, so the 4-term score must not drop.
+    const withLm = (await scoreRecipe(photo, target, measured.recipe!, measured.partMasks))!;
+    const withoutLm = (await scoreRecipe(photo, target, measured.recipe!))!;
+    expect(withLm.score.landmark).toBeDefined();
+    expect(withLm.score.landmark!).toBeGreaterThan(0.5);
+    console.info(
+      `[test] car landmarks: ${withLm.score.landmark}, score ${withoutLm.score.score} → ${withLm.score.score}`
+    );
+    expect(withLm.score.score).toBeGreaterThanOrEqual(withoutLm.score.score - 2);
   });
 });

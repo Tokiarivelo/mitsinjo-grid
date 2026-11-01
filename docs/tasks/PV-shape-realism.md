@@ -115,10 +115,15 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
       call) at the 6 canonical angles; the panel shows them in a carousel and « Validate & Generate 3D »
       runs the full shape; once built, tabs switch between the model and the 6 views (`shape.imaginedViews`).
       Done: `views-generation.ts`, `views/route.ts`, `object-views-carousel.tsx`, `requestViews`, panel tabs.
-- [ ] **PR-0.8 Landmark term** (archi loss `L = a·silhouette + b·edges + c·landmarks + d·geometry`).
+- [x] **PR-0.8 Landmark term** (archi loss `L = a·silhouette + b·edges + c·landmarks + d·geometry`).
       When part masks exist: mean distance of rendered part centres (wheels, windows, doors) to their
       mask centres, as a fourth `scoreModel` term with rebalanced `SCORE_WEIGHTS`. Goldens stay neutral
       (no masks offline); live-car e2e must not drop. Test: shifted wheel scores lower.
+      Done: `Landmark` (part index + mask centre in grid px), `scoreLandmarks` (mean centroid miss,
+      0 at ¼ grid width, hidden/unknown skipped), `SCORE_WEIGHTS_LANDMARKS` (0.35/0.3/0.2/0.15);
+      `buildLandmarks` (nearest wheel/thin-box part) + `scoreRecipe` masks param; live rescore and
+      panels e2e pass masks (landmark 0.95, score 90 → 91). Capture replay stays 3-term (mapping).
+      Goldens identical (classic weights, no `landmark` key).
 
 ### S1 — Look (every object at once)
 
@@ -355,3 +360,4 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-01 | PR-2.21 SAM concept normalization (noun table)                         | 0.98     | 0.91    | 3.4     | —        | goldens identical; refine + grouping tests green; fixed mid-PR: guarded regexes (street→tree, power plant→bush, bare mini dropped)                     |
 | 2026-11-01 | PR-2.20 on-demand outline at shape time                                | 0.98     | 0.91    | 3.4     | —        | goldens identical (all outlined); e2e fetched outline → stone walls + fit; region concept test re-pointed (water pump → pump                           |
 | 2026-11-01 | PR-2.12 house backs + shared yaw gates (0.3 / 1.05)                    | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); house e2e 6 → 8 parts (backs); profile gate 0.26 → 0.3, no golden in the sliver                                  |
+| 2026-11-01 | PR-0.8 landmark term (part centres vs mask centres)                    | 0.98     | 0.91    | 3.4     | —        | goldens identical (classic weights); live-car e2e landmark 0.95, score 90 → 91; shifted wheel scores lower; capture replay left 3-term                 |

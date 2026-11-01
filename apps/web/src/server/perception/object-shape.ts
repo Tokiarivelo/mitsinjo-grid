@@ -418,7 +418,8 @@ export async function runObjectShape(
               const re = await scoreRecipe(
                 photo,
                 { box: shaped.box, outline: shaped.outline },
-                recipe
+                recipe,
+                partMasks
               );
               if (re) fitIou = re.score.iou;
             } catch (err) {

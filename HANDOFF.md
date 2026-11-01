@@ -1,23 +1,23 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-01 (PR-2.12+2.13 done, PR-0.8 new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-01 (PR-0.8 done, PR-2.14 new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
-- Committed through `b6a6c84` (PR-2.19–2.21). Uncommitted: PR-2.12+2.13. Standing: commit each, unsigned fallback, always continue.
+- Committed through `6aa8c9d` (PR-2.12+2.13). Uncommitted: PR-0.8. Standing: commit each, unsigned fallback, always continue.
 - User ordered: do ALL planned tasks, then a full image-recognition + imagined-3D investigation.
-- **PR-2.12 done:** `MASK_YAW_MAX/HARD_MAX` (0.3/1.05) shared gates; panels ≤ 17° mirror both archetypes, 17–60° near-only, > 60° template; profile 0.26 → 0.3. House e2e 6 → 8 parts; goldens identical.
-- **PR-2.13 done:** loop pass over 2.10–2.12 — all criteria met (mean 93, IoU 0.98, edge 0.91, ΔE 3.4, ≤ 267 ms), no regressions, no designer review (no Look task).
-- **PR-2.19/2.20/2.21 done:** box-only colour cap 0.3, on-demand outline, SAM noun table. Goldens identical; suite 1160 green.
-- **PR-2.11 done:** red taillights + rear bumper/trunk per subtype; goldens identical; rear renders red.
+- **PR-0.8 done:** landmark term — `Landmark` + `scoreLandmarks` (mean miss, 0 at ¼ width) + rebalanced weights (0.35/0.3/0.2/0.15); `buildLandmarks` + `scoreRecipe` masks param. Live-car e2e 0.95, 90 → 91; goldens identical.
+- **PR-2.12/2.13 done:** shared yaw gates (0.3/1.05), house backs mirror ≤ 17°, near-only to 60°; loop pass clean (mean 93).
+- **PR-2.19/2.20/2.21 done:** box-only colour cap 0.3, on-demand outline, SAM noun table. Goldens identical.
+- **PR-2.11 done:** red taillights + rear bumper/trunk per subtype; goldens identical.
 - **PR-2.10 done:** chimney stacks from masks; cottage e2e IoU 0.98 → 0.96; goldens identical.
 - Loop lessons: global band cut −3 %; shrink-then-expose buries glass; world-unit squeeze; pixel-count confidence perverse without outline.
 - **Meta still out:** PR-0.4 live fixture, PR-0.5, PR-0.6-live blocked.
 
 ## Next task
 
-- **Commit** PR-2.12+2.13 (`feat(web)`), then **PR-0.8 landmark term** (S0 leftover: part-centre distances as 4th score term; goldens neutral, live e2e stable).
-- Then PR-2.14 graph → 2.15 status → 2.16 hidden sides → 2.17 openings → 2.18 edits (+ pass), S3/S4 as unblocked, PR-5.1/5.2 docs.
+- **Commit** PR-0.8 (`feat(web)`), then **PR-2.14 object graph + constraints** (parent→child graph, clamp pass after reshapes, dimension status per node; test: floating panel pulled in, violations in report).
+- Then 2.15 status → 2.16 hidden sides → 2.17 openings → 2.18 edits (+ pass), S3/S4 as unblocked, PR-5.1/5.2 docs.
 - Blocked on Meta (probe when reached): PR-0.4, PR-0.5, PR-0.6-live, PR-3.1, PR-3.4, PR-4.x.
 - Free placement PP-T1…T8. PV-T14 + PV-T11b.
 
@@ -31,6 +31,6 @@
 
 ## Files touched this session
 
-- `mask-geometry.ts` (shared gates), `mask-panels.ts` (ladder + house mirror), `profile-body.ts`, `mask-wheels.ts`, `mask-chimney.ts` (gate unify).
-- `__tests__/mask-panels.test.ts` (backs, ladder), `__tests__/profile-body.test.ts` (0.28 pin).
-- `docs/tasks/PV-shape-realism.md` (ticks + log), `test-scenarios/06-village.md` (V74).
+- `model-score.ts` (term + weights), `score-shape.ts` (builder + masks param), `object-shape.ts` (rescore passes masks), `shape-capture.ts` (3-term note).
+- New `__tests__/score-shape.test.ts`; `model-score.test.ts` (shift test), `mask-panels.test.ts` (e2e landmark).
+- `docs/tasks/PV-shape-realism.md` (tick + log).

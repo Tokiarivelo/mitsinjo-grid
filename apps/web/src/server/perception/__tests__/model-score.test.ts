@@ -101,6 +101,68 @@ describe('scoreModel (PR-0.2)', () => {
     expect(edgeMap(busy, region).data.some((v) => v === 1)).toBe(false);
     expect(edgeMap(busy).data.some((v) => v === 1)).toBe(true);
   });
+
+  it('without landmarks the term stays undefined (classic weights)', () => {
+    const s = scoreModel(
+      renderFlat(recipe([part({})]), 1, N, N),
+      photo(SKY, [[...square, '#3060c0']]),
+      maskOf(...square)
+    );
+    expect(s.landmark).toBeUndefined();
+    expect('landmark' in s).toBe(false);
+    expect(s.score).toBeGreaterThanOrEqual(98);
+  });
+});
+
+describe('landmarks (PR-0.8)', () => {
+  const wheel = part({
+    shape: 'cylinder',
+    axis: 'z',
+    at: [-0.2, -0.2, 0.3],
+    size: [0.2, 0.2, 0.1],
+    color: '#1c1c1e',
+  });
+  const body = part({});
+  const img = photo(SKY, [[...square, '#3060c0']]);
+  const mask = maskOf(...square);
+  /** Rendered centroid of a part, in grid pixels. */
+  const centroid = (render: ReturnType<typeof renderFlat>, k: number) => {
+    let sx = 0;
+    let sy = 0;
+    let n = 0;
+    for (let i = 0; i < render.part.length; i++) {
+      if (render.part[i] !== k) continue;
+      sx += i % N;
+      sy += Math.floor(i / N);
+      n++;
+    }
+    return { x: sx / n, y: sy / n, n };
+  };
+
+  it('a part on its mask scores ~1, a shifted part scores lower', () => {
+    const render = renderFlat(recipe([body, wheel]), 1, N, N);
+    const c = centroid(render, 1);
+    expect(c.n).toBeGreaterThan(4);
+    const lm = [{ part: 1, x: c.x, y: c.y }];
+    const base = scoreModel(render, img, mask, lm);
+    expect(base.landmark).toBeCloseTo(1, 2);
+    const shifted = renderFlat(recipe([body, { ...wheel, at: [0.2, -0.2, 0.3] }]), 1, N, N);
+    const bad = scoreModel(shifted, img, mask, lm);
+    expect(bad.landmark).toBeLessThan(0.5);
+    expect(bad.score).toBeLessThan(base.score);
+  });
+
+  it('hidden parts and unknown indices are skipped, not punished', () => {
+    const render = renderFlat(recipe([body, wheel]), 1, N, N);
+    const c = centroid(render, 1);
+    const lone = scoreModel(render, img, mask, [{ part: 1, x: c.x, y: c.y }]);
+    const padded = scoreModel(render, img, mask, [
+      { part: 1, x: c.x, y: c.y },
+      { part: 9, x: 0, y: 0 },
+    ]);
+    expect(padded.landmark).toBe(lone.landmark);
+    expect(padded.score).toBe(lone.score);
+  });
 });
 
 describe('scoreRecipe on the golden set (PR-0.2)', () => {

@@ -1,7 +1,8 @@
 /**
- * Model score (PR-0.2): how much the flat render of the model (PR-0.1) looks like the photo box.
+ * Model score (PR-0.2, PR-0.8): how much the flat render of the model (PR-0.1) looks like the photo box.
  * Silhouette IoU against the SAM mask, edge F1 (outline and inner edges: windows, wheels, roof line) with a
- * small pixel tolerance, and region ΔE2000 (each visible part's colour against the photo pixels it covers).
+ * small pixel tolerance, region ΔE2000 (each visible part's colour against the photo pixels it covers),
+ * and, when part masks exist, the landmark term (rendered part centres against their mask centres).
  * Pure and deterministic; the loop (`/shape-loop`) and the Spark critic (PR-0.6) rank models with it.
  */
 import { deltaE2000, hexToLab, linearToLab, srgbToLinear } from './color-measure';
@@ -22,12 +23,32 @@ export interface ModelScore {
   edgeF1: number;
   /** Mean ΔE2000 of each visible part's colour against the photo pixels it covers, weighted by area. */
   deltaE: number;
+  /** Part-centre match with the part masks, 0–1; absent without usable landmarks. */
+  landmark?: number;
   /** 0–100, higher = closer to the photo. */
   score: number;
 }
 
 /** Weights of the score: silhouette, edges, colour. */
 export const SCORE_WEIGHTS = { iou: 0.4, edge: 0.35, color: 0.25 } as const;
+/** Weights once landmarks judge too (sums to 1, like the classic set). */
+export const SCORE_WEIGHTS_LANDMARKS = {
+  iou: 0.35,
+  edge: 0.3,
+  color: 0.2,
+  landmark: 0.15,
+} as const;
+/** Mean part-centre miss (grid-width fractions) at which the landmark term reaches 0. */
+export const LANDMARK_MAX_DIST = 0.25;
+/** Fewer rendered pixels than this → the part is hidden, its landmark is skipped. */
+export const LANDMARK_MIN_PIXELS = 4;
+
+/** One judged part: recipe part index + its mask centre in grid pixels. */
+export interface Landmark {
+  part: number;
+  x: number;
+  y: number;
+}
 /** ΔE at which the colour term reaches 0. */
 export const SCORE_DELTA_E_MAX = 25;
 /** Sobel magnitude (luminance 0–1) counted as an edge. */
@@ -167,11 +188,21 @@ export interface RawScore {
   iou: number;
   edgeF1: number;
   deltaE: number;
+  landmark?: number;
   score: number;
 }
 
-/** The score of one render with precomputed photo terms (same numbers as `scoreModel`, unrounded). */
-export function scoreRender(render: FlatRender, outline: Mask, terms: PhotoTerms): RawScore {
+/**
+ * The score of one render with precomputed photo terms (same numbers as `scoreModel`, unrounded).
+ * With usable landmarks (PR-0.8) the mean part-centre miss joins as a fourth term under the
+ * rebalanced weights; without, the classic three terms (goldens stay neutral).
+ */
+export function scoreRender(
+  render: FlatRender,
+  outline: Mask,
+  terms: PhotoTerms,
+  landmarks?: ReadonlyArray<Landmark>
+): RawScore {
   const { cols, rows } = terms;
   const silhouette = iou(render.mask, outline);
   // Silhouettes count on both sides: the render's black background would otherwise draw an outline the
@@ -200,13 +231,55 @@ export function scoreRender(render: FlatRender, outline: Mask, terms: PhotoTerms
   });
   const dE = n ? total / n : 100;
   const color = Math.max(0, 1 - dE / SCORE_DELTA_E_MAX);
-  const w = SCORE_WEIGHTS;
+  const landmark = scoreLandmarks(render, landmarks, cols);
+  if (landmark === undefined) {
+    const w = SCORE_WEIGHTS;
+    return {
+      iou: silhouette,
+      edgeF1: edges,
+      deltaE: dE,
+      score: 100 * (w.iou * silhouette + w.edge * edges + w.color * color),
+    };
+  }
+  const w = SCORE_WEIGHTS_LANDMARKS;
   return {
     iou: silhouette,
     edgeF1: edges,
     deltaE: dE,
-    score: 100 * (w.iou * silhouette + w.edge * edges + w.color * color),
+    landmark,
+    score: 100 * (w.iou * silhouette + w.edge * edges + w.color * color + w.landmark * landmark),
   };
+}
+
+/**
+ * Landmark term (PR-0.8): mean rendered-centroid miss of the judged parts, 0–1 (1 = on the
+ * masks). Undefined without usable landmarks (none passed, unknown indices, hidden parts).
+ */
+function scoreLandmarks(
+  render: FlatRender,
+  landmarks: ReadonlyArray<Landmark> | undefined,
+  cols: number
+): number | undefined {
+  if (!landmarks?.length || !(cols > 0)) return undefined;
+  let total = 0;
+  let count = 0;
+  for (const lm of landmarks) {
+    if (!Number.isInteger(lm.part) || lm.part < 0) continue;
+    let sx = 0;
+    let sy = 0;
+    let n = 0;
+    for (let i = 0; i < render.part.length; i++) {
+      if (render.part[i] !== lm.part) continue;
+      sx += i % cols;
+      sy += Math.floor(i / cols);
+      n++;
+    }
+    if (n < LANDMARK_MIN_PIXELS) continue;
+    total += Math.hypot(sx / n - lm.x, sy / n - lm.y) / cols;
+    count++;
+  }
+  if (!count) return undefined;
+  return Math.max(0, 1 - total / count / LANDMARK_MAX_DIST);
 }
 
 /** Edge F1 of the render against the photo, photo edges counted only near the outline (no background). */
@@ -220,12 +293,18 @@ export function regionDeltaE(render: FlatRender, crop: RgbGrid, outline: Mask): 
 }
 
 /** The score of a flat render against the photo crop and the SAM mask, all on the same grid. */
-export function scoreModel(render: FlatRender, crop: RgbGrid, outline: Mask): ModelScore {
-  const r = scoreRender(render, outline, photoTerms(crop, outline));
+export function scoreModel(
+  render: FlatRender,
+  crop: RgbGrid,
+  outline: Mask,
+  landmarks?: ReadonlyArray<Landmark>
+): ModelScore {
+  const r = scoreRender(render, outline, photoTerms(crop, outline), landmarks);
   return {
     iou: round(r.iou, 2),
     edgeF1: round(r.edgeF1, 2),
     deltaE: round(r.deltaE, 1),
+    ...(r.landmark !== undefined ? { landmark: round(r.landmark, 2) } : {}),
     score: Math.round(r.score),
   };
 }

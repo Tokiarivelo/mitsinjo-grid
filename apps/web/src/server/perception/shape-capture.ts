@@ -121,5 +121,7 @@ export async function rescoreCapture(dir: string, id: string): Promise<RecipeSco
   const { capture, cropPhoto } = await readCapture(dir, id);
   const recipe: ObjectRecipe | undefined = capture.recipe;
   if (!recipe) return null;
+  // No masks: captured boxes are fractions of the saved crop, but scoreRecipe would remap them
+  // through a crop-of-the-crop. Replay stays 3-term until the mapping is capture-aware.
   return scoreRecipe(cropPhoto, capture.cropTarget, recipe);
 }
