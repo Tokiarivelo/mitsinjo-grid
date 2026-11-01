@@ -20,8 +20,7 @@
 
 - **3D fidelity (priority, user)**: plan `docs/tasks/PV-shape-fidelity.md`; PF-T1 (photo + SAM mask), PF-T2 (colours), PF-T3 (roofline → `prism` gables), PF-T4 (houses / windows, `repetition.ts`), PF-T5 (yaw, `perspective.ts`) done → PF-T6 fit by optimisation next.
 - **Free placement** (user: « Sector » too static): plan `docs/tasks/PV-free-placement.md` (position + feeder, PP-T1…T8).
-- **PV-T14** copilot tools report `appliances`; then **PV-T11b** (usage-hours chart, `edit_appliance`).
-- Not done: screenshots (/village insert, viewer; dark + light, 1440 / 390), `make e2e`.
+- **PV-T14** copilot tools report `appliances`; then **PV-T11b** (usage-hours chart, `edit_appliance`). Not done: screenshots, `make e2e`.
 
 ## Decisions taken
 
