@@ -10,9 +10,9 @@ import {
 
 /**
  * 3D shape of one detected object (PV-T9), Meta models only. Shared by `/api/vision/shape` and the 3D editor.
- * `recipe` = Muse Spark describes the object as a few primitive parts (front face textured with the photo).
+ * `recipe` = Muse Spark describes the object as a few primitive parts, coloured with the colours measured on the photo.
  * `silhouette` = fallback when Spark fails or its recipe is poor: the SAM outline (or the box) extruded,
- * with the photo on the front. Geometry and colors only: never a power value.
+ * plain. The photo itself is never pasted on the model. Geometry and colors only: never a power value.
  */
 
 /** `prism` = triangle extruded along z (gable roof, PF-T3), apex at `apex` of its width. */
@@ -45,7 +45,7 @@ export const RecipePartSchema = z.object({
   /** Prism only: x of the ridge, share of the part width from its left edge (default 0.5). */
   apex: z.number().min(0).max(1).optional(),
   color: z.string().regex(/^#[0-9a-f]{6}$/i),
-  /** This part's front face shows the photo of the object (usually the main body). */
+  /** Main body of the object (walls, cabinet). */
   front: z.boolean().optional(),
 });
 export type RecipePart = z.infer<typeof RecipePartSchema>;
@@ -176,7 +176,7 @@ export function recipeIssue(recipe: ObjectRecipe): 'no_body' | null {
   return fill < MIN_FILL_VOLUME ? 'no_body' : null;
 }
 
-/** Part that carries the photo: the one marked `front`, else the biggest. */
+/** Main body part: the one marked `front`, else the biggest. */
 export function frontPartIndex(recipe: ObjectRecipe): number {
   const marked = recipe.parts.findIndex((p) => p.front);
   if (marked >= 0) return marked;

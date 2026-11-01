@@ -1,50 +1,33 @@
 'use client';
 
 import { Suspense, useEffect, useMemo } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
-import { ContactShadows, OrbitControls, useTexture } from '@react-three/drei';
+import { Canvas, useLoader } from '@react-three/fiber';
+import { ContactShadows, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { TOKEN_HEX } from '@/features/microgrid-3d/utils/scene-palette';
 import { silhouetteRings, type ObjectShape } from '@/lib/object-shape';
 import type { ApplianceDetection } from '@/lib/vision';
-import {
-  photoMaskRings,
-  recipeMesh,
-  silhouetteDepth,
-  silhouetteMesh,
-} from '../utils/object-geometry';
-import { photoMaskTexture } from '../utils/photo-mask';
+import { recipeMesh, silhouetteDepth, silhouetteMesh } from '../utils/object-geometry';
 
 export interface ObjectEditor3dProps {
   shape: ObjectShape;
   detection: Pick<ApplianceDetection, 'box' | 'outline' | 'category' | 'scenery'>;
-  /** The photo the object was found on (its texture). */
+  /** The photo the object was found on: only its size is read (the photo is never pasted on the model). */
   imageUrl: string;
-}
-
-/** Marks a loaded photo as sRGB and asks for a re-upload. */
-function asPhotoTexture(t: THREE.Texture) {
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.needsUpdate = true;
 }
 
 /** Camera on a ¾ view, far enough for a 1 × 1 × 1 object. */
 const CAMERA_POSITION: [number, number, number] = [1.3, 0.85, 2.35];
 
 function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
-  const invalidate = useThree((s) => s.invalidate);
-  // Photo colours as seen: sRGB, set on load then re-uploaded (else the GPU copy stays linear and pale).
-  const texture = useTexture(imageUrl, (loaded) => {
-    (Array.isArray(loaded) ? loaded : [loaded]).forEach(asPhotoTexture);
-    invalidate();
-  });
-  const image = texture.image as { width?: number; height?: number } | undefined;
-  const photoAspect = image?.width && image.height ? image.width / image.height : 1;
+  // Photo size only (silhouette proportions); cached image, no GPU upload.
+  const image = useLoader(THREE.ImageLoader, imageUrl);
+  const photoAspect = image.width && image.height ? image.width / image.height : 1;
 
   const mesh = useMemo(
     () =>
       shape.mode === 'recipe' && shape.recipe
-        ? recipeMesh(shape.recipe, detection.box)
+        ? recipeMesh(shape.recipe)
         : silhouetteMesh(
             silhouetteRings(detection),
             detection.box,
@@ -53,24 +36,12 @@ function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
           ),
     [shape, detection, photoAspect]
   );
-  useEffect(
-    () => () => {
-      mesh.body.dispose();
-      mesh.front.dispose();
-    },
-    [mesh]
-  );
-  // Photo shown inside the SAM outline only: sky and road around the object are cut (PF-T1).
-  const mask = useMemo(() => {
-    const rings = photoMaskRings(detection);
-    return rings ? photoMaskTexture(rings, photoAspect) : null;
-  }, [detection, photoAspect]);
-  useEffect(() => () => mask?.dispose(), [mask]);
+  useEffect(() => () => mesh.dispose(), [mesh]);
   const vertexColors = shape.mode === 'recipe';
   // Ground under the object (shadow sits on it), from the real geometry.
   const floorY = useMemo(() => {
-    mesh.body.computeBoundingBox();
-    return (mesh.body.boundingBox?.min.y ?? -0.5) - 0.002;
+    mesh.computeBoundingBox();
+    return (mesh.boundingBox?.min.y ?? -0.5) - 0.002;
   }, [mesh]);
 
   return (
@@ -83,7 +54,7 @@ function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
         opacity={0.45}
         frames={1}
       />
-      <mesh geometry={mesh.body}>
+      <mesh geometry={mesh}>
         <meshStandardMaterial
           vertexColors={vertexColors}
           color={vertexColors ? undefined : TOKEN_HEX.idle}
@@ -91,23 +62,12 @@ function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
           metalness={0.05}
         />
       </mesh>
-      <mesh geometry={mesh.front}>
-        {/* Photo as taken: unlit and not tone-mapped (ACES greys bright colours like a beige fridge). */}
-        <meshBasicMaterial
-          key={mask ? 'masked' : 'plain'}
-          map={texture}
-          alphaMap={mask ?? undefined}
-          alphaTest={mask ? 0.5 : 0}
-          toneMapped={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
     </group>
   );
 }
 
 /**
- * 3D view of one detected object (PV-T10): Spark recipe or silhouette fallback, photo on the front.
+ * 3D view of one detected object (PV-T10): Spark recipe (measured colours) or silhouette fallback, no photo on it.
  * Orbit (drag) and zoom (pinch / wheel), no pan. `frameloop="demand"`: renders only on change.
  * Transparent canvas over the `.viewer-studio` backdrop; rim light + one baked contact shadow so a dark
  * object never melts into the background.

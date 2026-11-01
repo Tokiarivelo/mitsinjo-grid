@@ -48,8 +48,8 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
   optional window / door / wheel / leg / floor / unit counts, chimney), ≈ 80 output tokens; `kitToRecipe` (`@/lib/object-kit`) builds the
   parts from fixed templates. **Measured colours (PF-T2):** while Spark answers, `sampleObjectPixels` reads the box (≤ 96 px)
   inside the SAM outline; `measureKitColors` (k-means k = 5 in CIELAB, farthest-point start, roles by vertical band per archetype)
-  replaces the kit colours (log `[vision] 3D colours measured …`); < 64 pixels → Spark colours. Roofline (PF-T3) and houses / windows per row (PF-T4) are also measured, never asked. The viewer projects the photo on
-  every front face, cut to the outline (PF-T1). Reason: a free 12-part recipe made Spark think > 60 s on a stone cottage (user, 2026-11-01).
+  replaces the kit colours (log `[vision] 3D colours measured …`); < 64 pixels → Spark colours. Roofline (PF-T3) and houses / windows per row (PF-T4) are also measured, never asked. The viewer never pastes the photo on
+  the model (user, 2026-11-01): shapes + measured colours only, windows / doors as coloured parts. Reason: a free 12-part recipe made Spark think > 60 s on a stone cottage (user, 2026-11-01).
   Standard model id only (no contributor id: slower, rate-limited). 60 s timeout (was 20 s: Muse needs ≈ 15–25 s on an image).
   Streams `shape_step` crop → model → fit; logs `[vision] 3D kit … in n s` or the cause. `parseKit` is lenient (archetype from the
   hint when unknown, grey for bad colours, counts clamped); `fitRecipe` (shared) repairs instead of

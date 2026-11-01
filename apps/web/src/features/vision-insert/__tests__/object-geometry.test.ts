@@ -1,12 +1,8 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { silhouetteRings, type ObjectRecipe } from '@/lib/object-shape';
-import { photoMaskTexture } from '../utils/photo-mask';
 import {
-  frontFacing,
-  photoMaskRings,
   recipeMesh,
-  setPhotoUv,
   silhouetteDepth,
   silhouetteMesh,
   silhouetteSize,
@@ -30,7 +26,7 @@ const bounds = (g: THREE.BufferGeometry) => {
 
 describe('recipeMesh (PV-T10)', () => {
   it('scales parts to the object proportions and keeps their colours', () => {
-    const { body } = recipeMesh(fridge, box);
+    const body = recipeMesh(fridge);
     const b = bounds(body);
     expect(b.max.y - b.min.y).toBeCloseTo(1);
     expect(b.max.x - b.min.x).toBeCloseTo(0.5);
@@ -42,50 +38,15 @@ describe('recipeMesh (PV-T10)', () => {
 
   it('turns a cylinder to its axis: the x-axis handle is long along x', () => {
     const handleOnly: ObjectRecipe = { ...fridge, parts: [fridge.parts[1]!] };
-    const b = bounds(recipeMesh(handleOnly, box).body);
+    const b = bounds(recipeMesh(handleOnly));
     expect(b.max.x - b.min.x).toBeCloseTo(0.3); // 0.6 × w 0.5
     expect(b.max.y - b.min.y).toBeCloseTo(0.04, 2);
   });
 
-  it('projects the photo on the front of the model, mapped to the detection box', () => {
-    const { front } = recipeMesh(fridge, box);
-    const b = bounds(front);
-    expect(b.min.z).toBeGreaterThan(0.25); // fronts only (body front = d / 2), no back face
-    expect(b.max.x - b.min.x).toBeCloseTo(0.5);
-    const uv = front.getAttribute('uv');
-    const us = Array.from({ length: uv.count }, (_, i) => uv.getX(i));
-    const vs = Array.from({ length: uv.count }, (_, i) => uv.getY(i));
-    expect(Math.min(...us)).toBeCloseTo(0.2);
-    expect(Math.max(...us)).toBeCloseTo(0.6);
-    // flipY: the box top (y 0.1) is v 0.9, its bottom (y 0.6) v 0.4.
-    expect(Math.max(...vs)).toBeCloseTo(0.9);
-    expect(Math.min(...vs)).toBeCloseTo(0.4);
-  });
-
-  it('regression (cottage row): a roof shows the top of the photo box, the walls its bottom (PF-T1)', () => {
-    // Before: the whole box (sky included) was squashed on the walls only.
-    const house: ObjectRecipe = {
-      proportions: { w: 1, h: 0.5, d: 0.4 },
-      parts: [
-        { shape: 'box', at: [0, -0.2, 0], size: [1, 0.6, 1], color: '#c8a46e', front: true },
-        { shape: 'box', at: [0, 0.3, -0.1], size: [0.8, 0.4, 0.8], color: '#5a5048' },
-      ],
-    };
-    const { front } = recipeMesh(house, box);
-    const pos = front.getAttribute('position');
-    const uv = front.getAttribute('uv');
-    const vAt = (pick: (y: number) => boolean) =>
-      Array.from({ length: pos.count }, (_, i) => i)
-        .filter((i) => pick(pos.getY(i)))
-        .map((i) => uv.getY(i));
-    // Roof front (y > 0.05 of 0.5) → upper 40 % of the box: v between 0.9 and 0.7.
-    const roof = vAt((y) => y > 0.06);
-    expect(roof.length).toBeGreaterThan(0);
-    expect(Math.min(...roof)).toBeGreaterThan(0.69);
-    // Wall bottom = box bottom (v 0.4); the wall never shows the box top.
-    const walls = vAt((y) => y < 0.04);
-    expect(Math.min(...walls)).toBeCloseTo(0.4);
-    expect(Math.max(...walls)).toBeLessThan(0.71);
+  it('regression (user): no photo on the model, only coloured parts', () => {
+    // Before: the photo was projected on every front face (screenshot pasted on the 3D).
+    const body = recipeMesh(fridge);
+    expect(Object.keys(body.attributes).sort()).toEqual(['color', 'normal', 'position', 'uv']);
   });
 
   it('stays light: 12 round parts under 15 k triangles', () => {
@@ -98,7 +59,7 @@ describe('recipeMesh (PV-T10)', () => {
         color: '#808080',
       })),
     };
-    expect(triangleCount(recipeMesh(many, box).body)).toBeLessThan(15_000);
+    expect(triangleCount(recipeMesh(many))).toBeLessThan(15_000);
   });
 });
 
@@ -108,17 +69,13 @@ describe('silhouetteMesh (fallback)', () => {
     expect(silhouetteSize({ x: 0, y: 0, w: 0.2, h: 0.8 }, 1)).toEqual([0.25, 1]);
   });
 
-  it('extrudes the outline by the category depth with the photo cap in front', () => {
+  it('extrudes the outline by the category depth, no photo cap', () => {
     const rings = silhouetteRings({ box });
     const tv = silhouetteMesh(rings, box, 1, silhouetteDepth({ category: 'tv' }));
     const fr = silhouetteMesh(rings, box, 1, silhouetteDepth({ category: 'fridge' }));
     const depth = (g: THREE.BufferGeometry) => bounds(g).max.z - bounds(g).min.z;
-    expect(depth(tv.body)).toBeLessThan(depth(fr.body));
-    expect(bounds(fr.front).min.z).toBeGreaterThan(bounds(fr.body).max.z - 0.001);
-    const uv = fr.front.getAttribute('uv');
-    const us = Array.from({ length: uv.count }, (_, i) => uv.getX(i));
-    expect(Math.min(...us)).toBeCloseTo(0.2);
-    expect(Math.max(...us)).toBeCloseTo(0.6);
+    expect(depth(tv)).toBeLessThan(depth(fr));
+    expect(bounds(fr).max.x - bounds(fr).min.x).toBeCloseTo(0.8);
   });
 
   it('scenery uses its own depth (a house is deep, water flat), not the `other` category', () => {
@@ -129,56 +86,7 @@ describe('silhouetteMesh (fallback)', () => {
 
   it('builds nothing from no ring (no throw)', () => {
     const empty = silhouetteMesh([], box, 1, 0.3);
-    expect(triangleCount(empty.front)).toBe(0);
-  });
-});
-
-describe('setPhotoUv', () => {
-  it('maps the bounds corners onto the box corners', () => {
-    const g = new THREE.PlaneGeometry(2, 2);
-    setPhotoUv(g, { x: 0, y: 0, w: 1, h: 1 }, { minX: -1, maxX: 1, minY: -1, maxY: 1 });
-    const uv = g.getAttribute('uv');
-    // PlaneGeometry vertex 0 = top-left.
-    expect([uv.getX(0), uv.getY(0)]).toEqual([0, 1]);
-  });
-});
-
-describe('frontFacing', () => {
-  it('keeps the faces turned to the camera, not tops or sides', () => {
-    const cube = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
-    expect(triangleCount(frontFacing(cube))).toBe(2);
-    const ball = new THREE.SphereGeometry(0.5, 16, 12).toNonIndexed();
-    const f = frontFacing(ball);
-    expect(triangleCount(f)).toBeLessThan(triangleCount(ball) / 2);
-    expect(bounds(f).min.z).toBeGreaterThan(0);
-  });
-});
-
-describe('photo mask (PF-T1)', () => {
-  it('takes the SAM outline in photo fractions, nothing without one', () => {
-    expect(photoMaskRings({})).toBeNull();
-    expect(photoMaskRings({ outline: 'M0.2 0.1L0.6 0.1L0.6 0.6Z' })).toEqual([
-      [
-        [0.2, 0.1],
-        [0.6, 0.1],
-        [0.6, 0.6],
-      ],
-    ]);
-  });
-
-  it('builds no texture without a 2D canvas (jsdom): the photo stays unmasked', () => {
-    expect(
-      photoMaskTexture(
-        [
-          [
-            [0, 0],
-            [1, 0],
-            [1, 1],
-          ],
-        ],
-        1.5
-      )
-    ).toBeNull();
+    expect(triangleCount(empty)).toBe(0);
   });
 });
 
@@ -192,7 +100,6 @@ describe('unitPrism (PF-T3)', () => {
     const top = Array.from({ length: pos.count }, (_, i) => i).filter((i) => pos.getY(i) === 0.5);
     for (const i of top) expect(pos.getX(i)).toBe(-0.25);
     expect(triangleCount(g)).toBe(8);
-    expect(frontFacing(g).getAttribute('position').count).toBe(3);
   });
 
   it('merges with the other primitives in a recipe (gable roof on walls)', () => {
@@ -203,11 +110,9 @@ describe('unitPrism (PF-T3)', () => {
         { shape: 'prism', at: [0, 0.25, 0], size: [1, 0.5, 1], color: '#6e6a62', apex: 0.5 },
       ],
     };
-    const { body, front } = recipeMesh(house, box);
+    const body = recipeMesh(house);
     expect(body.getAttribute('position').count).toBe(36 + 24);
     expect(bounds(body).max.y).toBeCloseTo(0.4, 6);
-    // Walls front (2 triangles) + gable triangle carry the photo.
-    expect(front.getAttribute('position').count).toBe(9);
   });
 });
 
@@ -217,16 +122,11 @@ describe('recipeMesh with a yaw (PF-T5)', () => {
     parts: [{ shape: 'box', at: [0, 0, 0], size: [1, 1, 1], color: '#cccccc', front: true }],
   };
 
-  it('turns the model; the photo then covers the front and the side seen on the photo', () => {
-    const straight = recipeMesh(block, box);
-    const turned = recipeMesh({ ...block, yaw: Math.PI / 6 }, box);
-    expect(straight.front.getAttribute('position').count).toBe(6);
-    // Front + one side face the camera now.
-    expect(turned.front.getAttribute('position').count).toBe(12);
-    // The photo box still spans the whole projected model.
-    const uv = turned.front.getAttribute('uv');
-    const us = Array.from({ length: uv.count }, (_, i) => uv.getX(i));
-    expect(Math.min(...us)).toBeCloseTo(box.x, 6);
-    expect(Math.max(...us)).toBeCloseTo(box.x + box.w, 6);
+  it('turns the model like on the photo: the side shows, the box seen wider', () => {
+    const straight = bounds(recipeMesh(block));
+    const turned = bounds(recipeMesh({ ...block, yaw: Math.PI / 6 }));
+    expect(straight.max.x - straight.min.x).toBeCloseTo(1, 6);
+    // w·cos 30° + d·sin 30° = 0.866 + 0.25.
+    expect(turned.max.x - turned.min.x).toBeCloseTo(Math.cos(Math.PI / 6) + 0.25, 6);
   });
 });

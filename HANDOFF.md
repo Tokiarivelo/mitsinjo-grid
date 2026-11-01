@@ -10,8 +10,6 @@
   because a free 12-part recipe took > 60 s on a building. 60 s limit, `failureOf` causes (`timeout`/`http_n`/`network`),
   SSE steps crop → model → fit on `/api/vision/shape` (`sseResponse`), only lasting answers cached (`keepShape`).
 - **3D on demand:** select = `peek`, Spark only on « Generate the 3D model »; `.viewer-studio` backdrop, rim light, contact shadow.
-- **Overlapping boxes:** `utils/stacking` (`paintOrder`, `pickAt` cycles); handles outside the shape.
-- **One colour per object:** `utils/mark-color.ts`, CSS `[data-mark]`.
 - **Add to the simulation:** `useApplianceDraft`, `ApplianceInsert(Panel)`, engine `applianceSummary`; AI = category → catalog W.
 - **PV-T13:** `SceneModel.appliances`, `ui/appliance-markers.tsx`, 2D « n added », `ApplianceList` on /village and /simulation.
 - Checks: tsc ✓, eslint ✓, i18n ✓, vitest (lib, perception, vision api, vision-insert, microgrid-3d) ✓. Live Meta not checked: V47–V48, V53–V54.
@@ -29,12 +27,14 @@
 - Appliance id `vision-<photoKey>-<det id>`. Insert applies directly (removable at once).
 - Roof = measured only (SAM outline skyline, segmented LSQ + BIC); pitched `building` → `house`; flat / no outline → stepped roof.
   Units = gables (≥ 2) > roof-band edge period > Spark; never on a flat `building`; 12-part budget trims windows first.
-- Perspective: model turned by yaw (no homography); camera projection paints both facades; dead zone 6°.
+- Perspective: model turned by yaw (no homography); dead zone 6°.
+- No photo on the 3D model (user, 2026-11-01): `recipeMesh` / `silhouetteMesh` return one geometry; `photo-mask.ts` removed.
 - Free placement: visual `position` separate from the feeder `sector`; engine sectors stay 6 (plan only).
 
 ## Files touched this session
 
 - PF-T3: `roofline.ts`, `withMeasuredRoof`, `KitRoof`, `prism`/`apex`, `unitPrism`, V57. Docs: contracts, copilot, PV-shape-fidelity.
 - PF-T4: `perception/repetition.ts`, `sampleObjectGray`, `withMeasuredRepetition`, `details.units`, V58.
+- Photo removed from 3D: `object-geometry.ts`, `object-editor-3d.tsx`, V55/V59 rewritten.
 - PF-T5: `perception/perspective.ts`, `measuredYaw`, `recipe.yaw`, `fitRecipe(…, yaw)`, `recipeMesh` rotateY, test fixture `render-facade.ts`, V59.
 - Earlier: shape (`lib/object-*`, `server/perception/*`, `api/vision/shape`, `use-object-shape`, `ui/object-*`); boxes: `utils/stacking.ts`, `detection-canvas`, `draw-overlay`, `globals.css`, `village-editor-page`; docs: copilot, contracts, PV task, PV-free-placement (new), tasks README; messages ×3; scenarios V47–V54.
