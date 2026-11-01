@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   detectSegments,
+  lineSpread,
   measurePerspective,
   ransacVanishingPoint,
   yawFromVanishingPoint,
@@ -43,6 +44,22 @@ describe('ransacVanishingPoint', () => {
     expect(found.v[1] / found.v[2]).toBeCloseTo(80, -1);
     expect(ransacVanishingPoint(segs)).toEqual(found);
     expect(ransacVanishingPoint(segs.slice(0, 5))).toBeNull();
+  });
+});
+
+describe('lineSpread (PF-T9 regression)', () => {
+  it('copies of one edge sit together; facade lines spread; no vanishing point from copies', () => {
+    // Regression (golden cottage row): 10 copies of the eave line, ±1 px tilt → a false 60° turn.
+    const copies: Segment2[] = Array.from({ length: 10 }, (_, i) => ({
+      x1: i * 10,
+      y1: 57 + (i % 2 ? 0.6 : -0.6),
+      x2: 150 + i * 10,
+      y2: 57 + (i % 2 ? -0.6 : 0.6),
+    }));
+    expect(lineSpread(copies, 128)).toBeLessThan(3);
+    expect(ransacVanishingPoint(copies, { spreadAt: { x: 128, min: 12 } })).toBeNull();
+    const facade: Segment2[] = [40, 70, 100].map((y) => ({ x1: 0, y1: y, x2: 100, y2: y + 10 }));
+    expect(lineSpread(facade, 50)).toBeCloseTo(60, 6);
   });
 });
 

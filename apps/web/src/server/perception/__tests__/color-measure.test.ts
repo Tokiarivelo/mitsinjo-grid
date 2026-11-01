@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  deltaE2000,
+  hexToLab,
   insideRings,
   kmeansLab,
   linearToHex,
@@ -130,5 +132,24 @@ describe('insideRings', () => {
     expect(insideRings(0.4, 0.4, square)).toBe(true);
     expect(insideRings(0.1, 0.4, square)).toBe(false);
     expect(insideRings(0.4, 0.7, square)).toBe(false);
+  });
+});
+
+describe('deltaE2000 (PF-T9)', () => {
+  // Sharma, Wu & Dalal (2005) reference pairs.
+  it.each([
+    [[50, 2.6772, -79.7751], [50, 0, -82.7485], 2.0425],
+    [[50, 0, 0], [50, -1, 2], 2.3669],
+    [[50, 2.5, 0], [73, 25, -18], 27.1492],
+    [[60.2574, -34.0099, 36.2677], [60.4626, -34.1751, 39.4387], 1.2644],
+    [[90.8027, -2.0831, 1.441], [91.1528, -1.6435, 0.0447], 1.4441],
+  ] as const)('%j vs %j → %f', (a, b, want) => {
+    expect(deltaE2000(a, b)).toBeCloseTo(want, 3);
+    expect(deltaE2000(b, a)).toBeCloseTo(want, 3);
+  });
+
+  it('same colour → 0; hexToLab white ≈ L 100', () => {
+    expect(deltaE2000(hexToLab('#c9a36a'), hexToLab('#c9a36a'))).toBe(0);
+    expect(hexToLab('#ffffff')[0]).toBeCloseTo(100, 1);
   });
 });

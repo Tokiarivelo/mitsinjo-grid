@@ -79,15 +79,20 @@ const STRAIGHT: ReadonlyArray<ObjectKit['archetype']> = [
   'screen',
 ];
 
-/** Measured yaw of a straight-edged object, or null (round archetype, no grid, too few lines). */
+/**
+ * Measured yaw of a straight-edged object, or null (round archetype, no grid, too few lines). A house
+ * with a measured roof is read below its eave: gable slopes meet at the ridge like facade lines and gave
+ * a false 57° on a head-on cottage row (golden set, PF-T9).
+ */
 export function measuredYaw(
-  archetype: ObjectKit['archetype'],
+  kit: Pick<ObjectKit, 'archetype' | 'roof'>,
   grid: GrayGrid | null,
   box: ShapeTarget['box'],
   photo: Pick<PhotoForRegions, 'width' | 'height'>
 ): Perspective | null {
-  if (!grid || !STRAIGHT.includes(archetype)) return null;
-  return measurePerspective(grid, box, photo.width, photo.height);
+  if (!grid || !STRAIGHT.includes(kit.archetype)) return null;
+  const rows = kit.roof ? ([Math.max(0, kit.roof.eave - 0.03), 1] as const) : undefined;
+  return measurePerspective(grid, box, photo.width, photo.height, rows);
 }
 
 export interface ObjectShapeOptions {
@@ -215,9 +220,7 @@ export async function runObjectShape(
         if (colors || measure || rep.repetition) built = kitToRecipe(rep.kit);
       }
       const persp =
-        found.kit && photo
-          ? measuredYaw(found.kit.archetype, await edges, target.box, photo)
-          : null;
+        finalKit && photo ? measuredYaw(finalKit, await edges, target.box, photo) : null;
       if (persp) {
         console.info(
           `[vision] 3D perspective for "${target.label}": yaw=${Math.round((persp.yaw * 180) / Math.PI)}° (${persp.inliers}${persp.inliersSide ? ` + ${persp.inliersSide}` : ''} lines, f=${persp.focal}${persp.focalMeasured ? ' measured' : ''})`
@@ -235,7 +238,7 @@ export async function runObjectShape(
               box: target.box,
               aspect,
               yaw0,
-              canYaw: STRAIGHT.includes(finalKit.archetype),
+              canYaw: persp !== null,
             })
           : null;
       const start = fitRecipe(built, aspect, yaw0);

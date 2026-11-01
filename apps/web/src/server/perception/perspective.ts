@@ -215,6 +215,28 @@ export function detectSegments(g: GrayGrid, maxLines = 60): Segment2[] {
   return segments;
 }
 
+/** Lines of a vanishing point must sit this far apart (share of the box height) at the box centre. */
+export const MIN_LINE_SPREAD = 0.1;
+
+/**
+ * Vertical spread (px) of `segments`' lines at column `x`: lines of one facade sit at different heights
+ * (eave, window rows, ground). Copies of one strong edge (Hough finds it several times with a pixel of
+ * tilt) stay within a pixel or two and cross just outside the box: a false near vanishing point
+ * (golden cottage row: the eave line → 60°). Independent of how far the point is.
+ */
+export function lineSpread(segments: readonly Segment2[], x: number): number {
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const s of segments) {
+    const dx = s.x2 - s.x1;
+    if (Math.abs(dx) < 1e-9) continue;
+    const y = s.y1 + ((x - s.x1) * (s.y2 - s.y1)) / dx;
+    lo = Math.min(lo, y);
+    hi = Math.max(hi, y);
+  }
+  return hi > lo ? hi - lo : 0;
+}
+
 const cross = (a: Vec3, b: Vec3): Vec3 => [
   a[1] * b[2] - a[2] * b[1],
   a[2] * b[0] - a[0] * b[2],
@@ -307,14 +329,30 @@ export interface VanishingPoint {
 
 /**
  * Best vanishing point of `segments` by RANSAC (pairs of segments, score = inlier length), refined by
- * least squares on its inliers. `reject(v)` drops hypotheses (a point inside the object box). Null under
+ * least squares on its inliers. `reject(v)` drops hypotheses (a point inside the object box), and so do
+ * points whose lines all sit at one height (`spreadAt`: copies of one edge). Null under
  * `MIN_VP_INLIERS` inliers.
  */
 export function ransacVanishingPoint(
   segments: Segment2[],
-  { seed = 1, reject }: { seed?: number; reject?: (v: Vec3) => boolean } = {}
+  {
+    seed = 1,
+    reject,
+    spreadAt,
+  }: {
+    seed?: number;
+    reject?: (v: Vec3) => boolean;
+    /** Column and smallest spread (px) of the inlier lines there (`lineSpread`); none = not checked. */
+    spreadAt?: { x: number; min: number };
+  } = {}
 ): VanishingPoint | null {
   if (segments.length < MIN_VP_INLIERS) return null;
+  const spread = (inliers: number[]) =>
+    !spreadAt ||
+    lineSpread(
+      inliers.map((k) => segments[k]!),
+      spreadAt.x
+    ) >= spreadAt.min;
   const lines = segments.map(lineOf);
   const lengths = segments.map((s) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1));
   const tol = (VP_ANGLE_DEG * Math.PI) / 180;
@@ -329,7 +367,9 @@ export function ransacVanishingPoint(
     if (Math.hypot(...v) < 1e-12 || reject?.(v)) continue;
     const inliers = inliersOf(v);
     const support = inliers.reduce((s, k) => s + lengths[k]!, 0);
-    if (!best || support > best.support) best = { v, inliers, support };
+    if (best && support <= best.support) continue;
+    if (!spread(inliers)) continue;
+    best = { v, inliers, support };
   }
   if (!best || best.inliers.length < MIN_VP_INLIERS) return null;
   // Refine: v minimising Σ wᵢ (lᵢ · v)² with |v| = 1.
@@ -347,7 +387,9 @@ export function ransacVanishingPoint(
   if (!reject?.(refined)) {
     const inliers = inliersOf(refined);
     const support = inliers.reduce((s, k) => s + lengths[k]!, 0);
-    if (inliers.length >= best.inliers.length) best = { v: refined, inliers, support };
+    if (spread(inliers) && inliers.length >= best.inliers.length) {
+      best = { v: refined, inliers, support };
+    }
   }
   return best;
 }
@@ -380,8 +422,13 @@ export function measurePerspective(
   grid: GrayGrid,
   box: { x: number; y: number; w: number; h: number },
   photoW: number,
-  photoH: number
+  photoH: number,
+  /** Rows of the box to read lines on (fractions, y down): a house's walls, not its sloping gables. */
+  rows: readonly [number, number] = [0, 1]
 ): Perspective | null {
+  const inRows = (s: Segment2) =>
+    Math.min(s.y1, s.y2) >= rows[0] * grid.height - 0.5 &&
+    Math.max(s.y1, s.y2) <= rows[1] * grid.height + 0.5;
   const sx = (box.w * photoW) / grid.width;
   const sy = (box.h * photoH) / grid.height;
   const ox = box.x * photoW;
@@ -396,6 +443,7 @@ export function measurePerspective(
     Math.abs(Math.atan2(Math.abs(s.x2 - s.x1), Math.abs(s.y2 - s.y1))) <
     (VERTICAL_DEG * Math.PI) / 180;
   const segs = detectSegments(grid)
+    .filter(inRows)
     .map(toPhoto)
     .filter((s) => !vertical(s));
   // A facade's vanishing point is never on the object itself.
@@ -405,12 +453,16 @@ export function measurePerspective(
     x / w < ox + box.w * photoW &&
     y / w > oy &&
     y / w < oy + box.h * photoH;
-  const first = ransacVanishingPoint(segs, { seed: 1, reject });
+  const spreadAt = {
+    x: ox + (box.w * photoW) / 2,
+    min: MIN_LINE_SPREAD * box.h * photoH,
+  };
+  const first = ransacVanishingPoint(segs, { seed: 1, reject, spreadAt });
   if (!first) return null;
   const used = new Set(first.inliers);
   const second = ransacVanishingPoint(
     segs.filter((_, i) => !used.has(i)),
-    { seed: 2, reject }
+    { seed: 2, reject, spreadAt }
   );
 
   const cx = photoW / 2;

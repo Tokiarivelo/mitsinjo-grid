@@ -16,6 +16,11 @@ export const FIT_MAX_EVALS = 150;
 const LAMBDA = 0.5;
 /** Weight of the pull back to the measured start (keeps unseen values, e.g. depth seen head-on). */
 const PRIOR = 0.02;
+/**
+ * Pull back to the measured yaw (per rad²): the silhouette barely shows the yaw, so the fit only refines
+ * it (5° costs 0.008) and never invents a turn to fill the outline (golden car: 0° measured → 21°).
+ */
+const YAW_PRIOR = 1;
 
 type Pt = readonly [number, number];
 /** A filled grid: 1 = inside. */
@@ -234,8 +239,8 @@ const round2 = (v: number) => Math.round(v * 100) / 100;
 
 /**
  * Best template parameters for `kit` against the SAM `rings` (photo fractions) of `box`. `aspect` = box
- * width / height (pixels); `yaw0` = PF-T5 estimate; `canYaw` = straight-edged archetype (a tree is never
- * turned). Houses: the eave moves. ≤ `FIT_MAX_EVALS` evaluations, stop when ΔJ < 1e-3. Null when the
+ * width / height (pixels); `yaw0` = PF-T5 estimate; `canYaw` = a yaw was measured on a straight-edged
+ * archetype (a tree, or a facade without vanishing lines, is never turned). Houses: the eave moves. ≤ `FIT_MAX_EVALS` evaluations, stop when ΔJ < 1e-3. Null when the
  * mask is empty.
  */
 export function fitSilhouette({
@@ -290,10 +295,10 @@ export function fitSilhouette({
   const x0 = [0, 0, canYaw ? yaw0 : 0, ...(roof ? [roof.eave] : [])];
   const score = (x: number[]) => {
     const m = renderRecipe(build(x), aspect, cols, rows);
-    const prior = x[0]! ** 2 + x[1]! ** 2 + (x[2]! - x0[2]!) ** 2;
-    return 1 - iou(m, target) + LAMBDA * chamfer(m, targetDistance) + PRIOR * prior;
+    const prior = PRIOR * (x[0]! ** 2 + x[1]! ** 2) + YAW_PRIOR * (x[2]! - x0[2]!) ** 2;
+    return 1 - iou(m, target) + LAMBDA * chamfer(m, targetDistance) + prior;
   };
-  const steps = [0.15, 0.3, canYaw ? 0.15 : 0, ...(roof ? [0.08] : [])];
+  const steps = [0.15, 0.3, canYaw ? 0.05 : 0, ...(roof ? [0.08] : [])];
   // A fixed coordinate (yaw of a tree) gets no step and stays put.
   const free = steps.map((s, i) => (s > 0 ? i : -1)).filter((i) => i >= 0);
   const expand = (y: number[]) => {

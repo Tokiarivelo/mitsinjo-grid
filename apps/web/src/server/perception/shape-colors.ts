@@ -2,13 +2,17 @@ import 'server-only';
 
 import sharp from 'sharp';
 import { pathToRings } from '@/lib/vision';
-import { insideRings, objectPixels, type ObjectPixels } from './color-measure';
+import { insideRings, MIN_MEASURED_PIXELS, objectPixels, type ObjectPixels } from './color-measure';
 import type { PhotoForRegions } from './region';
 import type { GrayGrid } from './repetition';
 import type { NormBox } from './schemas';
 
-/** Long side of the sampled box (px): enough for colour groups, ~10 k pixels at most. */
+/**
+ * Pixel budget of the sampled box (96²): enough for colour groups. A budget on the area, not the long
+ * side, keeps thin objects wide enough (a 40 × 160 lamp post is no longer squeezed to a 4 px pole).
+ */
 export const COLOR_SAMPLE_PX = 96;
+const COLOR_SAMPLE_AREA = COLOR_SAMPLE_PX * COLOR_SAMPLE_PX;
 
 /** Box of the object in photo pixels, clamped inside the photo. */
 function pixelBox(photo: PhotoForRegions, box: NormBox) {
@@ -72,7 +76,7 @@ export async function sampleObjectPixels(
   outline?: string
 ): Promise<ObjectPixels> {
   const { left, top, width, height } = pixelBox(photo, box);
-  const scale = Math.min(1, COLOR_SAMPLE_PX / Math.max(width, height));
+  const scale = Math.min(1, Math.sqrt(COLOR_SAMPLE_AREA / (width * height)));
   const { data, info } = await sharp(photo.buffer, { failOn: 'none' })
     .extract({ left, top, width, height })
     .resize({
@@ -84,18 +88,43 @@ export async function sampleObjectPixels(
     .toBuffer({ resolveWithObject: true });
 
   const rings = outline ? pathToRings(outline).filter((r) => r.length >= 3) : [];
-  const rgb: number[] = [];
-  const ys: number[] = [];
-  for (let j = 0; j < info.height; j++) {
-    const fy = (j + 0.5) / info.height;
-    const py = (top + fy * height) / photo.height;
-    for (let i = 0; i < info.width; i++) {
-      const px = (left + ((i + 0.5) / info.width) * width) / photo.width;
-      if (rings.length && !insideRings(px, py, rings)) continue;
-      const k = (j * info.width + i) * info.channels;
-      rgb.push(data[k]!, data[k + 1]!, data[k + 2]!);
-      ys.push(fy);
+  const W = info.width;
+  const H = info.height;
+  const inside = new Uint8Array(W * H);
+  for (let j = 0; j < H; j++) {
+    const py = (top + ((j + 0.5) / H) * height) / photo.height;
+    for (let i = 0; i < W; i++) {
+      const px = (left + ((i + 0.5) / W) * width) / photo.width;
+      inside[j * W + i] = !rings.length || insideRings(px, py, rings) ? 1 : 0;
     }
   }
-  return objectPixels(rgb, ys);
+  // Edge pixels of the outline blend the object with the sky behind it once downscaled (a lamp post
+  // pole 4 px wide came out pale grey): keep the inner pixels, unless too few are left.
+  const inner = (i: number, j: number) =>
+    !rings.length ||
+    (i > 0 &&
+      j > 0 &&
+      i < W - 1 &&
+      j < H - 1 &&
+      inside[j * W + i - 1]! +
+        inside[j * W + i + 1]! +
+        inside[(j - 1) * W + i]! +
+        inside[(j + 1) * W + i]! ===
+        4);
+  const collect = (keep: (i: number, j: number) => boolean) => {
+    const rgb: number[] = [];
+    const ys: number[] = [];
+    for (let j = 0; j < H; j++) {
+      for (let i = 0; i < W; i++) {
+        if (!inside[j * W + i] || !keep(i, j)) continue;
+        const k = (j * W + i) * info.channels;
+        rgb.push(data[k]!, data[k + 1]!, data[k + 2]!);
+        ys.push((j + 0.5) / H);
+      }
+    }
+    return { rgb, ys };
+  };
+  let px = collect(inner);
+  if (px.ys.length < MIN_MEASURED_PIXELS) px = collect(() => true);
+  return objectPixels(px.rgb, px.ys);
 }

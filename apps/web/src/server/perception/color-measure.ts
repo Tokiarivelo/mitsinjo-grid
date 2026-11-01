@@ -210,3 +210,61 @@ export function insideRings(
   }
   return inside;
 }
+
+/** `#rrggbb` → CIELAB. */
+export function hexToLab(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16);
+  return linearToLab(...srgbToLinear((n >> 16) & 255, (n >> 8) & 255, n & 255));
+}
+
+/** CIEDE2000 colour difference (Sharma 2005); < 2 hard to see, < 10 the same colour family. */
+export function deltaE2000(
+  [L1, a1, b1]: readonly [number, number, number],
+  [L2, a2, b2]: readonly [number, number, number]
+): number {
+  const rad = Math.PI / 180;
+  const C1 = Math.hypot(a1, b1);
+  const C2 = Math.hypot(a2, b2);
+  const Cm = (C1 + C2) / 2;
+  const G = 0.5 * (1 - Math.sqrt(Cm ** 7 / (Cm ** 7 + 25 ** 7)));
+  const a1p = (1 + G) * a1;
+  const a2p = (1 + G) * a2;
+  const C1p = Math.hypot(a1p, b1);
+  const C2p = Math.hypot(a2p, b2);
+  const hue = (b: number, a: number) => {
+    if (a === 0 && b === 0) return 0;
+    const h = Math.atan2(b, a) / rad;
+    return h < 0 ? h + 360 : h;
+  };
+  const h1p = hue(b1, a1p);
+  const h2p = hue(b2, a2p);
+  const dL = L2 - L1;
+  const dC = C2p - C1p;
+  let dh = 0;
+  if (C1p * C2p !== 0) {
+    dh = h2p - h1p;
+    if (dh > 180) dh -= 360;
+    else if (dh < -180) dh += 360;
+  }
+  const dH = 2 * Math.sqrt(C1p * C2p) * Math.sin((dh / 2) * rad);
+  const Lm = (L1 + L2) / 2;
+  const Cmp = (C1p + C2p) / 2;
+  let hm = h1p + h2p;
+  if (C1p * C2p !== 0) {
+    if (Math.abs(h1p - h2p) <= 180) hm /= 2;
+    else hm = h1p + h2p < 360 ? (hm + 360) / 2 : (hm - 360) / 2;
+  }
+  const T =
+    1 -
+    0.17 * Math.cos((hm - 30) * rad) +
+    0.24 * Math.cos(2 * hm * rad) +
+    0.32 * Math.cos((3 * hm + 6) * rad) -
+    0.2 * Math.cos((4 * hm - 63) * rad);
+  const dTheta = 30 * Math.exp(-(((hm - 275) / 25) ** 2));
+  const Rc = 2 * Math.sqrt(Cmp ** 7 / (Cmp ** 7 + 25 ** 7));
+  const Sl = 1 + (0.015 * (Lm - 50) ** 2) / Math.sqrt(20 + (Lm - 50) ** 2);
+  const Sc = 1 + 0.045 * Cmp;
+  const Sh = 1 + 0.015 * Cmp * T;
+  const Rt = -Math.sin(2 * dTheta * rad) * Rc;
+  return Math.sqrt((dL / Sl) ** 2 + (dC / Sc) ** 2 + (dH / Sh) ** 2 + Rt * (dC / Sc) * (dH / Sh));
+}

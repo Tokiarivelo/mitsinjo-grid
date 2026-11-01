@@ -188,6 +188,9 @@ make dev-mock
 # Run full quality check suite (typecheck + lint + 242 tests + i18n parity)
 make check
 
+# Run the 3D shape golden set (5 street photos, 300 ms math budget)
+make test-shape
+
 # Run Playwright end-to-end test suite
 make e2e
 
