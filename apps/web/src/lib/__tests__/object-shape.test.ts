@@ -169,3 +169,32 @@ describe('fitRecipe with a measured yaw (PF-T5)', () => {
     expect(fitRecipe(cube, 2)).not.toHaveProperty('yaw');
   });
 });
+
+describe('extrude points (PR-2.1)', () => {
+  const tri: [number, number][] = [
+    [-0.5, -0.5],
+    [0.5, -0.5],
+    [0, 0.5],
+  ];
+  const part = (over: Record<string, unknown>) => ({
+    shape: 'extrude',
+    at: [0, 0, 0],
+    size: [1, 1, 1],
+    color: '#eeeeee',
+    ...over,
+  });
+  const parse = (parts: unknown[]) =>
+    ObjectRecipeSchema.safeParse({ proportions: { w: 1, h: 1, d: 1 }, parts }).success;
+
+  it('extrude takes a 3–64 point ring, and only extrude takes one', () => {
+    expect(parse([part({ points: tri })])).toBe(true);
+    expect(parse([{ ...part({}), shape: 'box' }])).toBe(true);
+    expect(parse([part({})])).toBe(false);
+    expect(parse([{ ...part({ points: tri }), shape: 'box' }])).toBe(false);
+    expect(parse([part({ points: tri.slice(0, 2) })])).toBe(false);
+    expect(
+      parse([part({ points: Array.from({ length: 65 }, () => [0, 0] as [number, number]) })])
+    ).toBe(false);
+    expect(parse([part({ points: [...tri, [0.6, 0]] })])).toBe(false);
+  });
+});

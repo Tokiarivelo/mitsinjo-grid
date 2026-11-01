@@ -140,6 +140,81 @@ function clipQuadric(s: Span, a: number, b: number, c: number, at: (t: number) =
 
 const H = 0.5;
 
+type Pt2 = readonly [number, number];
+
+/** Even-odd point-in-ring test. */
+function insideRing(ring: ReadonlyArray<Pt2>, x: number, y: number): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i]!;
+    const [xj, yj] = ring[j]!;
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Keeps the front-most part of the span whose xy runs inside `ring` (PR-2.1): ray–edge crossings
+ * in t, even-odd paired, intersected with the z-slab span. Non-convex safe; only the front hit is
+ * kept (what the z-buffer shows). Entry normals face the ray, whatever the winding.
+ */
+function clipPolygon(s: Span, o: V3, d: V3, ring: ReadonlyArray<Pt2>): void {
+  const [ox, oy, dx, dy] = [o[0], o[1], d[0], d[1]];
+  if (ring.length < 3 || Math.hypot(dx, dy) < 1e-12) {
+    // Degenerate ring, or a ray along z: inside or out for the whole span.
+    if (ring.length < 3 || !insideRing(ring, ox, oy)) s.tout = -Infinity;
+    return;
+  }
+  // Edges strictly straddling the ray line: each crossing toggles inside/outside exactly once
+  // (a pass-through vertex counts once, a tangent touch twice and cancels below).
+  const hits: Array<{ t: number; nx: number; ny: number }> = [];
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[j]!;
+    const b = ring[i]!;
+    const ex = b[0] - a[0];
+    const ey = b[1] - a[1];
+    if (dx * (a[1] - oy) - dy * (a[0] - ox) > 0 === dx * (b[1] - oy) - dy * (b[0] - ox) > 0)
+      continue;
+    const den = dx * ey - dy * ex;
+    if (Math.abs(den) < 1e-12) continue;
+    const t = ((a[0] - ox) * ey - (a[1] - oy) * ex) / den;
+    const nx = ey;
+    const ny = -ex;
+    const flip = nx * dx + ny * dy > 0 ? -1 : 1;
+    hits.push({ t, nx: flip * nx, ny: flip * ny });
+  }
+  hits.sort((p, q) => p.t - q.t);
+  // Same-t crossings come from one vertex: an even count cancels, an odd count toggles once.
+  const toggles: Array<{ t: number; nx: number; ny: number }> = [];
+  for (const h of hits) {
+    const last = toggles[toggles.length - 1];
+    if (last && Math.abs(last.t - h.t) < 1e-9) toggles.pop();
+    else toggles.push(h);
+  }
+  let t = s.tin;
+  // State just past the span entry (the entry itself may sit on the ring boundary).
+  const probe = s.tin === -Infinity ? Infinity : Math.min(s.tin + 1e-7, (s.tin + s.tout) / 2);
+  // Far outside any bounded ring the ray starts out.
+  let inside = probe !== Infinity && insideRing(ring, ox + dx * probe, oy + dy * probe);
+  let n = s.n;
+  for (const h of toggles) {
+    if (h.t <= t || h.t >= s.tout) continue;
+    if (inside) {
+      s.tout = h.t;
+      return;
+    }
+    t = h.t;
+    n = [h.nx, h.ny, 0];
+    inside = true;
+  }
+  if (!inside) {
+    s.tout = -Infinity;
+    return;
+  }
+  s.tin = t;
+  s.n = n;
+}
+
 /** Ray (unit space) through one unit primitive (1 × 1 × 1 bounds, as the viewer's `unitPart`). */
 function intersect(p: RecipePart, o: V3, d: V3): Span | null {
   const s: Span = { tin: -Infinity, tout: Infinity, n: null };
@@ -149,9 +224,12 @@ function intersect(p: RecipePart, o: V3, d: V3): Span | null {
   switch (p.shape) {
     case 'box':
     case 'prism':
+    case 'extrude':
       clipPlane(s, o, d, [0, 0, 1], H);
       clipPlane(s, o, d, [0, 0, -1], H);
-      if (p.shape === 'box') {
+      if (p.shape === 'extrude') {
+        clipPolygon(s, o, d, p.points ?? []);
+      } else if (p.shape === 'box') {
         clipPlane(s, o, d, [1, 0, 0], H);
         clipPlane(s, o, d, [-1, 0, 0], H);
       } else {

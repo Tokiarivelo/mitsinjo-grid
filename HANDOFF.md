@@ -1,29 +1,28 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-01 (PR-0.4 machinery, Meta outage, S2 next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-01 (PR-2.1 extrude done, PR-2.2 next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
-- `18f20a4` committed (PR-0.7, unsigned: sandbox blocks GPG). Tree has PR-0.4 machinery uncommitted.
-- **PR-0.4 machinery done, box open:** `shape-capture.ts` (`onKit` hook, `cropRectForShape`, remap, write/read/`rescoreCapture`), `make shape-capture PHOTO=… ID=…`, fixtures in gitignored `__fixtures__/shape/real/`. Unit tests green (round-trip + offline rescore iou > 0.6).
-- **Meta outage 2026-11-01:** SAM aborts, Spark > 150 s (5 attempts, capture refuses mock/silhouette correctly). No live fixture yet; re-run when Meta is back. PR-0.5/PR-0.6-live also blocked on this.
-- Scores unchanged (crop refactor is behaviour-identical, `test-shape` 5/5).
+- Committed: `18f20a4` (PR-0.7), `de147e1` (PR-0.4 machinery, unsigned: sandbox GPG). PR-2.1 ready to commit.
+- **PR-2.1 done:** `extrude` shape (`points` ring, schema iff), `unitExtrude` (bevelled), `unitPoints` hull, ray-polygon even-odd clip in `flat-render`. Tests: schema, geometry (bounds, < 1 k tris/64-gon), L-notch 768 px, square == box, winding, ¾ subset, hull triangle.
+- Scores identical (90 / 0.96 / 0.84 / 3.3): no template uses extrude yet. Loop row logged.
+- **Meta still out:** PR-0.4 live fixture, PR-0.5, PR-0.6-live blocked; re-run `make shape-capture` when back.
 
 ## Next task
 
-- **Commit** PR-0.4 machinery, then **S2 shape (no live dependency, attacks « toy look »)**: `docs/tasks/PV-shape-realism.md` → **PR-2.1 `extrude`** (polygon slab + bevel, raster support) then **PR-2.2 profile body** (SAM outline extruded for vehicle/cabinet/machine).
-- Then S2 rest (lathe, part masks, wheels/windows, fit v2), PR-0.6 Spark critic, S4 bet.
-- **Free placement**: `docs/tasks/PV-free-placement.md` (PP-T1…T8). **PV-T14** + **PV-T11b**.
+- **Commit** PR-2.1, then **PR-2.2 profile body**: side-seen archetypes (vehicle, cabinet, machine) → main body = SAM outline extruded to kit depth (minus wheels band for vehicles). IoU ≈ SAM IoU by construction.
+- Then S2 rest (PR-2.3 lathe → PR-2.10), PR-0.6, S4 bet. Free placement PP-T1…T8. PV-T14 + PV-T11b.
 
 ## Decisions taken
 
-- Capture refuses mock/silhouette (a fixture must be a real recipe); live runner gets 150 s (routes keep 60 s).
-- `cropRectForShape` pure in `shape-crop.ts`, `cropForShape` delegates (identical bytes, proven by test).
-- Fixture = `<id>.capture.json` (target, kit, recipe, remapped cropTarget, empty partMasks slot) + `<id>.crop.jpg` (exact bytes Spark saw).
-- `__fixtures__/shape/real/` gitignored (user photos, plan-anticipated); report skips missing ones.
+- Extrude ring in unit space (fractions of part size, centred, y up), server-built only, never from Spark.
+- Flat renderer ignores the bevel (sharp slab), like PR-1.2 rounded boxes: viewer-only softness.
+- Ray clip keeps the front-most inside interval only (what the z-buffer shows); entry normals face the ray.
 
 ## Files touched this session
 
-- New: `server/perception/shape-capture.ts`, `__tests__/shape-capture.test.ts`.
-- `server/perception/object-shape.ts` (`onKit`), `server/perception/shape-crop.ts` (rect refactor).
-- `Makefile` (`shape-capture`), `.gitignore` (real/), `docs/tasks/PV-shape-realism.md` (PR-0.4 note).
+- `lib/object-shape.ts` (shape + points), `__tests__/object-shape.test.ts`.
+- `features/vision-insert/utils/object-geometry.ts` (`unitExtrude`), `__tests__/object-geometry.test.ts`.
+- `server/perception/flat-render.ts` (`clipPolygon`), `silhouette-fit.ts` (`unitPoints`), their tests.
+- `docs/contracts.md` (primitives), `docs/tasks/PV-shape-realism.md` (PR-2.1 + loop row).

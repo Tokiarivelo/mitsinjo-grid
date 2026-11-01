@@ -176,3 +176,33 @@ describe('fitSilhouette (PF-T6)', () => {
     expect(fitSilhouette({ kit: tree, rings: [], box, aspect: 0.8, canYaw: false })).toBeNull();
   });
 });
+
+describe('extrude points (PR-2.1)', () => {
+  it('a triangle ring renders its hull: centre filled, about half the grid', () => {
+    const m = renderRecipe(
+      {
+        proportions: { w: 1, h: 1, d: 1 },
+        parts: [
+          {
+            shape: 'extrude',
+            at: [0, 0, 0],
+            size: [1, 1, 1],
+            color: '#cccccc',
+            points: [
+              [-0.5, -0.5],
+              [0.5, -0.5],
+              [0, 0.5],
+            ],
+          },
+        ],
+      },
+      1,
+      32,
+      32
+    );
+    const filled = m.data.reduce((s, v) => s + v, 0);
+    expect(filled).toBeGreaterThan(400);
+    expect(filled).toBeLessThan(650);
+    expect(m.data[16 * 32 + 16]).toBe(1);
+  });
+});

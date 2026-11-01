@@ -128,11 +128,45 @@ export function roundedBox(w: number, h: number, d: number, radius: number): THR
   return flat;
 }
 
+/** Bevel of an extruded profile (PR-2.1), unit space: soft edge, exact 1 × 1 × 1 bounds. */
+export const EXTRUDE_BEVEL = 0.02;
+
+/**
+ * Unit extruded profile (PR-2.1): the closed `points` ring (x right, y up) with a thin bevel,
+ * 1 deep along z, centred. Non-indexed so parts merge; either winding accepted.
+ */
+export function unitExtrude(
+  points: ReadonlyArray<readonly [number, number]>
+): THREE.BufferGeometry {
+  const shape = new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y)));
+  const g = new THREE.ExtrudeGeometry(shape, {
+    depth: 1 - 2 * EXTRUDE_BEVEL,
+    bevelEnabled: true,
+    bevelThickness: EXTRUDE_BEVEL,
+    bevelSize: EXTRUDE_BEVEL,
+    bevelSegments: 1,
+    steps: 1,
+  });
+  g.translate(0, 0, -0.5 + EXTRUDE_BEVEL);
+  if (g.index) {
+    const flat = g.toNonIndexed();
+    g.dispose();
+    return flat;
+  }
+  return g;
+}
+
 /** Unit primitive (1 × 1 × 1 bounds) along y, non-indexed so parts merge. */
-function unitPart(shape: RecipePart['shape'], apex?: number): THREE.BufferGeometry {
+function unitPart(
+  shape: RecipePart['shape'],
+  apex?: number,
+  points?: RecipePart['points']
+): THREE.BufferGeometry {
   switch (shape) {
     case 'prism':
       return unitPrism(apex);
+    case 'extrude':
+      return unitExtrude(points ?? []);
     case 'box':
       return new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
     case 'cylinder':
@@ -162,7 +196,7 @@ export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
     if (p.shape === 'box') {
       g = roundedBox(sx, sy, sz, SURFACE_LOOK[SURFACES[surface]!].radius);
     } else {
-      g = unitPart(p.shape, p.apex);
+      g = unitPart(p.shape, p.apex, p.points);
       // Round parts turn to their axis before taking the part's own x / y / z extent.
       if (p.axis === 'x') g.rotateZ(Math.PI / 2);
       else if (p.axis === 'z') g.rotateX(Math.PI / 2);

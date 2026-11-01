@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { kitToRecipe } from '@/lib/object-kit';
 import type { ObjectRecipe, RecipePart } from '@/lib/object-shape';
-import { FLAT_AMBIENT, FLAT_LIGHT, renderFlat } from '../flat-render';
+import { FLAT_AMBIENT, FLAT_LIGHT, renderFlat, THREE_QUARTER } from '../flat-render';
 import { iou, renderRecipe } from '../silhouette-fit';
 import { GOLDEN_SHAPES } from '../__fixtures__/shape';
 
@@ -128,6 +128,58 @@ describe('renderFlat (PR-0.1)', () => {
       const sil = renderRecipe(rec, aspect, 128, Math.round(128 / aspect));
       expect(iou(flat.mask, sil), c.name).toBeGreaterThan(0.95);
       expect(ms, c.name).toBeLessThan(RENDER_BUDGET_MS);
+    }
+  });
+});
+
+describe('extrude profile (PR-2.1)', () => {
+  // Non-convex L: full-width bottom bar, left column up, empty top-right notch.
+  const ell: [number, number][] = [
+    [-0.5, -0.5],
+    [0.5, -0.5],
+    [0.5, 0],
+    [0, 0],
+    [0, 0.5],
+    [-0.5, 0.5],
+  ];
+  const lPart = (points: [number, number][]): RecipePart => part({ shape: 'extrude', points });
+  const filled = (r: ReturnType<typeof renderFlat>) => r.mask.data.reduce((s, v) => s + v, 0);
+
+  it('head-on renders the ring: bar + column, notch empty', () => {
+    const r = renderFlat(recipe([lPart(ell)]), 1, 32, 32);
+    // 16 full rows + 16 half rows on pixel centres.
+    expect(filled(r)).toBe(16 * 32 + 16 * 16);
+    expect(r.mask.data[8 * 32 + 24]).toBe(0);
+    expect(r.mask.data[24 * 32 + 8]).toBe(1);
+  });
+
+  it('a square ring matches the box silhouette (flat renderer ignores the bevel)', () => {
+    const square: [number, number][] = [
+      [-0.5, -0.5],
+      [0.5, -0.5],
+      [0.5, 0.5],
+      [-0.5, 0.5],
+    ];
+    const e = renderFlat(recipe([lPart(square)]), 1, 32, 32);
+    const b = renderFlat(recipe([part({})]), 1, 32, 32);
+    expect([...e.mask.data]).toEqual([...b.mask.data]);
+  });
+
+  it('either winding renders the same mask', () => {
+    const a = renderFlat(recipe([lPart(ell)]), 1, 32, 32);
+    const b = renderFlat(recipe([lPart([...ell].reverse())]), 1, 32, 32);
+    expect([...a.mask.data]).toEqual([...b.mask.data]);
+  });
+
+  it('from ¾ the profile stays inside the box silhouette, notch visible', () => {
+    for (const view of [undefined, THREE_QUARTER]) {
+      const e = renderFlat(recipe([lPart(ell)]), 1, 48, 48, view);
+      const b = renderFlat(recipe([part({})]), 1, 48, 48, view);
+      expect(filled(e)).toBeGreaterThan(0);
+      expect(filled(e)).toBeLessThan(filled(b));
+      e.mask.data.forEach((v, i) => {
+        if (v) expect(b.mask.data[i]).toBe(1);
+      });
     }
   });
 });

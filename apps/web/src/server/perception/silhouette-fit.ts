@@ -98,6 +98,13 @@ function unitPoints(p: RecipePart): Array<[number, number, number]> {
         [r, 0.5, z] as [number, number, number],
       ]);
     }
+    case 'extrude': {
+      const ring = p.points ?? [];
+      if (ring.length < 3) return unitPoints({ ...p, shape: 'box' });
+      return [-0.5, 0.5].flatMap((z) =>
+        ring.map(([x, y]) => [x, y, z] as [number, number, number])
+      );
+    }
     case 'cylinder':
       return [...circle(-0.5), ...circle(0.5)];
     case 'cone':

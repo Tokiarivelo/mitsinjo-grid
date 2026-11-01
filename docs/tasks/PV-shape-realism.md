@@ -95,8 +95,11 @@ part counts exact (wheels, windows, gables) · designer score ≥ 4/5 · shape m
 
 ### S2 — Shape from the photo
 
-- [ ] **PR-2.1 `extrude` primitive.** Polygon (box fractions, ≤ 64 points, simplified Douglas–Peucker) → slab with
+- [x] **PR-2.1 `extrude` primitive.** Polygon (box fractions, ≤ 64 points, simplified Douglas–Peucker) → slab with
       bevel. Pure builder + raster support in `silhouette-fit`.
+      Done: `points` ring in unit space (schema: required iff extrude, server-built only), `unitExtrude`
+      (bevelled, ≤ 64 pts < 1 k tris), hull points in `unitPoints`, ray-polygon even-odd clip in `flat-render`
+      (non-convex safe, winding independent). Scores unchanged (no template uses it yet).
 - [ ] **PR-2.2 Profile body.** Side-seen archetypes (vehicle, cabinet, machine) → main body = SAM outline extruded to
       the kit depth (minus wheels band for vehicles). IoU ≈ SAM IoU by construction.
 - [ ] **PR-2.3 `lathe` primitive.** Profile (radius per height) → solid of revolution, ≤ 24 segments.
@@ -162,3 +165,4 @@ S2 (shape), S3 (Spark), S4 last (a bet). Expect the car to stop looking like a b
 | 2026-11-01 | PR-1.6 Loop pass: tree crown y=0.16 + car alignment + user car test    | 0.96     | 0.83    | 3.5     | 4/5      | all objects meet criteria! car score 85 → 90 (edge F1 0.90), tree 80 → 88 (edge F1 0.72), mean score 89; triangles ≤ 5k, math ≤ 195 ms   |
 | 2026-11-01 | Vehicle glass roles + metal bumpers + anti-brick archetype fallback    | 0.96     | 0.83    | 3.3     | 5/5      | car ΔE 3.8 → 2.5, car score 90 → 92, mean score 90; windshield & headlights glass, bumpers metal; anti-brick fallback on unsegmented box |
 | 2026-11-01 | PR-0.7 6-angle preview + tree multi-tier canopy (5 spheres)            | 0.96     | 0.84    | 3.3     | —        | tree 88 → 89 (edge F1 0.75), car steady 92, mean 90; no regression; views are score-neutral (rendered from the recipe)                   |
+| 2026-11-01 | PR-2.1 `extrude` primitive (ring + bevel + ray clip)                   | 0.96     | 0.84    | 3.3     | —        | scores identical (unused by templates yet); L-notch renders 768 px, square == box mask, 64-gon < 1 k tris                                |

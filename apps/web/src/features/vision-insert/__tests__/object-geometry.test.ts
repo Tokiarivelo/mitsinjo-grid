@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { silhouetteRings, type ObjectRecipe } from '@/lib/object-shape';
 import {
+  EXTRUDE_BEVEL,
   recipeMesh,
   ROOF_OVERHANG,
   roundedBox,
@@ -10,6 +11,7 @@ import {
   silhouetteMesh,
   silhouetteSize,
   triangleCount,
+  unitExtrude,
   unitPrism,
 } from '../utils/object-geometry';
 import { SURFACE_LOOK } from '../utils/surface-look';
@@ -252,5 +254,42 @@ describe('recipeMesh with a yaw (PF-T5)', () => {
     const r = SURFACE_LOOK.painted.radius;
     const expected = (1 - 2 * r) * Math.cos(Math.PI / 6) + (0.5 - 2 * r) * 0.5 + 2 * r;
     expect(turned.max.x - turned.min.x).toBeCloseTo(expected, 3);
+  });
+});
+
+describe('unitExtrude (PR-2.1)', () => {
+  const square: [number, number][] = [
+    [-0.5, -0.5],
+    [0.5, -0.5],
+    [0.5, 0.5],
+    [-0.5, 0.5],
+  ];
+
+  it('is centred, 1 deep, and merges into a recipe', () => {
+    const g = unitExtrude(square);
+    expect(g.index).toBeNull();
+    const bb = bounds(g);
+    expect(bb.min.z).toBeCloseTo(-0.5, 2);
+    expect(bb.max.z).toBeCloseTo(0.5, 2);
+    // The bevel reaches slightly past the ring on the profile plane.
+    expect(bb.min.x).toBeGreaterThanOrEqual(-0.5 - EXTRUDE_BEVEL - 1e-3);
+    expect(bb.max.x).toBeLessThanOrEqual(0.5 + EXTRUDE_BEVEL + 1e-3);
+    const body = recipeMesh({
+      proportions: { w: 1, h: 1, d: 1 },
+      parts: [
+        { shape: 'extrude', at: [0, 0, 0], size: [1, 1, 1], color: '#ffffff', points: square },
+      ],
+    });
+    expect(body.getAttribute('position').count).toBe(g.getAttribute('position').count);
+    expect(body.getAttribute('color').count).toBe(g.getAttribute('position').count);
+  });
+
+  it('either winding builds the same mesh; a 64-gon stays light', () => {
+    const ring = Array.from({ length: 64 }, (_, i) => {
+      const a = (2 * Math.PI * i) / 64;
+      return [0.5 * Math.cos(a), 0.5 * Math.sin(a)] as [number, number];
+    });
+    expect(triangleCount(unitExtrude([...ring].reverse()))).toBe(triangleCount(unitExtrude(ring)));
+    expect(triangleCount(unitExtrude(ring))).toBeLessThan(1000);
   });
 });

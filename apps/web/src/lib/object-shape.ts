@@ -16,7 +16,9 @@ import {
  */
 
 /** `prism` = triangle extruded along z (gable roof, PF-T3), apex at `apex` of its width. */
-export const RECIPE_SHAPES = ['box', 'cylinder', 'sphere', 'cone', 'prism'] as const;
+export const RECIPE_SHAPES = ['box', 'cylinder', 'sphere', 'cone', 'prism', 'extrude'] as const;
+/** Polygon points of an `extrude` part (PR-2.1): closed ring, simplified before storing. */
+export const EXTRUDE_POINTS_MAX = 64;
 export const MAX_RECIPE_PARTS = 12;
 /** A part may stick out of the object box by this much (handles, feet) before the recipe counts as poor. */
 export const RECIPE_BOUND = 0.6;
@@ -60,20 +62,32 @@ const extent = z.number().min(0.01).max(1);
  * One primitive. Object centred at the origin, x right, y up, z toward the camera.
  * `at` = part centre and `size` = part extent, both in fractions of the object's own width / height / depth.
  */
-export const RecipePartSchema = z.object({
-  shape: z.enum(RECIPE_SHAPES),
-  at: z.tuple([coord, coord, coord]),
-  size: z.tuple([extent, extent, extent]),
-  /** Axis of a cylinder or cone (default `y`). */
-  axis: z.enum(['x', 'y', 'z']).optional(),
-  /** Prism only: x of the ridge, share of the part width from its left edge (default 0.5). */
-  apex: z.number().min(0).max(1).optional(),
-  color: z.string().regex(/^#[0-9a-f]{6}$/i),
-  /** What the part is made of (AI), sets its surface in the 3D view. */
-  material: RecipeMaterialSchema.optional(),
-  /** Main body of the object (walls, cabinet). */
-  front: z.boolean().optional(),
-});
+/** Closed ring in unit space (fractions of the part size, centred, y up), extruded along z. */
+const unitPoint = z.tuple([z.number().min(-0.5).max(0.5), z.number().min(-0.5).max(0.5)]);
+
+export const RecipePartSchema = z
+  .object({
+    shape: z.enum(RECIPE_SHAPES),
+    at: z.tuple([coord, coord, coord]),
+    size: z.tuple([extent, extent, extent]),
+    /** Axis of a cylinder or cone (default `y`). */
+    axis: z.enum(['x', 'y', 'z']).optional(),
+    /** Prism only: x of the ridge, share of the part width from its left edge (default 0.5). */
+    apex: z.number().min(0).max(1).optional(),
+    /** Extrude only (PR-2.1): the profile ring, 3–64 points, built server-side (never from Spark). */
+    points: z.array(unitPoint).min(3).max(EXTRUDE_POINTS_MAX).optional(),
+    color: z.string().regex(/^#[0-9a-f]{6}$/i),
+    /** What the part is made of (AI), sets its surface in the 3D view. */
+    material: RecipeMaterialSchema.optional(),
+    /** Main body of the object (walls, cabinet). */
+    front: z.boolean().optional(),
+  })
+  .superRefine((p, ctx) => {
+    if (p.shape === 'extrude' && !p.points)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'extrude needs points' });
+    if (p.shape !== 'extrude' && p.points)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'points need extrude' });
+  });
 export type RecipePart = z.infer<typeof RecipePartSchema>;
 
 export const ObjectRecipeSchema = z.object({
