@@ -38,15 +38,8 @@ import { extractSwatches } from './photo-swatches';
 import { withLatheBody } from './lathe-body';
 import { fetchFacadeMasks, type FacadeMasks } from './facade-masks';
 import { depthRatio, facadeHouseRecipe, type Elevation } from './facade-house';
-import { recipeToScript } from '@/lib/shape-script';
-import {
-  HOUSE_STAGES,
-  STAGE_MIN_MS,
-  STAGE_SAFETY_MS,
-  houseStageScorer,
-  runShapeStages,
-} from './shape-stages';
-import { sparkStageProposer } from './shape-stages-spark';
+import { STAGE_SAFETY_MS } from './shape-stages';
+import { facadeStageLoop, type StageProgress, type StagesContinuation } from './shape-stages-spark';
 import { formatElevationScore, scoreElevation, type ScoredElevation } from './elevation-score';
 import { ELEVATION_ARCHETYPES, measureFacadeElevations } from './facade-views';
 import { fetchPartMasks } from './part-masks';
@@ -156,6 +149,10 @@ export interface ObjectShapeOptions {
   onSideView?: (png: Buffer) => void;
   /** Gets the measured front elevation and its score against the model (end-to-end eval only). */
   onElevation?: (front: Elevation, score: ScoredElevation) => void;
+  /** Facade house loop progress (PG-T17, SSE `shape_stage`). */
+  onStage?: (e: StageProgress) => void;
+  /** Stages that did not fit the first answer: the caller runs them in the background (PG-T18). */
+  onStagesLeft?: (rest: StagesContinuation) => void;
 }
 
 /**
@@ -185,6 +182,8 @@ export async function runObjectShape(
     onKit,
     onSideView,
     onElevation,
+    onStage,
+    onStagesLeft,
   }: ObjectShapeOptions = {}
 ): Promise<ObjectShape> {
   const base = { detectionId: target.id };
@@ -405,36 +404,53 @@ export async function runObjectShape(
             console.warn('[vision] swatches failed:', err instanceof Error ? err.message : err);
           }
         }
-        // PG-T16: staged loop (Spark patches, kept only when the elevation stage score rises)
-        // while the first answer's budget allows; the seed is today's builder, so never worse.
-        const left = started + timeoutMs - STAGE_SAFETY_MS - Date.now();
-        if (perception.proposeShapeOps && left >= STAGE_MIN_MS) {
+        // PG-T16…T18: staged loop (Spark patches, kept only when the elevation stage score
+        // rises). Stages that fit the first answer's budget run now; the others continue in the
+        // background (`onStagesLeft`). The seed is today's builder, so never worse.
+        if (perception.proposeShapeOps) {
+          const proposeShapeOps = perception.proposeShapeOps.bind(perception);
+          const logStage = (e: StageProgress) => {
+            if (e.state === 'done')
+              console.info(
+                `[vision] 3D stage ${e.index}/${e.total} ${e.stage} (${e.phase}) for "${target.label}": ${e.before?.toFixed(2)}→${e.after?.toFixed(2)} (${e.stop}${e.recipe ? ', model updated' : ''})`
+              );
+          };
           try {
-            const drawing = target.facadeUrl ? await imageBytes(target.facadeUrl, signal) : null;
-            const staged = await runShapeStages({
-              seed: recipeToScript(recipe),
-              stages: HOUSE_STAGES,
-              score: houseStageScorer(front, front.roofRings),
-              propose: sparkStageProposer({
-                proposeShapeOps: async (img, q, sig) => ({
-                  result: await perception.proposeShapeOps!(img, q, sig),
-                }),
-                front,
-                ...(front.roofRings ? { roofRings: front.roofRings } : {}),
-                drawing,
-                label: target.label,
+            const loop = await facadeStageLoop({
+              recipe,
+              front,
+              ...(front.roofRings ? { roofRings: front.roofRings } : {}),
+              label: target.label,
+              proposeShapeOps: async (img, q, sig) => ({
+                result: await proposeShapeOps(img, q, sig),
               }),
-              budgetMs: left,
+              drawing: () =>
+                target.facadeUrl ? imageBytes(target.facadeUrl, signal) : Promise.resolve(null),
+              firstBudgetMs: started + timeoutMs - STAGE_SAFETY_MS - Date.now(),
               ...(signal ? { signal } : {}),
+              onProgress: (e) => {
+                logStage(e);
+                onStage?.(e);
+              },
             });
-            console.info(
-              `[vision] 3D stages for "${target.label}": ${staged.stages.map((st) => `${st.id} ${st.before.toFixed(2)}→${st.after.toFixed(2)} (${st.stop}${st.kept ? `, ${st.kept} kept` : ''})`).join(' · ')}; overall ${staged.overall.before.toFixed(2)}→${staged.overall.after.toFixed(2)}`
-            );
-            recipe = {
-              ...staged.recipe,
-              ...(recipe.swatches ? { swatches: recipe.swatches } : {}),
-              ...(recipe.dimStatus ? { dimStatus: recipe.dimStatus } : {}),
-            };
+            recipe = loop.recipe;
+            if (loop.rest) {
+              console.info(
+                `[vision] 3D stages left for the background for "${target.label}": ${loop.rest.stages.join(', ')}`
+              );
+              const rest = loop.rest;
+              onStagesLeft?.({
+                ...rest,
+                run: (o) =>
+                  rest.run({
+                    ...o,
+                    onProgress: (e) => {
+                      logStage(e);
+                      o.onProgress(e);
+                    },
+                  }),
+              });
+            }
           } catch (err) {
             console.warn(
               '[vision] 3D stages failed, keeping the seed:',

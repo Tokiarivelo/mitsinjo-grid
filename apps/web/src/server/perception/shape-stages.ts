@@ -82,6 +82,8 @@ export interface RunStagesOptions<S extends string = string> {
   /** Clock (tests); defaults to `Date.now`. */
   now?: () => number;
   signal?: AbortSignal;
+  /** Called when a stage starts asking the proposer (not for stages skipped at the gate or out of time). */
+  onStageStart?: (stage: StageSpec<S>, index: number) => void;
   /** Called after each stage ends, with the model at that point (progressive build, PG-T17). */
   onStage?: (result: StageResult<S>, recipe: ObjectRecipe, index: number) => void;
 }
@@ -161,6 +163,7 @@ export async function runShapeStages<S extends string>({
   maxRounds = STAGE_ROUNDS,
   now = Date.now,
   signal,
+  onStageStart,
   onStage,
 }: RunStagesOptions<S>): Promise<StagesResult<S>> {
   const deadline = now() + budgetMs;
@@ -193,6 +196,7 @@ export async function runShapeStages<S extends string>({
       } else if (current.stage >= stage.gate) {
         result.stop = 'gate';
       } else {
+        onStageStart?.(stage, index);
         for (let round = 1; round <= maxRounds; round++) {
           const left = deadline - now();
           if (left <= 0) {

@@ -343,6 +343,50 @@ export const SHAPE_STEPS = ['crop', 'model', 'fit', 'check'] as const;
 export type ShapeStep = (typeof SHAPE_STEPS)[number];
 export const ShapeStepEventSchema = z.object({ step: z.enum(SHAPE_STEPS) });
 
+/**
+ * Staged improvement of the model (PG-T17/T18): stage ids of the loop (house: massing → roof →
+ * openings → accessories). The first answer runs the stages that fit its budget; the rest go on
+ * in the background on the same stream (`shape_stage` events), resumable by job id.
+ */
+export const SHAPE_STAGE_IDS = ['massing', 'roof', 'openings', 'accessories'] as const;
+export type ShapeStageId = (typeof SHAPE_STAGE_IDS)[number];
+/** Background stages stop after this (the plan's « background stages finish ≤ 3 min »). */
+export const SHAPE_STAGES_BACKGROUND_MS = 180_000;
+export const SHAPE_STAGE_STOPS = [
+  'gate',
+  'no_gain',
+  'rounds',
+  'timeout',
+  'error',
+  'skipped',
+] as const;
+
+/** `shape_stage`: a stage started (`running`) or ended (`done`, with its scores and the model). */
+export const ShapeStageEventSchema = z.object({
+  jobId: z.string().max(64).optional(),
+  /** `first` = inside the first answer's budget, `background` = after it. */
+  phase: z.enum(['first', 'background']),
+  /** 1-based position of the stage among `total`. */
+  index: z.number().int().min(1),
+  total: z.number().int().min(1),
+  stage: z.enum(SHAPE_STAGE_IDS),
+  state: z.enum(['running', 'done']),
+  before: z.number().min(0).max(1).optional(),
+  after: z.number().min(0).max(1).optional(),
+  stop: z.enum(SHAPE_STAGE_STOPS).optional(),
+  /** The model after this stage, when a patch was kept (the viewer swaps it in). */
+  recipe: ObjectRecipeSchema.optional(),
+});
+export type ShapeStageEvent = z.infer<typeof ShapeStageEventSchema>;
+
+/** `shape_stages_done`: the loop ended (`done`) or was cut (`stopped` + cause). */
+export const ShapeStagesDoneSchema = z.object({
+  jobId: z.string().max(64).optional(),
+  status: z.enum(['done', 'stopped']),
+  cause: z.enum(['timeout', 'error', 'aborted']).optional(),
+});
+export type ShapeStagesDone = z.infer<typeof ShapeStagesDoneSchema>;
+
 const volume = (p: RecipePart) => p.size[0] * p.size[1] * p.size[2];
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 

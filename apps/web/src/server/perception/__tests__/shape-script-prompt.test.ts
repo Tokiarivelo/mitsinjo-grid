@@ -10,7 +10,7 @@ import {
   parseStageOps,
   stageQuestion,
 } from '../shape-script-prompt';
-import { stageNotes, stageSheet, sparkStageProposer } from '../shape-stages-spark';
+import { facadeStageLoop, stageNotes, stageSheet, sparkStageProposer } from '../shape-stages-spark';
 import { HOUSE_STAGES, houseStageScorer, runShapeStages } from '../shape-stages';
 import { facadeHouseRecipe, measureElevation } from '../facade-house';
 import { scoreElevation } from '../elevation-score';
@@ -137,5 +137,63 @@ describe('stage sheet + Spark proposer (PG-T15)', () => {
       signal: new AbortController().signal,
     });
     expect(ops).toEqual([]);
+  });
+});
+
+describe('facadeStageLoop (PG-T18)', () => {
+  const base = {
+    recipe: { ...built, swatches: { thatch: 'data:image/png;base64,AA' } },
+    front,
+    roofRings: g.masks.roof!.rings!,
+    label: 'thatched house',
+    drawing: async () => null,
+  };
+
+  it('no time in the first answer: every stage left for the background, with progress events', async () => {
+    const proposeShapeOps = vi.fn(async () => ({ result: { ops: [] } }));
+    const first = vi.fn();
+    const out = await facadeStageLoop({
+      ...base,
+      proposeShapeOps,
+      firstBudgetMs: 1_000,
+      onProgress: first,
+    });
+    expect(out.recipe).toBe(base.recipe);
+    expect(first).not.toHaveBeenCalled();
+    expect(out.rest!.stages).toEqual(['massing', 'roof', 'openings', 'accessories']);
+    expect(out.rest!.total).toBe(4);
+    const events: Array<{ phase: string; state: string; index: number }> = [];
+    const done = await out.rest!.run({ budgetMs: 10_000, onProgress: (e) => events.push(e) });
+    expect(done.cause).toBeUndefined();
+    expect(done.recipe.swatches).toEqual(base.recipe.swatches);
+    expect(events.every((e) => e.phase === 'background')).toBe(true);
+    expect(events.filter((e) => e.state === 'done').length).toBe(4);
+  });
+
+  it('with time: stages run in the first answer, nothing left', async () => {
+    const proposeShapeOps = vi.fn(async () => ({ result: { ops: [] } }));
+    const events: Array<{ phase: string }> = [];
+    const out = await facadeStageLoop({
+      ...base,
+      proposeShapeOps,
+      firstBudgetMs: 30_000,
+      onProgress: (e) => events.push(e),
+    });
+    expect(out.rest).toBeNull();
+    expect(events.length).toBeGreaterThan(0);
+    expect(events.every((e) => e.phase === 'first')).toBe(true);
+    expect(out.recipe.swatches).toEqual(base.recipe.swatches);
+  });
+
+  it('an aborted background run ends with cause aborted', async () => {
+    const out = await facadeStageLoop({
+      ...base,
+      proposeShapeOps: () => new Promise(() => {}),
+      firstBudgetMs: 0,
+    });
+    const ctrl = new AbortController();
+    const p = out.rest!.run({ budgetMs: 10_000, signal: ctrl.signal, onProgress: () => {} });
+    ctrl.abort();
+    expect((await p).cause).toBe('aborted');
   });
 });

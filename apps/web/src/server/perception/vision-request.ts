@@ -82,11 +82,25 @@ export function sseResponse(run: (send: SseSend) => Promise<void>): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      const send: SseSend = (event, data) =>
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      let open = true;
+      // A closed client (tab gone, reconnect) must not crash the work still running.
+      const send: SseSend = (event, data) => {
+        if (!open) return;
+        try {
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        } catch {
+          open = false;
+        }
+      };
       await run(send);
       send('done', {});
-      controller.close();
+      if (open) {
+        try {
+          controller.close();
+        } catch {
+          // already closed by the client
+        }
+      }
     },
   });
   return new Response(stream, {

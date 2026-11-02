@@ -279,3 +279,165 @@ describe('useObjectShape (PV-T9)', () => {
     expect(result.current.status).toBe('idle');
   });
 });
+
+describe('useObjectShape staged improvement (PG-T17/T18)', () => {
+  const JOB = '11111111-2222-3333-4444-555555555555';
+  const ev = (event: string, data: unknown) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  const better = {
+    ...recipeShape.recipe!,
+    parts: [{ ...recipeShape.recipe!.parts[0]!, color: '#cc8844' }],
+  };
+  const stage = (over: Record<string, unknown>) => ({
+    jobId: JOB,
+    phase: 'background',
+    total: 4,
+    stage: 'roof',
+    index: 2,
+    state: 'running',
+    ...over,
+  });
+
+  it('shows the first answer at once, then follows background stages and swaps the model in', async () => {
+    let finish!: () => void;
+    const gate = new Promise<void>((r) => (finish = r));
+    const body = new ReadableStream<Uint8Array>({
+      async start(c) {
+        const enc = new TextEncoder();
+        c.enqueue(enc.encode(ev('shape_result', { shape: recipeShape, jobId: JOB })));
+        c.enqueue(enc.encode(ev('shape_stage', { ...stage({}), seq: 0 })));
+        await gate;
+        c.enqueue(
+          enc.encode(
+            ev('shape_stage', {
+              ...stage({ state: 'done', before: 0.5, after: 0.8, stop: 'gate', recipe: better }),
+              seq: 1,
+            })
+          )
+        );
+        c.enqueue(enc.encode(ev('shape_stages_done', { jobId: JOB, status: 'done', seq: 2 })));
+        c.enqueue(enc.encode(ev('done', {})));
+        c.close();
+      },
+    });
+    fetchMock.mockResolvedValue(new Response(body));
+    const { result } = renderHook(() => useObjectShape());
+    act(() => {
+      void result.current.requestShape('data:image/png;base64,AA', target);
+    });
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current.improve).toMatchObject({
+      status: 'running',
+      index: 2,
+      total: 4,
+      stage: 'roof',
+    });
+    expect(result.current.shape!.recipe!.parts[0]!.color).toBe('#eeeeee');
+    act(() => finish());
+    await waitFor(() => expect(result.current.improve?.status).toBe('done'));
+    expect(result.current.improve).toMatchObject({ before: 0.5, after: 0.8 });
+    expect(result.current.shape!.recipe!.parts[0]!.color).toBe('#cc8844');
+  });
+
+  it('a dropped stream resumes from the last stage seen', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          ev('shape_result', { shape: recipeShape, jobId: JOB }) +
+            ev('shape_stage', { ...stage({}), seq: 0 })
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          ev('shape_stage', {
+            ...stage({ state: 'done', before: 0.4, after: 0.4, stop: 'no_gain' }),
+            seq: 1,
+          }) +
+            ev('shape_stages_done', { jobId: JOB, status: 'stopped', cause: 'timeout', seq: 2 }) +
+            ev('done', {})
+        )
+      );
+    const { result } = renderHook(() => useObjectShape());
+    act(() => {
+      void result.current.requestShape('data:image/png;base64,AA', target);
+    });
+    await waitFor(() => expect(result.current.improve?.status).toBe('stopped'));
+    expect(result.current.improve?.cause).toBe('timeout');
+    expect(String(fetchMock.mock.calls[1]![0])).toBe(`/api/vision/shape/stages?job=${JOB}&from=1`);
+  });
+
+  it('a job that cannot be resumed ends as stopped (error)', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          ev('shape_result', { shape: recipeShape, jobId: JOB }) +
+            ev('shape_stage', { ...stage({}), seq: 0 })
+        )
+      )
+      .mockResolvedValue(new Response('{}', { status: 404 }));
+    const { result } = renderHook(() => useObjectShape());
+    act(() => {
+      void result.current.requestShape('data:image/png;base64,AA', target);
+    });
+    await waitFor(() => expect(result.current.improve?.status).toBe('stopped'));
+    expect(result.current.improve?.cause).toBe('error');
+    expect(result.current.status).toBe('ready');
+  });
+
+  it('first-answer stages only: the model is final with the answer', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        ev('shape_stage', {
+          phase: 'first',
+          index: 4,
+          total: 4,
+          stage: 'accessories',
+          state: 'done',
+          before: 0.6,
+          after: 0.7,
+          stop: 'gate',
+        }) +
+          ev('shape_result', { shape: recipeShape }) +
+          ev('done', {})
+      )
+    );
+    const { result } = renderHook(() => useObjectShape());
+    act(() => {
+      void result.current.requestShape('data:image/png;base64,AA', target);
+    });
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current.improve).toMatchObject({
+      status: 'done',
+      index: 4,
+      before: 0.6,
+      after: 0.7,
+    });
+  });
+
+  it('a new request cancels the running job on the server', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        new ReadableStream({
+          start(c) {
+            c.enqueue(
+              new TextEncoder().encode(ev('shape_result', { shape: recipeShape, jobId: JOB }))
+            );
+          },
+        })
+      )
+    );
+    const { result } = renderHook(() => useObjectShape());
+    act(() => {
+      void result.current.requestShape('data:image/png;base64,AA', target);
+    });
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    fetchMock.mockResolvedValue(sse(recipeShape));
+    act(() => {
+      void result.current.requestShape('data:image/png;base64,AA', target, undefined, true);
+    });
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some((c) => c[1]?.method === 'DELETE' && String(c[0]).includes(JOB))
+      ).toBe(true)
+    );
+  });
+});

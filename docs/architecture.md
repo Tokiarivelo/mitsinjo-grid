@@ -48,6 +48,7 @@ mitsinjo-grid/
             │   ├── api/voice/route.ts  # chat microphone → transcribe (Meta Voice / mock)
             │   ├── api/vision/route.ts # photo → appliances (Muse boxes, SAM outlines / mock), SSE
             │   └── api/vision/shape/route.ts # selected object → 3D recipe (Spark) or silhouette fallback, JSON
+            │   └── api/vision/shape/stages/route.ts # background stage job of a 3D shape: resume (GET SSE) / cancel (DELETE)
             ├── features/
             │   ├── overview/           # ui/ hooks/ utils/ __tests__/ index.ts
             │   ├── simulation/         # controls, run/reset, timeline

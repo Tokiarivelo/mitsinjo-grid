@@ -5,9 +5,12 @@ import {
   SHAPE_OUTLINE_MAX,
   ImaginedViewsResponseSchema,
   ObjectShapeSchema,
+  ShapeStageEventSchema,
+  ShapeStagesDoneSchema,
   ShapeStepEventSchema,
   type ImaginedAngleView,
   type ObjectShape,
+  type ShapeStageId,
   type ShapeStep,
   type ShapeTarget,
 } from '@/lib/object-shape';
@@ -25,7 +28,26 @@ export interface ObjectShapeState {
   /** 6-angle 2D preview: imagined before the 3D, validated to build it. */
   viewsStatus: 'idle' | 'loading' | 'ready';
   views?: ImaginedAngleView[];
+  /** Staged improvement of the model (PG-T17/T18), absent when the object has none. */
+  improve?: ShapeImprove;
 }
+
+/** Where the staged loop is: the current stage and how it ends. */
+export interface ShapeImprove {
+  /** `running` while stages go on, then `done` (« Modèle finalisé ») or `stopped` + cause. */
+  status: 'running' | 'done' | 'stopped';
+  cause?: 'timeout' | 'error' | 'aborted';
+  /** Current (or last) stage, 1-based of `total`. */
+  index: number;
+  total: number;
+  stage: ShapeStageId;
+  /** Stage score before → after (0–1), once the stage ended. */
+  before?: number;
+  after?: number;
+}
+
+/** Reconnects to a dropped background job before giving up (« Amélioration arrêtée »). */
+export const STAGE_RESUME_TRIES = 3;
 
 const IDLE: ObjectShapeState = { status: 'idle', viewsStatus: 'idle' };
 
@@ -117,7 +139,25 @@ export function useObjectShape() {
   const facadesRef = useRef(new Map<string, Pick<ShapeRequest, 'facadeUrl' | 'facadeKey'>>());
   const lastRef = useRef<{ image: string; target: ShapeRequest; sessionId?: string } | null>(null);
 
-  useEffect(() => () => abortRef.current?.abort(), []);
+  /** Background stage job being followed (PG-T18), cancelled when it would be overwritten. */
+  const jobRef = useRef<string | null>(null);
+
+  /** Stops following the background stages and tells the server to stop them (saves Spark calls). */
+  const cancelJob = useCallback(() => {
+    const id = jobRef.current;
+    jobRef.current = null;
+    if (!id) return;
+    void fetch(`/api/vision/shape/stages?job=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }).catch(() => undefined);
+  }, []);
+
+  useEffect(
+    () => () => {
+      abortRef.current?.abort();
+    },
+    []
+  );
 
   const requestViews = useCallback(async (imageDataUrl: string, target: ShapeRequest) => {
     abortRef.current?.abort();
@@ -171,13 +211,92 @@ export function useObjectShape() {
       const key = shapeRequestKey(target);
       const cached = force ? undefined : cacheRef.current.get(key);
       if (cached) {
-        setState((s) => ({ ...s, status: 'ready', shape: cached }));
+        setState((s) => ({ ...s, status: 'ready', shape: cached, improve: undefined }));
         return;
       }
+      cancelJob();
       const controller = new AbortController();
       abortRef.current = controller;
-      setState((s) => ({ ...s, status: 'loading', step: 'crop', startedAt: Date.now() }));
-      const got: { shape?: ObjectShape } = {};
+      setState((s) => ({
+        ...s,
+        status: 'loading',
+        step: 'crop',
+        startedAt: Date.now(),
+        improve: undefined,
+      }));
+      const job: { id?: string; seq: number; done: boolean } = { seq: -1, done: false };
+      let finalized = false;
+      /** The first answer: shown at once (the stream may go on with background stages). */
+      const finalize = (shape: ObjectShape) => {
+        finalized = true;
+        if (keepShape(shape)) {
+          cacheRef.current.set(key, shape);
+          // A reselect (`peek`, no facade) shows the latest model, facade-based or not.
+          cacheRef.current.set(objectKey, shape);
+        }
+        setState((s) => ({
+          ...s,
+          status: 'ready',
+          shape,
+          // First-answer stages only: the model is final now.
+          ...(s.improve && !job.id ? { improve: { ...s.improve, status: 'done' as const } } : {}),
+        }));
+      };
+      const onEvent = (event: string, data: Record<string, unknown>) => {
+        if (controller.signal.aborted) return;
+        if (typeof data.seq === 'number') job.seq = Math.max(job.seq, data.seq);
+        if (event === 'shape_step') {
+          const step = ShapeStepEventSchema.safeParse(data);
+          if (step.success) setState((s) => ({ ...s, step: step.data.step }));
+        } else if (event === 'shape_result') {
+          const parsed = ObjectShapeSchema.safeParse(data.shape);
+          if (typeof data.jobId === 'string') {
+            job.id = data.jobId;
+            jobRef.current = data.jobId;
+          }
+          if (parsed.success) finalize(parsed.data);
+          else console.warn('[vision] 3D shape reply not readable:', parsed.error.issues[0]);
+        } else if (event === 'shape_stage') {
+          const e = ShapeStageEventSchema.safeParse(data);
+          if (!e.success) return;
+          const st = e.data;
+          setState((s) => {
+            const improve: ShapeImprove = {
+              status: 'running',
+              index: st.index,
+              total: st.total,
+              stage: st.stage,
+              ...(st.state === 'done' && st.before !== undefined ? { before: st.before } : {}),
+              ...(st.state === 'done' && st.after !== undefined ? { after: st.after } : {}),
+            };
+            // A background stage that kept a patch: swap the model in (and keep it).
+            if (st.phase === 'background' && st.recipe && finalized && s.shape?.mode === 'recipe') {
+              const shape = { ...s.shape, recipe: st.recipe };
+              cacheRef.current.set(key, shape);
+              cacheRef.current.set(objectKey, shape);
+              return { ...s, shape, improve };
+            }
+            return { ...s, improve };
+          });
+        } else if (event === 'shape_stages_done') {
+          const d = ShapeStagesDoneSchema.safeParse(data);
+          if (!d.success) return;
+          job.done = true;
+          jobRef.current = null;
+          setState((s) =>
+            s.improve
+              ? {
+                  ...s,
+                  improve: {
+                    ...s.improve,
+                    status: d.data.status,
+                    ...(d.data.cause ? { cause: d.data.cause } : {}),
+                  },
+                }
+              : s
+          );
+        }
+      };
       let detail = 'no_result';
       try {
         const form = await shapeForm(imageDataUrl, target, sessionId);
@@ -189,32 +308,37 @@ export function useObjectShape() {
         if (!res.ok || !res.body) {
           detail = `http_${res.status}`;
         } else {
-          await readSseStream(res.body, (event, data) => {
-            if (controller.signal.aborted) return;
-            if (event === 'shape_step') {
-              const step = ShapeStepEventSchema.safeParse(data);
-              if (step.success) setState((s) => ({ ...s, step: step.data.step }));
-            } else if (event === 'shape_result') {
-              const parsed = ObjectShapeSchema.safeParse(data.shape);
-              if (parsed.success) got.shape = parsed.data;
-              else console.warn('[vision] 3D shape reply not readable:', parsed.error.issues[0]);
-            }
-          });
+          await readSseStream(res.body, onEvent);
         }
       } catch (err) {
         detail = 'offline';
         if (!controller.signal.aborted) console.warn('[vision] 3D shape request failed:', err);
       }
       if (controller.signal.aborted) return;
-      const final = got.shape ?? offlineSilhouette(target.id, detail);
-      if (keepShape(final)) {
-        cacheRef.current.set(key, final);
-        // A reselect (`peek`, no facade) shows the latest model, facade-based or not.
-        cacheRef.current.set(objectKey, final);
+      if (!finalized) finalize(offlineSilhouette(target.id, detail));
+      // Background stages: a dropped stream resumes from the last event seen.
+      for (let tries = 0; job.id && !job.done && tries < STAGE_RESUME_TRIES; tries++) {
+        try {
+          const res = await fetch(
+            `/api/vision/shape/stages?job=${encodeURIComponent(job.id)}&from=${job.seq + 1}`,
+            { signal: controller.signal }
+          );
+          if (!res.ok || !res.body) break;
+          await readSseStream(res.body, onEvent);
+        } catch (err) {
+          if (controller.signal.aborted) return;
+          console.warn('[vision] 3D stages stream dropped:', err);
+        }
+        if (controller.signal.aborted) return;
       }
-      setState((s) => ({ ...s, status: 'ready', shape: final }));
+      if (job.id && !job.done) {
+        jobRef.current = null;
+        setState((s) =>
+          s.improve ? { ...s, improve: { ...s.improve, status: 'stopped', cause: 'error' } } : s
+        );
+      }
     },
-    []
+    [cancelJob]
   );
 
   /**
@@ -222,16 +346,20 @@ export function useObjectShape() {
    * « Generate » (`requestShape`), so picking objects to adjust their box costs no call. Cancels a
    * running request.
    */
-  const peek = useCallback((target: ShapeRequest) => {
-    abortRef.current?.abort();
-    const key = shapeKey(target);
-    const cached = cacheRef.current.get(key);
-    const views = viewsCacheRef.current.get(key);
-    setState({
-      ...(cached ? { status: 'ready' as const, shape: cached } : { status: 'idle' as const }),
-      ...(views ? { viewsStatus: 'ready' as const, views } : { viewsStatus: 'idle' as const }),
-    });
-  }, []);
+  const peek = useCallback(
+    (target: ShapeRequest) => {
+      abortRef.current?.abort();
+      cancelJob();
+      const key = shapeKey(target);
+      const cached = cacheRef.current.get(key);
+      const views = viewsCacheRef.current.get(key);
+      setState({
+        ...(cached ? { status: 'ready' as const, shape: cached } : { status: 'idle' as const }),
+        ...(views ? { viewsStatus: 'ready' as const, views } : { viewsStatus: 'idle' as const }),
+      });
+    },
+    [cancelJob]
+  );
 
   /** « Try the AI shape again »: same object, cache skipped (Spark answers vary). */
   const retry = useCallback(() => {
@@ -247,8 +375,9 @@ export function useObjectShape() {
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
+    cancelJob();
     setState(IDLE);
-  }, []);
+  }, [cancelJob]);
 
   /** New photo: forget every kept shape and preview (ids repeat across photos). */
   const clear = useCallback(() => {
@@ -257,8 +386,9 @@ export function useObjectShape() {
     facadesRef.current.clear();
     lastRef.current = null;
     abortRef.current?.abort();
+    cancelJob();
     setState(IDLE);
-  }, []);
+  }, [cancelJob]);
 
   return { ...state, requestShape, requestViews, peek, retry, regenerate, reset, clear };
 }
