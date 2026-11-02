@@ -6,6 +6,8 @@ export interface GoldenElevation {
   name: string;
   masks: ElevationMasks;
   colors: ObjectKit['colors'];
+  /** What Spark reads on the drawing (PG-T5), as the live kit would carry it. */
+  partMaterials?: ObjectKit['partMaterials'];
 }
 
 /**
@@ -42,8 +44,29 @@ export const THATCHED_FRONT: GoldenElevation = {
     ],
     plinths: [{ x: 0.187, y: 0.777, w: 0.625, h: 0.039 }],
     steps: [{ x: 0.418, y: 0.8, w: 0.164, h: 0.016 }],
+    // Half-timbering: posts beside each opening and at the corners, a head rail and a base rail.
+    beams: [
+      { x: 0.192, y: 0.508, w: 0.012, h: 0.268 },
+      { x: 0.262, y: 0.508, w: 0.012, h: 0.268 },
+      { x: 0.372, y: 0.508, w: 0.012, h: 0.268 },
+      { x: 0.428, y: 0.508, w: 0.012, h: 0.268 },
+      { x: 0.572, y: 0.508, w: 0.012, h: 0.268 },
+      { x: 0.628, y: 0.508, w: 0.012, h: 0.268 },
+      { x: 0.73, y: 0.508, w: 0.012, h: 0.268 },
+      { x: 0.795, y: 0.508, w: 0.012, h: 0.268 },
+      { x: 0.19, y: 0.54, w: 0.62, h: 0.012 },
+      { x: 0.19, y: 0.755, w: 0.62, h: 0.012 },
+    ],
   },
   colors: { main: '#e6dccb', secondary: '#b8955a', accent: '#2b3440' },
+  partMaterials: {
+    roof: 'thatch',
+    walls: 'plaster',
+    frame: 'wood',
+    plinth: 'stone',
+    chimney: 'brick',
+    door: 'wood',
+  },
 };
 
 export const GOLDEN_ELEVATIONS: ReadonlyArray<GoldenElevation> = [THATCHED_FRONT];

@@ -103,6 +103,8 @@ describe('measureElevationImage', () => {
         plinth: [inst([0.12, 0.85, 0.88, 0.9]), inst([0.4, 0.2, 0.6, 0.25])],
         step: [inst([0.43, 0.88, 0.57, 0.9])],
         'window pane': [inst([0.2, 0.5, 0.25, 0.55]), inst([0.5, 0.1, 0.55, 0.15])],
+        // A post on the wall, and a « beam » in the roof (not a wall beam: dropped).
+        'timber beam': [inst([0.35, 0.4, 0.36, 0.9]), inst([0.3, 0.15, 0.6, 0.16])],
       },
       []
     );
@@ -112,6 +114,7 @@ describe('measureElevationImage', () => {
     // The pane in the roof is not inside a window: dropped.
     expect(e.panes).toHaveLength(1);
     expect(e.roofRings?.[0]).toHaveLength(4);
+    expect(e.beams).toHaveLength(1);
   });
 
   it('a SAM miss on the details keeps the elevation (no plinth, no panes)', async () => {

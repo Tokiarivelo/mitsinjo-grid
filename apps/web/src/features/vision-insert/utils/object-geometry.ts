@@ -4,7 +4,10 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { ObjectRecipe, RecipePart } from '@/lib/object-shape';
 import { SURFACE_LOOK, SURFACES, surfaceIndex } from './surface-look';
-import { expandOpenings } from './openings';
+import { holedBox } from './holed-wall';
+import { layoutOpenings } from './openings';
+import { expandRoofTrim } from './roof-trim';
+import { timberBeams } from './timber';
 import { planarUvs } from './surface-maps';
 import { type ApplianceDetection, type NormBox, type SceneryType } from '@/lib/vision';
 
@@ -265,14 +268,22 @@ const color = new THREE.Color();
  */
 export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
   const dims = [recipe.proportions.w, recipe.proportions.h, recipe.proportions.d] as const;
-  // Windows and doors drawn with frame, glass, bars and sill (PG-T8).
-  const sorted = expandOpenings(recipe)
+  // Windows and doors drawn with frame, glass, bars and sill (PG-T8), cut into their wall (PG-T11).
+  const { parts: laid, holes } = layoutOpenings(recipe);
+  // Thatch roofs end in a rounded eave roll (PG-T12); half-timbered walls get their beams.
+  const sorted = [
+    ...expandRoofTrim(laid, recipe.proportions, ROOF_OVERHANG),
+    ...timberBeams(recipe),
+  ]
     .map((p) => ({ p, surface: surfaceIndex(p.material) }))
     .sort((a, b) => a.surface - b.surface);
   const parts = sorted.map(({ p, surface }) => {
     const [sx, sy, sz] = [p.size[0] * dims[0], p.size[1] * dims[1], p.size[2] * dims[2]];
     let g: THREE.BufferGeometry;
-    if (p.shape === 'box') {
+    const cut = holes.get(p);
+    if (p.shape === 'box' && cut?.length) {
+      g = holedBox(sx, sy, sz, cut);
+    } else if (p.shape === 'box') {
       g = roundedBox(sx, sy, sz, SURFACE_LOOK[SURFACES[surface]!].radius);
     } else {
       g = unitPart(p.shape, p.apex, p.points, p.profile, p.ridge);

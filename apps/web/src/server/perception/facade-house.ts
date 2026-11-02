@@ -1,6 +1,7 @@
 import type { ObjectKit, PartMaterialKey } from '@/lib/object-kit';
 import {
   MAX_PANES,
+  MAX_TIMBER,
   MAX_RECIPE_PARTS,
   type ObjectRecipe,
   type RecipeMaterial,
@@ -33,6 +34,8 @@ export interface ElevationMasks {
   plinths?: ReadonlyArray<NormBox>;
   steps?: ReadonlyArray<NormBox>;
   panes?: ReadonlyArray<NormBox>;
+  /** Exposed timber beams on the walls (posts and rails of a half-timbered house). */
+  beams?: ReadonlyArray<NormBox>;
 }
 
 /** One elevation measured in its own pixel-aspect units (u = x · aspect, v = y). */
@@ -58,6 +61,8 @@ export interface Elevation {
   steps: NormBox[];
   /** Glass panes inside the windows and doors (PG-T3): their grid gives the mullions. */
   panes: NormBox[];
+  /** Thin timber beams on the walls, below the eave. */
+  beams: NormBox[];
   /** Roof outline on the drawing (SAM rings), for the elevation score (PG-T2). */
   roofRings?: Ring[];
 }
@@ -164,6 +169,13 @@ export function measureElevation(m: ElevationMasks): Elevation | null {
           bottomOf(p) <= bottomOf(o) + 0.01
       )
     ),
+    beams: (m.beams ?? []).filter(
+      (b) =>
+        inside(b) &&
+        b.y >= eave - 0.02 &&
+        bottomOf(b) <= bottom + 0.02 &&
+        (b.h >= BEAM_ASPECT * b.w * m.aspect || b.w * m.aspect >= BEAM_ASPECT * b.h)
+    ),
     ...(m.roof?.rings?.length ? { roofRings: m.roof.rings.map((r) => [...r]) } : {}),
   };
 }
@@ -243,6 +255,48 @@ export const separateRoofColor = (
   roof: { color: string; material?: RecipeMaterial | undefined },
   wall: { color: string; material?: RecipeMaterial | undefined }
 ) => separateColor(roof, wall);
+
+/** A beam is this many times longer than thick (pixels). */
+const BEAM_ASPECT = 4;
+/** Beam lines closer than this share of the wall are one beam. */
+const BEAM_MERGE = 0.03;
+
+/** Sorted values of `xs`, those closer than `tol` merged to their mean. */
+function mergeClose(xs: number[], tol: number): number[] {
+  const v = [...xs].sort((a, b) => a - b);
+  const out: number[][] = [];
+  for (const x of v) {
+    const last = out.at(-1);
+    if (last && x - last.at(-1)! <= tol) last.push(x);
+    else out.push([x]);
+  }
+  return out.map((g) => g.reduce((a, b) => a + b, 0) / g.length);
+}
+
+/**
+ * Timber frame of the front wall from its beams (PV-G): vertical beams → post x, horizontal ones →
+ * rail y, as shares of the wall (x from its left, y from the ground up to the eave). Null under
+ * 2 beams (no half-timbering read).
+ */
+export function timberFrame(
+  e: Pick<Elevation, 'beams' | 'aspect' | 'wallLeft' | 'wallRight' | 'eave' | 'bottom'>
+): { posts: number[]; rails: number[] } | null {
+  if (e.beams.length < 2) return null;
+  const W = e.wallRight - e.wallLeft;
+  const H = e.bottom - e.eave;
+  if (!(W > 0 && H > 0)) return null;
+  const vertical = (b: NormBox) => b.h >= b.w * e.aspect;
+  const share = (v: number) => clamp(v, 0, 1);
+  const posts = mergeClose(
+    e.beams.filter(vertical).map((b) => share((b.x + b.w / 2 - e.wallLeft) / W)),
+    BEAM_MERGE
+  ).slice(0, MAX_TIMBER);
+  const rails = mergeClose(
+    e.beams.filter((b) => !vertical(b)).map((b) => share((e.bottom - (b.y + b.h / 2)) / H)),
+    BEAM_MERGE
+  ).slice(0, MAX_TIMBER);
+  return posts.length + rails.length >= 2 ? { posts, rails } : null;
+}
 
 /** Distinct values of `xs` (sorted), merged when closer than `tol`. */
 function clusters(xs: number[], tol: number): number {
@@ -417,12 +471,14 @@ export function facadeHouseRecipe({
     size: [X(right(b)) - X(b.x), Y(b.y) - Y(bottomOf(b)), thick],
   });
   const t = DECAL;
+  const timber = timberFrame(front);
   const walls: RecipePart = {
     shape: 'box',
     at: at(0, (eaveY - 1) / 2, 0),
     size: [wallW, eaveY + 1, depth],
     front: true,
     kind: 'wall',
+    ...(timber ? { timber } : {}),
     ...role('main', 'walls'),
   };
   const { kind, ridge } = roofKind(front, side);

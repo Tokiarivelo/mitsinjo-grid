@@ -36,16 +36,93 @@ export function frameColor(wallHex: string): string {
 const isOpening = (p: RecipePart) =>
   p.shape === 'box' && (p.kind === 'window' || p.kind === 'door');
 
-/** Recipe parts with every window / door expanded into frame, glass or leaf, bars and sill. */
-export function expandOpenings(recipe: ObjectRecipe): RecipePart[] {
-  if (!recipe.parts.some(isOpening)) return recipe.parts;
-  const dims = [recipe.proportions.w, recipe.proportions.h, recipe.proportions.d];
-  const wall = recipe.parts.find((p) => p.kind === 'wall') ?? recipe.parts.find((p) => p.front);
-  const trim = frameColor(wall?.color ?? FRAME_LIGHT);
-  return recipe.parts.flatMap((p) => (isOpening(p) ? opening(p, dims, trim) : [p]));
+/**
+ * A hole cut in a wall for one opening (PG-T11), world units relative to the wall's centre:
+ * on the face across `axis` (0 = x, 2 = z) on its `sign` side, centre `u` along the face
+ * (world x on a z face, world z on an x face), `v` up, size `w` × `h`, reveal `depth` inward.
+ */
+export interface WallHole {
+  axis: 0 | 2;
+  sign: 1 | -1;
+  u: number;
+  v: number;
+  w: number;
+  h: number;
+  depth: number;
 }
 
-function opening(p: RecipePart, dims: number[], trim: string): RecipePart[] {
+/** Reveal depth (glass set back from the wall face), in frame widths. */
+export const RECESS_FRAMES = 1.2;
+/** Most of a wall's thickness a reveal may take. */
+const MAX_RECESS_SHARE = 0.25;
+
+/** Recipe parts with every window / door expanded into frame, glass or leaf, bars and sill. */
+export function expandOpenings(recipe: ObjectRecipe): RecipePart[] {
+  return layoutOpenings(recipe).parts;
+}
+
+/**
+ * Openings expanded (as `expandOpenings`) plus, per host wall, the holes to cut in it: an opening
+ * lying on a wall face is cut through that face and its glass or leaf sits at the bottom of the
+ * reveal, framed on the wall surface. Openings on no wall keep the flat look.
+ */
+export function layoutOpenings(recipe: ObjectRecipe): {
+  parts: RecipePart[];
+  holes: Map<RecipePart, WallHole[]>;
+} {
+  const holes = new Map<RecipePart, WallHole[]>();
+  if (!recipe.parts.some(isOpening)) return { parts: recipe.parts, holes };
+  const dims = [recipe.proportions.w, recipe.proportions.h, recipe.proportions.d];
+  const walls = recipe.parts.filter((p) => p.shape === 'box' && (p.kind === 'wall' || p.front));
+  const wall = walls[0];
+  const trim = frameColor(wall?.color ?? FRAME_LIGHT);
+  const parts = recipe.parts.flatMap((p) => {
+    if (!isOpening(p)) return [p];
+    const host = hostOf(p, walls, dims);
+    if (host) holes.set(host.wall, [...(holes.get(host.wall) ?? []), host.hole]);
+    return opening(p, dims, trim, host?.hole.depth ?? null);
+  });
+  return { parts, holes };
+}
+
+/** World centre and size of a part. */
+const worldBox = (p: RecipePart, dims: number[]) => ({
+  c: p.at.map((v, i) => v * dims[i]!),
+  s: p.size.map((v, i) => v * dims[i]!),
+});
+
+/** The wall whose face this opening lies on, and the hole to cut there; null when none. */
+function hostOf(
+  p: RecipePart,
+  walls: RecipePart[],
+  dims: number[]
+): { wall: RecipePart; hole: WallHole } | null {
+  const o = worldBox(p, dims);
+  const n = o.s[0]! < o.s[2]! ? 0 : 2;
+  const b = n === 0 ? 2 : 0;
+  const [W, H, T] = [o.s[b]!, o.s[1]!, o.s[n]!];
+  const f = FRAME_SHARE * Math.min(W, H);
+  for (const wl of walls) {
+    const w = worldBox(wl, dims);
+    const sign = Math.sign(o.c[n]! - w.c[n]!) || 1;
+    const face = w.c[n]! + (sign * w.s[n]!) / 2;
+    // On the face: within a decal thickness of it, and inside its span.
+    if (Math.abs(o.c[n]! - (T / 2) * sign - face) > T + 1e-6) continue;
+    const u = o.c[b]! - w.c[b]!;
+    const v = o.c[1]! - w.c[1]!;
+    const [hw, hh] = [W - 2 * f, H - 2 * f];
+    if (Math.abs(u) + hw / 2 > w.s[b]! / 2 || Math.abs(v) + hh / 2 > w.s[1]! / 2) continue;
+    if (!(hw > 0 && hh > 0)) continue;
+    const depth = Math.min(RECESS_FRAMES * f, MAX_RECESS_SHARE * w.s[n]!);
+    return {
+      wall: wl,
+      hole: { axis: n as 0 | 2, sign: sign as 1 | -1, u, v, w: hw, h: hh, depth },
+    };
+  }
+  return null;
+}
+
+function opening(p: RecipePart, dims: number[], trim: string, recess: number | null): RecipePart[] {
   const world = p.size.map((s, i) => s * dims[i]!);
   // Thin axis = the wall normal; the other horizontal axis runs along the wall.
   const n = world[0]! < world[2]! ? 0 : 2;
@@ -53,6 +130,9 @@ function opening(p: RecipePart, dims: number[], trim: string): RecipePart[] {
   const out = Math.sign(p.at[n]!) || 1;
   const [W, H, T] = [world[b]!, world[1]!, world[n]!];
   const f = FRAME_SHARE * Math.min(W, H);
+  // Glass / leaf: at the bottom of the reveal when the wall is cut, else just behind the frame.
+  const glassDn = recess === null ? -0.25 * T : -recess;
+  const barDn = recess === null ? 0.2 * T : -recess + 0.9 * T;
   /** A box offset from the opening centre: du along the wall, dv up, dn out of the wall (world). */
   const piece = (
     du: number,
@@ -81,7 +161,7 @@ function opening(p: RecipePart, dims: number[], trim: string): RecipePart[] {
   };
   const frame = { color: trim, material: 'wood' as const, kind: 'frame' as const };
   const [Wi, Hi] = [W - 2 * f, H - 2 * f];
-  const inner = piece(0, 0, -0.25 * T, Wi, Hi, T, {
+  const inner = piece(0, 0, glassDn, Wi, Hi, T, {
     color: p.color,
     ...(p.material ? { material: p.material } : {}),
     ...(p.kind ? { kind: p.kind } : {}),
@@ -96,9 +176,9 @@ function opening(p: RecipePart, dims: number[], trim: string): RecipePart[] {
   const [cols, rows] = p.grid ?? (p.kind === 'window' ? DEFAULT_WINDOW_GRID : [1, 1]);
   const bar = BAR_SHARE * f;
   for (let k = 1; k < cols; k++)
-    parts.push(piece(-Wi / 2 + (k * Wi) / cols, 0, 0.2 * T, bar, Hi, 1.4 * T, frame));
+    parts.push(piece(-Wi / 2 + (k * Wi) / cols, 0, barDn, bar, Hi, 1.4 * T, frame));
   for (let k = 1; k < rows; k++)
-    parts.push(piece(0, -Hi / 2 + (k * Hi) / rows, 0.2 * T, Wi, bar, 1.4 * T, frame));
+    parts.push(piece(0, -Hi / 2 + (k * Hi) / rows, barDn, Wi, bar, 1.4 * T, frame));
   if (p.kind === 'window')
     parts.push(piece(0, -H / 2 - 0.35 * f, 1.5 * T, 1.15 * W, 0.7 * f, 4 * T, frame));
   return parts;

@@ -50,6 +50,8 @@ export const PART_KINDS = [
   'frame',
 ] as const;
 export const PartKindSchema = z.enum(PART_KINDS);
+/** Most timber posts or rails on one wall (PV-G). */
+export const MAX_TIMBER = 12;
 /** Most glass panes across or down one window (PG-T8). */
 export const MAX_PANES = 6;
 export type PartKind = z.infer<typeof PartKindSchema>;
@@ -132,6 +134,16 @@ export const RecipePartSchema = z
     front: z.boolean().optional(),
     /** What the part is (PV-G); absent on older shapes. */
     kind: PartKindSchema.optional(),
+    /**
+     * Wall only (PV-G): exposed timber frame on its front face, read on the drawing — post x and
+     * rail y as shares of the wall (0 = left / ground, 1 = right / eave). The 3D view draws the beams.
+     */
+    timber: z
+      .object({
+        posts: z.array(z.number().min(0).max(1)).max(MAX_TIMBER),
+        rails: z.array(z.number().min(0).max(1)).max(MAX_TIMBER),
+      })
+      .optional(),
     /** Window / door only (PG-T8): glass panes across × down, read on the drawing; the 3D view adds the bars. */
     grid: z
       .tuple([z.number().int().min(1).max(MAX_PANES), z.number().int().min(1).max(MAX_PANES)])

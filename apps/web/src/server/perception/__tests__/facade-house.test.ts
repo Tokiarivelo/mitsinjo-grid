@@ -8,6 +8,7 @@ import {
   fuseDepth,
   measureElevation,
   paneGrid,
+  timberFrame,
   separateRoofColor,
   ROOF_WALL_MIN_DE,
   ridgeShare,
@@ -19,6 +20,7 @@ import {
 } from '../facade-house';
 import { renderFlat } from '../flat-render';
 import { deltaE2000, hexToLab } from '../color-measure';
+import { THATCHED_FRONT } from '../__fixtures__/elevation';
 
 /** Rectangle ring (image fractions). */
 const rect = (x0: number, y0: number, x1: number, y1: number) => [
@@ -449,5 +451,44 @@ describe('chimney and base colours (viewer review 2026-11-02)', () => {
     expect(de(chimney.color, colors.main)).toBeGreaterThanOrEqual(ROOF_WALL_MIN_DE);
     expect(de(base.color, colors.main)).toBeGreaterThanOrEqual(ROOF_WALL_MIN_DE);
     expect(de(base.color, colors.secondary)).toBeGreaterThanOrEqual(ROOF_WALL_MIN_DE);
+  });
+});
+
+describe('timberFrame (PV-G)', () => {
+  const e = {
+    aspect: 1.5,
+    wallLeft: 0.2,
+    wallRight: 0.8,
+    eave: 0.5,
+    bottom: 0.8,
+  };
+  it('vertical beams → posts, horizontal → rails, as wall shares; close ones merged', () => {
+    const t = timberFrame({
+      ...e,
+      beams: [
+        { x: 0.195, y: 0.5, w: 0.01, h: 0.3 },
+        { x: 0.497, y: 0.5, w: 0.01, h: 0.3 },
+        { x: 0.5, y: 0.5, w: 0.01, h: 0.3 },
+        { x: 0.2, y: 0.645, w: 0.6, h: 0.01 },
+      ],
+    })!;
+    expect(t.posts).toHaveLength(2);
+    expect(t.posts[0]).toBeCloseTo(0, 1);
+    expect(t.posts[1]).toBeCloseTo(0.5, 1);
+    expect(t.rails).toHaveLength(1);
+    expect(t.rails[0]).toBeCloseTo(0.5, 1);
+  });
+  it('null under 2 beams', () => {
+    expect(timberFrame({ ...e, beams: [{ x: 0.5, y: 0.5, w: 0.01, h: 0.3 }] })).toBeNull();
+  });
+  it('the thatched drawing gives a half-timbered wall', () => {
+    const r = facadeHouseRecipe({
+      front: measureElevation(THATCHED_FRONT.masks)!,
+      side: null,
+      colors: THATCHED_FRONT.colors,
+    });
+    const wall = r.parts.find((p) => p.kind === 'wall')!;
+    expect(wall.timber?.posts.length).toBeGreaterThanOrEqual(6);
+    expect(wall.timber?.rails).toHaveLength(2);
   });
 });

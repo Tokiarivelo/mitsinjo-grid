@@ -193,7 +193,15 @@ describe.runIf(process.env.SHAPE_REPORT)('make shape-report', () => {
     for (const g of GOLDEN_ELEVATIONS) {
       const front = measureElevation(g.masks)!;
       const recipe = fitRecipe(
-        { ...facadeHouseRecipe({ front, side: null, colors: g.colors }), source: 'facade' },
+        {
+          ...facadeHouseRecipe({
+            front,
+            side: null,
+            colors: g.colors,
+            ...(g.partMaterials ? { partMaterials: g.partMaterials } : {}),
+          }),
+          source: 'facade',
+        },
         0
       );
       const s = scoreElevation(

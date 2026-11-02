@@ -112,9 +112,9 @@ export async function measureElevationImage(
     'chimney',
     ...(withDoors ? ['door'] : []),
   ];
-  // PG-T3: base, steps and panes, in parallel with the rest; a miss only drops that detail.
-  const extra = ['plinth', 'step', 'window pane'];
-  const [found, [plinths, steps, panes]] = await Promise.all([
+  // PG-T3: base, steps, panes and timber beams, in parallel with the rest; a miss only drops that detail.
+  const extra = ['plinth', 'step', 'window pane', 'timber beam'];
+  const [found, [plinths, steps, panes, beams]] = await Promise.all([
     Promise.all(concepts.map((c) => find(segment, url, c, signal))),
     Promise.all(extra.map((c) => find(segment, url, c, signal))),
   ]);
@@ -142,6 +142,7 @@ export async function measureElevationImage(
     plinths: plinths?.boxes ?? [],
     steps: steps?.boxes ?? [],
     panes: panes?.boxes ?? [],
+    beams: beams?.boxes ?? [],
   };
   const elevation = measureElevation(masks);
   return elevation ? { elevation, masks } : null;
