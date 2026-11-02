@@ -12,6 +12,7 @@ import {
 } from './facade-house';
 import { museImage, museImageReady } from './facade-specialist';
 import { samBoxToNorm } from './outline';
+import { prepareVisionImage } from './prepare-image';
 import type { NormBox } from './schemas';
 
 /**
@@ -22,6 +23,27 @@ import type { NormBox } from './schemas';
 
 /** Archetypes rebuilt from their elevations; others keep the photo pipeline. */
 export const ELEVATION_ARCHETYPES: ReadonlyArray<KitArchetype> = ['house', 'building'];
+
+/** Detail concepts (plinth, step, panes, beams): dropped past this, the elevation is kept. */
+export const DETAIL_SAM_TIMEOUT_MS = 15_000;
+/** Data URLs longer than this are re-encoded before SAM (≈ 400 kB of image). */
+const COMPACT_ABOVE = 550_000;
+
+/**
+ * A large `data:` image re-encoded small (`prepareVisionImage`: ≤ 1280 px, JPEG): SAM answers
+ * in image fractions, so the size only costs upload time. https URLs and small ones unchanged;
+ * undecodable → unchanged. Never throws.
+ */
+export async function compactDataUrl(url: string): Promise<string> {
+  const m = /^data:([^;,]+);base64,(.*)$/s.exec(url);
+  if (!m || url.length <= COMPACT_ABOVE) return url;
+  try {
+    const out = await prepareVisionImage(Buffer.from(m[2]!, 'base64'), m[1]!);
+    return out.normalized ? `data:${out.contentType};base64,${out.buffer.toString('base64')}` : url;
+  } catch {
+    return url;
+  }
+}
 
 /** One SAM call on an elevation: measured ≈ 5–10 s, run in parallel per image. */
 export const ELEVATION_SAM_TIMEOUT_MS = 25_000;
@@ -101,9 +123,15 @@ export async function measureElevationImage(
   segment: Segment,
   url: string,
   objectConcept: string,
-  { timeoutMs = ELEVATION_SAM_TIMEOUT_MS, withDoors = true } = {}
+  {
+    timeoutMs = ELEVATION_SAM_TIMEOUT_MS,
+    detailTimeoutMs = DETAIL_SAM_TIMEOUT_MS,
+    withDoors = true,
+  } = {}
 ): Promise<{ elevation: Elevation; masks: ElevationMasks } | null> {
   const signal = AbortSignal.timeout(timeoutMs);
+  // Live 2026-11-02: a 2.4 MB PNG data URL sent 10 times in parallel timed every SAM call out.
+  const src = await compactDataUrl(url);
   const concepts = [
     objectConcept,
     'roof',
@@ -113,10 +141,13 @@ export async function measureElevationImage(
     ...(withDoors ? ['door'] : []),
   ];
   // PG-T3: base, steps, panes and timber beams, in parallel with the rest; a miss only drops that detail.
-  const extra = ['plinth', 'step', 'window pane', 'timber beam'];
+  // Plain words SAM knows (live 2026-11-02: « plinth », « step » found nothing on the drawing).
+  const extra = ['stone foundation', 'doorstep', 'window pane', 'timber beam'];
+  // Own, shorter time limit: a slow detail never costs the measurement itself.
+  const detailSignal = AbortSignal.timeout(Math.min(timeoutMs, detailTimeoutMs));
   const [found, [plinths, steps, panes, beams]] = await Promise.all([
-    Promise.all(concepts.map((c) => find(segment, url, c, signal))),
-    Promise.all(extra.map((c) => find(segment, url, c, signal))),
+    Promise.all(concepts.map((c) => find(segment, src, c, signal))),
+    Promise.all(extra.map((c) => find(segment, src, c, detailSignal))),
   ]);
   const [house, roof, wall, windows, chimneys, doors] = found;
   const sized = [house, roof, wall, windows, chimneys, doors].find((f) => f && f.width > 0);
@@ -145,6 +176,10 @@ export async function measureElevationImage(
     beams: beams?.boxes ?? [],
   };
   const elevation = measureElevation(masks);
+  if (elevation)
+    console.info(
+      `[vision] 3D elevation details: ${extra.map((c, i) => `${c}×${[plinths, steps, panes, beams][i]?.boxes.length ?? 'miss'}`).join(', ')} → kept plinth ${elevation.plinth ? 'yes' : 'no'}, steps ${elevation.steps.length}, panes ${elevation.panes.length}, beams ${elevation.beams.length}; windows ${elevation.windows.length}/${masks.windows.length}`
+    );
   return elevation ? { elevation, masks } : null;
 }
 

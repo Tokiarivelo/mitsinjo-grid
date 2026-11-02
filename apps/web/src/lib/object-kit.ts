@@ -99,6 +99,10 @@ export const ObjectKitSchema = z.object({
       legs: count(4).optional(),
       floors: count(4).optional(),
       chimney: z.boolean().optional(),
+      /** Buildings (PV-G, read on the drawing): stone base band, exposed timber frame, panes per window. */
+      plinth: z.boolean().optional(),
+      timberFrame: z.boolean().optional(),
+      panes: z.tuple([count(6).min(1), count(6).min(1)]).optional(),
       /** Houses side by side in a row (PF-T4): measured on the photo, Spark's count only as a fallback. */
       units: count(8).optional(),
     })

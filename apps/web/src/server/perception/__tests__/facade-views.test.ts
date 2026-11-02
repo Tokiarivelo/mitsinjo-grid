@@ -13,6 +13,7 @@ import {
   ELEVATION_ARCHETYPES,
   SIDE_ROOF_HINTS,
   SIDE_VIEW_ATTEMPTS,
+  compactDataUrl,
   measureElevationImage,
   measureFacadeElevations,
   sideViewPrompt,
@@ -100,8 +101,8 @@ describe('measureElevationImage', () => {
     const seg = segmenter(
       {
         ...frontConcepts('hip'),
-        plinth: [inst([0.12, 0.85, 0.88, 0.9]), inst([0.4, 0.2, 0.6, 0.25])],
-        step: [inst([0.43, 0.88, 0.57, 0.9])],
+        'stone foundation': [inst([0.12, 0.85, 0.88, 0.9]), inst([0.4, 0.2, 0.6, 0.25])],
+        doorstep: [inst([0.43, 0.88, 0.57, 0.9])],
         'window pane': [inst([0.2, 0.5, 0.25, 0.55]), inst([0.5, 0.1, 0.55, 0.15])],
         // A post on the wall, and a « beam » in the roof (not a wall beam: dropped).
         'timber beam': [inst([0.35, 0.4, 0.36, 0.9]), inst([0.3, 0.15, 0.6, 0.16])],
@@ -190,5 +191,47 @@ describe('measureFacadeElevations', () => {
     const empty = vi.fn(async () => answer([]));
     expect(await measureFacadeElevations(empty, 'https://r2/f.png', 'house')).toBeNull();
     expect(museImage).not.toHaveBeenCalled();
+  });
+});
+
+describe('live fixes 2026-11-02 (SAM timeouts on the drawing)', () => {
+  it('compactDataUrl re-encodes a large data URL small, keeps https and small ones', async () => {
+    const sharp = (await import('sharp')).default;
+    // Noise PNG, 1920 × 1280: a few MB, like the user's drawing sheet.
+    const raw = Buffer.alloc(1920 * 1280 * 3);
+    let x = 2463534242; // xorshift32, seeded: incompressible like a photo
+    for (let i = 0; i < raw.length; i++) {
+      x ^= x << 13;
+      x ^= x >>> 17;
+      x ^= x << 5;
+      raw[i] = x & 255;
+    }
+    const png = await sharp(raw, { raw: { width: 1920, height: 1280, channels: 3 } })
+      .png()
+      .toBuffer();
+    const big = `data:image/png;base64,${png.toString('base64')}`;
+    const small = await compactDataUrl(big);
+    expect(small.length).toBeLessThan(big.length / 2);
+    expect(small).toMatch(/^data:image\/jpeg;base64,/);
+    const meta = await sharp(Buffer.from(small.split(',')[1]!, 'base64')).metadata();
+    expect(Math.max(meta.width!, meta.height!)).toBeLessThanOrEqual(1280);
+    expect(await compactDataUrl('https://r2/f.png')).toBe('https://r2/f.png');
+    expect(await compactDataUrl('data:image/png;base64,AAAA')).toBe('data:image/png;base64,AAAA');
+  });
+
+  it('a detail concept that hangs never costs the elevation', async () => {
+    const base = segmenter(frontConcepts('hip'), []);
+    const seg = vi.fn((url: string, concept: string, signal?: AbortSignal) =>
+      concept === 'timber beam'
+        ? new Promise<never>((_, reject) =>
+            signal?.addEventListener('abort', () => reject(new DOMException('t', 'TimeoutError')))
+          )
+        : base(url, concept)
+    );
+    const out = await measureElevationImage(seg, 'https://r2/f.png', 'house', {
+      detailTimeoutMs: 30,
+    });
+    expect(out?.elevation.windows).toHaveLength(2);
+    expect(out?.elevation.beams).toEqual([]);
   });
 });

@@ -9,6 +9,7 @@ import {
   measureElevation,
   paneGrid,
   timberFrame,
+  inferredTimber,
   separateRoofColor,
   ROOF_WALL_MIN_DE,
   ridgeShare,
@@ -490,5 +491,80 @@ describe('timberFrame (PV-G)', () => {
     const wall = r.parts.find((p) => p.kind === 'wall')!;
     expect(wall.timber?.posts.length).toBeGreaterThanOrEqual(6);
     expect(wall.timber?.rails).toHaveLength(2);
+  });
+});
+
+describe('glazed door panes are not windows (live 2026-11-02)', () => {
+  it('drops « windows » centred inside a door, keeps the real ones', () => {
+    const e = measureElevation({
+      aspect: 1.5,
+      house: { x: 0.1, y: 0.1, w: 0.8, h: 0.8 },
+      roof: { box: { x: 0.1, y: 0.1, w: 0.8, h: 0.35 } },
+      wall: { x: 0.12, y: 0.45, w: 0.76, h: 0.45 },
+      windows: [
+        { x: 0.2, y: 0.55, w: 0.1, h: 0.15 },
+        { x: 0.45, y: 0.62, w: 0.03, h: 0.05 },
+        { x: 0.52, y: 0.62, w: 0.03, h: 0.05 },
+      ],
+      doors: [{ x: 0.43, y: 0.6, w: 0.14, h: 0.3 }],
+      chimneys: [],
+    })!;
+    expect(e.windows).toHaveLength(1);
+    expect(e.doors).toHaveLength(1);
+  });
+});
+
+describe('Spark details where SAM finds none (live 2026-11-02: line drawing)', () => {
+  const masks = {
+    aspect: 1.5,
+    house: { x: 0.1, y: 0.1, w: 0.8, h: 0.8 },
+    roof: { box: { x: 0.1, y: 0.1, w: 0.8, h: 0.35 } },
+    wall: { x: 0.12, y: 0.45, w: 0.76, h: 0.45 },
+    windows: [
+      { x: 0.2, y: 0.55, w: 0.1, h: 0.15 },
+      { x: 0.7, y: 0.55, w: 0.1, h: 0.15 },
+    ],
+    doors: [{ x: 0.43, y: 0.6, w: 0.14, h: 0.3 }],
+    chimneys: [],
+  };
+  const colors = { main: '#e6dccb', secondary: '#c8a060', accent: '#2b3440' };
+  const build = (details?: Parameters<typeof facadeHouseRecipe>[0]['details']) =>
+    facadeHouseRecipe({
+      front: measureElevation(masks)!,
+      side: null,
+      colors,
+      ...(details ? { details } : {}),
+    });
+
+  it('nothing read → no base, no step, no beams, default panes left to the viewer', () => {
+    const r = build();
+    expect(r.parts.some((p) => p.kind === 'plinth' || p.kind === 'step')).toBe(false);
+    expect(r.parts.find((p) => p.kind === 'wall')?.timber).toBeUndefined();
+    expect(r.parts.find((p) => p.kind === 'window')?.grid).toBeUndefined();
+  });
+
+  it('plinth → an inferred base band at the wall foot and a step at the door', () => {
+    const r = build({ plinth: true });
+    const base = r.parts.find((p) => p.kind === 'plinth')!;
+    const step = r.parts.find((p) => p.kind === 'step')!;
+    const door = r.parts.find((p) => p.kind === 'door')!;
+    expect(base.status).toBe('inferred');
+    expect(step.status).toBe('inferred');
+    expect(Math.abs(step.at[0] - door.at[0])).toBeLessThan(1e-9);
+    expect(step.size[0]).toBeGreaterThan(door.size[0]);
+  });
+
+  it('timberFrame → posts at the ends and beside each opening, rails at heads and sills', () => {
+    const t = build({ timberFrame: true }).parts.find((p) => p.kind === 'wall')!.timber!;
+    expect(t.posts[0]).toBe(0);
+    expect(t.posts.at(-1)).toBe(1);
+    expect(t.posts.length).toBe(2 + 2 * 3);
+    expect(t.rails).toHaveLength(2);
+    const e = measureElevation(masks)!;
+    expect(inferredTimber(e)).toEqual(t);
+  });
+
+  it('panes from Spark when SAM read none', () => {
+    expect(build({ panes: [4, 4] }).parts.find((p) => p.kind === 'window')?.grid).toEqual([4, 4]);
   });
 });

@@ -155,7 +155,16 @@ export function measureElevation(m: ElevationMasks): Elevation | null {
     eave,
     bottom,
     ridge,
-    windows: m.windows.filter((b) => inside(b) && b.y >= eave - 0.02),
+    // A glazed door's panes come back as « windows » (live 2026-11-02): drop those inside a door.
+    windows: m.windows.filter(
+      (b) =>
+        inside(b) &&
+        b.y >= eave - 0.02 &&
+        !m.doors.some((d) => {
+          const [cx, cy] = [b.x + b.w / 2, b.y + b.h / 2];
+          return cx > d.x && cx < right(d) && cy > d.y && cy < bottomOf(d);
+        })
+    ),
     doors: m.doors.filter((b) => inside(b) && b.y >= eave - 0.02),
     chimneys: m.chimneys.filter((b) => b.y < top + 0.5 * (eave - top) && inside(b)),
     plinth: plinthOf(m.plinths ?? [], left, rightX, bottom, bodyH),
@@ -255,6 +264,41 @@ export const separateRoofColor = (
   roof: { color: string; material?: RecipeMaterial | undefined },
   wall: { color: string; material?: RecipeMaterial | undefined }
 ) => separateColor(roof, wall);
+
+/** Base band height without a measured one, share of the wall height (≈ 400 mm on 3 m). */
+export const PLINTH_SHARE = 0.12;
+
+/**
+ * Usual half-timbering when Spark reads a timber frame but SAM finds no beam: posts at the wall
+ * ends and beside every opening, rails at the window heads and sills (shares, `timberFrame` form).
+ */
+export function inferredTimber(
+  e: Pick<Elevation, 'windows' | 'doors' | 'wallLeft' | 'wallRight' | 'eave' | 'bottom'>
+): { posts: number[]; rails: number[] } | null {
+  const W = e.wallRight - e.wallLeft;
+  const H = e.bottom - e.eave;
+  if (!(W > 0 && H > 0)) return null;
+  const sx = (x: number) => clamp((x - e.wallLeft) / W, 0, 1);
+  const sy = (y: number) => clamp((e.bottom - y) / H, 0, 1);
+  const pad = 0.012;
+  const openings = [...e.windows, ...e.doors];
+  const posts = mergeClose(
+    [0, 1, ...openings.flatMap((o) => [sx(o.x) - pad, sx(right(o)) + pad])].map((v) =>
+      clamp(v, 0, 1)
+    ),
+    BEAM_MERGE
+  ).slice(0, MAX_TIMBER);
+  const rails = e.windows.length
+    ? mergeClose(
+        [
+          sy(Math.min(...e.windows.map((w) => w.y))) + pad,
+          sy(Math.max(...e.windows.map(bottomOf))) - pad,
+        ].map((v) => clamp(v, 0, 1)),
+        BEAM_MERGE
+      )
+    : [];
+  return { posts, rails };
+}
 
 /** A beam is this many times longer than thick (pixels). */
 const BEAM_ASPECT = 4;
@@ -432,6 +476,8 @@ export interface FacadeHouseInput {
   materials?: ObjectKit['materials'];
   /** Material per part read on the drawing (PG-T5); wins over the colour-role materials. */
   partMaterials?: ObjectKit['partMaterials'];
+  /** Spark's details read on the drawing (plinth, timber frame, panes): used where SAM finds none. */
+  details?: ObjectKit['details'];
   /** Depth / width read by Spark on the photo (its kit proportions). */
   sparkDepth?: number;
 }
@@ -447,6 +493,7 @@ export function facadeHouseRecipe({
   colors,
   materials,
   partMaterials,
+  details,
   sparkDepth,
 }: FacadeHouseInput): ObjectRecipe {
   const A = front.aspect;
@@ -471,7 +518,8 @@ export function facadeHouseRecipe({
     size: [X(right(b)) - X(b.x), Y(b.y) - Y(bottomOf(b)), thick],
   });
   const t = DECAL;
-  const timber = timberFrame(front);
+  // Measured beams first; else Spark says the walls are half-timbered → the usual layout.
+  const timber = timberFrame(front) ?? (details?.timberFrame ? inferredTimber(front) : null);
   const walls: RecipePart = {
     shape: 'box',
     at: at(0, (eaveY - 1) / 2, 0),
@@ -558,7 +606,7 @@ export function facadeHouseRecipe({
   const glass = { color: colors.accent, material: 'glass' as const };
   const byArea = (a: NormBox, b: NormBox) => b.w * b.h - a.w * a.h;
   const windows: RecipePart[] = [...front.windows].sort(byArea).map((w) => {
-    const grid = paneGrid(w, front.panes);
+    const grid = paneGrid(w, front.panes) ?? details?.panes ?? null;
     return {
       shape: 'box',
       ...box(w, zFront, t),
@@ -586,18 +634,44 @@ export function facadeHouseRecipe({
       : [];
   // Stone base and entry step (PG-T3 boxes): proud of the wall by `PLINTH_PROUD` of the depth.
   const proud = PLINTH_PROUD * depth;
-  const base: RecipePart[] = front.plinth
+  // Base band: measured, else Spark's « plinth » → a standard band at the wall foot (inferred).
+  const plinthBox =
+    front.plinth ??
+    (details?.plinth
+      ? {
+          x: front.wallLeft,
+          y: front.bottom - PLINTH_SHARE * (front.bottom - front.eave),
+          w: front.wallRight - front.wallLeft,
+          h: PLINTH_SHARE * (front.bottom - front.eave),
+        }
+      : null);
+  const plinthInferred = !front.plinth && plinthBox !== null;
+  const base: RecipePart[] = plinthBox
     ? [
         {
           shape: 'box',
-          at: at(0, (Y(front.plinth.y) + Y(front.bottom)) / 2, 0),
-          size: [wallW + 2 * proud, Y(front.plinth.y) - Y(front.bottom), depth + 2 * proud],
+          at: at(0, (Y(plinthBox.y) + Y(front.bottom)) / 2, 0),
+          size: [wallW + 2 * proud, Y(plinthBox.y) - Y(front.bottom), depth + 2 * proud],
           kind: 'plinth',
           ...baseLook,
         },
       ]
     : [];
-  const steps: RecipePart[] = front.steps.slice(0, 1).map((st) => {
+  // Step: measured, else one in front of the main door when the house stands on a base.
+  const door0 = front.doors[0];
+  const stepBoxes: NormBox[] = front.steps.length
+    ? front.steps.slice(0, 1)
+    : plinthBox && door0
+      ? [
+          {
+            x: door0.x - 0.1 * door0.w,
+            y: front.bottom - 0.6 * plinthBox.h,
+            w: 1.2 * door0.w,
+            h: 0.6 * plinthBox.h,
+          },
+        ]
+      : [];
+  const steps: RecipePart[] = stepBoxes.map((st) => {
     const h = Math.max(Y(st.y) - Y(bottomOf(st)), 0.02);
     const d = Math.max(4 * h, 2 * proud);
     return {
@@ -614,13 +688,17 @@ export function facadeHouseRecipe({
     ...doors,
     ...chimneys,
     ...windows,
-    ...base,
-    ...steps,
+    ...(plinthInferred ? [] : [...base, ...(front.steps.length ? steps : [])]),
   ].map((p) => ({
     ...p,
     status: 'measured' as const,
   }));
-  const parts = [...measuredParts, ...sideWindows].slice(0, MAX_RECIPE_PARTS);
+  // Read by Spark, placed by rule: inferred, after the measured parts.
+  const inferredBase: RecipePart[] = [
+    ...(plinthInferred ? base : []),
+    ...(front.steps.length && !plinthInferred ? [] : steps),
+  ].map((p) => ({ ...p, status: 'inferred' as const }));
+  const parts = [...measuredParts, ...inferredBase, ...sideWindows].slice(0, MAX_RECIPE_PARTS);
   // Bounds of every part → proportions (largest side 1); fitRecipe re-centres the parts.
   const lo = [Infinity, Infinity, Infinity];
   const hi = [-Infinity, -Infinity, -Infinity];

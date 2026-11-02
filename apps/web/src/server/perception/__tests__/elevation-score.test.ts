@@ -194,3 +194,21 @@ describe('elevation diff + log (PG-T4)', () => {
     );
   });
 });
+
+describe('inferred base on a drawing without one (live 2026-11-02)', () => {
+  it('scores the base as wall foot, not as a missing concept', () => {
+    const { plinths: _p, steps: _s, ...bare } = THATCHED;
+    const e = measureElevation(bare)!;
+    expect(e.plinth).toBeNull();
+    const withBase = fitRecipe(
+      {
+        ...facadeHouseRecipe({ front: e, side: null, colors: COLORS, details: { plinth: true } }),
+        source: 'facade',
+      },
+      0
+    );
+    const s = scoreElevation(withBase, e);
+    expect(s.concepts.plinth).toBeUndefined();
+    expect(s.stages.massing).toBeGreaterThan(0.85);
+  });
+});

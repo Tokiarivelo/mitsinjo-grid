@@ -352,6 +352,7 @@ export async function runObjectShape(
           colors: kit.colors,
           ...(kit.materials ? { materials: kit.materials } : {}),
           ...(kit.partMaterials ? { partMaterials: kit.partMaterials } : {}),
+          ...(kit.details ? { details: kit.details } : {}),
           sparkDepth: kit.proportions.d / kit.proportions.w,
         });
         let recipe: ObjectRecipe = fitRecipe({ ...measured, source: 'facade' }, 0, yaw0);

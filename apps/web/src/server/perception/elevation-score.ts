@@ -344,6 +344,13 @@ export function scoreElevation(
   const target = elevationTarget(e, rows, roofRings);
   const { cols } = target;
   const got = renderLabels(recipe, render);
+  // A base the drawing does not show (SAM found none; the model's is inferred) is wall foot,
+  // not a miss: scored as wall (live 2026-11-02).
+  const plinthK = ELEVATION_CONCEPTS.indexOf('plinth');
+  if (!target.label.includes(plinthK)) {
+    const wallK = ELEVATION_CONCEPTS.indexOf('wall');
+    for (let i = 0; i < got.length; i++) if (got[i] === plinthK) got[i] = wallK;
+  }
   const silT = emptyMask(cols, rows);
   for (let i = 0; i < silT.data.length; i++) silT.data[i] = target.label[i]! >= 0 ? 1 : 0;
   const tol = edgeTolerance(cols);

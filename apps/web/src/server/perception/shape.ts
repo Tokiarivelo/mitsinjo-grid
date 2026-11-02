@@ -29,6 +29,7 @@ export const SHAPE_SYSTEM_PROMPT = [
   'accent = glass, windows, handle, lamp or wheels; each #rrggbb as seen or inferred.',
   `materials: what main, secondary and accent are made of, each one of: ${RECIPE_MATERIALS.join(', ')} (e.g. stone walls, slate roof, glass windows, metal body, rubber wheels).`,
   'details (optional, small integers): windows on the front face, doors, wheels, legs, floors, chimney, units (houses side by side in a row).',
+  'For buildings also: plinth (true when a stone or concrete base band runs along the foot of the walls), timberFrame (true when timber posts and rails show on the walls), panes ([across, down] glass panes of one front window, e.g. [4, 4] for two casements of 2 × 4).',
   `partMaterials (buildings, optional): what the roof, walls, frame (window and door frames), plinth, chimney and door are made of, each one of the materials above; read them on the drawing when there is one (labels, hatching: « REED THATCH » = thatch, brick courses = brick, stone base = stone).`,
   'Never give watts, kW or any energy value.',
 ].join(' ');
@@ -97,6 +98,9 @@ export const SHAPE_JSON_SCHEMA = {
           floors: int,
           chimney: { type: 'boolean' },
           units: int,
+          plinth: { type: 'boolean' },
+          timberFrame: { type: 'boolean' },
+          panes: { type: 'array', items: int },
         },
       },
     },
@@ -317,6 +321,15 @@ export function parseKit(content: string, fallback: KitArchetype = 'other'): Obj
     if (typeof v === 'number' && Number.isFinite(v)) details[k] = clamp(Math.round(v), 0, lim);
   }
   if (reply.data.details?.chimney === true) details.chimney = true;
+  if (reply.data.details?.plinth === true) details.plinth = true;
+  if (reply.data.details?.timberFrame === true) details.timberFrame = true;
+  const panes = reply.data.details?.panes;
+  if (
+    Array.isArray(panes) &&
+    panes.length === 2 &&
+    panes.every((v) => typeof v === 'number' && Number.isFinite(v))
+  )
+    details.panes = [clamp(Math.round(panes[0]), 1, 6), clamp(Math.round(panes[1]), 1, 6)];
   const materials: NonNullable<ObjectKit['materials']> = {};
   for (const k of ['main', 'secondary', 'accent'] as const) {
     const v = reply.data.materials?.[k];

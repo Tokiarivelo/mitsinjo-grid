@@ -186,3 +186,47 @@ describe('parseKitPatch + mergeKitPatch (PR-0.6)', () => {
     expect(q).toContain('JSON patch');
   });
 });
+
+describe('drawing reading (PV-G live 2026-11-02)', () => {
+  it('keeps partMaterials and the building details Spark read on the drawing', () => {
+    const k = parseKit(
+      reply({
+        archetype: 'house',
+        proportions: { w: 1, h: 0.7, d: 0.6 },
+        colors: { main: '#c8bfae', secondary: '#a78c5f', accent: '#2f342c' },
+        partMaterials: {
+          roof: 'thatch',
+          walls: 'plaster',
+          chimney: 'brick',
+          plinth: 'stone',
+          door: 'gold',
+        },
+        details: { plinth: true, timberFrame: true, panes: [4.2, 4], chimney: true },
+      })
+    )!;
+    expect(k.partMaterials).toEqual({
+      roof: 'thatch',
+      walls: 'plaster',
+      chimney: 'brick',
+      plinth: 'stone',
+    });
+    expect(k.details).toMatchObject({ plinth: true, timberFrame: true, panes: [4, 4] });
+  });
+
+  it('drops bad panes and clamps big ones', () => {
+    const base = { archetype: 'house', proportions: { w: 1, h: 1, d: 1 }, colors: {} };
+    expect(parseKit(reply({ ...base, details: { panes: [2] } }))!.details?.panes).toBeUndefined();
+    expect(parseKit(reply({ ...base, details: { panes: [20, 0] } }))!.details?.panes).toEqual([
+      6, 1,
+    ]);
+  });
+
+  it('the prompt and schema ask for them', () => {
+    expect(SHAPE_SYSTEM_PROMPT).toContain('timberFrame');
+    expect(SHAPE_SYSTEM_PROMPT).toContain('partMaterials');
+    const props = SHAPE_JSON_SCHEMA.schema.properties as Record<string, { properties?: object }>;
+    expect(Object.keys(props.details!.properties!)).toEqual(
+      expect.arrayContaining(['plinth', 'timberFrame', 'panes'])
+    );
+  });
+});
