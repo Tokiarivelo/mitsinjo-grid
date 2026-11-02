@@ -4,11 +4,41 @@ import { z } from 'zod';
 import { env } from '@/lib/env';
 import { DEFAULT_META_BASE_URL } from '@/server/copilot/providers/meta';
 import { fetchPreferringContributor } from '@/server/copilot/providers/contributor';
-import type { PerceptionBackend, PerceptionCall } from './backend';
+import type { UsageSample } from '@/server/spend';
+import type { PartsSubject, PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
+import {
+  DETECT_JSON_SCHEMA,
+  DETECT_QUESTION,
+  DETECT_SYSTEM_PROMPT,
+  parseDetections,
+} from './detect';
+import {
+  parseFreeParts,
+  PARTS_JSON_SCHEMA,
+  PARTS_SYSTEM_PROMPT,
+  shapePartsQuestion,
+  visibilityFromCoverage,
+} from './free-recipe';
+import { maskToOutline } from './mask-outline';
+import { REGION_SYSTEM_PROMPT, regionQuestion } from './region-prompt';
+import { defaultArchetype, kitToRecipe } from '@/lib/object-kit';
+import {
+  CRITIC_JSON_SCHEMA,
+  CRITIC_SYSTEM_PROMPT,
+  parseKit,
+  parseKitPatch,
+  SHAPE_JSON_SCHEMA,
+  SHAPE_SYSTEM_PROMPT,
+  shapeQuestion,
+} from './shape';
 import { boxUnionCoverage, parseSamOutput } from './parse-sam';
+import { redactDataUrls, redactDataUrlsInText, type VisionCallLog } from './vision-log';
 import {
   ObservationSchema,
+  type CriticResult,
+  type DetectionResult,
   type SegmentResult,
+  type ShapeResult,
   type TranscribeOptions,
   type Transcript,
   type VisionResult,
@@ -96,12 +126,13 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     makeBody: (model: string) => BodyInit,
     baseModel: string,
     init: HeadersInit,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    allowContributor = true
   ): Promise<{ data: unknown; model: string }> {
     if (!this.apiKey) throw new Error('META_API_KEY is not configured in environment');
     const { res, model } = await fetchPreferringContributor(
       baseModel,
-      Boolean(baseModel) && this.preferContributor,
+      Boolean(baseModel) && this.preferContributor && allowContributor,
       (m) =>
         fetch(`${this.baseUrl}${path}`, {
           method: 'POST',
@@ -155,39 +186,85 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     };
   }
 
-  async analyzeImage(
-    imageUrl: string,
+  /** Spark `chat/completions` with a JSON-schema answer: shared by every vision call. */
+  private async visionJson(
+    system: string,
     question: string,
-    signal?: AbortSignal
-  ): Promise<PerceptionCall<VisionResult>> {
+    imageUrl: string,
+    jsonSchema: object,
+    signal?: AbortSignal,
+    /** false = always the standard model id (latency-sensitive calls). */
+    allowContributor = true,
+    /** Full request + result lines for the 3D calls (images logged as placeholders only). */
+    log?: VisionCallLog,
+    /** Reference images sent after the main one (the validated 2D facade). */
+    extraImages: ReadonlyArray<string> = []
+  ): Promise<{ content: string; model: string; usage: UsageSample }> {
+    if (log) {
+      const schema = (jsonSchema as { name?: unknown }).name;
+      console.info(
+        `[vision] 3D ${log.kind} → params ${JSON.stringify(log.params ?? {}, redactDataUrls)} image ${redactDataUrls('image', imageUrl)}${extraImages.map((u) => ` + reference ${redactDataUrls('image', u)}`).join('')} schema ${typeof schema === 'string' ? schema : 'custom'}`
+      );
+      console.info(`[vision] 3D ${log.kind} system: ${system}`);
+      console.info(`[vision] 3D ${log.kind} question: ${question}`);
+    }
     const body = (model: string) => ({
       model,
+      // High reasoning on detection + 3D kits: better perception for the operator.
+      reasoning_effort: 'high',
       messages: [
-        { role: 'system', content: VISION_SYSTEM_PROMPT },
+        { role: 'system', content: system },
         {
           role: 'user',
           content: [
             { type: 'text', text: question },
             { type: 'image_url', image_url: { url: imageUrl } },
+            ...extraImages.map((url) => ({ type: 'image_url', image_url: { url } })),
           ],
         },
       ],
-      response_format: { type: 'json_schema', json_schema: VISION_JSON_SCHEMA },
+      response_format: { type: 'json_schema', json_schema: jsonSchema },
     });
     const sent = await this.postWithModel(
       '/chat/completions',
       (m) => JSON.stringify(body(m)),
       env.META_VISION_MODEL,
       { 'Content-Type': 'application/json' },
-      signal
+      signal,
+      allowContributor
     );
-    const model = sent.model;
     const data = sent.data as {
       choices?: Array<{ message?: { content?: string | null } }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
+    const out = {
+      content: data.choices?.[0]?.message?.content ?? '',
+      model: sent.model,
+      usage: {
+        inputTokens: data.usage?.prompt_tokens ?? 0,
+        outputTokens: data.usage?.completion_tokens ?? 0,
+      },
+    };
+    if (log) {
+      console.info(
+        `[vision] 3D ${log.kind} ← ${out.model} (in ${out.usage.inputTokens}, out ${out.usage.outputTokens}): ${redactDataUrlsInText(out.content)}`
+      );
+    }
+    return out;
+  }
 
-    const content = data.choices?.[0]?.message?.content ?? '';
+  async analyzeImage(
+    imageUrl: string,
+    question: string,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<VisionResult>> {
+    const { content, model, usage } = await this.visionJson(
+      VISION_SYSTEM_PROMPT,
+      question,
+      imageUrl,
+      VISION_JSON_SCHEMA,
+      signal
+    );
     const parsed = VisionPayloadSchema.parse(JSON.parse(content));
     // Keep only well-formed observations; clamp confidence the model may print as 0-100.
     const observations = parsed.observations.flatMap((raw) => {
@@ -200,14 +277,122 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       return ok.success ? [ok.data] : [];
     });
 
+    return { model, usage, result: { summary: parsed.summary, observations } };
+  }
+
+  async detectAppliances(
+    imageUrl: string,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<DetectionResult>> {
+    const { content, model, usage } = await this.visionJson(
+      DETECT_SYSTEM_PROMPT,
+      DETECT_QUESTION,
+      imageUrl,
+      DETECT_JSON_SCHEMA,
+      signal
+    );
+    const detections = parseDetections(content);
+    if (detections.length === 0) {
+      // Helps tell « nothing seen » from a reply shape we do not read.
+      console.info(`[vision] ${model} listed no object: ${content.slice(0, 300)}`);
+    }
+    return { model, usage, result: { detections } };
+  }
+
+  async identifyRegion(
+    imageUrl: string,
+    hint: string | undefined,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<DetectionResult>> {
+    const { content, model, usage } = await this.visionJson(
+      REGION_SYSTEM_PROMPT,
+      regionQuestion(hint),
+      imageUrl,
+      DETECT_JSON_SCHEMA,
+      signal
+    );
+    return { model, usage, result: { detections: parseDetections(content) } };
+  }
+
+  async describeShape(
+    imageUrl: string,
+    target: ShapeSubject,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<ShapeResult>> {
+    const hint = defaultArchetype(target.category, target.scenery, target.label);
+    // Standard id, not the contributor one: the operator waits on this answer (≈ 15 s vs ≈ 25 s measured).
+    const { content, model, usage } = await this.visionJson(
+      SHAPE_SYSTEM_PROMPT,
+      shapeQuestion(target.label, target.aspect, hint, Boolean(target.facadeUrl)),
+      imageUrl,
+      SHAPE_JSON_SCHEMA,
+      signal,
+      false,
+      { kind: 'describeShape', params: { ...target } },
+      target.facadeUrl ? [target.facadeUrl] : []
+    );
+    const kit = parseKit(content, hint);
+    if (!kit) console.info(`[vision] ${model} gave no usable 3D kit: ${content.slice(0, 300)}`);
+    else console.info(`[vision] 3D kit from ${model}: ${kit.archetype}`);
     return {
       model,
-      usage: {
-        inputTokens: data.usage?.prompt_tokens ?? 0,
-        outputTokens: data.usage?.completion_tokens ?? 0,
-      },
-      result: { summary: parsed.summary, observations },
+      usage,
+      result: { recipe: kit ? kitToRecipe(kit) : null, ...(kit ? { kit } : {}) },
     };
+  }
+
+  async describeParts(
+    imageUrl: string,
+    target: PartsSubject,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<ShapeResult>> {
+    // Standard id, not the contributor one: the operator waits on this answer (same as the kit call).
+    const { content, model, usage } = await this.visionJson(
+      PARTS_SYSTEM_PROMPT,
+      shapePartsQuestion(
+        target.label,
+        target.archetype,
+        visibilityFromCoverage(target.coverage),
+        Boolean(target.facadeUrl)
+      ),
+      imageUrl,
+      PARTS_JSON_SCHEMA,
+      signal,
+      false,
+      { kind: 'describeParts', params: { ...target } },
+      target.facadeUrl ? [target.facadeUrl] : []
+    );
+    const recipe = parseFreeParts(content);
+    if (!recipe)
+      console.info(`[vision] ${model} gave no usable part list: ${content.slice(0, 300)}`);
+    else
+      console.info(
+        `[vision] free part list from ${model}: ${recipe.parts.length} parts (${target.archetype})`
+      );
+    return { model, usage, result: { recipe } };
+  }
+
+  async criticizeShape(
+    imageUrl: string,
+    question: string,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<CriticResult>> {
+    // Standard id, like the kit call: the operator waits on this answer.
+    // No separate params: the question already carries the kit and the scores.
+    const { content, model, usage } = await this.visionJson(
+      CRITIC_SYSTEM_PROMPT,
+      question,
+      imageUrl,
+      CRITIC_JSON_SCHEMA,
+      signal,
+      false,
+      { kind: 'criticizeShape' }
+    );
+    const patch = parseKitPatch(content);
+    console.info(
+      `[vision] 3D critic from ${model}: ${patch ? Object.keys(patch).join(',') : 'no patch'}`
+    );
+    return { model, usage, result: { patch } };
   }
 
   async segmentImage(
@@ -242,7 +427,13 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       .filter((c) => c.type === 'output_text')
       .map((c) => c.text ?? '')
       .join('');
-    const { imageWidth, imageHeight, instances } = parseSamOutput(text);
+    const parsed = parseSamOutput(text);
+    const { imageWidth, imageHeight } = parsed;
+    const instances = parsed.instances.map((inst, i) => {
+      const mask = parsed.masks[i];
+      const outline = mask ? maskToOutline(mask, inst.box, imageWidth, imageHeight) : null;
+      return outline ? { ...inst, outline } : inst;
+    });
 
     return {
       model,

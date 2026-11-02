@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { hydrateMessageMedia, parseDataUrl, storeGeneratedImage, type MediaStore } from '../media';
+import {
+  hostVisionImage,
+  hydrateMessageMedia,
+  parseDataUrl,
+  storeGeneratedImage,
+  type MediaStore,
+} from '../media';
 import type { ChatMessageData } from '@/features/copilot/types';
 
 const PNG = `data:image/png;base64,${Buffer.from('png-bytes').toString('base64')}`;
@@ -120,5 +126,47 @@ describe('hydrateMessageMedia (reopened session)', () => {
     ];
     const [a] = await hydrateMessageMedia(msgs, fakeStore(false));
     expect(a?.imageUrl).toBe('data:image/png;base64,AA');
+  });
+});
+
+describe('hostVisionImage (PV)', () => {
+  const bytes = Buffer.from('jpeg-bytes');
+  const inline = `data:image/jpeg;base64,${bytes.toString('base64')}`;
+
+  it('R2 on: uploads once under vision/ and returns the link plus the inline fallback', async () => {
+    const store = fakeStore();
+    const out = await hostVisionImage(bytes, 'image/jpeg', { store, now: 42 });
+    expect(store.upload).toHaveBeenCalledTimes(1);
+    expect(store.upload.mock.calls[0]![0]).toMatch(/^vision\/42-[a-z0-9]+\.jpg$/);
+    expect(out.url).toMatch(/^https:\/\/signed\.example\/vision\//);
+    expect(out.inlineUrl).toBe(inline);
+  });
+
+  it('R2 off → base64 only (no inlineUrl field)', async () => {
+    expect(await hostVisionImage(bytes, 'image/jpeg', { store: fakeStore(false) })).toEqual({
+      url: inline,
+    });
+  });
+
+  it('non-http link from store (mock path) → base64 only, no inlineUrl', async () => {
+    const local = fakeStore();
+    local.upload.mockResolvedValueOnce('/mock-storage/vision/x.jpg');
+    expect(await hostVisionImage(bytes, 'image/jpeg', { store: local })).toEqual({ url: inline });
+  });
+
+  it('upload error → base64 sent directly to model (url = inlineUrl both set)', async () => {
+    const failing = fakeStore();
+    failing.upload.mockRejectedValueOnce(new Error('down'));
+    const out = await hostVisionImage(bytes, 'image/jpeg', { store: failing });
+    expect(out).toEqual({ url: inline, inlineUrl: inline });
+  });
+
+  it('upload timeout → base64 sent directly to model (url = inlineUrl both set)', async () => {
+    const slow = fakeStore();
+    slow.upload.mockImplementationOnce(
+      () => new Promise((resolve) => setTimeout(() => resolve('https://slow.example/x.jpg'), 5_000))
+    );
+    const out = await hostVisionImage(bytes, 'image/jpeg', { store: slow, uploadTimeoutMs: 50 });
+    expect(out).toEqual({ url: inline, inlineUrl: inline });
   });
 });

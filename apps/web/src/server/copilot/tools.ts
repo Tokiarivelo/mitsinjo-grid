@@ -6,18 +6,29 @@ import {
   type StrategyId,
   type Metrics,
   type InputPatch,
+  type Appliance,
+  type SectorId,
   InputPatchSchema,
   SECTOR_IDS,
   SectorIdSchema,
+  ScenarioIdSchema,
   simulate,
   compare,
+  simulateWorkflow,
+  compareWorkflow,
+  applyWeather,
   applyPatch,
   scenarios,
   clinicGuard,
+  applianceSummary,
+  sectorApplianceKw,
+  fireEvents,
   type ChangeImpact,
   type StepResult,
 } from '@mitsinjo/engine';
 import { proposalImpact } from '@/lib/proposal-impact';
+import { rememberResult } from './result-cache';
+import { batteryStory, lowestSocHour } from './battery-story';
 import type { ToolDefinition } from './provider';
 
 function round2(val: number): number {
@@ -74,6 +85,86 @@ export function impactEvidence(impact: ChangeImpact): Record<string, number> {
   return ev;
 }
 
+/** One inserted line with its engine-computed load (PV-T14). */
+export interface ApplianceLineReport {
+  id: string;
+  name: string;
+  category: string;
+  sector: SectorId;
+  quantity: number;
+  watts: number;
+  peakKw: number;
+  dailyKwh: number;
+}
+
+export interface SectorApplianceTotals {
+  count: number;
+  dailyKwh: number;
+  peakKw: number;
+}
+
+export interface ApplianceReport extends SectorApplianceTotals {
+  perSector: Partial<Record<SectorId, SectorApplianceTotals>>;
+  lines: ApplianceLineReport[];
+}
+
+/**
+ * Engine loads of the inserted lines (PV-T14): per-line summaries plus sector and overall
+ * totals. Totals are rounded once from unrounded values, so they match the engine exactly.
+ */
+export function summarizeAppliances(appliances: readonly Appliance[] = []): ApplianceReport {
+  const profiles = sectorApplianceKw(appliances);
+  const lines: ApplianceLineReport[] = appliances.map((a) => {
+    const { peakKw, dailyKwh } = applianceSummary(a);
+    return {
+      id: a.id,
+      name: a.name,
+      category: a.category,
+      sector: a.sector,
+      quantity: a.quantity,
+      watts: a.watts,
+      peakKw: round2(peakKw),
+      dailyKwh: round2(dailyKwh),
+    };
+  });
+  const perSector: ApplianceReport['perSector'] = {};
+  let totalKwh = 0;
+  const totalProfile = new Array<number>(24).fill(0);
+  for (const [sector, profile] of Object.entries(profiles)) {
+    if (!profile) continue;
+    const count = appliances.filter((a) => a.sector === sector).length;
+    const dailyKwh = profile.reduce((sum, kw) => sum + kw, 0);
+    totalKwh += dailyKwh;
+    for (let t = 0; t < 24; t++) totalProfile[t]! += profile[t] ?? 0;
+    perSector[sector as SectorId] = {
+      count,
+      dailyKwh: round2(dailyKwh),
+      peakKw: round2(Math.max(...profile)),
+    };
+  }
+  return {
+    count: appliances.length,
+    dailyKwh: round2(totalKwh),
+    peakKw: round2(Math.max(...totalProfile)),
+    perSector,
+    lines,
+  };
+}
+
+/** Evidence fields for one sector's inserted load (`<sector>_applianceKwh`, …), empty when none. */
+export function sectorApplianceEvidence(
+  sector: SectorId,
+  report: ApplianceReport
+): Record<string, number> {
+  const totals = report.perSector[sector];
+  if (!totals || totals.count === 0) return {};
+  return {
+    [`${sector}_applianceKwh`]: totals.dailyKwh,
+    [`${sector}_appliancePeakKw`]: totals.peakKw,
+    [`${sector}_applianceCount`]: totals.count,
+  };
+}
+
 // Zod argument schemas for the 5 tools
 export const GetGridStateSchema = z.object({
   /** Adds the 24 h solar / demand / battery series and their peak hours (for charts). */
@@ -106,16 +197,7 @@ export function profileHighlights(steps: readonly StepResult[]) {
 }
 
 export const RunScenarioSchema = z.object({
-  scenarioId: z
-    .enum([
-      'baseline',
-      'cloudy_afternoon',
-      'high_demand',
-      'battery_constraint',
-      'essential_stress',
-      'meter_anomaly',
-    ])
-    .optional(),
+  scenarioId: ScenarioIdSchema.optional(),
   patch: InputPatchSchema.optional(),
   strategy: z.enum(['proportional', 'essential_first', 'balanced']).default('proportional'),
 });
@@ -126,6 +208,13 @@ export const CompareStrategiesSchema = z.object({
 
 export const GetSectorMetricsSchema = z.object({
   sector: SectorIdSchema,
+  // Omitted → the user's active strategy (not always proportional).
+  strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
+});
+
+export const GetIncidentsSchema = z.object({
+  /** Reference hour for burning/upcoming/over (default: the app hour). */
+  hour: z.number().int().min(0).max(23).optional(),
   // Omitted → the user's active strategy (not always proportional).
   strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
 });
@@ -144,6 +233,19 @@ export const ControlPlaybackSchema = z
     path: ['hour'],
   });
 
+export const GetBatteryStorySchema = z.object({
+  hour: z.number().int().min(0).max(23).optional(),
+  strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
+});
+
+export const SimulateWeekSchema = z.object({
+  days: z
+    .array(z.object({ weather: z.enum(['sunny', 'partly_cloudy', 'cloudy', 'rainy', 'storm']) }))
+    .min(1)
+    .max(7),
+  strategy: z.enum(['proportional', 'essential_first', 'balanced']).default('proportional'),
+});
+
 export const ProposeChangeSchema = z
   .object({
     patch: InputPatchSchema.optional(),
@@ -153,6 +255,19 @@ export const ProposeChangeSchema = z
   .refine((data) => data.patch !== undefined || data.strategy !== undefined, {
     message: 'At least one of patch or strategy must be specified.',
   });
+
+/** One inserted line, patched in place (PV-T11b): absent fields keep their current value. */
+export const EditApplianceSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(80).optional(),
+  category: z.string().min(1).optional(),
+  sector: SectorIdSchema.optional(),
+  watts: z.number().positive().optional(),
+  quantity: z.number().int().min(1).optional(),
+  /** Map spot; omit unless echoing the operator's own numbers (never invented). */
+  position: z.object({ x: z.number(), z: z.number() }).optional(),
+  reason: z.string().min(1).max(500),
+});
 
 /** Live sector load (× 0–3, 0 = not connected); shared by run_scenario and propose_change. */
 const SECTOR_LOAD_PATCH_PROPS = {
@@ -171,6 +286,37 @@ const STRATEGY_RULE_PATCH_PROPS = {
   balancedWeights: {
     type: 'object',
     description: 'Priority weights (0 to 10) for balanced strategy (critical, high, medium, low).',
+  },
+} as const;
+
+/** Inserted appliance lines (PV-T14); shared by run_scenario and propose_change. Replaces the whole list. */
+const APPLIANCE_PATCH_PROPS = {
+  appliances: {
+    type: 'array',
+    description:
+      'Inserted appliance lines (replaces the whole list; [] removes all). Each line: {id, name (1–40 chars), category, sector, watts (within the category catalog bounds), quantity (1–50)}. Single-line edits go through edit_appliance.',
+    items: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        name: { type: 'string' },
+        category: { type: 'string' },
+        sector: { type: 'string', enum: [...SECTOR_IDS] },
+        watts: { type: 'number' },
+        quantity: { type: 'integer' },
+      },
+      required: ['id', 'name', 'category', 'sector', 'watts', 'quantity'],
+    },
+  },
+} as const;
+
+/** Fire restore (M2-T4); shared by run_scenario and propose_change. Removes those sectors' fires. */
+const CLEAR_FIRES_PATCH_PROPS = {
+  clearFires: {
+    type: 'array',
+    description:
+      'Restore power after a fire: removes the fire events of these sectors (approved via this proposal, never direct).',
+    items: { type: 'string', enum: [...SECTOR_IDS] },
   },
 } as const;
 
@@ -220,14 +366,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         scenarioId: {
           type: 'string',
-          enum: [
-            'baseline',
-            'cloudy_afternoon',
-            'high_demand',
-            'battery_constraint',
-            'essential_stress',
-            'meter_anomaly',
-          ],
+          enum: [...ScenarioIdSchema.options],
           description: 'Optional scenario preset ID to simulate.',
         },
         patch: {
@@ -265,6 +404,8 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
             ...STRATEGY_RULE_PATCH_PROPS,
             ...SECTOR_LOAD_PATCH_PROPS,
             ...LIFELINE_PATCH_PROPS,
+            ...APPLIANCE_PATCH_PROPS,
+            ...CLEAR_FIRES_PATCH_PROPS,
           },
         },
         strategy: {
@@ -296,6 +437,57 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     },
   },
   {
+    name: 'get_battery_story',
+    description:
+      'Post-mortem of the battery at one hour: SoC then, last peak before, sun/demand/discharged since, unserved energy by sector. Defaults to the emptiest hour.',
+    parameters: {
+      type: 'object',
+      properties: {
+        hour: {
+          type: 'integer',
+          description: 'Hour to explain, 0–23 (default: the lowest-SoC hour).',
+        },
+        strategy: {
+          type: 'string',
+          enum: ['proportional', 'essential_first', 'balanced'],
+          description: 'The dispatch strategy to inspect (default: the active strategy).',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'simulate_week',
+    description:
+      'Simulate up to 7 days under daily weather (sunny, partly_cloudy, cloudy, rainy, storm); the battery carries over. Returns the day table, week totals, the recommended week strategy and the worst day.',
+    parameters: {
+      type: 'object',
+      properties: {
+        days: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              weather: {
+                type: 'string',
+                enum: ['sunny', 'partly_cloudy', 'cloudy', 'rainy', 'storm'],
+              },
+            },
+            required: ['weather'],
+          },
+          description: '1–7 days of weather, in order.',
+        },
+        strategy: {
+          type: 'string',
+          enum: ['proportional', 'essential_first', 'balanced'],
+          description: 'Dispatch strategy for the week table (default: proportional).',
+        },
+      },
+      required: ['days'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'get_sector_metrics',
     description: `Fetch detailed metrics and 24-hour power profile for a specific sector (${SECTOR_IDS.join(', ')}).`,
     parameters: {
@@ -313,6 +505,29 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
         },
       },
       required: ['sector'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_incidents',
+    description:
+      'List fire incidents on the simulated grid: which sector is cut, from when to when, whether it burns now, and the unserved energy. A fire cut is automatic (safety); restoring power needs an approved propose_change with clearFires.',
+    parameters: {
+      type: 'object',
+      properties: {
+        hour: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 23,
+          description:
+            'Reference hour for burning/upcoming/over (default: the hour shown in the app).',
+        },
+        strategy: {
+          type: 'string',
+          enum: ['proportional', 'essential_first', 'balanced'],
+          description: 'The dispatch strategy to inspect (default: the active strategy).',
+        },
+      },
       additionalProperties: false,
     },
   },
@@ -379,6 +594,8 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
             ...STRATEGY_RULE_PATCH_PROPS,
             ...SECTOR_LOAD_PATCH_PROPS,
             ...LIFELINE_PATCH_PROPS,
+            ...APPLIANCE_PATCH_PROPS,
+            ...CLEAR_FIRES_PATCH_PROPS,
           },
         },
         strategy: {
@@ -395,11 +612,48 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'edit_appliance',
+    description:
+      'Propose an edit to ONE inserted appliance line (name, category, feeder sector, watts, quantity). Merges onto the current list and returns a proposal the operator approves per line; never applies. Only for loads already in the simulation — adding new loads is the /village insert flow. Never invent a map position: omit position unless echoing the operator’s own numbers.',
+    parameters: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'Engine id of the inserted line.' },
+        name: { type: 'string', description: 'New load name.' },
+        category: {
+          type: 'string',
+          description:
+            'Catalog category (fridge, tv, lamp, fan, water_pump, …); watts must fit its bounds.',
+        },
+        sector: {
+          type: 'string',
+          description: 'Feeder sector carrying the load (one of the 6 sector ids).',
+        },
+        watts: {
+          type: 'number',
+          description: 'Rated power in W (catalog bounds of the category).',
+        },
+        quantity: { type: 'integer', description: 'How many (≥ 1).' },
+        position: {
+          type: 'object',
+          properties: { x: { type: 'number' }, z: { type: 'number' } },
+          required: ['x', 'z'],
+          description: 'Map spot. Omit unless echoing the operator’s own numbers — never invented.',
+        },
+        reason: { type: 'string', description: 'Why, in one line.' },
+      },
+      required: ['id', 'reason'],
+      additionalProperties: false,
+    },
+  },
 ];
 
 export interface ToolContext {
   input: SimulationInput;
   activeStrategy?: StrategyId;
+  /** Hour shown in the app (default reference for get_incidents). */
+  hour?: number;
 }
 
 export interface ToolResult {
@@ -435,6 +689,76 @@ export const PROPOSE_CHANGE_HINT =
   '{"patch":{"sectorCaps":[{"sector":"households","maxKw":0,"fromHour":<app hour>,"toHour":24}]},"reason":"..."}. ' +
   `Sectors: ${SECTOR_IDS.join(', ')}.`;
 
+/**
+ * Shared proposal tail (propose_change, edit_appliance): deterministic id, engine before/after
+ * (K1), clinic guard (K6), and the pending-approval payload the dialog confirms.
+ */
+function proposeFromPatch(
+  toolName: string,
+  ctx: ToolContext,
+  patch: InputPatch | undefined,
+  strategy: StrategyId | undefined,
+  reason: string
+): ToolResult {
+  // Generate deterministic proposal id based on patch, strategy & reason
+  const rawKey = JSON.stringify({ p: patch, s: strategy, r: reason });
+  let hash = 0;
+  for (let i = 0; i < rawKey.length; i++) {
+    hash = ((hash << 5) - hash + rawKey.charCodeAt(i)) | 0;
+  }
+  const proposalId = `PROP-${Math.abs(hash).toString(16).toUpperCase().padStart(6, '0').slice(0, 6)}`;
+
+  // Engine before/after (K1): current input + strategy vs patched input + proposed strategy.
+  const currentStrategy: StrategyId = ctx.activeStrategy ?? 'proportional';
+  let computed: ReturnType<typeof proposalImpact>;
+  try {
+    computed = proposalImpact(ctx.input, currentStrategy, patch, strategy);
+  } catch (err) {
+    return {
+      toolName,
+      error: `Failed to apply patch: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+  const { impact, afterResultId } = computed;
+  const clinicReasons = clinicGuard(patch);
+  const afterInput = patch ? applyPatch(ctx.input, patch) : ctx.input;
+  // Remembered for generate_visual (M5-T1): the model can illustrate the proposed state.
+  rememberResult(afterInput, simulate(afterInput, strategy ?? currentStrategy));
+  // Inserted loads after the proposal (PV-T14): the patch replaces the list, like the engine.
+  const afterAppliances = summarizeAppliances(afterInput.appliances);
+  const beforeKwh = summarizeAppliances(ctx.input.appliances).dailyKwh;
+  const applianceKwhDelta = round2(afterAppliances.dailyKwh - beforeKwh);
+
+  const proposal = { proposalId, patch, strategy, reason, impact };
+
+  return {
+    toolName,
+    resultId: afterResultId,
+    proposal,
+    data: {
+      proposalId,
+      status: 'pending_operator_approval',
+      patch,
+      strategy,
+      reason,
+      impact,
+      appliances: {
+        count: afterAppliances.count,
+        dailyKwh: afterAppliances.dailyKwh,
+        peakKw: afterAppliances.peakKw,
+        perSector: afterAppliances.perSector,
+      },
+      ...(patch?.appliances !== undefined && { applianceKwhDelta }),
+      // K6: coded safety rule; the UI shows a red warning and asks a second confirmation.
+      ...(clinicReasons.length > 0 && { clinicGuard: clinicReasons }),
+    },
+    evidence: {
+      ...impactEvidence(impact),
+      ...(patch?.appliances !== undefined && { applianceKwhDelta }),
+    },
+  };
+}
+
 export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext): ToolResult {
   switch (toolName) {
     case 'get_grid_state': {
@@ -447,6 +771,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       }
       const strategy: StrategyId = ctx.activeStrategy || 'proportional';
       const result = simulate(ctx.input, strategy);
+      rememberResult(ctx.input, result);
       const metrics = compactMetrics(result.metrics);
       const highlights = parsed.data.hourly ? profileHighlights(result.steps) : undefined;
       const hourly: HourlyPoint[] | undefined = parsed.data.hourly
@@ -511,7 +836,20 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
         }
       }
       const result = simulate(finalInput, parsed.data.strategy);
+      rememberResult(finalInput, result);
       const metrics = compactMetrics(result.metrics);
+      const appliances = summarizeAppliances(finalInput.appliances);
+      const applianceEvidence: Record<string, number> =
+        appliances.count > 0
+          ? {
+              applianceCount: appliances.count,
+              applianceKwh: appliances.dailyKwh,
+              appliancePeakKw: appliances.peakKw,
+            }
+          : {};
+      for (const sector of Object.keys(appliances.perSector) as SectorId[]) {
+        Object.assign(applianceEvidence, sectorApplianceEvidence(sector, appliances));
+      }
 
       return {
         toolName,
@@ -521,9 +859,16 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
           strategy: parsed.data.strategy,
           metrics,
           warnings: result.warnings,
+          appliances: {
+            count: appliances.count,
+            dailyKwh: appliances.dailyKwh,
+            peakKw: appliances.peakKw,
+            perSector: appliances.perSector,
+          },
         },
         evidence: {
           ...extractNumericMetrics(metrics),
+          ...applianceEvidence,
         },
       };
     }
@@ -547,6 +892,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
 
       for (const [sId, res] of Object.entries(comp)) {
         if (!res) continue;
+        rememberResult(ctx.input, res);
         const cm = compactMetrics(res.metrics);
         data[sId] = {
           resultId: res.id,
@@ -568,6 +914,106 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       };
     }
 
+    case 'get_battery_story': {
+      const parsed = GetBatteryStorySchema.safeParse(rawArgs);
+      if (!parsed.success) {
+        return {
+          toolName,
+          error: invalidArgs('get_battery_story', parsed.error),
+        };
+      }
+      const strategy: StrategyId = parsed.data.strategy ?? ctx.activeStrategy ?? 'proportional';
+      const result = simulate(ctx.input, strategy);
+      rememberResult(ctx.input, result);
+      const story = batteryStory(ctx.input, result, parsed.data.hour ?? lowestSocHour(result));
+      const evidence: Record<string, number> = {
+        battery_hour: story.hour,
+        battery_socPct: story.socPct,
+        battery_peakHour: story.peak.hour,
+        battery_peakSocPct: story.peak.socPct,
+        battery_solarKwhSincePeak: story.solarKwhSincePeak,
+        battery_demandKwhSincePeak: story.demandKwhSincePeak,
+        battery_dischargedKwh: story.dischargedKwh,
+        battery_unservedKwhSincePeak: story.unservedKwhSincePeak,
+      };
+      for (const s of story.unservedBySector) {
+        evidence[`battery_${s.sector}_unservedKwh`] = s.kwh;
+      }
+      return {
+        toolName,
+        resultId: result.id,
+        data: { ...story },
+        evidence,
+      };
+    }
+
+    case 'simulate_week': {
+      const parsed = SimulateWeekSchema.safeParse(rawArgs);
+      if (!parsed.success) {
+        return {
+          toolName,
+          error: invalidArgs('simulate_week', parsed.error),
+        };
+      }
+      const strategy = parsed.data.strategy;
+      const week = simulateWorkflow(ctx.input, parsed.data.days, strategy);
+      // Each day is illustratable (M5-T1); the table cites engine numbers only.
+      let socPct = ctx.input.battery.initialSocPct;
+      const dayRows = week.days.map((d) => {
+        const dayInput = applyWeather(ctx.input, d.weather);
+        dayInput.battery.initialSocPct = socPct;
+        rememberResult(dayInput, d.result);
+        socPct = d.result.metrics.socEndPct;
+        return {
+          day: d.day,
+          weather: d.weather,
+          resultId: d.result.id,
+          unservedKwh: round2(d.result.metrics.unservedKwh),
+          criticalUnservedKwh: round2(d.result.metrics.criticalUnservedKwh),
+          socEndPct: round2(d.result.metrics.socEndPct),
+        };
+      });
+      // Totals sum the ROUNDED days, so the cited total matches the cited table.
+      const totals = {
+        unservedKwh: round2(dayRows.reduce((n, d) => n + d.unservedKwh, 0)),
+        criticalUnservedKwh: round2(dayRows.reduce((n, d) => n + d.criticalUnservedKwh, 0)),
+        socMinPct: round2(week.totals.socMinPct),
+      };
+      // The 7-day plan: best week strategy (compared engine runs) + worst day.
+      const comp = compareWorkflow(ctx.input, parsed.data.days);
+      let best: StrategyId = strategy;
+      let bestCrit = Infinity;
+      let bestUnserved = Infinity;
+      for (const [name, res] of Object.entries(comp)) {
+        if (!res) continue;
+        const c = res.totals.criticalUnservedKwh;
+        const u = res.totals.unservedKwh;
+        if (c < bestCrit || (c === bestCrit && u < bestUnserved)) {
+          bestCrit = c;
+          bestUnserved = u;
+          best = name as StrategyId;
+        }
+      }
+      const worstDay = dayRows.reduce((a, b) => (b.unservedKwh > a.unservedKwh ? b : a)).day;
+      return {
+        toolName,
+        resultId: dayRows[0]?.resultId ?? 'SIM-BASELINE',
+        data: {
+          strategy,
+          days: dayRows,
+          totals,
+          plan: { strategy: best, worstDay },
+        },
+        evidence: {
+          week_days: dayRows.length,
+          week_unservedKwh: totals.unservedKwh,
+          week_criticalUnservedKwh: totals.criticalUnservedKwh,
+          week_socMinPct: totals.socMinPct,
+          week_worstDay: worstDay,
+        },
+      };
+    }
+
     case 'get_sector_metrics': {
       const parsed = GetSectorMetricsSchema.safeParse(rawArgs);
       if (!parsed.success) {
@@ -579,6 +1025,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
       const sectorId = parsed.data.sector;
       const strategy: StrategyId = parsed.data.strategy ?? ctx.activeStrategy ?? 'proportional';
       const result = simulate(ctx.input, strategy);
+      rememberResult(ctx.input, result);
       const secMetrics = result.metrics.perSector[sectorId];
       const sectorConfig = ctx.input.sectors.find((s) => s.id === sectorId);
 
@@ -588,6 +1035,8 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
         servedKw: round2(st.sectors[sectorId]?.servedKw ?? 0),
       }));
 
+      const report = summarizeAppliances(ctx.input.appliances);
+      const sectorTotals = report.perSector[sectorId] ?? { count: 0, dailyKwh: 0, peakKw: 0 };
       const compactSec = {
         sector: sectorId,
         priority: sectorConfig?.priority ?? 'medium',
@@ -596,6 +1045,12 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
         unservedKwh: round2(secMetrics?.unservedKwh ?? 0),
         coveragePct: round2(secMetrics?.coveragePct ?? 0),
         hourly,
+        appliances: {
+          count: sectorTotals.count,
+          dailyKwh: sectorTotals.dailyKwh,
+          peakKw: sectorTotals.peakKw,
+          lines: report.lines.filter((l) => l.sector === sectorId),
+        },
       };
 
       return {
@@ -607,7 +1062,45 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
           [`${sectorId}_servedKwh`]: compactSec.servedKwh,
           [`${sectorId}_unservedKwh`]: compactSec.unservedKwh,
           [`${sectorId}_coveragePct`]: compactSec.coveragePct,
+          ...sectorApplianceEvidence(sectorId, report),
         },
+      };
+    }
+
+    case 'get_incidents': {
+      const parsed = GetIncidentsSchema.safeParse(rawArgs);
+      if (!parsed.success) {
+        return {
+          toolName,
+          error: invalidArgs('get_incidents', parsed.error),
+        };
+      }
+      const hour = parsed.data.hour ?? ctx.hour ?? 12;
+      const strategy: StrategyId = parsed.data.strategy ?? ctx.activeStrategy ?? 'proportional';
+      const result = simulate(ctx.input, strategy);
+      rememberResult(ctx.input, result);
+      const incidents = fireEvents(ctx.input.events).map((f) => ({
+        sector: f.sector,
+        startHour: f.startHour,
+        endHour: f.startHour + f.durationH,
+        status: (hour < f.startHour
+          ? 'upcoming'
+          : hour < f.startHour + f.durationH
+            ? 'burning'
+            : 'over') as 'upcoming' | 'burning' | 'over',
+        unservedKwh: round2(result.metrics.perSector[f.sector]?.unservedKwh ?? 0),
+      }));
+      const evidence: Record<string, number> = { incidentCount: incidents.length };
+      for (const i of incidents) {
+        evidence[`${i.sector}_fireUnservedKwh`] = i.unservedKwh;
+        evidence[`${i.sector}_fireStartHour`] = i.startHour;
+        evidence[`${i.sector}_fireEndHour`] = i.endHour;
+      }
+      return {
+        toolName,
+        resultId: result.id,
+        data: { resultId: result.id, hour, strategy, count: incidents.length, incidents },
+        evidence,
       };
     }
 
@@ -639,61 +1132,46 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
           error: invalidArgs('propose_change', parsed.error),
         };
       }
-      // Generate deterministic proposal id based on patch, strategy & reason
-      const rawKey = JSON.stringify({
-        p: parsed.data.patch,
-        s: parsed.data.strategy,
-        r: parsed.data.reason,
-      });
-      let hash = 0;
-      for (let i = 0; i < rawKey.length; i++) {
-        hash = ((hash << 5) - hash + rawKey.charCodeAt(i)) | 0;
-      }
-      const proposalId = `PROP-${Math.abs(hash).toString(16).toUpperCase().padStart(6, '0').slice(0, 6)}`;
+      return proposeFromPatch(
+        toolName,
+        ctx,
+        parsed.data.patch,
+        parsed.data.strategy,
+        parsed.data.reason
+      );
+    }
 
-      // Engine before/after (K1): current input + strategy vs patched input + proposed strategy.
-      const currentStrategy: StrategyId = ctx.activeStrategy ?? 'proportional';
-      let computed: ReturnType<typeof proposalImpact>;
-      try {
-        computed = proposalImpact(
-          ctx.input,
-          currentStrategy,
-          parsed.data.patch,
-          parsed.data.strategy
-        );
-      } catch (err) {
+    case 'edit_appliance': {
+      const parsed = EditApplianceSchema.safeParse(rawArgs);
+      if (!parsed.success) {
         return {
           toolName,
-          error: `Failed to apply patch: ${err instanceof Error ? err.message : String(err)}`,
+          error: invalidArgs('edit_appliance', parsed.error),
         };
       }
-      const { impact, afterResultId } = computed;
-      const clinicReasons = clinicGuard(parsed.data.patch);
-
-      const proposal = {
-        proposalId,
-        patch: parsed.data.patch,
-        strategy: parsed.data.strategy,
-        reason: parsed.data.reason,
-        impact,
-      };
-
-      return {
-        toolName,
-        resultId: afterResultId,
-        proposal,
-        data: {
-          proposalId,
-          status: 'pending_operator_approval',
-          patch: parsed.data.patch,
-          strategy: parsed.data.strategy,
-          reason: parsed.data.reason,
-          impact,
-          // K6: coded safety rule; the UI shows a red warning and asks a second confirmation.
-          ...(clinicReasons.length > 0 && { clinicGuard: clinicReasons }),
-        },
-        evidence: impactEvidence(impact),
-      };
+      const { id, reason, ...fields } = parsed.data;
+      const current = ctx.input.appliances ?? [];
+      const line = current.find((a) => a.id === id);
+      if (!line) {
+        return {
+          toolName,
+          error: `Unknown appliance id '${id}': only lines already in the simulation can be edited (add new loads on /village).`,
+        };
+      }
+      const merged = { ...line };
+      for (const [k, v] of Object.entries(fields)) {
+        if (v !== undefined) (merged as unknown as Record<string, unknown>)[k] = v;
+      }
+      const patchCheck = InputPatchSchema.safeParse({
+        appliances: current.map((a) => (a.id === id ? merged : a)),
+      });
+      if (!patchCheck.success) {
+        return {
+          toolName,
+          error: invalidArgs('edit_appliance', patchCheck.error),
+        };
+      }
+      return proposeFromPatch(toolName, ctx, patchCheck.data, undefined, reason);
     }
 
     default:

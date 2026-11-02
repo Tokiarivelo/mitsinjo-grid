@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { readSseStream } from '@/lib/sse';
 import { useSimulationStore } from '@/stores';
 import { useAppLocale } from '@/lib/i18n';
 import type {
@@ -8,13 +9,19 @@ import type {
   ChatSessionSummary,
   CopilotActivity,
   CopilotErrorKey,
+  CopilotCouncil,
   CopilotEvidence,
+  CopilotMeeting,
+  CopilotPerception,
   CopilotProposal,
+  CopilotVisual,
   FallbackReason,
   ProposalDecision,
   ProposalDecisionStatus,
   ProposalDiffItem,
 } from '../types';
+import type { InputPatch } from '@mitsinjo/engine';
+import { proposalImpact } from '@/lib/proposal-impact';
 import { parseMessageSections } from '../utils/parse-sections';
 import { COPILOT_PAYLOAD_MAX } from '../utils/history';
 import { decisionToModelText, proposalDecisions } from '../utils/decisions';
@@ -298,199 +305,219 @@ export function useCopilot() {
           throw new CopilotHttpError('errorGeneric');
         }
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
         let streamedContent = '';
         let collectedEvidence: CopilotEvidence[] = [];
+        let collectedPerception: CopilotPerception[] = [];
         let collectedProposal: CopilotProposal | undefined;
         let collectedImageUrl: string | undefined;
         let collectedImageCaption: string | undefined;
         let collectedVideoUrl: string | undefined;
         let collectedVideoCaption: string | undefined;
+        let collectedVisual: CopilotVisual | undefined;
         let collectedChart: ChatChartData | undefined;
         let detectedModelName: string | undefined;
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const parts = buffer.split('\n\n');
-          buffer = parts.pop() || '';
-
-          for (const part of parts) {
-            const lines = part.split('\n');
-            let event = '';
-            let dataStr = '';
-
-            for (const line of lines) {
-              if (line.startsWith('event: ')) {
-                event = line.replace('event: ', '').trim();
-              } else if (line.startsWith('data: ')) {
-                dataStr = line.replace('data: ', '').trim();
-              }
+        await readSseStream(res.body, (event, dataObj) => {
+          switch (event) {
+            case 'model': {
+              detectedModelName = (dataObj.model as string) || undefined;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId ? { ...msg, detectedModel: detectedModelName } : msg
+                )
+              );
+              break;
             }
-
-            if (!event || !dataStr) continue;
-
-            let dataObj: Record<string, unknown> = {};
-            try {
-              dataObj = JSON.parse(dataStr);
-            } catch {
-              dataObj = {};
+            case 'image': {
+              collectedImageUrl = (dataObj.imageUrl as string) || undefined;
+              collectedImageCaption = (dataObj.caption as string) || undefined;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId
+                    ? {
+                        ...msg,
+                        imageUrl: collectedImageUrl,
+                        imageCaption: collectedImageCaption,
+                      }
+                    : msg
+                )
+              );
+              break;
             }
+            case 'video': {
+              collectedVideoUrl = (dataObj.videoUrl as string) || undefined;
+              collectedVideoCaption = (dataObj.caption as string) || undefined;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId
+                    ? {
+                        ...msg,
+                        videoUrl: collectedVideoUrl,
+                        videoCaption: collectedVideoCaption,
+                      }
+                    : msg
+                )
+              );
+              break;
+            }
+            case 'media': {
+              const kind = dataObj.kind as string;
+              if (
+                (kind === 'village_tonight' ||
+                  kind === 'shedding_poster' ||
+                  kind === 'day_comic') &&
+                typeof dataObj.imageUrl === 'string'
+              ) {
+                collectedVisual = {
+                  kind,
+                  imageUrl: dataObj.imageUrl,
+                  caption: (dataObj.caption as string) || undefined,
+                  overlay:
+                    (dataObj.overlay as CopilotVisual['overlay']) === undefined
+                      ? null
+                      : (dataObj.overlay as CopilotVisual['overlay']),
+                  resultId: (dataObj.resultId as string) || '',
+                };
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantMsgId ? { ...msg, visual: collectedVisual } : msg
+                  )
+                );
+              }
+              break;
+            }
+            case 'council': {
+              const agents = dataObj.agents as CopilotCouncil['agents'] | undefined;
+              const verdict = dataObj.verdict as CopilotCouncil['verdict'] | undefined;
+              if (Array.isArray(agents) && agents.length > 0 && verdict?.pick) {
+                const council: CopilotCouncil = {
+                  question: (dataObj.question as string) || '',
+                  rounds: (dataObj.rounds as number) || 1,
+                  agents,
+                  verdict,
+                };
+                setMessages((prev) =>
+                  prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, council } : msg))
+                );
+              }
+              break;
+            }
+            case 'chart': {
+              collectedChart = dataObj as unknown as ChatChartData;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId
+                    ? {
+                        ...msg,
+                        chart: collectedChart,
+                      }
+                    : msg
+                )
+              );
+              break;
+            }
+            case 'activity': {
+              const tool = typeof dataObj.tool === 'string' ? dataObj.tool : 'start';
+              const sector = typeof dataObj.sector === 'string' ? dataObj.sector : undefined;
+              setToolActivity({ tool, sector });
+              break;
+            }
+            case 'delta': {
+              const text = (dataObj.text as string) || '';
+              streamedContent += text;
+              const sections = parseMessageSections(streamedContent);
 
-            switch (event) {
-              case 'model': {
-                detectedModelName = (dataObj.model as string) || undefined;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId
+                    ? {
+                        ...msg,
+                        content: streamedContent,
+                        sections,
+                        evidence: collectedEvidence,
+                        proposal: collectedProposal,
+                        imageUrl: collectedImageUrl,
+                        imageCaption: collectedImageCaption,
+                        videoUrl: collectedVideoUrl,
+                        videoCaption: collectedVideoCaption,
+                        chart: collectedChart,
+                        detectedModel: detectedModelName,
+                      }
+                    : msg
+                )
+              );
+              break;
+            }
+            case 'evidence': {
+              collectedEvidence = [...collectedEvidence, dataObj as unknown as CopilotEvidence];
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId ? { ...msg, evidence: collectedEvidence } : msg
+                )
+              );
+              break;
+            }
+            case 'proposal': {
+              collectedProposal = dataObj as unknown as CopilotProposal;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId ? { ...msg, proposal: collectedProposal } : msg
+                )
+              );
+              break;
+            }
+            case 'perception': {
+              collectedPerception = [
+                ...collectedPerception,
+                dataObj as unknown as CopilotPerception,
+              ];
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId ? { ...msg, perception: collectedPerception } : msg
+                )
+              );
+              break;
+            }
+            case 'control': {
+              // Playback only (no scenario change): applied at once, noted on the answer.
+              const control = parsePlaybackControl(dataObj);
+              if (control) {
+                applyPlaybackControl(useSimulationStore.getState(), control);
+                setMessages((prev) =>
+                  prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, control } : msg))
+                );
+              }
+              break;
+            }
+            case 'summary': {
+              // Older turns were folded into the summary: send only the newer ones next time.
+              if (typeof dataObj.text === 'string' && typeof dataObj.summarizedCount === 'number') {
+                setSummary(dataObj.text);
+                setSummarizedCount(dataObj.summarizedCount);
+              }
+              break;
+            }
+            case 'error': {
+              if (dataObj.code === 'PROVIDER_FALLBACK') {
+                // The answer still arrives (offline copilot): a note on it, not a red alert.
+                const reason = FALLBACK_REASONS.find((r) => r === dataObj.reason) ?? 'unknown';
                 setMessages((prev) =>
                   prev.map((msg) =>
-                    msg.id === assistantMsgId ? { ...msg, detectedModel: detectedModelName } : msg
+                    msg.id === assistantMsgId ? { ...msg, fallbackReason: reason } : msg
                   )
                 );
-                break;
+              } else {
+                setError('errorGeneric');
               }
-              case 'image': {
-                collectedImageUrl = (dataObj.imageUrl as string) || undefined;
-                collectedImageCaption = (dataObj.caption as string) || undefined;
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMsgId
-                      ? {
-                          ...msg,
-                          imageUrl: collectedImageUrl,
-                          imageCaption: collectedImageCaption,
-                        }
-                      : msg
-                  )
-                );
-                break;
-              }
-              case 'video': {
-                collectedVideoUrl = (dataObj.videoUrl as string) || undefined;
-                collectedVideoCaption = (dataObj.caption as string) || undefined;
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMsgId
-                      ? {
-                          ...msg,
-                          videoUrl: collectedVideoUrl,
-                          videoCaption: collectedVideoCaption,
-                        }
-                      : msg
-                  )
-                );
-                break;
-              }
-              case 'chart': {
-                collectedChart = dataObj as unknown as ChatChartData;
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMsgId
-                      ? {
-                          ...msg,
-                          chart: collectedChart,
-                        }
-                      : msg
-                  )
-                );
-                break;
-              }
-              case 'activity': {
-                const tool = typeof dataObj.tool === 'string' ? dataObj.tool : 'start';
-                const sector = typeof dataObj.sector === 'string' ? dataObj.sector : undefined;
-                setToolActivity({ tool, sector });
-                break;
-              }
-              case 'delta': {
-                const text = (dataObj.text as string) || '';
-                streamedContent += text;
-                const sections = parseMessageSections(streamedContent);
-
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMsgId
-                      ? {
-                          ...msg,
-                          content: streamedContent,
-                          sections,
-                          evidence: collectedEvidence,
-                          proposal: collectedProposal,
-                          imageUrl: collectedImageUrl,
-                          imageCaption: collectedImageCaption,
-                          videoUrl: collectedVideoUrl,
-                          videoCaption: collectedVideoCaption,
-                          chart: collectedChart,
-                          detectedModel: detectedModelName,
-                        }
-                      : msg
-                  )
-                );
-                break;
-              }
-              case 'evidence': {
-                collectedEvidence = [...collectedEvidence, dataObj as unknown as CopilotEvidence];
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMsgId ? { ...msg, evidence: collectedEvidence } : msg
-                  )
-                );
-                break;
-              }
-              case 'proposal': {
-                collectedProposal = dataObj as unknown as CopilotProposal;
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMsgId ? { ...msg, proposal: collectedProposal } : msg
-                  )
-                );
-                break;
-              }
-              case 'control': {
-                // Playback only (no scenario change): applied at once, noted on the answer.
-                const control = parsePlaybackControl(dataObj);
-                if (control) {
-                  applyPlaybackControl(useSimulationStore.getState(), control);
-                  setMessages((prev) =>
-                    prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, control } : msg))
-                  );
-                }
-                break;
-              }
-              case 'summary': {
-                // Older turns were folded into the summary: send only the newer ones next time.
-                if (
-                  typeof dataObj.text === 'string' &&
-                  typeof dataObj.summarizedCount === 'number'
-                ) {
-                  setSummary(dataObj.text);
-                  setSummarizedCount(dataObj.summarizedCount);
-                }
-                break;
-              }
-              case 'error': {
-                if (dataObj.code === 'PROVIDER_FALLBACK') {
-                  // The answer still arrives (offline copilot): a note on it, not a red alert.
-                  const reason = FALLBACK_REASONS.find((r) => r === dataObj.reason) ?? 'unknown';
-                  setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantMsgId ? { ...msg, fallbackReason: reason } : msg
-                    )
-                  );
-                } else {
-                  setError('errorGeneric');
-                }
-                break;
-              }
-              case 'done': {
-                setToolActivity(null);
-                fetchSessions();
-                break;
-              }
+              break;
+            }
+            case 'done': {
+              setToolActivity(null);
+              fetchSessions();
+              break;
             }
           }
-        }
+        });
       } catch (err: unknown) {
         if ((err as Error)?.name === 'AbortError') return;
         const errorKey: CopilotErrorKey =
@@ -616,6 +643,38 @@ export function useCopilot() {
     [decideProposal]
   );
 
+  /**
+   * Propose from edited vision observations (M4-T4): engine impact computed client-side, then the
+   * proposal joins the message and the usual approve/reject dialog takes over. One proposal per
+   * message: proposing again replaces the undecided one.
+   */
+  const proposeFromPerception = useCallback(
+    (messageId: string, patch: InputPatch, reason: string, idPrefix = 'PROP-PERCEPTION') => {
+      const { input, activeStrategy } = useSimulationStore.getState();
+      const { impact } = proposalImpact(input, activeStrategy, patch);
+      const proposal: CopilotProposal = {
+        proposalId: `${idPrefix}-${Date.now()}`,
+        patch,
+        reason,
+        impact,
+      };
+      setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, proposal } : msg)));
+    },
+    []
+  );
+
+  /** Posts a diarized meeting to the chat; the priorities are proposed from its block (M10-T4). */
+  const postMeeting = useCallback((meeting: CopilotMeeting) => {
+    const message: ChatMessageData = {
+      id: `meeting-${Date.now()}`,
+      role: 'assistant',
+      content: '',
+      meeting,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setMessages((prev) => [...prev, message]);
+  }, []);
+
   const clearMessages = useCallback(() => {
     setMessages([]);
     setError(null);
@@ -642,6 +701,8 @@ export function useCopilot() {
     sendMessage,
     approveProposal,
     rejectProposal,
+    proposeFromPerception,
+    postMeeting,
     undoableProposalId,
     undoLastChange,
     retryableId,

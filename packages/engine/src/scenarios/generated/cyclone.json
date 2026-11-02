@@ -1,0 +1,38 @@
+{
+  "id": "cyclone",
+  "title": "Cyclone day",
+  "description": "Near-dark sky 8:00–17:00 (solar ×0.15), all-sector demand spike 17:00–22:00 (×1.2).",
+  "base": "baseline",
+  "events": [
+    {
+      "type": "solar_drop",
+      "startHour": 8,
+      "durationH": 9,
+      "factor": 0.15
+    },
+    {
+      "type": "demand_spike",
+      "sector": "all",
+      "startHour": 17,
+      "durationH": 5,
+      "factor": 1.2
+    }
+  ],
+  "battery": {
+    "initialSocPct": 50
+  },
+  "assertions": [
+    {
+      "strategy": "proportional",
+      "metric": "unservedKwh",
+      "op": "gt",
+      "value": 50
+    },
+    {
+      "strategy": "essential_first",
+      "metric": "criticalUnservedKwh",
+      "op": "gt",
+      "value": 0
+    }
+  ]
+}

@@ -228,3 +228,37 @@ describe('GridDiagram', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('GridDiagram appliances (PV-T13)', () => {
+  it('a sector fed by inserted appliances shows « n added »', () => {
+    const input = {
+      ...stress,
+      appliances: [
+        {
+          id: 'a',
+          name: 'Pump',
+          category: 'water_pump' as const,
+          sector: 'water' as const,
+          watts: 750,
+          quantity: 1,
+        },
+        {
+          id: 'b',
+          name: 'Pump 2',
+          category: 'water_pump' as const,
+          sector: 'water' as const,
+          watts: 750,
+          quantity: 1,
+        },
+      ],
+    };
+    const model = toSceneModel({ input, result: simulate(input, 'proportional'), timeIndex: 12 });
+    render(
+      <I18nProvider>
+        <GridDiagram model={model} variant="topology" onSelectSector={vi.fn()} />
+      </I18nProvider>
+    );
+    expect(screen.getByText(/2 added/)).toBeTruthy();
+    expect(screen.getAllByText(/added/)).toHaveLength(1);
+  });
+});

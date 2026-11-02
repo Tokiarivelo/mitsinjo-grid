@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+
+vi.mock('../utils/wav', () => ({
+  toVoiceWav: vi.fn(async () => new Blob([new Uint8Array(100)], { type: 'audio/wav' })),
+}));
 import { resetSimulationStore, useSimulationStore } from '@/stores';
 import { CopilotWorkspace } from '../ui/copilot-workspace';
 import { ConfirmProposalDialog } from '../ui/confirm-proposal-dialog';
@@ -46,6 +50,48 @@ async function ask(prompt: string) {
   const box = screen.getByRole('textbox');
   fireEvent.change(box, { target: { value: prompt } });
   fireEvent.keyDown(box, { key: 'Enter' });
+}
+
+/** Minimal MediaRecorder fake (mirrors the one in use-voice-input.test.ts). */
+class FakeVoiceRecorder {
+  static isTypeSupported = () => true;
+  state: 'inactive' | 'recording' = 'inactive';
+  mimeType = 'audio/webm';
+  ondataavailable: ((e: { data: Blob }) => void) | null = null;
+  onstop: (() => void) | null = null;
+  constructor(readonly stream: MediaStream) {}
+  start() {
+    this.state = 'recording';
+  }
+  stop() {
+    this.state = 'inactive';
+    this.ondataavailable?.({ data: new Blob([new Uint8Array(10)]) });
+    this.onstop?.();
+  }
+}
+const voiceStream = { getTracks: () => [{ stop: vi.fn() }] } as unknown as MediaStream;
+
+/** Scripted microphone energy for hands-free tests: one RMS value per 100 ms sample. */
+function stubVoiceAudio(frames: number[]) {
+  let i = 0;
+  const node = {
+    fftSize: 1024,
+    frequencyBinCount: 512,
+    context: { sampleRate: 48000 },
+    getByteTimeDomainData(arr: Uint8Array) {
+      const amp = frames[Math.min(i++, frames.length - 1)]! * 128;
+      for (let k = 0; k < arr.length; k++) arr[k] = 128 + (k % 2 === 0 ? amp : -amp);
+    },
+    getByteFrequencyData(arr: Uint8Array) {
+      arr.fill(0);
+    },
+  };
+  class FakeAudioContext {
+    createAnalyser = () => node;
+    createMediaStreamSource = () => ({ connect: vi.fn() });
+    close = vi.fn(async () => {});
+  }
+  vi.stubGlobal('AudioContext', FakeAudioContext);
 }
 
 const marketCut: CopilotProposal & { patch: { sectorCaps: SectorCap[] } } = {
@@ -269,6 +315,7 @@ describe('Copilot chat flow (decisions, fallback note)', () => {
 
   it('follow-up suggestions sit on one line under the chat', async () => {
     mockApi([['delta', { text: 'Done.' }]]);
+    useSimulationStore.getState().run();
     render(<CopilotWorkspace mode="panel" />);
     await ask('Hello');
     await screen.findByText('Done.');
@@ -276,6 +323,108 @@ describe('Copilot chat flow (decisions, fallback note)', () => {
     expect(within(group).getAllByRole('button').length).toBeGreaterThan(0);
     expect(group.lastElementChild?.className).toContain('flex-nowrap');
   });
+
+  it('a voice urgency order opens the fire dialog pre-filled (M3-T3)', async () => {
+    vi.stubGlobal('MediaRecorder', FakeVoiceRecorder);
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: vi.fn(async () => voiceStream) },
+      configurable: true,
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (String(url) === '/api/voice')
+          return {
+            ok: true,
+            json: async () => ({ text: "Au feu à l'école !" }),
+          } as Response;
+        if (String(url) === '/api/copilot/models') return json({ models: ['auto'] });
+        if (String(url) === '/api/copilot/sessions') return json({ sessions: [] });
+        return json({ success: true });
+      })
+    );
+    render(<CopilotWorkspace mode="panel" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Voice input' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop recording' }));
+    // The list opens at once with the detected sector highlighted; one click confirms.
+    expect(await screen.findByText('Which sector is on fire?')).toBeInTheDocument();
+    expect(screen.getByText('Detected from your voice — one click to confirm')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Primary School' }));
+    expect(
+      useSimulationStore
+        .getState()
+        .input.events.some((e) => e.type === 'fire' && e.sector === 'school')
+    ).toBe(true);
+    // The transcript still lands in the message field.
+    expect(screen.getByRole('textbox')).toHaveValue("Au feu à l'école !");
+  });
+
+  it('vision observations render editable and propose through the dialog (M4-T4)', async () => {
+    mockApi([
+      [
+        'perception',
+        {
+          kind: 'analyze',
+          summary: 'Mock: partly cloudy sky.',
+          observations: [{ label: 'cloud_cover', value: 60, unit: '%', confidence: 0.8 }],
+          model: 'mock-vision',
+          source: 'mock',
+        },
+      ],
+      ['delta', { text: 'Clouds observed.' }],
+    ]);
+    render(<CopilotWorkspace mode="panel" />);
+    await ask('How cloudy is the sky?');
+    await screen.findByText('AI perception');
+    fireEvent.change(screen.getByRole('spinbutton', { name: /cloud_cover/i }), {
+      target: { value: '45' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /propose to the engine/i }));
+    // The usual dialog takes over with the converted patch.
+    fireEvent.click(await screen.findByRole('button', { name: /Approve & Apply Scenario/i }));
+    expect(useSimulationStore.getState().input.events).toContainEqual(
+      expect.objectContaining({ type: 'solar_drop', factor: 0.55 })
+    );
+  });
+
+  it('hands-free: silence auto-stops and the transcript auto-sends (M3-T5)', async () => {
+    vi.stubGlobal('MediaRecorder', FakeVoiceRecorder);
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: vi.fn(async () => voiceStream) },
+      configurable: true,
+    });
+    stubVoiceAudio([0.2, 0.2, 0.2, ...Array(30).fill(0.001)]);
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url) === '/api/voice')
+        return {
+          ok: true,
+          json: async () => ({ text: 'Compare the strategies' }),
+        } as Response;
+      if (String(url) === '/api/copilot' && init?.method === 'POST')
+        return sse([['delta', { text: 'Auto-sent answer.' }]]);
+      if (String(url) === '/api/copilot/models') return json({ models: ['auto'] });
+      if (String(url) === '/api/copilot/sessions') return json({ sessions: [] });
+      return json({ success: true });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<CopilotWorkspace mode="panel" />);
+    const handsFree = screen.getByRole('button', { name: /hands-free/i });
+    expect(handsFree).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(handsFree);
+    expect(screen.getByRole('button', { name: /hands-free/i })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    // No second tap: silence ends the turn, the transcript sends by itself.
+    fireEvent.click(screen.getByRole('button', { name: 'Voice input' }));
+    await screen.findByText('Auto-sent answer.', undefined, { timeout: 8000 });
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          String(url) === '/api/copilot' && String(init?.body).includes('Compare the strategies')
+      )
+    ).toBe(true);
+  }, 15000);
 });
 
 describe('ConfirmProposalDialog after a decision', () => {
@@ -299,4 +448,144 @@ describe('ConfirmProposalDialog after a decision', () => {
     expect(screen.queryAllByRole('button')).toHaveLength(0);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
+});
+
+describe('Generated visual in chat (M5-T2)', () => {
+  beforeEach(() => resetSimulationStore());
+
+  it('media event → visual card with AI badge', async () => {
+    mockApi([
+      ['delta', { text: '### What happened\nVoici le village ce soir.\n' }],
+      [
+        'media',
+        {
+          kind: 'village_tonight',
+          imageUrl: 'https://img.example/village.webp',
+          caption: 'Le village ce soir',
+          overlay: null,
+          resultId: 'SIM-1',
+        },
+      ],
+    ]);
+    render(<CopilotWorkspace mode="panel" />);
+    await ask('Montre le village ce soir');
+
+    expect(await screen.findByText('AI-generated')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Le village ce soir' })).toHaveAttribute(
+      'src',
+      'https://img.example/village.webp'
+    );
+  }, 15000);
+
+  it('poster media event → overlay shows the engine cut hours', async () => {
+    mockApi([
+      ['delta', { text: '### What happened\nVoici l’affiche.\n' }],
+      [
+        'media',
+        {
+          kind: 'shedding_poster',
+          imageUrl: 'https://img.example/poster.webp',
+          caption: 'Load-shedding poster background',
+          overlay: {
+            cuts: [{ sector: 'market', fromHour: 18, toHour: 22, unservedKwh: 4.2 }],
+          },
+          resultId: 'SIM-1',
+        },
+      ],
+    ]);
+    render(<CopilotWorkspace mode="panel" />);
+    await ask('Fais une affiche de délestage');
+
+    expect(await screen.findByText(/18:00–22:00/)).toBeInTheDocument();
+    expect(screen.getByText(/Local Market & Artisans/)).toBeInTheDocument();
+  }, 15000);
+
+  it('council event → bubbles with engine badges + verdict (M7-T1)', async () => {
+    const impact = (sector: string, delta: number, unserved: number) => ({
+      beforeResultId: 'SIM-A',
+      afterResultId: 'SIM-B',
+      strategyBefore: 'proportional',
+      strategyAfter: 'proportional',
+      socMinPctBefore: 20,
+      socMinPctAfter: 20,
+      unservedKwhBefore: 2,
+      unservedKwhAfter: unserved,
+      sectors: {
+        [sector]: {
+          servedKwhBefore: 10,
+          servedKwhAfter: 10 + delta,
+          servedKwhDelta: delta,
+          offHoursBefore: 2,
+          offHoursAfter: 0,
+        },
+      },
+    });
+    mockApi([
+      ['delta', { text: '### What happened\nThe council convened.\n' }],
+      [
+        'council',
+        {
+          question: 'Who sheds?',
+          rounds: 1,
+          agents: [
+            {
+              sector: 'health',
+              reason: 'Clinic first.',
+              patch: {},
+              impact: impact('health', 1.2, 0.4),
+              mock: true,
+            },
+            {
+              sector: 'market',
+              reason: 'Stalls alive.',
+              patch: {},
+              impact: impact('market', 0.1, 1.8),
+              mock: true,
+            },
+          ],
+          verdict: { pick: 'health', synthesis: 'Engine favors health.', mock: true },
+        },
+      ],
+    ]);
+    render(<CopilotWorkspace mode="panel" />);
+    await ask('Convene the council');
+
+    expect(await screen.findByText('Sector council')).toBeInTheDocument();
+    expect(screen.getByText(/served \+1\.2 kWh/)).toBeInTheDocument();
+    expect(screen.getByText('Engine favors health.')).toBeInTheDocument();
+  }, 15000);
+
+  it('smoke on the photo → report dialog opens, nothing cut without a click (M8-T3)', async () => {
+    mockApi([
+      ['delta', { text: '### What happened\nSmoke on the photo.\n' }],
+      [
+        'perception',
+        {
+          kind: 'analyze',
+          summary: 'Mock: smoke visible near a building, to verify.',
+          observations: [{ label: 'smoke', value: true, confidence: 0.5 }],
+          model: 'mock-vision',
+          source: 'mock',
+        },
+      ],
+    ]);
+    render(<CopilotWorkspace mode="panel" />);
+    await ask('Is there a fire on this photo?');
+
+    // Wait for the vision block, then two report buttons: header's plus the block's own.
+    await screen.findByText(/smoke visible/i);
+    const reports = await screen.findAllByRole('button', { name: /report a fire/i });
+    expect(reports).toHaveLength(2);
+    // Vision never cuts by itself: no fire in the scenario, no alert banner.
+    expect(useSimulationStore.getState().input.events?.some((e) => e.type === 'fire')).toBe(false);
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    // The vision block's button (last in DOM order) opens the sector dialog.
+    fireEvent.click(reports[reports.length - 1]!);
+    expect(
+      await screen.findByRole('group', { name: 'Which sector is on fire?' })
+    ).toBeInTheDocument();
+    // Still nothing until a sector is picked.
+    expect(useSimulationStore.getState().input.events?.some((e) => e.type === 'fire')).toBe(false);
+  }, 15000);
 });

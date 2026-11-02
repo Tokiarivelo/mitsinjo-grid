@@ -7,6 +7,7 @@ import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { CopilotPanel } from './copilot-panel';
 import { MobileNav } from './mobile-nav';
+import { useSidebarCollapsed } from './use-sidebar-collapsed';
 import type { StatusBadgeVariant } from '@/components/ui/status-badge';
 import type { ScenarioOption } from '@/components/ui/scenario-selector';
 import { useTranslations } from '@/lib/i18n';
@@ -64,6 +65,7 @@ export function AppShell({
   const tRoutes = useTranslations('routes');
   const tCommon = useTranslations('common');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebar = useSidebarCollapsed();
   const [copilotOpen, setCopilotOpen] = useState(false);
 
   // On the /copilot route, the full page is the copilot workspace, so we hide the slide-out panel
@@ -87,7 +89,13 @@ export function AppShell({
   return (
     <div className="relative flex h-full w-full overflow-hidden bg-canvas text-text-primary">
       {/* Sidebar (desktop fixed / mobile drawer) */}
-      <Sidebar status={resolvedStatus} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        status={resolvedStatus}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        collapsed={sidebar.collapsed}
+        onToggleCollapsed={sidebar.toggle}
+      />
 
       {/* Main Column */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden">

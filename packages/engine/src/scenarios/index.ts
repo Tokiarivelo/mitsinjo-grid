@@ -77,6 +77,29 @@ export function createMeterAnomalyInput(): SimulationInput {
   return input;
 }
 
+/** Market start hour of the scripted village fire; it reaches the water pumps 1 h later. */
+export const VILLAGE_FIRE_START_HOUR = 14;
+
+/**
+ * Scripted fire (F1 events, no operator report): the market burns from 14 h, then the fire
+ * spreads to the neighbouring water pumping station at 15 h. Both stay cut (0 kW) until the end of the day.
+ */
+export function createVillageFireInput(): SimulationInput {
+  const input = createBaselineInput();
+  input.scenarioId = 'village_fire';
+  const spreadHour = VILLAGE_FIRE_START_HOUR + 1;
+  input.events = [
+    {
+      type: 'fire',
+      sector: 'market',
+      startHour: VILLAGE_FIRE_START_HOUR,
+      durationH: 24 - VILLAGE_FIRE_START_HOUR,
+    },
+    { type: 'fire', sector: 'water', startHour: spreadHour, durationH: 24 - spreadHour },
+  ];
+  return input;
+}
+
 export const scenarios: Record<ScenarioId, ScenarioDefinition> = {
   baseline: {
     title: 'Sunny Baseline Day',
@@ -113,5 +136,11 @@ export const scenarios: Record<ScenarioId, ScenarioDefinition> = {
     description:
       'Clearly labeled synthetic anomaly scenario: persistent divergence between meter readings and expected profile (>25% for 4h) in the market sector. Flags ANOMALY_TO_VERIFY without assuming fraud.',
     input: createMeterAnomalyInput(),
+  },
+  village_fire: {
+    title: 'Village Fire',
+    description:
+      'Scripted incident: the market catches fire at 14:00 and the fire spreads to the water pumping station at 15:00. Both sectors are cut to 0 kW for safety until the end of the day; the rest of the village keeps running.',
+    input: createVillageFireInput(),
   },
 };

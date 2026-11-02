@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { InputPatch } from '@mitsinjo/engine';
+import type { Appliance, InputPatch } from '@mitsinjo/engine';
 import { pickProposal, proposalPartIds } from '../proposal-parts';
 
 const patch: InputPatch = {
@@ -57,5 +57,96 @@ describe('pickProposal (K3 partial approval)', () => {
 
   it('nothing checked → nothing to apply', () => {
     expect(pickProposal({ patch: { solarDropPct: 10 } }, [])).toEqual({});
+  });
+});
+
+describe('appliance lines (PV-T11b)', () => {
+  const pump: Appliance = {
+    id: 'a1',
+    name: 'Pump',
+    category: 'water_pump',
+    sector: 'water',
+    watts: 750,
+    quantity: 1,
+  };
+  const lamp: Appliance = {
+    id: 'a2',
+    name: 'Lamp',
+    category: 'lamp',
+    sector: 'households',
+    watts: 10,
+    quantity: 2,
+  };
+  const tv: Appliance = {
+    id: 'a3',
+    name: 'TV',
+    category: 'tv',
+    sector: 'households',
+    watts: 80,
+    quantity: 1,
+  };
+  const current = [pump, lamp];
+
+  it('ids list edits and adds in patch order, then removals; unchanged lines hidden', () => {
+    const proposal = { patch: { appliances: [{ ...pump, watts: 900 }, lamp, tv] } };
+    // Lamp is unchanged → no row; tv is new; nothing removed.
+    expect(proposalPartIds(proposal, current)).toEqual(['appliances.a1', 'appliances.a3']);
+    expect(proposalPartIds({ patch: { appliances: [lamp] } }, current)).toEqual(['appliances.a1']);
+    expect(proposalPartIds({ patch: { appliances: [] } }, current)).toEqual([
+      'appliances.a1',
+      'appliances.a2',
+    ]);
+    expect(proposalPartIds({ patch: {} }, current)).toEqual([]);
+  });
+
+  it('all checked → the same list; none checked → no appliance change', () => {
+    const proposal = { patch: { appliances: [{ ...pump, watts: 900 }, lamp] } };
+    expect(pickProposal(proposal, ['appliances.a1'], current)).toEqual({
+      patch: { appliances: [{ ...pump, watts: 900 }, lamp] },
+    });
+    expect(pickProposal(proposal, [], current)).toEqual({});
+  });
+
+  it('unchecked edits restore the current line, unchecked adds drop, removals restore', () => {
+    // Edit pump + add tv, keep neither: the current list stands, so no patch at all.
+    expect(
+      pickProposal({ patch: { appliances: [{ ...pump, watts: 900 }, lamp, tv] } }, [], current)
+    ).toEqual({});
+    // Keep the edit only: tv dropped.
+    expect(
+      pickProposal(
+        { patch: { appliances: [{ ...pump, watts: 900 }, lamp, tv] } },
+        ['appliances.a1'],
+        current
+      )
+    ).toEqual({ patch: { appliances: [{ ...pump, watts: 900 }, lamp] } });
+    // Removal stands when checked, restored when not.
+    expect(pickProposal({ patch: { appliances: [lamp] } }, ['appliances.a1'], current)).toEqual({
+      patch: { appliances: [lamp] },
+    });
+    expect(pickProposal({ patch: { appliances: [lamp] } }, [], current)).toEqual({});
+  });
+});
+
+describe('clearFires lines (M2-T4)', () => {
+  const fireProposal: { patch: InputPatch } = { patch: { clearFires: ['school', 'market'] } };
+
+  it('ids list one restore line per sector, after sectorLoads', () => {
+    expect(
+      proposalPartIds({
+        patch: { sectorLoads: { water: 0.5 }, clearFires: ['school'] },
+        strategy: undefined,
+      })
+    ).toEqual(['sectorLoads.water', 'clearFires.school']);
+  });
+
+  it('all checked → the same patch; unchecked sectors dropped', () => {
+    expect(pickProposal(fireProposal, ['clearFires.school', 'clearFires.market'])).toEqual(
+      fireProposal
+    );
+    expect(pickProposal(fireProposal, ['clearFires.market'])).toEqual({
+      patch: { clearFires: ['market'] },
+    });
+    expect(pickProposal(fireProposal, [])).toEqual({});
   });
 });

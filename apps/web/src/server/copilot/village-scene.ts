@@ -32,7 +32,8 @@ const IDLE_DEMAND_KW = 0.05;
 /** Solar profile weight under which the hour counts as night. */
 const NIGHT_PROFILE = 0.05;
 
-const NOUNS: Record<SectorId, string> = {
+/** English nouns for the image prompts (shared with `server/media`). */
+export const SECTOR_NOUNS: Record<SectorId, string> = {
   health: 'the small health clinic',
   water: 'the water pump and water tower',
   school: 'the school',
@@ -111,7 +112,9 @@ export function describeVillageScene(
 
   const night = sky === 'night';
   const sectorText = (Object.entries(sectors) as Array<[SectorId, SectorLook]>)
-    .map(([id, look]) => `${NOUNS[id]} ${night ? LOOK_TEXT[look].night : LOOK_TEXT[look].day}`)
+    .map(
+      ([id, look]) => `${SECTOR_NOUNS[id]} ${night ? LOOK_TEXT[look].night : LOOK_TEXT[look].day}`
+    )
     .join('; ');
 
   const prompt =

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ScenarioIdSchema } from '@mitsinjo/engine';
 import { resetSimulationStore, useSimulationStore } from '@/stores';
 import { ScenariosPage } from '../index';
 
@@ -74,13 +75,20 @@ describe('ScenariosPage (P5-T3, P5-T6)', () => {
     render(<ScenariosPage />);
 
     const openLinks = screen.getAllByRole('link', { name: /open scenario/i });
-    expect(openLinks.length).toBe(6);
+    expect(openLinks.length).toBe(ScenarioIdSchema.options.length);
     expect(openLinks[1]).toHaveAttribute('href', '/simulation');
 
     fireEvent.click(openLinks[1]!); // Cloudy afternoon card
     expect(useSimulationStore.getState().scenarioId).toBe('cloudy_afternoon');
     // The link navigates by itself: no second, programmatic push
     expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it('the village fire card is tagged Incident and names the first burning sector', () => {
+    render(<ScenariosPage />);
+    expect(screen.getByText('Village Fire (market → water)')).toBeInTheDocument();
+    expect(screen.getByText('Incident')).toBeInTheDocument();
+    expect(screen.getByText(/Fire – .+ from 14:00/)).toBeInTheDocument();
   });
 
   it('editing an assumption in AssumptionsInspector updates the store input and sets modified', () => {

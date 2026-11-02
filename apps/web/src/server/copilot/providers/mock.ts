@@ -1,8 +1,9 @@
 import 'server-only';
 
 import type { LlmProvider, ChatMessage, ToolDefinition, LlmTurn, ToolCall } from '../provider';
-import type { SectorId } from '@mitsinjo/engine';
-import { describeSegment } from '../model-tools';
+import { scenarios, simulate, type SectorId } from '@mitsinjo/engine';
+import { describeAnalyze, describeSegment } from '../model-tools';
+import { rememberResult } from '../result-cache';
 import { parseAppHour } from '../prompt';
 
 /** Model id reported (and accepted) when `LLM_PROVIDER=mock`. */
@@ -17,6 +18,68 @@ const MOCK_IMAGE_WORDS =
 const MOCK_VILLAGE_NOW =
   /(état du village|village actuel|village maintenant|montre(-moi)? le village|show (me )?the village|current village|village now)/i;
 const MOCK_COUNT_WORDS = /(combien|compte |compte-|count|how many|détecte|detect|ohatrinona)/i;
+/** Vision questions on the attached photo (M4-T2): observe, don't count. */
+const MOCK_VISION_WORDS =
+  /(what do you see|que vois|qu'est-ce qu'on voit|inona no hita|photo|image|picture|sary|sky|ciel|lanitra|cloud|nuage|rahona|meter|compteur|famantaranandro|panel|panneau|ombre|shade|smoke|fumée)/i;
+/** Evening village visual / shedding poster → generate_visual from an engine result (M5-T1). */
+const MOCK_VISUAL_VILLAGE_WORDS = /(village (ce soir|cette nuit|tonight)|tanàna anio alina)/i;
+const MOCK_VISUAL_POSTER_WORDS = /(affiche de |affiche du |shedding poster|load-?shedding poster)/i;
+/** Sector council → convene_council (M7-T1). Bare "conseil" (= advice) is not enough. */
+const MOCK_COUNCIL_WORDS = /(council|(conseil.*agent)|(agent.*conseil)|convoque)/i;
+/** Battery post-mortem → get_battery_story (M7-T3). */
+const MOCK_BATTERY_WORDS = /\b(batter\w*|battery|batteries)\b/i;
+const MOCK_STORY_WHY_WORDS =
+  /(pourquoi|why|explain|explique|raconte|post-?mortem|vide|empty|faible|low|déchargé|discharged)/i;
+/** Week simulation → simulate_week (M7-T2). */
+const MOCK_WEEK_WORDS = /\b(week|semaine|7 days|7 jours|seven days)\b/i;
+const MOCK_WEATHER_DEFS: Array<{ match: RegExp; weather: string }> = [
+  { match: /\bstorm\w*|\orage|tempête/gi, weather: 'storm' },
+  { match: /\brain\w*|pluie|pluvieux/gi, weather: 'rainy' },
+  { match: /partly[ _-]?cloudy|éclaircies/gi, weather: 'partly_cloudy' },
+  { match: /\bcloud\w*|nuage\w*|couvert/gi, weather: 'cloudy' },
+  { match: /\bsun\w*|soleil|ensoleillé|beau temps/gi, weather: 'sunny' },
+];
+
+/** Weather words in order of appearance (a "partly cloudy" is not also a "cloudy"). */
+function mockWeekDays(query: string): { weather: string }[] {
+  const hits: { index: number; weather: string }[] = [];
+  for (const def of MOCK_WEATHER_DEFS) {
+    def.match.lastIndex = 0;
+    for (const m of query.matchAll(def.match))
+      hits.push({ index: m.index ?? 0, weather: def.weather });
+  }
+  hits.sort((a, b) => a.index - b.index);
+  const days: { weather: string }[] = [];
+  for (let i = 0; i < hits.length; i++) {
+    const hit = hits[i]!;
+    const prevHit = i > 0 ? hits[i - 1]! : undefined;
+    if (
+      hit.weather === 'cloudy' &&
+      prevHit?.weather === 'partly_cloudy' &&
+      hit.index - prevHit.index < 10
+    ) {
+      continue;
+    }
+    days.push({ weather: hit.weather });
+    if (days.length >= 7) break;
+  }
+  return days;
+}
+
+/** Fewer days named than a week asks for → the last weather fills the week. */
+function mockPadWeek(days: { weather: string }[]): { weather: string }[] {
+  if (days.length === 0) {
+    return ['sunny', 'sunny', 'partly_cloudy', 'cloudy', 'rainy', 'cloudy', 'sunny'].map(
+      (weather) => ({ weather })
+    );
+  }
+  const out = [...days];
+  while (out.length < 7) out.push(out[out.length - 1]!);
+  return out;
+}
+/** "What should we do?" → the mock chains a proposal after an observation (M4-T5). */
+const MOCK_ACTION_WORDS =
+  /(what should|what to do|what do you recommend|que faire|quoi faire|faut-il faire|que recommand|propose|suggest|inona no atao)/i;
 const MOCK_SEGMENT_CONCEPTS: Array<{ match: RegExp; concept: string }> = [
   { match: /fumée|smoke|setroka/i, concept: 'smoke' },
   { match: /toit|roof|tafo/i, concept: 'roof' },
@@ -47,6 +110,45 @@ const MOCK_KEEP_WORDS = /\b(garde[rz]?|keep|sauf|except|tazony|avelao)\b/i;
 export function mockCutSectors(query: string): SectorId[] {
   const cutPart = query.split(MOCK_KEEP_WORDS)[0] ?? query;
   return MOCK_SECTOR_WORDS.filter((s) => s.match.test(cutPart)).map((s) => s.sector);
+}
+
+/** "Limit <sector> to <N> kW [from H to H]" (M1-T6): power words + a kW value + a sector. */
+const MOCK_LIMIT_WORDS = /\b(limit\w*|limite\w*|plafon\w*|caps?|capped)\b/i;
+const MOCK_KW_VALUE = /(-?\d+(?:[.,]\d+)?)\s*kW\b/i;
+const MOCK_RANGE_EN = /from\s+(\d{1,2})\s*(?::00|h)?\s*(?:to|-|–)\s*(\d{1,2})\s*(?::00|h)?/i;
+const MOCK_RANGE_FR = /de\s+(\d{1,2})\s*h?\s*(?:à|a)\s*(\d{1,2})\s*h?/i;
+
+/** Power-cap order the mock sends to propose_change, or null when the question is not one. */
+export function mockLimitCap(
+  query: string,
+  appHour: number
+): { sector: SectorId; maxKw: number; fromHour: number; toHour: number } | null {
+  if (!MOCK_LIMIT_WORDS.test(query)) return null;
+  const value = MOCK_KW_VALUE.exec(query);
+  const sector = MOCK_SECTOR_WORDS.find((s) => s.match.test(query))?.sector;
+  if (!value?.[1] || !sector) return null;
+  const maxKw = Number(value[1].replace(',', '.'));
+  const range = MOCK_RANGE_EN.exec(query) ?? MOCK_RANGE_FR.exec(query);
+  const tonight = /\b(tonight|ce soir)\b/i.test(query);
+  return {
+    sector,
+    maxKw,
+    fromHour: range ? Number(range[1]) : tonight ? 18 : appHour,
+    toHour: range ? Number(range[2]) : 24,
+  };
+}
+
+/** Fire questions (M2-T4): incident words + a sector → get_incidents (read-only, never a proposal). */
+const MOCK_FIRE_WORDS = /\b(fire|fires|incendie|incident|incidents|feu|afo|brûle\w*|burn\w*)\b/i;
+/** Restore orders (M2-T4): restore verbs + a sector, no question word → propose clearFires. */
+const MOCK_RESTORE_WORDS = /\b(rétabli\w*|restor\w*|remets?|remettre|remettez|rebranch\w*)\b/i;
+const MOCK_QUESTION_WORDS = /\b(comment|how|ahoana|pourquoi|why)\b/i;
+
+/** Sector a restore order names, or null (a "how to restore" question explains instead). */
+export function mockRestoreSector(query: string): SectorId | null {
+  if (!MOCK_RESTORE_WORDS.test(query)) return null;
+  if (MOCK_QUESTION_WORDS.test(query)) return null;
+  return MOCK_SECTOR_WORDS.find((s) => s.match.test(query))?.sector ?? null;
 }
 
 /** Playback words need a timeline noun, or the order alone ("pause", "lecture"), so "lance une simulation" is not "play". */
@@ -163,7 +265,18 @@ function isFrenchQuery(text: string): boolean {
     q.includes('combien') ||
     q.includes('maison') ||
     q.includes('génère') ||
-    q.includes('dessine')
+    q.includes('dessine') ||
+    q.includes("c'est fait") ||
+    q.includes('est-ce') ||
+    q.includes('appliqué') ||
+    q.includes('incendie') ||
+    q.includes('brûle') ||
+    q.includes('rétabli') ||
+    q.includes('bilan') ||
+    q.includes('conseil') ||
+    q.includes('convoque') ||
+    q.includes('délester') ||
+    q.includes('le feu')
   );
 }
 
@@ -358,6 +471,74 @@ export class MockLlmProvider implements LlmProvider {
         ],
       };
     }
+    if (hasImage && MOCK_VISION_WORDS.test(query)) {
+      return {
+        toolCalls: [
+          {
+            id: 'call_analyze',
+            name: 'analyze_image',
+            args: { question: (userMsg?.content || '').slice(0, 300) },
+          },
+        ],
+      };
+    }
+    if (
+      !hasImage &&
+      (MOCK_VISUAL_POSTER_WORDS.test(query) || MOCK_VISUAL_VILLAGE_WORDS.test(query))
+    ) {
+      // The mock only knows the baseline: simulate it, remember it, illustrate it.
+      const visualInput = scenarios.baseline.input;
+      const visualResult = simulate(visualInput, 'proportional');
+      rememberResult(visualInput, visualResult);
+      return {
+        toolCalls: [
+          {
+            id: 'call_visual',
+            name: 'generate_visual',
+            args: {
+              kind: MOCK_VISUAL_POSTER_WORDS.test(query) ? 'shedding_poster' : 'village_tonight',
+              resultId: visualResult.id,
+            },
+          },
+        ],
+      };
+    }
+    if (!hasImage && MOCK_COUNCIL_WORDS.test(query)) {
+      return {
+        toolCalls: [
+          {
+            id: 'call_council',
+            name: 'convene_council',
+            args: { question: (userMsg?.content || '').slice(0, 300) },
+          },
+        ],
+      };
+    }
+    if (!hasImage && MOCK_BATTERY_WORDS.test(query) && MOCK_STORY_WHY_WORDS.test(query)) {
+      const hourMatch = query.match(/\b(\d{1,2})\s?h\b/) || query.match(/\bat\s+(\d{1,2})\b/);
+      const hour =
+        hourMatch?.[1] !== undefined ? Math.min(23, parseInt(hourMatch[1], 10)) : undefined;
+      return {
+        toolCalls: [
+          {
+            id: 'call_battery_story',
+            name: 'get_battery_story',
+            args: hour !== undefined ? { hour } : {},
+          },
+        ],
+      };
+    }
+    if (!hasImage && MOCK_WEEK_WORDS.test(query)) {
+      return {
+        toolCalls: [
+          {
+            id: 'call_week',
+            name: 'simulate_week',
+            args: { days: mockPadWeek(mockWeekDays(query)) },
+          },
+        ],
+      };
+    }
     if (!hasImage && MOCK_VILLAGE_NOW.test(query)) {
       return {
         toolCalls: [
@@ -409,6 +590,21 @@ export class MockLlmProvider implements LlmProvider {
       // Chart values come from the engine: ask for the 24 h series, build the chart from the result.
       return {
         toolCalls: [{ id: 'call_chart_profile', name: 'get_grid_state', args: { hourly: true } }],
+      };
+    }
+
+    // Inserted appliance edit (PV-T11b demo): "set the pump to 900 watts" → edit_appliance.
+    // The id is fixed (pump-1): the demo input carries it; without it the tool answers unknown-id.
+    if ((query.includes('pump') || query.includes('pompe')) && query.includes('watt')) {
+      const watts = Number(/(\d[\d\s]*)\s*watts?/.exec(query)?.[1]?.replace(/\s/g, '')) || 900;
+      return {
+        toolCalls: [
+          {
+            id: 'call_edit_appliance',
+            name: 'edit_appliance',
+            args: { id: 'pump-1', watts, reason: `Set the pump to ${watts} W.` },
+          },
+        ],
       };
     }
 
@@ -670,8 +866,45 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
       };
     }
 
+    // Status question (M1-T6): "je propose, jamais c'est fait" — still pending, never applied.
+    if (
+      /\b(c'est fait|est-ce fait|is it done|did you appl|as-tu appl|est-ce appliqué|a été appliqué|applied yet)\b/i.test(
+        query
+      )
+    ) {
+      if (fr) {
+        return {
+          content: `### What happened
+Non — rien n'est appliqué pour l'instant. Je prépare seulement des propositions ; chaque changement attend votre approbation.
+
+### Computed evidence
+Aucune proposition appliquée (statut : attend votre approbation).
+
+### Why it matters
+Rien ne change dans la simulation tant que vous n'avez pas cliqué sur Approuver.
+
+### Explore next
+Examinez la carte de proposition en attente, ou demandez un autre changement.`,
+        };
+      }
+      return {
+        content: `### What happened
+No — nothing is applied yet. I only prepare proposals; every change waits for your approval.
+
+### Computed evidence
+No proposal applied (status: waiting for your approval).
+
+### Why it matters
+Nothing in the simulation changes until you click Approve on the proposal card.
+
+### Explore next
+Review the pending proposal card, or ask for a different change.`,
+      };
+    }
+
     // Determine tool call based on keywords (EN + FR)
     let toolCall: ToolCall;
+    const limitCap = mockLimitCap(query, appHourFrom(messages) ?? MOCK_DEFAULT_HOUR);
 
     if (query.includes('invalid cap') || query.includes('limit the market to -5')) {
       // Deliberate out-of-bounds sector cap test case (PY-T3)
@@ -701,6 +934,47 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
           patch: { solarDropPct: 150 },
           strategy: 'proportional',
         },
+      };
+    } else if (limitCap) {
+      // Valid power cap order (M1-T6): propose a sector cap, never apply it.
+      toolCall = {
+        id: 'call_limit_cap',
+        name: 'propose_change',
+        args: {
+          patch: {
+            sectorCaps: [
+              {
+                sector: limitCap.sector,
+                maxKw: limitCap.maxKw,
+                fromHour: limitCap.fromHour,
+                toHour: limitCap.toHour,
+              },
+            ],
+          },
+          reason: fr
+            ? `Proposition simulée : ${limitCap.sector} plafonné à ${limitCap.maxKw} kW de ${limitCap.fromHour} h à ${limitCap.toHour} h (approbation requise, rien n'est appliqué).`
+            : `Simulated proposal: ${limitCap.sector} capped at ${limitCap.maxKw} kW from ${limitCap.fromHour}:00 to ${limitCap.toHour}:00 (approval needed, nothing applied).`,
+        },
+      };
+    } else if (mockRestoreSector(query)) {
+      // Restore order (M2-T4): propose removing the fire, never restore directly.
+      const sector = mockRestoreSector(query)!;
+      toolCall = {
+        id: 'call_restore',
+        name: 'propose_change',
+        args: {
+          patch: { clearFires: [sector] },
+          reason: fr
+            ? `Proposition simulée : rétablir ${sector} après l'incendie (approbation requise, jamais direct).`
+            : `Simulated proposal: restore ${sector} after the fire (approval needed, never direct).`,
+        },
+      };
+    } else if (MOCK_FIRE_WORDS.test(query) && MOCK_SECTOR_WORDS.some((s) => s.match.test(query))) {
+      // Fire question (M2-T4): explain the automatic cut with its engine impact.
+      toolCall = {
+        id: 'call_incidents',
+        name: 'get_incidents',
+        args: {},
       };
     } else if (
       query.includes('balanced weights') ||
@@ -867,6 +1141,53 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
         ),
       };
     }
+    if (toolName === 'analyze_image' && !err) {
+      const observations = (Array.isArray(payload.observations) ? payload.observations : []) as {
+        label: string;
+        value: number | string | boolean;
+        unit?: string;
+        confidence: number;
+      }[];
+      // Blurry photo (M4-T5): unreadable — say so, with no numbers at all.
+      if (/blurr|flou/i.test(String(payload.summary ?? ''))) {
+        return {
+          content: fr
+            ? "### Ce qui a été observé\nPhoto illisible : l'image est trop floue pour y observer quoi que ce soit — aucun chiffre à donner, à vérifier sur place.\n\n### Et ensuite\nEnvoyez une photo plus nette du ciel, du compteur ou du panneau."
+            : '### What was observed\nUnreadable photo: the image is too blurry to observe anything — no numbers to give, check on site.\n\n### Explore next\nSend a sharper photo of the sky, the meter or the panel.',
+        };
+      }
+      // Cloudy sky + "what should we do?" (M4-T5): chain a matching solar-drop proposal.
+      const cloud = observations.find(
+        (o) => o.label === 'cloud_cover' && typeof o.value === 'number'
+      );
+      if (cloud && MOCK_ACTION_WORDS.test((lastUser?.content || '').toLowerCase())) {
+        const drop = Math.min(90, Math.max(0, Math.round(cloud.value as number)));
+        return {
+          toolCalls: [
+            {
+              id: 'call_propose_cloud',
+              name: 'propose_change',
+              args: {
+                patch: { solarDropPct: drop },
+                reason: fr
+                  ? `Ciel nuageux observé sur la photo (couverture estimée ${drop} %) : simuler une baisse solaire équivalente pour validation.`
+                  : `Cloudy sky seen on the photo (estimated cover ${drop} %): simulate a matching solar drop for approval.`,
+              },
+            },
+          ],
+        };
+      }
+      return {
+        content: describeAnalyze(
+          {
+            summary: String(payload.summary ?? ''),
+            observations,
+            model: String(payload.model ?? 'mock'),
+          },
+          fr ? 'fr' : 'en'
+        ),
+      };
+    }
     if (toolName === 'get_grid_state' && !err && Array.isArray(payload.hourly)) {
       return { content: describeProfileChart(payload, fr) };
     }
@@ -877,7 +1198,84 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
           : '### What happened\nAI-generated illustration of the simulated microgrid (no numbers in the picture).\n\n### Explore next\nWould you like to simulate a solar drop or compare strategies?',
       };
     }
+    if (toolName === 'generate_visual' && !err) {
+      const kind = String(payload.kind ?? '');
+      const caption = String(payload.caption ?? '');
+      const what =
+        kind === 'shedding_poster'
+          ? fr
+            ? 'un fond d’affiche de délestage'
+            : 'a load-shedding poster background'
+          : fr
+            ? 'le village ce soir'
+            : 'the village tonight';
+      return {
+        content: fr
+          ? `### Ce qui s'est passé\nVisuel généré par IA (${what}) depuis le résultat moteur : ${caption} (aucun chiffre dans l'image, les horaires sont en surcouche).\n\n### Et ensuite\nVoulez-vous simuler une autre baisse solaire ou comparer les stratégies ?`
+          : `### What happened\nAI-generated visual (${what}) from the engine result: ${caption} (no numbers in the picture, hours are overlaid).\n\n### Explore next\nWould you like to simulate another solar drop or compare strategies?`,
+      };
+    }
 
+    if (toolName === 'get_battery_story' && !err) {
+      const story = payload as {
+        hour?: number;
+        socPct?: number;
+        peak?: { hour?: number; socPct?: number };
+        solarKwhSincePeak?: number;
+        demandKwhSincePeak?: number;
+        dischargedKwh?: number;
+        unservedKwhSincePeak?: number;
+        unservedBySector?: { sector?: string; kwh?: number }[];
+      };
+      const shorted = (story.unservedBySector ?? [])
+        .map((s) => `${s.sector} ${s.kwh} kWh`)
+        .join(', ');
+      const shortLine = shorted
+        ? ` Unserved in the window: ${story.unservedKwhSincePeak} kWh (${shorted}).`
+        : '';
+      const shortLineFr = shorted
+        ? ` Non desservi sur la période : ${story.unservedKwhSincePeak} kWh (${shorted}).`
+        : '';
+      return {
+        content: fr
+          ? `### Ce qui s'est passé\nÀ ${story.hour} h 00, la batterie est à ${story.socPct} % — au plus haut à ${story.peak?.hour} h 00 (${story.peak?.socPct} %), puis vidée la nuit.\n\n### Computed evidence\nSoC à ${story.hour} h 00 : ${story.socPct} % (pic ${story.peak?.socPct} % à ${story.peak?.hour} h 00)\nSoleil depuis le pic : ${story.solarKwhSincePeak} kWh pour ${story.demandKwhSincePeak} kWh demandés ; déchargé ${story.dischargedKwh} kWh.${shortLineFr}\n\n### Why it matters\nSans soleil, chaque kWh vient du stock : la cause n'est pas une panne mais la nuit après une journée faible.\n\n### Et ensuite\nVoulez-vous comparer les stratégies sur cette journée ou recharger plus tôt ?`
+          : `### What happened\nAt ${story.hour}:00 the battery sat at ${story.socPct}% — fullest at ${story.peak?.hour}:00 (${story.peak?.socPct}%), then drained overnight.\n\n### Computed evidence\nSoC at ${story.hour}:00: ${story.socPct}% (peak ${story.peak?.socPct}% at ${story.peak?.hour}:00)\nSun since the peak: ${story.solarKwhSincePeak} kWh for ${story.demandKwhSincePeak} kWh of demand; discharged ${story.dischargedKwh} kWh.${shortLine}\n\n### Why it matters\nWith no sun every kWh comes from stock: the cause is not a fault but the night after a weak day.\n\n### Explore next\nShould I compare strategies on this day or charge earlier?`,
+      };
+    }
+    if (toolName === 'simulate_week' && !err) {
+      const days = (Array.isArray(payload.days) ? payload.days : []) as {
+        day?: number;
+        weather?: string;
+        unservedKwh?: number;
+      }[];
+      const totals = (payload.totals as Record<string, number> | undefined) ?? {};
+      const plan = (payload.plan as { strategy?: string; worstDay?: number } | undefined) ?? {};
+      const lines = days.map(
+        (d) => `Day ${(d.day ?? 0) + 1}: ${d.weather}, unserved ${d.unservedKwh} kWh`
+      );
+      return {
+        content: fr
+          ? `### Ce qui s'est passé\nSemaine simulée (${days.length} jours, batterie reportée) :\n${lines.join('\n')}\n\n### Computed evidence\nSemaine non desservie : ${totals.unservedKwh} kWh (critique ${totals.criticalUnservedKwh} kWh, batterie min ${totals.socMinPct} %)\nPlan : stratégie ${plan.strategy}, pire jour : jour ${(plan.worstDay ?? 0) + 1}\n\n### Why it matters\nLa météo dégrade le solaire jour après jour et la batterie ne se remplit plus ; le plan nomme la stratégie qui protège le mieux la semaine.\n\n### Et ensuite\nVoulez-vous détailler le pire jour ou tester une autre semaine ?`
+          : `### What happened\nSimulated a ${days.length}-day week (battery carried over):\n${lines.join('\n')}\n\n### Computed evidence\nWeek unserved: ${totals.unservedKwh} kWh (critical ${totals.criticalUnservedKwh} kWh, lowest battery ${totals.socMinPct}%)\nPlan: ${plan.strategy} strategy, worst day: day ${(plan.worstDay ?? 0) + 1}\n\n### Why it matters\nWeather degrades solar day after day and the battery stops refilling; the plan names the strategy that protects the week best.\n\n### Explore next\nShould I detail the worst day or try another week?`,
+      };
+    }
+    if (toolName === 'convene_council' && !err) {
+      const agents = (Array.isArray(payload.agents) ? payload.agents : []) as {
+        sector?: string;
+        reason?: string;
+        unservedKwhAfter?: number;
+      }[];
+      const pick = String(payload.pick ?? '');
+      const synthesis = String(payload.synthesis ?? '');
+      const lines = agents.map(
+        (a) => `- ${a.sector}: ${a.reason} (unserved after: ${a.unservedKwhAfter} kWh)`
+      );
+      return {
+        content: fr
+          ? `### Ce qui s'est passé\nLe conseil des agents s'est réuni (${agents.length} voix, chacune simulée par le moteur) :\n${lines.join('\n')}\n\n### Computed evidence\nRecommandation : ${pick}\n${synthesis}\n\n### Why it matters\nChaque secteur a défendu sa fourniture ; le médiateur a tranché sur les chiffres du moteur, pas sur les plaidoyers.\n\n### Et ensuite\nVoulez-vous transformer la recommandation en proposition à approuver ?`
+          : `### What happened\nThe sector council convened (${agents.length} voices, each engine-simulated):\n${lines.join('\n')}\n\n### Computed evidence\nRecommendation: ${pick}\n${synthesis}\n\n### Why it matters\nEvery sector defended its supply; the mediator ruled on engine numbers, not pleadings.\n\n### Explore next\nShould I turn the recommendation into a proposal to approve?`,
+      };
+    }
     if (toolName === 'control_playback' && !err) {
       const data = (payload.data as Record<string, unknown> | undefined) ?? payload;
       const hour = typeof data.hour === 'number' ? data.hour : undefined;
@@ -891,6 +1289,105 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
 
     const data = (payload.data as Record<string, unknown>) || payload;
     const resultId = (payload.resultId as string) || (data.resultId as string) || 'SIM-BASELINE';
+
+    if (toolName === 'get_incidents') {
+      const count = Number(data.count ?? 0);
+      const incidents = (Array.isArray(data.incidents) ? data.incidents : []) as {
+        sector?: string;
+        startHour?: number;
+        endHour?: number;
+        status?: string;
+        unservedKwh?: number;
+      }[];
+      const frName = (s: string) =>
+        (
+          ({
+            health: 'santé',
+            water: 'eau',
+            school: 'école',
+            households: 'foyers',
+            market: 'marché',
+            industry: 'industrie',
+          }) as Record<string, string>
+        )[s] ?? s;
+      const names = incidents.map((i) => (fr ? frName(i.sector ?? '') : (i.sector ?? '')));
+      // Post-incident summary (M2-T5): past tense once every incident is over.
+      const allOver = count > 0 && incidents.every((i) => i.status === 'over');
+      const frStatus = (s: string) =>
+        ({ burning: 'en cours', upcoming: 'à venir', over: 'terminé' })[s] ?? s;
+
+      if (fr) {
+        const lines = incidents.map(
+          (i, n) =>
+            `${names[n]} : coupé de ${i.startHour} h à ${i.endHour} h (${frStatus(i.status ?? '')}), non desservi ${i.unservedKwh} kWh`
+        );
+        return {
+          content: `### What happened
+${
+  allOver
+    ? `L'incendie est éteint. Le courant a été coupé automatiquement (sécurité) : ${names.join(', ')}.`
+    : count > 0
+      ? `Un incendie a coupé le courant automatiquement (sécurité) : ${names.join(', ')}.`
+      : "Aucun incendie n'est signalé sur le réseau simulé."
+}
+
+### Computed evidence
+Identifiant résultat : ${resultId}
+Incidents actifs : ${count}${lines.length ? `\n${lines.join('\n')}` : ''}
+
+### Why it matters
+${
+  allOver
+    ? "La coupure est finie, mais ses heures restent dans la simulation tant que l'incident n'est pas levé ; l'énergie non desservie ci-dessus est ce que le secteur a perdu."
+    : count > 0
+      ? "Le secteur coupé reste à 0 kW tant que vous n'avez pas approuvé son rétablissement ; son énergie va aux autres secteurs."
+      : 'Chaque secteur suit sa répartition normale ; rien n’est coupé par un incendie.'
+}
+
+### Explore next
+${
+  count > 0
+    ? 'Demandez le rétablissement une fois le feu éteint (« rétablis l’école ») — il faut votre approbation.'
+    : 'Signalez un incendie depuis /simulation pour voir la coupure automatique, ou simulez une baisse solaire.'
+}`,
+        };
+      }
+
+      const lines = incidents.map(
+        (i, n) =>
+          `${names[n]}: cut ${i.startHour}:00 → ${i.endHour}:00 (${i.status}), unserved ${i.unservedKwh} kWh`
+      );
+      return {
+        content: `### What happened
+${
+  allOver
+    ? `The fire is out. Power was cut automatically (safety): ${names.join(', ')}.`
+    : count > 0
+      ? `A fire cut power automatically (safety): ${names.join(', ')}.`
+      : 'No fire incident is recorded on the simulated grid.'
+}
+
+### Computed evidence
+Result ID: ${resultId}
+Active incidents: ${count}${lines.length ? `\n${lines.join('\n')}` : ''}
+
+### Why it matters
+${
+  allOver
+    ? 'The cut is over, but its hours stay in the simulation until you approve clearing the incident; the unserved energy above is what the sector lost.'
+    : count > 0
+      ? 'The cut sector stays at 0 kW until you approve restoring it; its energy goes to the other sectors.'
+      : 'Every sector follows its normal dispatch; nothing is cut by fire.'
+}
+
+### Explore next
+${
+  count > 0
+    ? 'Ask to restore a sector once the fire is out (« restore the school ») — restoring needs your approval.'
+    : 'Report a fire from /simulation to see the automatic cut, or simulate a solar drop.'
+}`,
+      };
+    }
 
     if (toolName === 'get_sector_metrics') {
       const demandKwh = data.demandKwh ?? 0;
@@ -907,18 +1404,35 @@ Use propose_change or load a scenario to simulate the impact of reducing market 
               ? 'éducation'
               : rawSector
         : rawSector;
+      // Inserted loads on this feeder (PV-T14): names in the summary, engine totals in evidence.
+      const app = (data.appliances ?? {}) as {
+        count?: number;
+        dailyKwh?: number;
+        peakKw?: number;
+        lines?: { name?: string }[];
+      };
+      const appCount = app.count ?? 0;
+      const appNames = (app.lines ?? [])
+        .map((l) => String(l.name ?? ''))
+        .filter(Boolean)
+        .join(', ');
 
       if (fr) {
+        const namesLine = appCount > 0 ? ` Charges insérées sur ce départ : ${appNames}.` : '';
+        const appLine =
+          appCount > 0
+            ? `\nCharges insérées : ${appCount} lignes, +${app.dailyKwh} kWh/jour, pointe +${app.peakKw} kW.`
+            : '';
         return {
           content: `### What happened
-Sous une répartition proportionnelle, le secteur ${sector} a reçu moins que son besoin complet pendant les heures de déficit.
+Sous une répartition proportionnelle, le secteur ${sector} a reçu moins que son besoin complet pendant les heures de déficit.${namesLine}
 
 ### Computed evidence
 Identifiant résultat : ${resultId}
 Secteur : ${sector}
 Demande : ${demandKwh} kWh
 Fourni : ${servedKwh} kWh
-Non desservi : ${unservedKwh} kWh (${coveragePct}% de couverture)
+Non desservi : ${unservedKwh} kWh (${coveragePct}% de couverture)${appLine}
 
 ### Why it matters
 L'énergie non desservie dans les secteurs critiques compromet les services essentiels tels que la réfrigération des vaccins ou le pompage de l'eau potable.
@@ -928,16 +1442,21 @@ Basculez la stratégie de distribution vers Prioritaire (Essential-First) pour p
         };
       }
 
+      const namesLine = appCount > 0 ? ` Inserted loads on this feeder: ${appNames}.` : '';
+      const appLine =
+        appCount > 0
+          ? `\nInserted loads: ${appCount} lines, +${app.dailyKwh} kWh/day, peak +${app.peakKw} kW.`
+          : '';
       return {
         content: `### What happened
-Under proportional allocation, the ${sector} sector received less than its full requirement during peak deficit hours.
+Under proportional allocation, the ${sector} sector received less than its full requirement during peak deficit hours.${namesLine}
 
 ### Computed evidence
 Result ID: ${resultId}
 Sector: ${sector}
 Demand: ${demandKwh} kWh
 Served: ${servedKwh} kWh
-Unserved: ${unservedKwh} kWh (${coveragePct}% coverage)
+Unserved: ${unservedKwh} kWh (${coveragePct}% coverage)${appLine}
 
 ### Why it matters
 Unserved energy in critical sectors compromises essential community services like vaccine refrigeration or drinking water pumping.
@@ -1005,6 +1524,14 @@ Simulate a solar drop under Essential-First to verify that clinic power remains 
       const servedKwh = metrics.servedKwh ?? 0;
       const unservedKwh = metrics.unservedKwh ?? 0;
       const criticalCoveragePct = metrics.criticalCoveragePct ?? 0;
+      const app = (data.appliances ?? {}) as { count?: number; dailyKwh?: number };
+      const appCount = app.count ?? 0;
+      const appLine =
+        appCount > 0
+          ? fr
+            ? `\nCharges insérées : ${appCount} lignes, +${app.dailyKwh} kWh/jour.`
+            : `\nInserted loads: ${appCount} lines, +${app.dailyKwh} kWh/day.`
+          : '';
 
       if (fr) {
         return {
@@ -1016,7 +1543,7 @@ Identifiant résultat : ${resultId}
 Demande totale : ${demandKwh} kWh
 Énergie fournie : ${servedKwh} kWh
 Déficit non desservi : ${unservedKwh} kWh
-Couverture critique : ${criticalCoveragePct}%
+Couverture critique : ${criticalCoveragePct}%${appLine}
 
 ### Why it matters
 La baisse de production solaire décharge rapidement la batterie et entraîne un délestage non ciblé sur l'ensemble du micro-réseau.
@@ -1035,7 +1562,7 @@ Result ID: ${resultId}
 Total demand: ${demandKwh} kWh
 Served energy: ${servedKwh} kWh
 Unserved deficit: ${unservedKwh} kWh
-Critical coverage: ${criticalCoveragePct}%
+Critical coverage: ${criticalCoveragePct}%${appLine}
 
 ### Why it matters
 Reduced solar generation depletes battery storage and causes non-prioritized shedding across the microgrid.
@@ -1057,14 +1584,33 @@ Compare allocation strategies to evaluate how essential services can be safeguar
         (data.patch as Record<string, unknown> | undefined) ||
         (payload.patch as Record<string, unknown> | undefined);
       const patchLine = patch ? `\nProposed Patch: ${JSON.stringify(patch)}` : '';
+      // Inserted-load change carried by the proposal (PV-T14), from the engine delta.
+      const delta = data.applianceKwhDelta as number | undefined;
+      const signed = typeof delta === 'number' ? `${delta >= 0 ? '+' : ''}${delta}` : '';
+      const deltaLine =
+        typeof delta === 'number'
+          ? fr
+            ? `\nVariation des charges insérées : ${signed} kWh/jour.`
+            : `\nInserted-load change: ${signed} kWh/day.`
+          : '';
+      // Clinic guard (M1-T6): the coded rule flagged this proposal — approval needs a second click.
+      const guard = (data.clinicGuard ?? []) as string[];
+      const guardLine = guard.length
+        ? fr
+          ? `\nSécurité : garde clinique (${guard.join(', ')}) — l'approbation demande une seconde confirmation.`
+          : `\nSafety: clinic guard (${guard.join(', ')}) — approval needs a second confirmation.`
+        : '';
 
       if (fr) {
+        const guardWarn = guard.length
+          ? " Attention : cette proposition touche les soins essentiels — l'approbation demande une seconde confirmation."
+          : '';
         return {
           content: `### What happened
-Une proposition de modification de scénario (${propId}) a été préparée pour validation par l'opérateur.
+Une proposition de modification de scénario (${propId}) a été préparée pour validation par l'opérateur.${guardWarn}
 
 ### Computed evidence
-Proposal ID: ${propId}${stratLine}${patchLine}
+Proposal ID: ${propId}${stratLine}${patchLine}${deltaLine}${guardLine}
 Reason: ${reason}
 Status: Pending Operator Approval
 
@@ -1076,12 +1622,15 @@ Examinez la carte d'écart de proposition et confirmez les changements pour mett
         };
       }
 
+      const guardWarn = guard.length
+        ? ' Warning: this proposal touches essential care — approval needs a second confirmation.'
+        : '';
       return {
         content: `### What happened
-A scenario modification proposal (${propId}) has been prepared for operator review.
+A scenario modification proposal (${propId}) has been prepared for operator review.${guardWarn}
 
 ### Computed evidence
-Proposal ID: ${propId}${stratLine}${patchLine}
+Proposal ID: ${propId}${stratLine}${patchLine}${deltaLine}${guardLine}
 Reason: ${reason}
 Status: Pending Operator Approval
 

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="853" viewBox="0 0 1280 853">
+  <!-- Sample room for the offline vision demo (PV-T6). Appliances sit at MOCK_DETECTIONS boxes. -->
+  <rect width="1280" height="640" fill="#e9dfcf"/>
+  <rect y="640" width="1280" height="213" fill="#a8825c"/>
+  <rect y="632" width="1280" height="10" fill="#7d5d3f"/>
+  <!-- window -->
+  <rect x="380" y="90" width="120" height="150" fill="#bfe3f2" stroke="#8b6b4a" stroke-width="8"/>
+  <line x1="440" y1="90" x2="440" y2="240" stroke="#8b6b4a" stroke-width="5"/>
+  <!-- fridge 77,188 256×563 -->
+  <rect x="77" y="188" width="256" height="563" rx="18" fill="#f4f6f7" stroke="#9aa5ab" stroke-width="5"/>
+  <line x1="80" y1="390" x2="330" y2="390" stroke="#9aa5ab" stroke-width="5"/>
+  <rect x="290" y="240" width="12" height="110" rx="5" fill="#9aa5ab"/>
+  <rect x="290" y="430" width="12" height="160" rx="5" fill="#9aa5ab"/>
+  <!-- lamp 640,17 102×85 -->
+  <line x1="691" y1="0" x2="691" y2="40" stroke="#555" stroke-width="4"/>
+  <path d="M645 100 L691 40 L737 100 Z" fill="#f2c94c" stroke="#b8902a" stroke-width="4"/>
+  <circle cx="691" cy="96" r="12" fill="#fff6c8"/>
+  <!-- TV 538,256 333×205 on a table -->
+  <rect x="538" y="256" width="333" height="190" rx="10" fill="#1d2329"/>
+  <rect x="552" y="270" width="305" height="162" fill="#3b5363"/>
+  <rect x="684" y="446" width="40" height="15" fill="#1d2329"/>
+  <rect x="500" y="461" width="410" height="22" fill="#6e4f33"/>
+  <rect x="520" y="483" width="18" height="160" fill="#6e4f33"/>
+  <rect x="872" y="483" width="18" height="160" fill="#6e4f33"/>
+  <!-- phone charger 563,529 77×51 (plugged into a wall socket) -->
+  <rect x="563" y="529" width="56" height="51" rx="6" fill="#fafafa" stroke="#888" stroke-width="3"/>
+  <rect x="619" y="545" width="21" height="16" rx="3" fill="#333"/>
+  <!-- fan 973,324 205×427 -->
+  <circle cx="1075" cy="430" r="100" fill="none" stroke="#5c6b73" stroke-width="8"/>
+  <circle cx="1075" cy="430" r="18" fill="#5c6b73"/>
+  <path d="M1075 430 L1050 345 L1100 345 Z M1075 430 L1160 455 L1150 500 Z M1075 430 L1000 480 L990 435 Z" fill="#9fb3bd"/>
+  <rect x="1067" y="530" width="16" height="190" fill="#5c6b73"/>
+  <ellipse cx="1075" cy="735" rx="95" ry="16" fill="#5c6b73"/>
+</svg>

@@ -1,3 +1,4 @@
+import type { ApplianceMarkerSceneModel } from './utils/appliance-markers';
 import type { SectorId, Priority, StrategyId, WeatherId, SectorMode } from '@mitsinjo/engine';
 
 /** `unknown` = no simulation result for this step yet. */
@@ -76,6 +77,8 @@ export interface LineFlowSceneModel {
   direction: 'forward' | 'backward' | 'idle';
   speed: number;
   color: string;
+  /** Burning sector (F1): the line is isolated — red break mark in 3D/2D (M2-T3). */
+  cut?: boolean;
 }
 
 export interface SceneModel {
@@ -93,11 +96,15 @@ export interface SceneModel {
   solar: SolarSceneModel;
   battery: BatterySceneModel;
   buildings: Record<SectorId, BuildingSceneModel>;
+  /** Appliances inserted from the village editor (PV-T13), next to their sector building. */
+  appliances: ApplianceMarkerSceneModel[];
   lines: {
     solarToBattery: LineFlowSceneModel;
     batteryToBus: LineFlowSceneModel;
     busToSectors: Record<SectorId, LineFlowSceneModel>;
   };
 }
+
+export type { ApplianceMarkerSceneModel };
 
 export type CameraPreset = 'village' | 'solar' | 'battery' | 'essential' | 'controller';

@@ -5,6 +5,8 @@ export * from './workflow';
 export * from './sweep';
 export * from './hardware';
 export * from './impact';
+export * from './appliance';
+export * from './autonomy';
 
 import { SimulationInput, SimulationInputSchema } from './input';
 

@@ -1,17 +1,33 @@
 import 'server-only';
 
 import { env } from '@/lib/env';
+import { errorWithCause, isTransientProviderError } from '@/server/copilot/providers/transient';
 import { spendGuard, type SpendGuard } from '@/server/spend';
-import type { PerceptionBackend, PerceptionCall } from './backend';
+import type { PartsSubject, PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
 import { MetaPerceptionBackend } from './meta';
 import { MockPerceptionBackend } from './mock';
 import type {
+  CriticResult,
+  DetectionResult,
   PerceptionSource,
   SegmentResult,
+  ShapeResult,
   TranscribeOptions,
   Transcript,
   VisionResult,
 } from './schemas';
+
+/**
+ * Short cause of a failed Meta call: `timeout` (our time limit), `aborted` (the browser left),
+ * `http_<status>` (Meta answered with an error), else `network`.
+ */
+export function failureOf(err: unknown): string {
+  const name = err instanceof Error || err instanceof DOMException ? err.name : '';
+  if (name === 'TimeoutError') return 'timeout';
+  if (name === 'AbortError') return 'aborted';
+  const status = err instanceof Error ? /API error \((\d{3})\)/.exec(err.message)?.[1] : undefined;
+  return status ? `http_${status}` : 'network';
+}
 
 /**
  * Perception entry point for routes and copilot tools. Never throws for a Meta problem:
@@ -27,17 +43,23 @@ export class PerceptionClient {
     private readonly notConfigured = false
   ) {}
 
+  /** True when calls go to Meta (worth hosting the photo); false in mock mode. */
+  get callsMeta(): boolean {
+    return this.primary !== null;
+  }
+
   private async run<T>(
     kind: string,
     call: (b: PerceptionBackend) => Promise<PerceptionCall<T>>
   ): Promise<T & PerceptionSource> {
-    const fromMock = async (fallback?: PerceptionSource['fallback']) => {
+    const fromMock = async (fallback?: PerceptionSource['fallback'], failure?: string) => {
       const out = await call(this.mock);
       return {
         ...out.result,
         source: 'mock',
         model: out.model,
         ...(fallback ? { fallback } : {}),
+        ...(failure ? { failure } : {}),
       } as T & PerceptionSource;
     };
 
@@ -46,16 +68,31 @@ export class PerceptionClient {
       console.warn(`[perception] ${kind}: spend cap reached for "${this.budgetKey}", using mock`);
       return fromMock('spend_cap');
     }
-    try {
-      const out = await call(this.primary);
+    const primary = this.primary;
+    const attempt = async () => {
+      const out = await call(primary);
       this.guard.record(this.budgetKey, out.model, out.usage);
       return { ...out.result, source: 'meta', model: out.model } as T & PerceptionSource;
+    };
+    try {
+      try {
+        return await attempt();
+      } catch (firstErr) {
+        // A dropped connection or a 429/5xx often passes: one more try before the mock.
+        if (!isTransientProviderError(firstErr)) throw firstErr;
+        console.warn(
+          `[perception] ${kind}: transient Meta error, retrying once:`,
+          errorWithCause(firstErr)
+        );
+        return await attempt();
+      }
     } catch (err) {
+      const failure = failureOf(err);
       console.warn(
-        `[perception] ${kind} failed on Meta, using mock:`,
-        err instanceof Error ? err.message : err
+        `[perception] ${kind} failed on Meta (${failure}), using mock:`,
+        errorWithCause(err)
       );
-      return fromMock('provider_error');
+      return fromMock('provider_error', failure);
     }
   }
 
@@ -69,6 +106,38 @@ export class PerceptionClient {
 
   segmentImage(imageUrl: string, concept: string, signal?: AbortSignal): Promise<SegmentResult> {
     return this.run('segmentImage', (b) => b.segmentImage(imageUrl, concept, signal));
+  }
+
+  detectAppliances(imageUrl: string, signal?: AbortSignal): Promise<DetectionResult> {
+    return this.run('detectAppliances', (b) => b.detectAppliances(imageUrl, signal));
+  }
+
+  identifyRegion(
+    imageUrl: string,
+    hint: string | undefined,
+    signal?: AbortSignal
+  ): Promise<DetectionResult> {
+    return this.run('identifyRegion', (b) => b.identifyRegion(imageUrl, hint, signal));
+  }
+
+  describeShape(
+    imageUrl: string,
+    target: ShapeSubject,
+    signal?: AbortSignal
+  ): Promise<ShapeResult> {
+    return this.run('describeShape', (b) => b.describeShape(imageUrl, target, signal));
+  }
+
+  describeParts(
+    imageUrl: string,
+    target: PartsSubject,
+    signal?: AbortSignal
+  ): Promise<ShapeResult> {
+    return this.run('describeParts', (b) => b.describeParts(imageUrl, target, signal));
+  }
+
+  criticizeShape(imageUrl: string, question: string, signal?: AbortSignal): Promise<CriticResult> {
+    return this.run('criticizeShape', (b) => b.criticizeShape(imageUrl, question, signal));
   }
 }
 

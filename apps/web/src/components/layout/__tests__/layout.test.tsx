@@ -40,14 +40,21 @@ describe('Layout Components (Mobile & Theme Responsive)', () => {
     expect(mobileNav).toBeInTheDocument();
   });
 
-  it('renders MobileNav with all 5 destination links', () => {
+  it('renders MobileNav with all 6 destination links', () => {
     render(<MobileNav />, { wrapper });
 
     const links = screen.getAllByRole('link');
-    expect(links.length).toBe(5);
+    expect(links.length).toBe(6);
 
     const hrefs = links.map((l) => l.getAttribute('href'));
-    expect(hrefs).toEqual(['/overview', '/simulation', '/strategies', '/scenarios', '/copilot']);
+    expect(hrefs).toEqual([
+      '/overview',
+      '/simulation',
+      '/strategies',
+      '/scenarios',
+      '/copilot',
+      '/village',
+    ]);
   });
 
   it('Header includes ThemeSwitcher button and triggers theme toggle', () => {

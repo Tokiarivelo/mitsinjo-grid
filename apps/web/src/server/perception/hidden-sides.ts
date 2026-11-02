@@ -1,0 +1,165 @@
+import 'server-only';
+
+import type { KitArchetype, ObjectKit } from '@/lib/object-kit';
+import { frontPartIndex, type ObjectRecipe, type RecipePart } from '@/lib/object-shape';
+import { MASK_YAW_MAX, PART_MIRROR_MIN_Z } from './mask-geometry';
+
+/**
+ * Hidden-side deduction (PR-2.16): rule-based multiview completion, pre-S4. From the fitted
+ * recipe + yaw + one symmetry rule per archetype, derives the parts the photo cannot show —
+ * back facade, gable-end windows, sedan rear door — as inferred parts (PR-2.15 statuses are
+ * stamped later by the graph). No generative views: every size and colour is copied from a
+ * visible part, never invented. Gated like the mirrors (low yaw only: past ~17° the far side
+ * is guesswork, PR-2.12) and set-atomic against the caller's room (a half-mirrored back is
+ * incoherent, so a set that does not fit is withheld whole). Deduced plates protrude 0.001
+ * past their face: visible from outside, silhouette-neutral from the photo view.
+ */
+
+/** How far a deduced plate sticks out of its face. */
+const FACE_PROTRUDE = 0.001;
+
+/** Thin face plate (glass, door, decal): same cut as the graph's panels. */
+function isFacePlate(p: RecipePart, main: RecipePart): boolean {
+  return p !== main && p.shape === 'box' && p.size[2] <= 0.05;
+}
+
+/**
+ * A back-side plate already mirroring the front one (e.g. the panels mirror ran first, exact
+ * z-negated or face-derived: x/y within float dust, size and colour exact).
+ */
+function hasBackTwin(parts: ReadonlyArray<RecipePart>, p: RecipePart): boolean {
+  return parts.some(
+    (q) =>
+      q.at[2] < -PART_MIRROR_MIN_Z &&
+      q.shape === p.shape &&
+      q.color === p.color &&
+      q.size[0] === p.size[0] &&
+      q.size[1] === p.size[1] &&
+      q.size[2] === p.size[2] &&
+      Math.abs(q.at[0] - p.at[0]) < 0.02 &&
+      Math.abs(q.at[1] - p.at[1]) < 0.02
+  );
+}
+
+/** The same deduced plate twice (two identical front decals): exact match, same sign. */
+function samePlace(a: RecipePart, b: RecipePart): boolean {
+  return (
+    a.shape === b.shape &&
+    a.color === b.color &&
+    a.size[0] === b.size[0] &&
+    a.size[1] === b.size[1] &&
+    a.size[2] === b.size[2] &&
+    a.at[0] === b.at[0] &&
+    a.at[1] === b.at[1] &&
+    a.at[2] === b.at[2]
+  );
+}
+
+/** A plate already sitting where the candidate goes (measured or deduced earlier). */
+function occupied(parts: ReadonlyArray<RecipePart>, c: RecipePart): boolean {
+  return parts.some(
+    (q) =>
+      q.shape === c.shape &&
+      Math.abs(q.at[0] - c.at[0]) < 0.06 &&
+      Math.abs(q.at[1] - c.at[1]) < 0.06 &&
+      Math.abs(q.at[2] - c.at[2]) < 0.06
+  );
+}
+
+export interface HiddenSidesOptions {
+  /** Fitted yaw (rad): past the mirror gate nothing is deduced. */
+  yaw: number;
+  /** Palette: the rear door reads the trim colour, never a fresh hex. */
+  colors: ObjectKit['colors'];
+  /** Free part slots; sets that do not fit are withheld whole. */
+  room: number;
+}
+
+/**
+ * Hidden-side parts to append to a fitted recipe. Pure: same inputs → same parts. The caller
+ * owns the budget backstop; statuses are stamped by the graph pass that follows.
+ */
+export function deduceHiddenSides(
+  archetype: KitArchetype,
+  recipe: ObjectRecipe,
+  { yaw, colors, room }: HiddenSidesOptions
+): RecipePart[] {
+  if (Math.abs(yaw) > MASK_YAW_MAX || room <= 0) return [];
+  const main = recipe.parts[frontPartIndex(recipe)]!;
+  const sets: RecipePart[][] = [];
+  if (archetype === 'house') {
+    sets.push(endWindows(recipe.parts, main));
+    sets.push(backFacade(recipe.parts, main));
+  } else if (archetype === 'building') {
+    sets.push(backFacade(recipe.parts, main));
+  } else if (archetype === 'vehicle') {
+    sets.push(rearDoor(recipe.parts, main, colors));
+  }
+  const out: RecipePart[] = [];
+  let left = Math.floor(room);
+  for (const set of sets) {
+    if (set.length === 0 || set.length > left) continue;
+    out.push(...set);
+    left -= set.length;
+  }
+  return out;
+}
+
+/** Rear door opposite the front door, back windows: front plates mirrored onto the back face. */
+function backFacade(parts: ReadonlyArray<RecipePart>, main: RecipePart): RecipePart[] {
+  const back = main.at[2] - main.size[2] / 2;
+  const twins: RecipePart[] = [];
+  for (const p of parts) {
+    if (!isFacePlate(p, main) || p.at[2] < PART_MIRROR_MIN_Z) continue;
+    const t = p.size[2] / 2;
+    const twin: RecipePart = {
+      ...p,
+      at: [p.at[0], p.at[1], back - FACE_PROTRUDE + t],
+      status: undefined,
+    };
+    if (hasBackTwin(parts, p) || twins.some((q) => samePlace(q, twin))) continue;
+    twins.push(twin);
+  }
+  return twins;
+}
+
+/**
+ * One window per gable end, copied from the shortest front plate (doors stand taller than
+ * windows, so the shortest plate is a window). Thin in x: the graph never clamps it.
+ */
+function endWindows(parts: ReadonlyArray<RecipePart>, main: RecipePart): RecipePart[] {
+  const plates = parts.filter((p) => isFacePlate(p, main) && p.at[2] > PART_MIRROR_MIN_Z);
+  if (plates.length === 0) return [];
+  const ref = plates.reduce((a, b) => (a.size[1] <= b.size[1] ? a : b));
+  const t = 0.02;
+  const halfW = main.size[0] / 2;
+  const wins = (forX: 1 | -1): RecipePart => ({
+    shape: 'box',
+    at: [main.at[0] + forX * (halfW - t / 2 + FACE_PROTRUDE), ref.at[1], main.at[2]],
+    size: [t, ref.size[1], ref.size[0]],
+    color: ref.color,
+  });
+  const pair = [wins(1), wins(-1)];
+  return pair.some((w) => occupied(parts, w)) ? [] : pair;
+}
+
+/**
+ * Sedan rear door: the trunk shut-line on the rear face, in the trim colour. Bikes (narrow
+ * bodies) have no rear face to shut; lenses are cylinders, so they never block the seam.
+ */
+function rearDoor(
+  parts: ReadonlyArray<RecipePart>,
+  main: RecipePart,
+  colors: ObjectKit['colors']
+): RecipePart[] {
+  if (main.size[2] < 0.5) return [];
+  const rear = main.at[0] - main.size[0] / 2;
+  const t = 0.02;
+  const seam: RecipePart = {
+    shape: 'box',
+    at: [rear - FACE_PROTRUDE + t / 2, main.at[1] + main.size[1] * 0.3, main.at[2]],
+    size: [t, 0.03, 0.6 * main.size[2]],
+    color: colors.secondary,
+  };
+  return occupied(parts, seam) ? [] : [seam];
+}

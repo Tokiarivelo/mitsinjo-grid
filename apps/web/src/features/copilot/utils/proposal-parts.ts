@@ -1,5 +1,20 @@
-import type { InputPatch, StrategyId } from '@mitsinjo/engine';
+import type { Appliance, InputPatch, StrategyId } from '@mitsinjo/engine';
 import type { CopilotProposal, ProposalDiffItem } from '../types';
+
+/** Field-by-field equality: an unchanged patch line shows no diff row. */
+export function sameAppliance(a: Appliance | undefined, b: Appliance | undefined): boolean {
+  if (!a || !b) return a === b;
+  return (
+    a.id === b.id &&
+    a.name === b.name &&
+    a.category === b.category &&
+    a.sector === b.sector &&
+    a.watts === b.watts &&
+    a.quantity === b.quantity &&
+    JSON.stringify(a.hourlyDuty ?? null) === JSON.stringify(b.hourlyDuty ?? null) &&
+    JSON.stringify(a.position ?? null) === JSON.stringify(b.position ?? null)
+  );
+}
 
 /** What gets applied: the whole proposal or only the lines the operator kept checked (K3). */
 export interface ProposalPick {
@@ -13,8 +28,15 @@ export interface PartialApproval {
   skipped: ProposalDiffItem[];
 }
 
-/** Diff row ids of a proposal, one per line the dialog shows, in display order. */
-export function proposalPartIds(proposal: Pick<CopilotProposal, 'patch' | 'strategy'>): string[] {
+/**
+ * Diff row ids of a proposal, one per line the dialog shows, in display order. `currentAppliances`
+ * lists removals (current ids missing from the patch) and hides unchanged lines — pass the same
+ * list `useProposalDiff` reads so ids and rows stay aligned.
+ */
+export function proposalPartIds(
+  proposal: Pick<CopilotProposal, 'patch' | 'strategy'>,
+  currentAppliances: Appliance[] = []
+): string[] {
   const { patch, strategy } = proposal;
   const ids: string[] = [];
   if (strategy !== undefined) ids.push('strategy');
@@ -37,6 +59,21 @@ export function proposalPartIds(proposal: Pick<CopilotProposal, 'patch' | 'strat
   for (const [sector, mult] of Object.entries(patch?.sectorLoads ?? {})) {
     if (mult !== undefined) ids.push(`sectorLoads.${sector}`);
   }
+  for (const sector of patch?.clearFires ?? []) {
+    ids.push(`clearFires.${sector}`);
+  }
+  // Appliance lines last, patch order then removals in current order (mirrored in useProposalDiff).
+  const curById = new Map(currentAppliances.map((a) => [a.id, a]));
+  const patchIds = new Set<string>();
+  for (const a of patch?.appliances ?? []) {
+    patchIds.add(a.id);
+    if (!sameAppliance(curById.get(a.id), a)) ids.push(`appliances.${a.id}`);
+  }
+  if (patch?.appliances !== undefined) {
+    for (const c of currentAppliances) {
+      if (!patchIds.has(c.id)) ids.push(`appliances.${c.id}`);
+    }
+  }
   return ids;
 }
 
@@ -56,11 +93,13 @@ function pickMap<T>(
 /**
  * The part of a proposal to apply when only `checked` lines are kept (K3, partial approval).
  * Patch fields the dialog does not list (solar profile, meter readings, shares, weights) always go
- * with the patch. Returns `{}` when nothing is left.
+ * with the patch. Appliance lines need the current list to restore unchecked edits and removals.
+ * Returns `{}` when nothing is left.
  */
 export function pickProposal(
   proposal: Pick<CopilotProposal, 'patch' | 'strategy'>,
-  checked: Iterable<string>
+  checked: Iterable<string>,
+  currentAppliances: Appliance[] = []
 ): ProposalPick {
   const keep = new Set(checked);
   const src = proposal.patch;
@@ -79,6 +118,8 @@ export function pickProposal(
       'minSocPct',
       'lifeline',
       'sectorLoads',
+      'clearFires',
+      'appliances',
     ]);
     for (const [key, value] of Object.entries(src)) {
       if (!listed.has(key) && value !== undefined) patch[key] = value;
@@ -115,6 +156,35 @@ export function pickProposal(
 
     const loads = pickMap(src.sectorLoads, 'sectorLoads', keep);
     if (loads) patch.sectorLoads = loads;
+
+    if (src.clearFires !== undefined) {
+      const kept = src.clearFires.filter((s) => keep.has(`clearFires.${s}`));
+      if (kept.length > 0) patch.clearFires = kept;
+    }
+
+    if (src.appliances !== undefined) {
+      const curById = new Map(currentAppliances.map((a) => [a.id, a]));
+      const out: Appliance[] = [];
+      let differs = false;
+      for (const a of src.appliances) {
+        if (keep.has(`appliances.${a.id}`)) {
+          out.push(a);
+          if (!sameAppliance(curById.get(a.id), a)) differs = true;
+        } else {
+          // Unchecked edit → current line back; unchecked add → dropped.
+          const c = curById.get(a.id);
+          if (c) out.push(c);
+        }
+      }
+      for (const c of currentAppliances) {
+        const removed = !src.appliances.some((a) => a.id === c.id);
+        if (!removed) continue;
+        if (keep.has(`appliances.${c.id}`))
+          differs = true; // removal stands
+        else out.push(c); // unchecked removal → restored
+      }
+      if (differs) patch.appliances = out;
+    }
   }
 
   return {

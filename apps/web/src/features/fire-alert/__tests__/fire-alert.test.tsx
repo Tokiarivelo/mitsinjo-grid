@@ -114,6 +114,21 @@ describe('fire alarm UI', () => {
     expect(screen.getByRole('button', { name: /Primary School/ })).toBeDisabled();
   });
 
+  it('voice preset opens the list with the detected sector highlighted (M3-T3)', () => {
+    render(
+      <I18nProvider>
+        <ReportFireControl variant="hud" defaultOpenSector="school" />
+      </I18nProvider>
+    );
+    // Open at once, no click: one click confirms.
+    expect(screen.getByText('Which sector is on fire?')).toBeInTheDocument();
+    expect(screen.getByText('Detected from your voice — one click to confirm')).toBeInTheDocument();
+    const row = screen.getByRole('button', { name: 'Primary School' });
+    expect(row.className).toContain('ring-critical-red');
+    fireEvent.click(row);
+    expect(useSimulationStore.getState().input.events.some((e) => e.type === 'fire')).toBe(true);
+  });
+
   it('the warning appears by itself when the timeline reaches the fire hour', () => {
     useSimulationStore.setState({ timeIndex: 15 });
     useSimulationStore.getState().reportFire('market');

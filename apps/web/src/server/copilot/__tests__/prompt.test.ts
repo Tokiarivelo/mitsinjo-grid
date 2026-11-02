@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { appHourNote, parseAppHour } from '../prompt';
+import { appHourNote, getSystemPrompt, parseAppHour } from '../prompt';
+
+describe('placed loads rule (PP-T7)', () => {
+  it.each([
+    ['en', getSystemPrompt('en')],
+    ['fr', getSystemPrompt('fr')],
+    ['mg', getSystemPrompt('mg')],
+  ] as const)('reports the feeder, never invents positions (%s)', (_locale, prompt) => {
+    expect(prompt).toContain('2b.');
+    expect(prompt).toContain('feeder');
+    expect(prompt).toContain('x/z');
+  });
+});
 
 describe('appHourNote (M1-T3, K2)', () => {
   it('tells the model which hour "now" is and round-trips through parseAppHour', () => {

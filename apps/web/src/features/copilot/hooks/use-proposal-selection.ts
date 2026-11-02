@@ -44,9 +44,9 @@ export function useProposalSelection(
   const pick = useMemo<ProposalPick>(
     () =>
       partial
-        ? pickProposal(proposal, checkedKey.split('|').filter(Boolean))
+        ? pickProposal(proposal, checkedKey.split('|').filter(Boolean), input.appliances)
         : { patch: proposal.patch, strategy: proposal.strategy },
-    [partial, proposal, checkedKey]
+    [partial, proposal, checkedKey, input.appliances]
   );
 
   const impact = useMemo(() => {

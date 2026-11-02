@@ -103,7 +103,33 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
   (unsupported, denied, failed, empty) show inline in amber, dismissible. Auto-scroll only while the reader is at the bottom.
 - Playback line: when the copilot ran `control_playback`, a cyan `role="status"` pill (clock icon) « Time cursor moved
   to 18:00 » / « Playback paused »… above the answer.
-- `ChatComposer` (`useChatComposer` state): input + attach / sketch / mic / send; `variant` `card` (tab) or `terminal`
+- `ChatComposer` (`useChatComposer` state): input + attach / sketch / mic / send; `variant` `card` (tab) or `terminal`;
+  an attached image chip has « Find appliances » (scan icon, ≥ 40 px) → `VisionDialog`.
+- `DetectionCanvas` (`features/vision-insert`, PV-T7): photo + SVG overlay (`viewBox 0 0 1`, one path per detection: SAM
+  outline or box). Each object its own colour (`utils/mark-color`: golden-angle hue + 3 lightness steps, `--mark` from
+  `--theme-mark-s/l` per theme), same colour on its list row border; hover/focus = stronger fill + label chip, selected = thicker
+  stroke + fill and tinted row (outline repeated on top, no pointer). Paint order biggest first (`utils/stacking`): a small box
+  under a big one stays clickable; a click picks the smallest box there, a 2nd click on the same spot the one under it.
+  Edit handles (draw / adjust) sit outside the shape so a tiny box can still be dragged. Pointer: hover/tap on the
+  photo; keyboard + screen readers: the « Appliances found (n) » list below (buttons ≥ 44 px, focus = same highlight).
+  States: loading (dimmed photo + status), refining (outlines coming), ready, empty, error + retry. Violet « AI perception ·
+  to verify » tag; demo note when the mock answered. Category shown only when it differs from the label.
+  PV-T8 (`onSendShapes`, optional): « Draw missing objects » → `DrawOverlay` on the photo (role application, touch-none,
+  pointer capture) + `DrawPanel` below. Tools: Rectangle · Free hand · Magnetic lasso (snaps to the strongest edge within
+  3 % of the photo, Sobel on a ≤ 320 px copy, `useEdgeMap`; canvas blocked → draws freely + note). Several shapes before
+  sending (≤ 10 per send); each stays editable: drag = move, 4 corner handles (44 px hit area) = resize, keyboard arrows /
+  Shift + arrows / Delete, « Add a box » (centred). Per shape: « What is it? (optional) » free text, trash. « Send the
+  object / objects (n) » → objects listed at once (dashed, « Added by you », « Identifying… »), then named by the model.
+  Also in the error state; ≤ 30 per photo (button disabled + note).
+  Zoom (user request 2026-10-31, `usePhotoZoom`, `ZoomControls`): − / « 100 % » / + above the photo (1 · 1.5 · 2 · 3 · 4×,
+  44 px buttons). The photo sits in a `max-h-[60vh]` scroll box (bars, wheel, touch pan); its width is fitted (tall photos
+  ≤ 60 vh, so overlays match) × zoom, every layer stays in photo fractions. Zooming keeps the view centre (or the box being
+  adjusted). While drawing or adjusting on a zoomed photo: hand toggle « Move the photo » (`aria-pressed`) = the drawing
+  layer lets pointers through to pan. `onAdjustBox` (optional): « Adjust the box of {label} » for the selected object (AI
+  or drawn, not while identifying) → the box in the same editor (drag, corners, arrows / Shift + arrows), amber panel
+  Save / Cancel; saved box → `adjusted: true`, SAM outline dropped, « Adjusted » chip in the list.
+- `VisionDialog`: portal to `body` (glass panels trap fixed overlays), bottom sheet on mobile / centred card ≥ sm,
+  runs detection on open, Esc closes, footer shows the selected appliance (insert comes in V4).
   (`❯` prompt, short placeholder). `ModelPicker` `{models, value, onChange, size: md|sm|terminal}`: one select for both.
 - `CopilotTerminal`: full-screen glass chat (`GlassPanel`), same conversation as the tab via `CopilotProvider` /
   `useSharedCopilot`; title bar (dots, title, AI badge, new session, close), model line, log, terminal composer.
@@ -161,3 +187,24 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 
 - Panel props: input; status; isModified; onPatch; onReset; defaultOpen?. Collapsible header button (aria-expanded) with StatusBadge.
 - Row props: sector; cap?; onPriorityChange; onCapChange(cap | null). Native select + number inputs, ≥ 44 px; invalid cap → `role="alert"` message.
+
+## ApplianceCurveChart (PV-T11b)
+
+- Props: curve (24 kW values), peakKw, dailyKwh. Compact 120 px Recharts bars (cyan, hour ticks every 6 h,
+  kW tooltip), title + screen-reader summary of the same peak/daily numbers. Lives in the insert panel.
+
+## ObjectDisplayControls (PV-T11b)
+
+- Props: scale, tint (null = measured), onScale, onTint, onReset. Size slider 50–200 % with % readout, native
+  colour picker, reset button shown only once tweaked. Viewer-local state, per object; never stored.
+
+## Free placement (PV-P)
+
+- `PlaceMinimap` (`features/vision-insert`, PP-T4): top-down village SVG (terrain disc + one dot per sector building,
+  current feeder cyan), `role="application"`, labelled + help line (`minimapLabel`, `minimapHelp`), crosshair cursor.
+  Click / tap places; arrows move the cursor (Shift = ×5), Enter / Space places; screen-reader live readout of the
+  cursor (`cursorAt`). Rounded panel on `bg-canvas-sunken`, cyan focus ring; full width down to 320 px.
+- Marker select + drag (`features/microgrid-3d`, PP-T5): click a marker = select (flat ground ring + cyan tag
+  border, click again = deselect); press + move past 4 px = drag on the terrain (the instance hides, a translucent
+  cyan ghost follows the pointer, orbit stays off until release); release commits, pointer-cancel aborts cleanly.
+  The feeder follows the nearest building unless the operator overrode it. Touch: pointer events, no scroll trap.

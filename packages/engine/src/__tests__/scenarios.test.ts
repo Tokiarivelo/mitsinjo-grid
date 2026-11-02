@@ -16,6 +16,7 @@ describe('Scenarios Presets & Invariants', () => {
       'battery_constraint',
       'essential_stress',
       'meter_anomaly',
+      'village_fire',
     ]);
   });
 
@@ -49,5 +50,17 @@ describe('Scenarios Presets & Invariants', () => {
     expect(anomalyWarn?.sector).toBe('market');
     expect(anomalyWarn?.fromHour).toBe(11);
     expect(anomalyWarn?.toHour).toBe(14);
+  });
+
+  it('village_fire cuts the market from 14 h and the water pumps from 15 h, the clinic keeps power', () => {
+    const sim = simulate(scenarios.village_fire.input, 'essential_first');
+    expect(sim.steps[13]?.sectors.market?.servedKw).toBeGreaterThan(0);
+    expect(sim.steps[14]?.sectors.market?.servedKw).toBe(0);
+    expect(sim.steps[14]?.sectors.water?.servedKw).toBeGreaterThan(0);
+    expect(sim.steps[15]?.sectors.water?.servedKw).toBe(0);
+    expect(sim.steps[23]?.sectors.market?.servedKw).toBe(0);
+    for (const step of sim.steps) {
+      expect(step.sectors.health?.servedKw).toBeCloseTo(step.sectors.health?.demandKw ?? 0, 6);
+    }
   });
 });

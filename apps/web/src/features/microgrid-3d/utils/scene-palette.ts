@@ -13,6 +13,9 @@ export const TOKEN_HEX = {
   idle: '#64748b',
 } as const;
 
+/** Concrete plinth under an inserted appliance marker (PV-T13). */
+export const MARKER_PLINTH_HEX = '#3b4656';
+
 export const STATUS_HEX: Record<StatusColor, string> = {
   'battery-green': TOKEN_HEX.batteryGreen,
   'warning-amber': TOKEN_HEX.warningAmber,

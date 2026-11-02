@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { useSimulationStore, resetSimulationStore } from '@/stores';
 import { CopilotPage } from '../index';
+import { CopilotWorkspace } from '../ui/copilot-workspace';
 import { ToolActivity } from '../ui/tool-activity';
 import { ChatMessageItem } from '../ui/chat-message-item';
 import { ConfirmProposalDialog } from '../ui/confirm-proposal-dialog';
@@ -20,7 +21,24 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
     expect(screen.getByText('AI EXPLANATION')).toBeInTheDocument();
     expect(screen.getAllByText('SIMULATED DATA').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Explore Simulation Trade-offs with AI')).toBeInTheDocument();
-    expect(screen.getByText('SUGGESTED EXPLORATION PROMPTS')).toBeInTheDocument();
+    // No run yet: no fixed question list, an invitation to simulate instead.
+    expect(screen.queryByText('SUGGESTED EXPLORATION PROMPTS')).toBeNull();
+    expect(screen.getByRole('group', { name: 'Run a simulation first' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Choose a scenario/ })).toHaveAttribute(
+      'href',
+      '/scenarios'
+    );
+  });
+
+  it('running the simulation from the invitation shows questions built from its result', () => {
+    useSimulationStore.getState().loadScenario('village_fire');
+    render(<CopilotPage />);
+    const cta = screen.getByRole('group', { name: 'Run a simulation first' });
+    fireEvent.click(within(cta).getByRole('button'));
+    expect(useSimulationStore.getState().status).toBe('complete');
+    const group = screen.getByRole('group', { name: 'About the fire' });
+    expect(within(group).getByText(/Fire planned – .+ at 14:00/)).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Run a simulation first' })).toBeNull();
   });
 
   it('renders ToolActivity with deterministic status', () => {
@@ -421,5 +439,12 @@ describe('Copilot Feature UI (P6-T6, P6-T8)', () => {
       />
     );
     expect(screen.getByText(/Too many requests/)).toBeInTheDocument();
+  });
+
+  it.each(['full', 'panel'] as const)('shows the fire report button in %s mode (M2-T4)', (mode) => {
+    render(mode === 'full' ? <CopilotPage /> : <CopilotWorkspace mode="panel" />);
+    fireEvent.click(screen.getByRole('button', { name: /report a fire/i }));
+    expect(screen.getByText('Which sector is on fire?')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /primary school/i })).toBeInTheDocument();
   });
 });

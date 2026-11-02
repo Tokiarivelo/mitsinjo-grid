@@ -82,6 +82,8 @@ Warnings: merge consecutive hours into ranges. `CRITICAL_UNMET` (any critical sh
 Fire (`{ type: 'fire', sector, startHour, durationH }`, F1, ENGINE_VERSION 0.4.0): each fire adds a 0 kW cap on its sector for
 its hours (`effectiveSectorCaps`). Caps combine by minimum, so the fire beats strategy, operator caps and the lifeline floor
 (the cap-aware floor drops to 0, no `LIFELINE_SHORTFALL`); the energy goes to the other sectors; mode `off`.
+Restore (M2-T4, ENGINE_VERSION 0.6.0): `InputPatch.clearFires` removes the fire events of the listed sectors
+(approved via `propose_change`, never direct); the sector is served again from its existing load.
 Change impact (`changeImpact(before, after)`): per sector `servedKwh` before/after/delta and `offHours` (steps with
 demand > ε and `mode = 'off'`; a sector without load is never off), plus `socMinPct` and `unservedKwh` before/after.
 Used by the approval dialog ("Engine calculation").
@@ -116,11 +118,13 @@ Total ≈ 128 kWh/day (factory not connected). Tune so that: `baseline` → 0 un
 | battery_constraint | capacity 60 kWh, initialSoc 30 %                              |
 | essential_stress   | solar ×0.4 for 4 h at 11 h + initialSoc 25 %                  |
 | meter_anomaly      | market meter readings 3.2 kW at 11–15 h (expected 2.0 kW)     |
+| village_fire       | fire market from 14 h, spreads to water at 15 h (to 24 h)     |
 
 ### Live sector load (`loadMultiplier`)
 
-Demand of a sector at hour t = `profileKw[t] × (loadMultiplier ?? 1) × demandMultiplier × active spikes`
-(meter readings replace the profile). `0` = not connected: zero demand, hidden from overview, strategy cards and
+Demand of a sector at hour t = `(profileKw[t] × (loadMultiplier ?? 1) + applianceKw[t]) × demandMultiplier × active spikes`
+(meter readings replace the whole modelled profile, appliances included). `applianceKw` = sum of
+`applianceProfileKw` of the sector's appliances (PV, ENGINE_VERSION 0.5.0); 0 when the sector is not connected. `0` = not connected: zero demand, hidden from overview, strategy cards and
 coverage lists (`connectedSectors`). Set via `InputPatch.sectorLoads` (UI slider on `/simulation`, copilot patch).
 
 ### Adding a consumer sector (checklist)
@@ -145,6 +149,55 @@ One sunny day is identical to `simulate(input)`.
 into feeder setpoints (`toHardwareCommand`); `dispatch/` holds the breaker / controller / flow mapping shared with
 the 3D and 2D views. No new energy math: demand comes from `computeProfileDemandKw` × request, served kW from the
 result. Contract and formulas: `contracts.md` § Physical scale model; hardware design: `docs/maquette-physique.md`.
+
+### Appliance catalog (PV)
+
+`appliances/catalog.ts` → `APPLIANCE_CATALOG[category]`: rated power bounds (W) and a default 24 h duty profile
+(share of each hour at rated power). Inserted appliances (`input.appliances`) add to their sector's demand, see
+§ Live sector load; `watts` must stay within the category bounds. `position` (PP-T1) is visual only: where the
+marker is drawn, ignored by the load model and excluded from the input hash.
+Strategies, metrics and warnings treat that load like the rest of the sector: same priority, flexibility, lifeline
+floor and `criticalShare` (5 × 750 W pumps on `water`, cloudy day → +26.25 kWh demand, 30 % of it critical). Orders of magnitude for village use, cross-checked
+against Efficiency for Access / CLASP appliance data, the ESMAP Multi-Tier Framework load tiers and WHO PQS E003
+(solar vaccine fridges). Vision only picks the category; watts and hours come from here.
+
+| category          | default W (min–max) | default use                         |
+| ----------------- | ------------------- | ----------------------------------- |
+| fridge / freezer  | 100 / 150 (50–400)  | 24 h, duty 0.35–0.4, 0.5–0.55 12–18 |
+| fridge_vaccine    | 60 (30–150)         | 24 h, duty 0.35, 0.45 12–18         |
+| tv                | 60 (20–200)         | 12–14 0.3, 18–22 1, 22–23 0.4       |
+| lamp              | 10 (3–60)           | 05–06 0.5, 18–22 1, 22–24 0.3       |
+| fan               | 50 (20–100)         | 11–16 0.8, 19–22 0.5                |
+| laptop / computer | 50 / 150 (20–300)   | 08–17 0.6 / 0.8 (+ laptop 19–21)    |
+| phone_charger     | 5 (2–20)            | 12–14 0.3, 18–22 0.5                |
+| radio             | 10 (3–40)           | 06–08, 12–13 0.5, 18–21 0.7         |
+| water_pump        | 750 (200–3000)      | 08–16, full 09–15 (sun-driven)      |
+| rice_mill         | 7500 (3000–15000)   | 08–12 and 14–17, duty 0.6           |
+| sewing_machine    | 100 (50–250)        | 08–12 and 14–17, duty 0.5           |
+| welder            | 3000 (1500–6000)    | 09–12 and 14–16, duty 0.3           |
+| other             | 100 (1–5000)        | 08–18, duty 0.5                     |
+
+## 6b. AI autonomous dispatch (PA, planned behaviour of the detectors and policy)
+
+Types are in `schemas/autonomy.ts` (contracts § AI autonomous dispatch). Detector thresholds the
+policy will use (PA-T1), evaluated on the result of the shown day at hour t:
+
+| Incident             | Severity | Fires when                                                   |
+| -------------------- | -------- | ------------------------------------------------------------ |
+| `fire`               | critical | a `fire` event is active at t                                |
+| `critical_forecast`  | critical | critical unserved > EPS in t+1…t+3 under the active strategy |
+| `overload`           | warning  | total demand > solar + max discharge at t (served < demand)  |
+| `lifeline_shortfall` | warning  | `LIFELINE_SHORTFALL` warning covers t                        |
+| `reserve_low`        | warning  | SoC at t ≤ minSoc + 5 points                                 |
+| `demand_surge`       | warning  | a sector's demand at t > 130 % of its profile                |
+| `meter_anomaly`      | info     | `ANOMALY_TO_VERIFY` covers t (alert only, never a cut)       |
+| `solar_surplus`      | info     | curtailment at t > EPS                                       |
+
+Policy (PA-T2) objective, compared on t…t+6: lower critical unserved, then lower unserved, then
+higher final SoC; constitution violators are dropped; a burning sector is never restored before its
+fire ends; at most 2 actions per hour and no reversal on the same sector within 2 h. Isolating a
+burning sector is exempt from both limits and is never replaced by a better-scoring candidate.
+Restoring a sector after its fire also lifts its isolation cap.
 
 ## 7. Tests (Vitest, `packages/engine/src/__tests__`)
 

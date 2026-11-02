@@ -16,6 +16,10 @@ React re-renders, chart redraws, 3D, or bundle size. Fix those before optimising
 | 3D `high` tier (default, discrete GPU)                | ≥ 30 fps · draw calls < 400 · triangles ≤ 800 k |
 | Copilot first token visible                           | ≤ 2 s after send (activity shown at once)       |
 | Lighthouse performance (desktop)                      | ≥ 90                                            |
+| Shape math per object (`runObjectShape`, no API)      | ≤ 300 ms (`make test-shape`, strict)            |
+| Shape request (`/api/vision/shape`, with Meta)        | ≤ 45 s (60 s server timeout)                    |
+| Shape recipe                                          | ≤ 12 parts · ≤ 5 k triangles                    |
+| Shape score (`scoreRecipe`, critic/replay only)       | outside the math budget, ~100 ms                |
 
 ## 2. Fluid slider → result loop
 
@@ -85,6 +89,11 @@ them after mount (re-targeting races React root unmounts and can leave a label e
 
 - Weather effects add ≤ 2 draw calls (instanced clouds + one rain `LineSegments`) and animate on the GPU (one
   uniform per frame); they keep the frame loop running only while motion is allowed.
+- Object 3D viewer (/village, PR-1.1): studio light = one `RoomEnvironment` pre-filtered once per canvas
+  (PMREM, 256² faces, disposed on unmount) + 2 directional lights; `frameloop="demand"` keeps it idle.
+  Rounded boxes (PR-1.2): 300 triangles each, plain 12-triangle box under 0.005 radius; spheres 18 × 12 (396 triangles, PR-1.3);
+  ≤ 5 k triangles per object. Surface maps (PR-1.4): 128² normal + roughness + shade per used material,
+  generated in JS on first use (~1 ms each) and cached for the session.
 - Charts in a hidden tab are not mounted (Recharts can't measure a `display:none` parent).
 
 ## 6. Loading & navigation

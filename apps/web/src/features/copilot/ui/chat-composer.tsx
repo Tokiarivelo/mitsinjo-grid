@@ -1,12 +1,25 @@
 'use client';
 
-import { useRef } from 'react';
-import { Send, Mic, MicOff, Loader2, Paperclip, Edit3, X, Play, ChevronRight } from 'lucide-react';
+import { useRef, useState } from 'react';
+import {
+  Send,
+  Mic,
+  MicOff,
+  AudioLines,
+  Loader2,
+  Paperclip,
+  Edit3,
+  X,
+  Play,
+  ChevronRight,
+  ScanSearch,
+} from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { ChatComposerState } from '../hooks/use-chat-composer';
 import type { useVoiceInput } from '../hooks/use-voice-input';
+import { VisionDialog } from '@/features/vision-insert';
 import { VoiceSpectrum } from './voice-spectrum';
 
 export interface ChatComposerProps {
@@ -34,6 +47,8 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const t = useTranslations('features.copilot');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  /** Attached image being searched for appliances (PV-T7); null = dialog closed. */
+  const [visionImage, setVisionImage] = useState<string | null>(null);
   const terminal = variant === 'terminal';
   const isListening = voice.status === 'recording';
   const isTranscribing = voice.status === 'transcribing';
@@ -98,6 +113,17 @@ export function ChatComposer({
                   {med.type}
                 </span>
               </div>
+              {med.type === 'image' && (
+                <button
+                  type="button"
+                  onClick={() => setVisionImage(med.url)}
+                  aria-label={t('findAppliances')}
+                  title={t('findAppliances')}
+                  className="min-h-10 min-w-10 flex items-center justify-center rounded-lg text-energy-cyan hover:bg-energy-cyan/10 transition-colors cursor-pointer"
+                >
+                  <ScanSearch className="h-4 w-4" aria-hidden="true" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => composer.removeMedia(med.id)}
@@ -232,6 +258,23 @@ export function ChatComposer({
               )}
             </button>
 
+            <button
+              type="button"
+              onClick={voice.toggleHandsFree}
+              disabled={pending || isListening || isTranscribing}
+              aria-pressed={voice.handsFree}
+              aria-label={t('voice.handsFree')}
+              title={t('voice.handsFree')}
+              className={cn(
+                ICON_BUTTON,
+                voice.handsFree
+                  ? 'bg-energy-cyan/20 border-energy-cyan text-energy-cyan'
+                  : quietButton
+              )}
+            >
+              <AudioLines className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+
             {terminal ? (
               <button
                 type="button"
@@ -262,6 +305,7 @@ export function ChatComposer({
           </div>
         </div>
       </div>
+      <VisionDialog imageUrl={visionImage} onClose={() => setVisionImage(null)} />
     </div>
   );
 }

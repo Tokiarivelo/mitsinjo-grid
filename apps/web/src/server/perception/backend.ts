@@ -1,5 +1,16 @@
+import type { ApplianceCategory } from '@mitsinjo/engine';
+import type { KitArchetype } from '@/lib/object-kit';
+import type { SceneryType } from '@/lib/vision';
 import type { UsageSample } from '@/server/spend';
-import type { SegmentResult, TranscribeOptions, Transcript, VisionResult } from './schemas';
+import type {
+  CriticResult,
+  DetectionResult,
+  SegmentResult,
+  ShapeResult,
+  TranscribeOptions,
+  Transcript,
+  VisionResult,
+} from './schemas';
 
 type WithoutSource<T> = Omit<T, 'source' | 'model' | 'fallback'>;
 
@@ -31,4 +42,70 @@ export interface PerceptionBackend {
     concept: string,
     signal?: AbortSignal
   ): Promise<PerceptionCall<SegmentResult>>;
+  /** Appliances visible on a photo (PV): labels, categories, boxes. One vision call. */
+  detectAppliances(
+    imageUrl: string,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<DetectionResult>>;
+  /** The one object inside an operator-drawn shape (PV-T8): `imageUrl` is the crop, `hint` what they typed. */
+  identifyRegion(
+    imageUrl: string,
+    hint: string | undefined,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<DetectionResult>>;
+  /** 3D recipe of one object (PV-T9): `imageUrl` is the crop around it. One vision call. */
+  describeShape(
+    imageUrl: string,
+    target: ShapeSubject,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<ShapeResult>>;
+  /**
+   * LLM-imagined part list (free recipe): same crop, but the model lists the solid parts itself.
+   * Only for archetypes without a real kit template (`needsFreeParts`); no `kit` in the result.
+   */
+  describeParts(
+    imageUrl: string,
+    target: PartsSubject,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<ShapeResult>>;
+  /**
+   * Visual critic (PR-0.6): `imageUrl` is crop | flat render side by side, `question` carries the
+   * kit + scores. One vision call, partial-kit schema; null patch when the model matches.
+   */
+  criticizeShape(
+    imageUrl: string,
+    question: string,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<CriticResult>>;
+}
+
+/** What `describeShape` is told about the object. */
+export interface ShapeSubject {
+  label: string;
+  category: ApplianceCategory;
+  /** Set for scenery (no load): building, tree, vehicle… */
+  scenery?: SceneryType;
+  /** Width / height of the object on the photo, in pixels (thin pole ≈ 0.1, wide car ≈ 2). */
+  aspect?: number;
+  /**
+   * Validated 2D facade (front elevation, unoccluded): a second image beside the crop. The crop
+   * keeps size, pose and measured colours; the facade refines windows, doors, materials, parts.
+   */
+  facadeUrl?: string;
+}
+
+/** What `describeParts` is told about the object. */
+export interface PartsSubject {
+  label: string;
+  archetype: KitArchetype;
+  /**
+   * Which photo edges cut the object (from `coverageForBox`, e.g. `cut off at the left and
+   * bottom`) — absent when the box shows it whole. The model must imagine the whole object either way.
+   */
+  coverage?: string;
+  /**
+   * Validated 2D facade (front elevation, unoccluded): a second image beside the crop. The crop
+   * keeps size, pose and measured colours; the facade refines windows, doors, materials, parts.
+   */
+  facadeUrl?: string;
 }

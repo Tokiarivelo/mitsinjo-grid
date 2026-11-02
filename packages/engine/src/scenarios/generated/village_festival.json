@@ -1,0 +1,32 @@
+{
+  "id": "village_festival",
+  "title": "Village festival",
+  "description": "Normal sun, big evening spike on all sectors 18:00–24:00 (×1.8).",
+  "base": "baseline",
+  "events": [
+    {
+      "type": "demand_spike",
+      "sector": "all",
+      "startHour": 18,
+      "durationH": 6,
+      "factor": 1.8
+    }
+  ],
+  "battery": {
+    "initialSocPct": 60
+  },
+  "assertions": [
+    {
+      "strategy": "proportional",
+      "metric": "unservedKwh",
+      "op": "eq",
+      "value": 0
+    },
+    {
+      "strategy": "proportional",
+      "metric": "socMinPct",
+      "op": "lt",
+      "value": 40
+    }
+  ]
+}

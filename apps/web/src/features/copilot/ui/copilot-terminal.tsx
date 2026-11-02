@@ -48,6 +48,7 @@ function TerminalView({ onClose, className }: CopilotTerminalProps) {
     newSession,
     approveProposal,
     rejectProposal,
+    proposeFromPerception,
     undoableProposalId,
     undoLastChange,
     retryableId,
@@ -67,7 +68,12 @@ function TerminalView({ onClose, className }: CopilotTerminalProps) {
     sendMessage(prompt, media);
   };
   const composer = useChatComposer({ onSend: send, pending });
-  const voice = useVoiceInput({ locale, sessionId, onText: composer.appendText });
+  const voice = useVoiceInput({
+    locale,
+    sessionId,
+    onText: composer.appendText,
+    onAutoSend: (text) => send(text),
+  });
 
   const last = messages.at(-1);
   const answerStarted = last?.role === 'assistant' && last.content.length > 0;
@@ -183,6 +189,8 @@ function TerminalView({ onClose, className }: CopilotTerminalProps) {
                       : undefined
                   }
                   onMediaClick={setLightbox}
+                  locale={locale}
+                  onProposePerception={proposeFromPerception}
                 />
               )
             )}

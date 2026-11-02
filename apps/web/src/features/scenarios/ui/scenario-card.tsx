@@ -2,7 +2,7 @@
 
 import { ArrowRight, Check } from 'lucide-react';
 import Link from 'next/link';
-import type { ScenarioId, SimulationInput } from '@mitsinjo/engine';
+import { fireEvents, type ScenarioId, type SimulationInput } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { fmtHour, fmtKw, fmtKwh, fmtPct } from '@/lib/format';
 import { buttonVariants } from '@/components/ui/button';
@@ -34,13 +34,20 @@ export function ScenarioCard({
 }: ScenarioCardProps) {
   const tScenarios = useTranslations('features.scenarios');
   const tCommon = useTranslations('common');
+  const tSectors = useTranslations('sectors');
 
   // Extract key deltas
   const solarDrop = input.events.find((e) => e.type === 'solar_drop');
   const demandSpike = input.events.find((e) => e.type === 'demand_spike');
+  const firstFire = fireEvents(input.events)[0];
 
   let deltaLabel = tScenarios('nominalConditions');
-  if (solarDrop && solarDrop.type === 'solar_drop') {
+  if (firstFire) {
+    deltaLabel = tScenarios('deltaFire', {
+      sector: tSectors(firstFire.sector),
+      from: fmtHour(firstFire.startHour),
+    });
+  } else if (solarDrop && solarDrop.type === 'solar_drop') {
     const dropPct = Math.round((1 - solarDrop.factor) * 100);
     deltaLabel = tScenarios('deltaSolarDrop', {
       pct: dropPct,
@@ -59,8 +66,9 @@ export function ScenarioCard({
     deltaLabel = tScenarios('deltaGlobalLoad', { pct: `${multPct >= 0 ? '+' : ''}${multPct}` });
   }
 
-  const typeVariant =
-    id === 'baseline'
+  const typeVariant = firstFire
+    ? 'incident'
+    : id === 'baseline'
       ? 'nominal'
       : id === 'cloudy_afternoon' || id === 'essential_stress'
         ? 'climate'
@@ -92,7 +100,9 @@ export function ScenarioCard({
                     ? 'text-solar-amber bg-solar-amber/10 border-solar-amber/30'
                     : typeVariant === 'storage'
                       ? 'text-energy-cyan bg-energy-cyan/10 border-energy-cyan/30'
-                      : 'text-critical-red bg-critical-red/10 border-critical-red/30'
+                      : typeVariant === 'incident'
+                        ? 'text-critical-red bg-critical-red/15 border-critical-red/50'
+                        : 'text-critical-red bg-critical-red/10 border-critical-red/30'
               )}
             >
               {tScenarios(`types.${typeVariant}`)}

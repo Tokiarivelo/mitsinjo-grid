@@ -1,8 +1,14 @@
-import type { PerceptionBackend, PerceptionCall } from './backend';
+import type { PartsSubject, PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
+import { mockRecipe } from './shape';
 import { boxUnionCoverage } from './parse-sam';
+import { classifyLabel } from './detect';
 import type {
+  ApplianceDetection,
+  CriticResult,
+  DetectionResult,
   Observation,
   SegmentResult,
+  ShapeResult,
   TranscribeOptions,
   Transcript,
   VisionResult,
@@ -32,6 +38,18 @@ const MEETING_TURNS = [
 /** Image observations, picked by a keyword in the question. */
 const MOCK_OBSERVATIONS: Array<{ match: RegExp; summary: string; observations: Observation[] }> = [
   {
+    // First: a blurry photo matches nothing else, whatever the question asks (M4-T5).
+    match: /blurr|flou|manjavozavo/i,
+    summary: 'Mock: image too blurry to read.',
+    observations: [],
+  },
+  {
+    // Before panels: a dust question names the panels too (M8-T2).
+    match: /dust|poussière|poussiere|dirty/i,
+    summary: 'Mock: dust on the panels.',
+    observations: [{ label: 'dusty_panel', value: 25, unit: '%', confidence: 0.5 }],
+  },
+  {
     match: /fire|feu|smoke|fumée|fumee/i,
     summary: 'Mock: smoke visible near a building, to verify.',
     observations: [{ label: 'smoke', value: true, confidence: 0.5 }],
@@ -50,6 +68,53 @@ const MOCK_OBSERVATIONS: Array<{ match: RegExp; summary: string; observations: O
     match: /panel|panneau|ombre|shade/i,
     summary: 'Mock: one panel partly covered by leaves.',
     observations: [{ label: 'shaded_panel', value: 10, unit: '%', confidence: 0.5 }],
+  },
+];
+
+/**
+ * Appliances "seen" on any photo in mock mode (fixture of the bundled sample room, PV-T6).
+ * Image fractions, top-left origin.
+ */
+export const MOCK_DETECTIONS: ApplianceDetection[] = [
+  {
+    id: 'det-1',
+    label: 'Fridge',
+    labels: { fr: 'Réfrigérateur', mg: 'Vata fampangatsiahana' },
+    category: 'fridge',
+    confidence: 0.9,
+    box: { x: 0.06, y: 0.22, w: 0.2, h: 0.66 },
+  },
+  {
+    id: 'det-2',
+    label: 'Television',
+    labels: { fr: 'Télévision', mg: 'Fahitalavitra' },
+    category: 'tv',
+    confidence: 0.85,
+    box: { x: 0.42, y: 0.3, w: 0.26, h: 0.24 },
+  },
+  {
+    id: 'det-3',
+    label: 'Ceiling lamp',
+    labels: { fr: 'Plafonnier', mg: 'Jiro mihantona' },
+    category: 'lamp',
+    confidence: 0.8,
+    box: { x: 0.5, y: 0.02, w: 0.08, h: 0.1 },
+  },
+  {
+    id: 'det-4',
+    label: 'Standing fan',
+    labels: { fr: 'Ventilateur sur pied', mg: 'Fivelezana mijoro' },
+    category: 'fan',
+    confidence: 0.75,
+    box: { x: 0.76, y: 0.38, w: 0.16, h: 0.5 },
+  },
+  {
+    id: 'det-5',
+    label: 'Phone charger',
+    labels: { fr: 'Chargeur de téléphone', mg: 'Fiampangana finday' },
+    category: 'phone_charger',
+    confidence: 0.6,
+    box: { x: 0.44, y: 0.62, w: 0.06, h: 0.06 },
   },
 ];
 
@@ -117,5 +182,61 @@ export class MockPerceptionBackend implements PerceptionBackend {
         ),
       },
     };
+  }
+
+  /** The operator's hint, classified by keywords; no hint → not identified. Box = the whole crop. */
+  async identifyRegion(
+    _imageUrl: string,
+    hint: string | undefined
+  ): Promise<PerceptionCall<DetectionResult>> {
+    const label = hint?.trim().slice(0, 40);
+    if (!label) return { model: MOCK_PERCEPTION_MODEL, usage: {}, result: { detections: [] } };
+    const c = classifyLabel(label);
+    const box = { x: 0, y: 0, w: 1, h: 1 };
+    const detection: ApplianceDetection =
+      c.kind === 'appliance'
+        ? { id: 'region', label, category: c.category, box }
+        : { id: 'region', label, kind: 'scenery', category: 'other', scenery: c.scenery, box };
+    return { model: MOCK_PERCEPTION_MODEL, usage: {}, result: { detections: [detection] } };
+  }
+
+  /** Fixed recipe per category or scenery type (fridge, TV, house, tree…; else a box). */
+  async describeShape(
+    _imageUrl: string,
+    target: ShapeSubject
+  ): Promise<PerceptionCall<ShapeResult>> {
+    return {
+      model: MOCK_PERCEPTION_MODEL,
+      usage: {},
+      result: { recipe: mockRecipe(target.category, target.scenery) },
+    };
+  }
+
+  /** No imagined parts in mock mode (null recipe): the orchestrator keeps the kit recipe. */
+  async describeParts(
+    _imageUrl: string,
+    _target: PartsSubject
+  ): Promise<PerceptionCall<ShapeResult>> {
+    return {
+      model: MOCK_PERCEPTION_MODEL,
+      usage: {},
+      result: { recipe: null },
+    };
+  }
+
+  async detectAppliances(): Promise<PerceptionCall<DetectionResult>> {
+    return {
+      model: MOCK_PERCEPTION_MODEL,
+      usage: {},
+      result: { detections: MOCK_DETECTIONS.map((d) => ({ ...d, box: { ...d.box } })) },
+    };
+  }
+
+  async criticizeShape(
+    _imageUrl: string,
+    _question: string
+  ): Promise<PerceptionCall<CriticResult>> {
+    // The mock never patches: the critic round is a no-op without Meta.
+    return { model: MOCK_PERCEPTION_MODEL, usage: {}, result: { patch: null } };
   }
 }

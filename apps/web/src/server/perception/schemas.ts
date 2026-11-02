@@ -1,4 +1,14 @@
 import { z } from 'zod';
+import { ObjectKitSchema, type ObjectKit } from '@/lib/object-kit';
+import { ObjectRecipeSchema } from '@/lib/object-shape';
+import { ApplianceDetectionSchema } from '@/lib/vision';
+
+export {
+  NormBoxSchema,
+  ApplianceDetectionSchema,
+  type NormBox,
+  type ApplianceDetection,
+} from '@/lib/vision';
 
 /**
  * Perception results: what a model heard or saw. These are observations, never energy values:
@@ -11,6 +21,8 @@ export const PerceptionSourceSchema = z.object({
   source: z.enum(['meta', 'mock']),
   model: z.string(),
   fallback: z.enum(['provider_error', 'spend_cap', 'not_configured']).optional(),
+  /** With `provider_error`: why Meta failed (`timeout`, `aborted`, `http_<status>`, `network`). Logs + UI note. */
+  failure: z.string().max(40).optional(),
 });
 export type PerceptionSource = z.infer<typeof PerceptionSourceSchema>;
 
@@ -68,6 +80,8 @@ export type Box = z.infer<typeof BoxSchema>;
 export const SegmentInstanceSchema = z.object({
   box: BoxSchema,
   confidence: z.number().min(0).max(1).optional(),
+  /** Mask outline: SVG path in image fractions (0–1), simplified. Absent when the mask is missing or unreadable. */
+  outline: z.string().optional(),
 });
 export type SegmentInstance = z.infer<typeof SegmentInstanceSchema>;
 
@@ -81,3 +95,28 @@ export const SegmentResultSchema = PerceptionSourceSchema.extend({
   boxCoverage: z.number().min(0).max(1),
 });
 export type SegmentResult = z.infer<typeof SegmentResultSchema>;
+
+/** Spark's 3D recipe of one object (PV-T9); null when the reply was not usable. */
+export const ShapeResultSchema = PerceptionSourceSchema.extend({
+  recipe: ObjectRecipeSchema.nullable(),
+  /** Spark's kit behind `recipe` (Meta only): the server rebuilds the recipe with measured colours (PF-T2). */
+  kit: ObjectKitSchema.optional(),
+});
+export type ShapeResult = z.infer<typeof ShapeResultSchema>;
+
+/**
+ * The critic's kit patch (PR-0.6): the fields to change, or null when the model already matches
+ * (mock: always null — the mock never patches). Validated field by field in `parseKitPatch`;
+ * the schema only carries the record across the backend boundary.
+ */
+export const CriticResultSchema = PerceptionSourceSchema.extend({
+  patch: z.record(z.string(), z.unknown()).nullable(),
+});
+export type CriticResult = Omit<z.infer<typeof CriticResultSchema>, 'patch'> & {
+  patch: Partial<ObjectKit> | null;
+};
+
+export const DetectionResultSchema = PerceptionSourceSchema.extend({
+  detections: z.array(ApplianceDetectionSchema),
+});
+export type DetectionResult = z.infer<typeof DetectionResultSchema>;

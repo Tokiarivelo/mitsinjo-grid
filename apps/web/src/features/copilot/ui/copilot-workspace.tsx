@@ -1,7 +1,20 @@
 'use client';
 
 import { useMemo, useState, useRef } from 'react';
-import { Sparkles, Bot, AlertTriangle, X, History, Plus, Trash2 } from 'lucide-react';
+import {
+  Sparkles,
+  AlertTriangle,
+  X,
+  History,
+  Plus,
+  Trash2,
+  Zap,
+  ShieldAlert,
+  Users,
+  Camera,
+  MessageSquare,
+  Cpu,
+} from 'lucide-react';
 import { useAppLocale, useTranslations } from '@/lib/i18n';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
@@ -13,12 +26,16 @@ import { ChatComposer } from './chat-composer';
 import { ModelPicker } from './model-picker';
 import { useVoiceInput } from '../hooks/use-voice-input';
 import { useSimulationStore } from '@/stores/simulation.store';
-import { useActiveFires } from '@/features/fire-alert';
+import { ReportFireControl, detectVoiceFireOrder, useActiveFires } from '@/features/fire-alert';
+import type { SectorId } from '@mitsinjo/engine';
+import { STRATEGIES, scenarios } from '@mitsinjo/engine';
+import { fmtKw, fmtKwh } from '@/lib/format';
 import type { ChatMediaItem } from '../types';
 import { ChatMessageItem } from './chat-message-item';
 import { ToolActivity } from './tool-activity';
 import { SuggestedPrompts } from './suggested-prompts';
 import { ContextPanel } from './context-panel';
+import { MeetingPanel } from './meeting-panel';
 import { MediaLightboxModal, type ActiveMedia } from './media-lightbox-modal';
 import { CanvasSketchDialog } from './canvas-sketch-dialog';
 
@@ -40,11 +57,17 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
   const tCopilot = useTranslations('features.copilot');
   const tCommon = useTranslations('common');
 
+  const scenarioId = useSimulationStore((s) => s.scenarioId);
   const activeStrategy = useSimulationStore((s) => s.activeStrategy);
   const result = useSimulationStore((s) => s.results[s.activeStrategy]);
+  const input = useSimulationStore((s) => s.input);
   // Fires burning now steer the suggested questions (« Ask the copilot » on the fire banner lands here).
   const fires = useActiveFires();
   const fireSectors = useMemo(() => fires.map((f) => f.sector), [fires]);
+  const scenarioTitle = scenarios[scenarioId]?.title || scenarioId;
+  const strategyInfo = STRATEGIES[activeStrategy];
+
+  const [mobileTab, setMobileTab] = useState<'chat' | 'telemetry' | 'meeting'>('chat');
 
   const {
     sessionId,
@@ -63,6 +86,7 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
     sendMessage,
     approveProposal,
     rejectProposal,
+    proposeFromPerception,
     undoableProposalId,
     undoLastChange,
     retryableId,
@@ -84,7 +108,22 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
     sendMessage(prompt, media);
   };
   const composer = useChatComposer({ onSend: send, pending });
-  const voice = useVoiceInput({ locale, sessionId, onText: composer.appendText });
+  // Voice urgency order (M3-T3): the text goes to the field and the fire dialog opens pre-filled.
+  const [firePreset, setFirePreset] = useState<{ sector: SectorId; nonce: number } | null>(null);
+  // Smoke on a photo (M8-T3): the dialog opens, the operator picks the sector — never automatic.
+  const [fireVision, setFireVision] = useState<number | null>(null);
+  const reportKey = `${firePreset ? `preset-${firePreset.nonce}` : 'idle'}-v${fireVision ?? 0}`;
+  const handleVoiceText = (text: string) => {
+    composer.appendText(text);
+    const sector = detectVoiceFireOrder(text);
+    if (sector) setFirePreset((prev) => ({ sector, nonce: (prev?.nonce ?? 0) + 1 }));
+  };
+  const voice = useVoiceInput({
+    locale,
+    sessionId,
+    onText: handleVoiceText,
+    onAutoSend: (text) => send(text),
+  });
 
   const isFull = mode === 'full';
 
@@ -93,23 +132,29 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
     <div className={cn('flex-1 flex flex-col min-h-0', isFull && 'xl:h-full', className)}>
       {/* Header Area (Full Mode) */}
       {isFull ? (
-        <div className="px-4 sm:px-6 lg:px-8 py-3.5 sm:py-5 border-b border-border/70 bg-surface/80 backdrop-blur-md sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+        <div className="px-4 sm:px-6 lg:px-8 py-3 sm:py-4 border-b border-border/70 bg-surface/85 backdrop-blur-md sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-ai-violet/10 border border-ai-violet/30 text-ai-violet">
+            <div className="relative p-2.5 rounded-xl bg-ai-violet/10 border border-ai-violet/30 text-ai-violet shadow-xs">
               <Sparkles className="h-5 w-5" aria-hidden="true" />
+              <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ai-violet opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-ai-violet" />
+              </span>
             </div>
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-xl font-display font-semibold text-text-primary tracking-tight">
+                <h1 className="text-base sm:text-lg font-display font-bold text-text-primary tracking-tight">
                   {tCopilot('title')}
                 </h1>
                 <StatusBadge variant="ai" label={tCopilot('badge')} size="sm" />
               </div>
-              <p className="text-xs text-text-secondary mt-0.5">{tCopilot('subtitle')}</p>
+              <p className="text-xs text-text-secondary mt-0.5 hidden sm:block">
+                {tCopilot('subtitle')}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {/* Session Management Buttons */}
             <div className="flex items-center gap-1.5">
               <Button
@@ -117,10 +162,11 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
                 size="sm"
                 onClick={newSession}
                 icon={<Plus className="h-3 w-3" />}
-                className="h-7 text-[11px] px-2.5"
+                className="h-8 text-xs px-2.5 font-medium cursor-pointer"
                 title={tCopilot('newSession')}
               >
-                {tCopilot('newSession')}
+                <span className="hidden sm:inline">{tCopilot('newSession')}</span>
+                <span className="sm:hidden">New</span>
               </Button>
               <button
                 type="button"
@@ -128,7 +174,7 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
                 aria-label={tCopilot('chatSessions')}
                 title={tCopilot('chatSessions')}
                 className={cn(
-                  'p-1.5 rounded-md border text-xs transition-colors cursor-pointer flex items-center gap-1 font-mono text-[11px]',
+                  'h-8 px-2.5 rounded-lg border text-xs transition-colors cursor-pointer flex items-center gap-1.5 font-mono text-[11px]',
                   showSessionsDrawer
                     ? 'bg-ai-violet/20 border-ai-violet text-ai-violet'
                     : 'bg-surface-elevated border-border text-text-secondary hover:text-text-primary'
@@ -143,6 +189,15 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
               models={availableModels}
               value={selectedModel}
               onChange={setSelectedModel}
+            />
+
+            {/* Report a fire from the chat too (M2-T2 reste, M2-T4). */}
+            <ReportFireControl
+              variant="hud"
+              align="right"
+              key={reportKey}
+              defaultOpenSector={firePreset?.sector}
+              defaultOpen={fireVision !== null}
             />
 
             <StatusBadge variant="simulated" label={tCommon('simulatedData')} size="sm" />
@@ -166,6 +221,15 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
               value={selectedModel}
               onChange={setSelectedModel}
               size="sm"
+            />
+
+            {/* Report a fire from the chat too (M2-T2 reste, M2-T4). */}
+            <ReportFireControl
+              variant="hud"
+              align="right"
+              key={reportKey}
+              defaultOpenSector={firePreset?.sector}
+              defaultOpen={fireVision !== null}
             />
 
             <StatusBadge variant="simulated" label={tCommon('simulatedData')} size="sm" />
@@ -242,17 +306,72 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
         </div>
       )}
 
+      {/* Mobile / Tablet Segmented Tab Bar (< xl) */}
+      {isFull && (
+        <div className="xl:hidden px-3 pt-3 max-w-[1720px] w-full mx-auto">
+          <div className="flex gap-1 p-1 bg-surface-elevated/80 border border-border/80 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setMobileTab('chat')}
+              className={cn(
+                'flex-1 min-h-11 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg text-xs font-medium transition-all cursor-pointer',
+                mobileTab === 'chat'
+                  ? 'bg-surface text-text-primary shadow-xs font-semibold'
+                  : 'text-text-muted hover:text-text-primary'
+              )}
+            >
+              <MessageSquare className="h-4 w-4 text-ai-violet" aria-hidden="true" />
+              <span>{tCopilot('tabChat')}</span>
+              {messages.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-ai-violet/15 text-ai-violet">
+                  {messages.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab('telemetry')}
+              className={cn(
+                'flex-1 min-h-11 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg text-xs font-medium transition-all cursor-pointer',
+                mobileTab === 'telemetry'
+                  ? 'bg-surface text-text-primary shadow-xs font-semibold'
+                  : 'text-text-muted hover:text-text-primary'
+              )}
+            >
+              <Cpu className="h-4 w-4 text-energy-cyan" aria-hidden="true" />
+              <span>{tCopilot('tabTelemetry')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab('meeting')}
+              className={cn(
+                'flex-1 min-h-11 inline-flex items-center justify-center gap-1.5 px-3 rounded-lg text-xs font-medium transition-all cursor-pointer',
+                mobileTab === 'meeting'
+                  ? 'bg-surface text-text-primary shadow-xs font-semibold'
+                  : 'text-text-muted hover:text-text-primary'
+              )}
+            >
+              <Users className="h-4 w-4 text-ai-violet" aria-hidden="true" />
+              <span>{tCopilot('tabMeeting')}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Two-Column Operational Deck */}
       <div
         className={cn(
-          'flex-1 flex gap-6 p-3 sm:p-4 lg:p-6 min-h-0',
+          'flex-1 flex gap-4 lg:gap-6 p-3 sm:p-4 lg:p-6 min-h-0',
           isFull ? 'flex-col xl:flex-row max-w-[1720px] w-full mx-auto' : 'flex-col'
         )}
       >
         {/* Left / Conversation Canvas */}
         <section
           aria-label={tCopilot('chatRegionAria')}
-          className="@container flex-1 flex flex-col gap-4 min-w-0 min-h-0"
+          className={cn(
+            '@container flex-1 flex flex-col gap-3 min-w-0 min-h-0',
+            mobileTab !== 'chat' && 'hidden xl:flex'
+          )}
         >
           {/* Tool Activity Status Bar if executing */}
           {toolActivity && <ToolActivity activity={toolActivity} />}
@@ -270,22 +389,132 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
             )}
           >
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full py-12 text-center max-w-lg mx-auto">
-                <div className="w-12 h-12 rounded-2xl bg-ai-violet/15 border border-ai-violet/40 flex items-center justify-center text-ai-violet mb-4 shadow-lg shadow-ai-violet/20">
-                  <Bot className="h-6 w-6" aria-hidden="true" />
+              <div className="flex flex-col items-center justify-center h-full py-8 sm:py-12 text-center max-w-2xl mx-auto px-2">
+                {/* Hero Glow Icon */}
+                <div className="relative mb-4">
+                  <div className="w-14 h-14 rounded-2xl bg-ai-violet/10 border border-ai-violet/30 flex items-center justify-center text-ai-violet shadow-lg shadow-ai-violet/15">
+                    <Sparkles className="h-7 w-7" aria-hidden="true" />
+                  </div>
+                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ai-violet opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-ai-violet" />
+                  </span>
                 </div>
-                <h2 className="font-display text-base font-semibold text-text-primary">
+
+                <h2 className="font-display text-lg sm:text-2xl font-bold text-text-primary tracking-tight">
                   {tCopilot('emptyGreeting')}
                 </h2>
-                <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                <p className="text-xs sm:text-sm text-text-secondary mt-2 leading-relaxed max-w-lg">
                   {tCopilot('emptyDescription')}
                 </p>
+
+                {/* Live Microgrid State Pill */}
+                <div className="w-full max-w-lg mt-5 p-3 rounded-xl border border-border/70 bg-surface/70 backdrop-blur-xs flex flex-wrap items-center justify-around gap-2 text-xs font-mono">
+                  <div className="flex items-center gap-1.5 text-text-secondary">
+                    <span className="w-2 h-2 rounded-full bg-energy-cyan animate-pulse" />
+                    <span className="text-[10px] text-text-muted uppercase">Scenario:</span>
+                    <span className="font-semibold text-text-primary">{scenarioTitle}</span>
+                  </div>
+                  <div className="h-3 w-px bg-border/80 hidden sm:block" />
+                  <div className="flex items-center gap-1.5 text-text-secondary">
+                    <span className="text-[10px] text-text-muted uppercase">Strategy:</span>
+                    <span className="font-semibold text-energy-cyan">
+                      {strategyInfo?.label || activeStrategy}
+                    </span>
+                  </div>
+                  <div className="h-3 w-px bg-border/80 hidden sm:block" />
+                  <div className="flex items-center gap-2 text-text-muted text-[11px]">
+                    <span>{fmtKw(input.solar.peakKw)} PV</span>
+                    <span>•</span>
+                    <span>{fmtKwh(input.battery.capacityKwh)} BESS</span>
+                  </div>
+                </div>
+
+                {/* 4 Autonomous Capabilities Cards */}
+                <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-6 text-left">
+                  <button
+                    type="button"
+                    onClick={() => send(tCopilot('promptCompareStrategies'))}
+                    className="p-3.5 rounded-xl border border-border/70 bg-surface hover:border-ai-violet/50 hover:bg-surface-elevated transition-all cursor-pointer group shadow-xs text-left"
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="p-1 rounded-md bg-solar-amber/10 text-solar-amber">
+                        <Zap className="h-4 w-4" aria-hidden="true" />
+                      </div>
+                      <span className="text-xs font-semibold text-text-primary group-hover:text-ai-violet transition-colors">
+                        {tCopilot('capStrategyTitle')}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-text-secondary leading-relaxed">
+                      {tCopilot('capStrategyDesc')}
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => send(tCopilot('promptProtectEssential'))}
+                    className="p-3.5 rounded-xl border border-border/70 bg-surface hover:border-ai-violet/50 hover:bg-surface-elevated transition-all cursor-pointer group shadow-xs text-left"
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="p-1 rounded-md bg-secondary/10 text-secondary">
+                        <ShieldAlert className="h-4 w-4" aria-hidden="true" />
+                      </div>
+                      <span className="text-xs font-semibold text-text-primary group-hover:text-ai-violet transition-colors">
+                        {tCopilot('capLifelineTitle')}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-text-secondary leading-relaxed">
+                      {tCopilot('capLifelineDesc')}
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== 'undefined' && window.innerWidth < 1280) {
+                        setMobileTab('meeting');
+                      }
+                    }}
+                    className="p-3.5 rounded-xl border border-border/70 bg-surface hover:border-ai-violet/50 hover:bg-surface-elevated transition-all cursor-pointer group shadow-xs text-left"
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="p-1 rounded-md bg-ai-violet/10 text-ai-violet">
+                        <Users className="h-4 w-4" aria-hidden="true" />
+                      </div>
+                      <span className="text-xs font-semibold text-text-primary group-hover:text-ai-violet transition-colors">
+                        {tCopilot('capMeetingTitle')}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-text-secondary leading-relaxed">
+                      {tCopilot('capMeetingDesc')}
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsSketchOpen(true)}
+                    className="p-3.5 rounded-xl border border-border/70 bg-surface hover:border-ai-violet/50 hover:bg-surface-elevated transition-all cursor-pointer group shadow-xs text-left"
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="p-1 rounded-md bg-energy-cyan/10 text-energy-cyan">
+                        <Camera className="h-4 w-4" aria-hidden="true" />
+                      </div>
+                      <span className="text-xs font-semibold text-text-primary group-hover:text-ai-violet transition-colors">
+                        {tCopilot('capPerceptionTitle')}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-text-secondary leading-relaxed">
+                      {tCopilot('capPerceptionDesc')}
+                    </p>
+                  </button>
+                </div>
 
                 <div className="w-full mt-6">
                   <SuggestedPrompts
                     onSelectPrompt={(p) => send(p)}
                     disabled={pending}
                     result={result}
+                    input={input}
                     activeStrategy={activeStrategy}
                     fires={fireSectors}
                   />
@@ -307,6 +536,9 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
                       : undefined
                   }
                   onMediaClick={(media) => setActiveLightboxMedia(media)}
+                  locale={locale}
+                  onProposePerception={proposeFromPerception}
+                  onReportFire={() => setFireVision((n) => (n ?? 0) + 1)}
                 />
               ))
             )}
@@ -340,6 +572,7 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
               variant="compact"
               onSelectPrompt={(p) => send(p)}
               result={result}
+              input={input}
               activeStrategy={activeStrategy}
               fires={fireSectors}
             />
@@ -354,7 +587,22 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
         </section>
 
         {/* Right / Context Column (Full view only) */}
-        {isFull && <ContextPanel />}
+        {isFull && (
+          <div
+            className={cn(
+              'w-full xl:w-[380px] flex flex-col gap-4 shrink-0 xl:overflow-y-auto xl:min-h-0',
+              mobileTab === 'chat' && 'hidden xl:flex'
+            )}
+          >
+            {/* Village meeting: record → diarize → priorities → proposed patch (M10-T4) */}
+            <div className={cn(mobileTab === 'telemetry' && 'hidden xl:block')}>
+              <MeetingPanel />
+            </div>
+            <div className={cn(mobileTab === 'meeting' && 'hidden xl:block')}>
+              <ContextPanel className="w-full" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Media Lightbox Fullscreen Modal */}

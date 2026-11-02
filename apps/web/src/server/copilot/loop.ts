@@ -3,6 +3,7 @@ import 'server-only';
 import { simulate, type SimulationInput, type StrategyId } from '@mitsinjo/engine';
 import { type LlmProvider, type ChatMessage, type LlmImageResult } from './provider';
 import { MockLlmProvider } from './providers/mock';
+import { GlimmerLlmProvider, isGlimmerConfigured } from './providers/glimmer';
 import { TOOL_DEFINITIONS, executeTool, type ToolContext } from './tools';
 import { appHourNote, RETRY_NOTE, getSystemPrompt } from './prompt';
 import { detectAdaptiveRoute, pickChatModel } from './adaptive-router';
@@ -11,6 +12,7 @@ import { describeVillageScene } from './village-scene';
 import { getPerceptionClient, type PerceptionClient } from '@/server/perception';
 import { spendGuard as sharedSpendGuard, estimateTokens, type SpendGuard } from '@/server/spend';
 import { compactHistory } from './history';
+import { isTransientProviderError } from './providers/transient';
 import { planCompaction, summarizeTurns, summaryNote } from './compaction';
 import { COPILOT_HISTORY_LIMIT } from '@/features/copilot/utils/history';
 
@@ -22,6 +24,8 @@ export type SseEventName =
   | 'error'
   | 'done'
   | 'image'
+  | 'media'
+  | 'council'
   | 'video'
   | 'chart'
   | 'model'
@@ -40,6 +44,8 @@ export interface CopilotLoopOptions {
   input: SimulationInput;
   strategy?: StrategyId;
   provider?: LlmProvider;
+  /** Injectable local step (tests); default builds Glimmer when `GLIMMER_BASE_URL` is set. */
+  localProvider?: LlmProvider;
   emit: SseEmitter;
   signal?: AbortSignal;
   locale?: 'en' | 'fr' | 'mg';
@@ -50,7 +56,7 @@ export interface CopilotLoopOptions {
   /** Injectable for tests; defaults to the process-wide guard. */
   spendGuard?: SpendGuard;
   /** Injectable for tests; defaults to `getPerceptionClient(budgetKey)`. */
-  perception?: Pick<PerceptionClient, 'segmentImage'>;
+  perception?: Pick<PerceptionClient, 'segmentImage' | 'analyzeImage'>;
   /** Hour shown in the app (timeline / scale model): "now" for caps (K2) and the village image. Default 12. */
   hour?: number;
   /** Chat budget in ms (tests only); default 40 s. */
@@ -75,11 +81,7 @@ const WONDER_EXTRA_MS = 30_000;
 /** Engine tools + model-switch tools (image, segmentation, deep reasoning). */
 const ALL_TOOL_DEFINITIONS = [...TOOL_DEFINITIONS, ...MODEL_TOOL_DEFINITIONS];
 
-/** Errors worth one retry before falling back: rate limit, server error, network failure. */
-export function isTransientProviderError(err: unknown): boolean {
-  if (!(err instanceof Error) || err.name === 'AbortError') return false;
-  return err.name === 'TypeError' || /\((429|5\d\d)\)/.test(err.message);
-}
+export { isTransientProviderError };
 
 function getToolActivityLabel(name: string, args: Record<string, unknown>): string {
   switch (name) {
@@ -91,6 +93,8 @@ function getToolActivityLabel(name: string, args: Record<string, unknown>): stri
       return 'Running comparison';
     case 'get_sector_metrics':
       return `Reviewing ${args.sector ?? ''} sector telemetry`;
+    case 'get_incidents':
+      return 'Checking fire incidents';
     case 'propose_change':
       return 'Formulating scenario proposal';
     case 'control_playback':
@@ -120,9 +124,13 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
   // Offline copilot answers in the app language (not guessed from the question).
   const offline = () => new MockLlmProvider({ locale: options.locale });
   let activeProvider = options.provider || offline();
+  // Fallback chain (M11-T1): cloud → local Glimmer → deterministic mock. Glimmer is free, so
+  // it never bills and the spend cap never gates it; only the mock step warns the operator.
+  const local = options.localProvider ?? (isGlimmerConfigured() ? new GlimmerLlmProvider() : null);
+  const isFree = (p: LlmProvider) => p.name === 'mock' || p.name === 'glimmer';
 
   // Paid provider over its session budget → deterministic mock for the whole turn.
-  const capReached = () => activeProvider.name !== 'mock' && !spendGuard.canSpend(budgetKey);
+  const capReached = () => !isFree(activeProvider) && !spendGuard.canSpend(budgetKey);
   const switchToMockForCap = () => {
     console.warn(`[copilot:loop] Spend cap reached for "${budgetKey}", using MockLlmProvider.`);
     emit('error', { code: 'PROVIDER_FALLBACK', reason: 'spend_cap', message: SPEND_CAP_MESSAGE });
@@ -246,6 +254,7 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
     const toolCtx: ToolContext = {
       input,
       activeStrategy: strategy,
+      hour,
     };
 
     // Auto-compaction: history over the token limit → fold older turns into the summary.
@@ -257,7 +266,7 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
         if (capReached()) throw new Error('spend cap reached');
         const provider = activeProvider;
         summary = await outsideBudget((sig) => summarizeTurns(provider, summary, plan.fold, sig));
-        if (provider.name !== 'mock') {
+        if (!isFree(provider)) {
           spendGuard.record(budgetKey, chatModel, {
             inputTokens: estimateTokens(JSON.stringify(plan.fold)),
             outputTokens: estimateTokens(summary),
@@ -342,7 +351,7 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
             timeoutController.signal
           );
         }
-        if (activeProvider.name !== 'mock') {
+        if (!isFree(activeProvider)) {
           // No usage from the API → estimate from text length (prompt + answer).
           const billed = activeProvider as LlmProvider & { getModel?: () => string };
           spendGuard.record(
@@ -355,8 +364,28 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
           );
         }
       } catch (err) {
-        // Fall back to MockLlmProvider on provider failure/timeout
-        if (activeProvider.name !== 'mock') {
+        // Cloud → local Glimmer → mock; only the mock step warns the operator. A spent chat
+        // budget does not block Glimmer (local and fast): it follows the caller's signal.
+        if (activeProvider.name !== 'mock' && activeProvider.name !== 'glimmer' && local) {
+          console.warn(
+            `[copilot:loop] Provider "${activeProvider.name}" failed: ${err instanceof Error ? err.message : err}. Trying local Glimmer.`
+          );
+          try {
+            turn = await local.chat(
+              chatHistory,
+              ALL_TOOL_DEFINITIONS,
+              timeoutController.signal.aborted ? signal : timeoutController.signal
+            );
+            activeProvider = local;
+          } catch (localErr) {
+            console.warn('[copilot:loop] Local Glimmer failed, falling back to mock:', localErr);
+          }
+        }
+        if (!turn) {
+          if (activeProvider.name === 'mock') {
+            console.error('[copilot:loop] Mock provider failed:', err);
+            throw err;
+          }
           console.warn(
             `[copilot:loop] Provider "${activeProvider.name}" failed: ${err instanceof Error ? err.message : err}. Falling back to MockLlmProvider.`
           );
@@ -369,9 +398,6 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
           activeProvider = offline();
           // The chat budget may be spent: the offline copilot only follows the caller's signal.
           turn = await activeProvider.chat(chatHistory, ALL_TOOL_DEFINITIONS, signal);
-        } else {
-          console.error('[copilot:loop] Mock provider failed:', err);
-          throw err;
         }
       }
 
@@ -404,6 +430,7 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
                 perception,
                 attachedImage,
                 villageScene: () => describeVillageScene(input, simulate(input, strategy), hour),
+                councilState: () => ({ input, strategy }),
                 locale,
                 availableModels,
                 currentModel: chatModel,

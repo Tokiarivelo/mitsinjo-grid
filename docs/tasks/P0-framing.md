@@ -10,7 +10,7 @@
 - [x] **P0-T3** Confirm default parameters and scenarios in `engine-spec.md` §5–6 (keep or edit).
       **Done when:** "PROPOSALS" label removed. (Confirmed 2026-10-26)
 - [x] **P0-T4** Decide UI language: Multi-language with `next-intl` (EN default for judges + FR & MG toggles in UI). (Resolved 2026-10-26)
-- [ ] **P0-T5** Write the 8 demo questions / steps (draft of `docs/demo-script.md`).
+- [x] **P0-T5** Write the 8 demo questions / steps (draft of `docs/demo-script.md`). Superseded by the enriched M6-T1 script (same file).
 
 **Exit criteria:** Meta access known (works / blocked → mock-only plan); parameters frozen.
 **If Meta access blocked:** continue with `LLM_PROVIDER=mock`; P6 still builds the full loop.

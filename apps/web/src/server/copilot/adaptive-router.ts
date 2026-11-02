@@ -26,6 +26,8 @@ export function pickChatModel(availableModels: string[] = []): string {
   return (
     availableModels.find((m) => m === DEFAULT_CHAT_MODEL) ||
     availableModels.find((m) => m.startsWith('muse-spark-') && !m.endsWith('-contributor')) ||
+    // Local Glimmer primary (M11-T1): keep the operator's local id, never Spark's.
+    availableModels.find((m) => m.includes('glimmer')) ||
     DEFAULT_CHAT_MODEL
   );
 }

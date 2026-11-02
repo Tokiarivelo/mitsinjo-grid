@@ -16,6 +16,10 @@ Toutes les idées ci-dessous respectent les règles non négociables du projet :
 2. **Aucune action sans validation humaine** : l'IA appelle `propose_change`, l'opérateur confirme
    (`ConfirmProposalDialog`). Même pour la maquette physique : l'IA ne commande jamais un disjoncteur directement,
    elle propose → l'opérateur valide → le moteur recalcule → le bridge applique.
+   **Exceptions** : la coupure incendie (sécurité) et le **mode Dispatch IA autonome** (PA, validé le 2026-11-02),
+   que l'opérateur active lui-même. Dans ce mode, l'action choisie par le moteur s'applique seule et est journalisée ;
+   restent obligatoires : la constitution du village, jamais de remise sous tension d'un secteur en feu, « Reprendre
+   la main » en un tap, chaque action annulable. Voir `docs/tasks/PA-ai-dispatch.md`.
 3. **Tout contenu IA est visuellement distinct** (texte, image, voix) et étiqueté `SIMULATED DATA` / « Généré par IA ».
 4. **Pas de chiffres dans les images générées** : les chiffres sont superposés en HTML depuis le moteur
    (les modèles d'image peuvent mal écrire un nombre).

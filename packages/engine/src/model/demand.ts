@@ -19,16 +19,20 @@ export interface DemandStepResult {
   sectorList: SectorDemandStep[];
 }
 
+/** Appliance load per sector, kW per hour (see `sectorApplianceKw`). Missing sector = none. */
+export type SectorApplianceKw = Partial<Record<SectorId, readonly number[]>>;
+
 /**
  * Expected (profile-based) demand of one sector at hour t:
- * profileKw[t] × sector loadMultiplier (default 1) × demandMultiplier × active demand_spike
- * factors. Ignores meterReadings.
+ * (profileKw[t] × sector loadMultiplier (default 1) + appliance kW[t] if connected)
+ * × demandMultiplier × active demand_spike factors. Ignores meterReadings.
  */
 export function computeProfileDemandKw(
   sector: SectorConfig,
   demandMultiplier: number,
   events: readonly ScenarioEvent[],
-  t: number
+  t: number,
+  applianceKw: SectorApplianceKw = {}
 ): number {
   let spikeMultiplier = 1;
   for (const event of events) {
@@ -42,14 +46,20 @@ export function computeProfileDemandKw(
     }
   }
   const load = sector.loadMultiplier ?? 1;
-  return Math.max(0, (sector.profileKw[t] ?? 0) * load * demandMultiplier * spikeMultiplier);
+  // Appliances are plugged on the sector feeder: a disconnected sector (load 0) carries none.
+  const extraKw = load > 0 ? (applianceKw[sector.id]?.[t] ?? 0) : 0;
+  return Math.max(
+    0,
+    ((sector.profileKw[t] ?? 0) * load + extraKw) * demandMultiplier * spikeMultiplier
+  );
 }
 
 export function computeDemandStep(
   sectors: readonly SectorConfig[],
   demandMultiplier: number,
   events: readonly ScenarioEvent[],
-  t: number
+  t: number,
+  applianceKw: SectorApplianceKw = {}
 ): DemandStepResult {
   const sectorsRecord = {} as Record<SectorId, SectorDemandStep>;
   const sectorList: SectorDemandStep[] = [];
@@ -57,7 +67,7 @@ export function computeDemandStep(
   let totalCriticalDemandKw = 0;
 
   for (const s of sectors) {
-    const profileDemandKw = computeProfileDemandKw(s, demandMultiplier, events, t);
+    const profileDemandKw = computeProfileDemandKw(s, demandMultiplier, events, t, applianceKw);
     const hasMeterOverride = s.meterReadings !== undefined && s.meterReadings[t] !== undefined;
     const demandKw = hasMeterOverride ? Math.max(0, s.meterReadings![t] ?? 0) : profileDemandKw;
     const criticalDemandKw = demandKw * s.criticalShare;

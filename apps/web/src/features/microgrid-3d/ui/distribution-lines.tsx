@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import type { FeederSceneModel, LineFlowSceneModel } from '../types';
 import type { SectorId } from '@mitsinjo/engine';
 import { POLE_HEIGHT, mapPolesToSectors, routeCable } from '../utils/cable-route';
-import { STREET_LAMP_HEX, glowFromIntensity } from '../utils/scene-palette';
+import { STREET_LAMP_HEX, TOKEN_HEX, glowFromIntensity } from '../utils/scene-palette';
 import { ElectronFlow } from './electron-flow';
 
 export interface DistributionLinesProps {
@@ -44,10 +44,20 @@ function TransmissionCable({ line, halo }: SingleLineProps) {
     [line.color]
   );
 
+  // Red break mark at the cable midpoint when the sector is isolated by fire (M2-T3).
+  const cutMid = line.cut ? points[Math.floor(points.length / 2)] : undefined;
+
   return (
     <group>
       {/* Physical utility cable, always visible (a cut line stays dark). */}
       <Line points={points} color="#2a2f36" lineWidth={1.4} />
+
+      {cutMid && (
+        <mesh position={cutMid} name="cut-mark">
+          <octahedronGeometry args={[0.32, 0]} />
+          <meshBasicMaterial color={TOKEN_HEX.criticalRed} toneMapped={false} />
+        </mesh>
+      )}
 
       {line.active && (
         <>

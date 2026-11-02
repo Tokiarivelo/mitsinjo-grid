@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeFires,
+  applyPatch,
   effectiveSectorCaps,
   scenarios,
   simulate,
+  InputPatchSchema,
   ScenarioEventSchema,
   STRATEGIES,
   type ScenarioId,
@@ -117,5 +119,52 @@ describe('fire event (M2-T1, F1)', () => {
       toHour: 12,
     });
     expect(effectiveSectorCaps(scenarios.baseline.input)).toBe(scenarios.baseline.input.sectorCaps);
+  });
+
+  describe('clearFires restore (M2-T4)', () => {
+    it('schema: accepts sectors, rejects an empty list and unknown sectors', () => {
+      expect(InputPatchSchema.safeParse({ clearFires: ['school'] }).success).toBe(true);
+      expect(InputPatchSchema.safeParse({ clearFires: [] }).success).toBe(false);
+      expect(InputPatchSchema.safeParse({ clearFires: ['spaceport'] }).success).toBe(false);
+    });
+
+    it('removes only the listed sectors’ fires, keeps other events, never mutates', () => {
+      const base: SimulationInput = {
+        ...scenarios.cloudy_afternoon.input,
+        events: [
+          ...scenarios.cloudy_afternoon.input.events,
+          { type: 'fire', sector: 'school', startHour: 14, durationH: 4 },
+          { type: 'fire', sector: 'market', startHour: 10, durationH: 2 },
+        ],
+      };
+      const restored = applyPatch(base, { clearFires: ['school'] });
+      expect(restored.events.filter((e) => e.type === 'fire').map((e) => e.sector)).toEqual([
+        'market',
+      ]);
+      expect(restored.events.some((e) => e.type === 'solar_drop')).toBe(true);
+      expect(restored.scenarioId).toBe('custom');
+      expect(base.events.filter((e) => e.type === 'fire')).toHaveLength(2);
+    });
+
+    it.each(SCENARIO_IDS)('scenario %s: cleared sector served again, 0 violations', (id) => {
+      const base = scenarios[id].input;
+      const burning = withFire(base, 'school', 14);
+      const restored = applyPatch(burning, { clearFires: ['school'] });
+      for (const strategy of STRATEGY_IDS) {
+        const result = simulate(restored, strategy);
+        expect(result.metrics.violations).toBe(0);
+        expect(
+          result.warnings.some((w) => w.code === 'FIRE_ISOLATION' && w.sector === 'school')
+        ).toBe(false);
+        const burnt = simulate(burning, strategy);
+        expect(result.metrics.perSector.school?.servedKwh ?? 0).toBeGreaterThanOrEqual(
+          burnt.metrics.perSector.school?.servedKwh ?? 0
+        );
+      }
+      // Same numbers as if the fire had never happened.
+      const plain = simulate(base, 'proportional');
+      const cleared = simulate(restored, 'proportional');
+      expect(cleared.metrics.servedKwh).toBeCloseTo(plain.metrics.servedKwh, 9);
+    });
   });
 });

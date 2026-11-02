@@ -37,15 +37,17 @@ mitsinjo-grid/
     ├── bridge/                         # local-only Node service for the physical scale model (PH):
     │                                   #   MQTT (embedded aedes broker) ⇄ engine ⇄ WebSocket :8787; never deployed
     └── web/                            # Next.js 15 App Router
-        ├── e2e/                        # Playwright: demo-path.spec.ts
+        ├── e2e/                        # Playwright: demo-path.spec.ts, copilot-flows.spec.ts (M6-T2)
         └── src/
             ├── app/
             │   ├── layout.tsx  globals.css (@theme tokens)  page.tsx → redirect /overview
             │   ├── (lab)/layout.tsx    # AppShell
-            │   ├── (lab)/{overview,simulation,strategies,scenarios,copilot}/page.tsx
+            │   ├── (lab)/{overview,simulation,strategies,scenarios,copilot,village}/page.tsx
             │   ├── design/page.tsx     # UI kit catalog (renders features/design-system)
             │   ├── api/copilot/route.ts
-            │   └── api/voice/route.ts  # chat microphone → transcribe (Meta Voice / mock)
+            │   ├── api/voice/route.ts  # chat microphone → transcribe (Meta Voice / mock)
+            │   ├── api/vision/route.ts # photo → appliances (Muse boxes, SAM outlines / mock), SSE
+            │   └── api/vision/shape/route.ts # selected object → 3D recipe (Spark) or silhouette fallback, JSON
             ├── features/
             │   ├── overview/           # ui/ hooks/ utils/ __tests__/ index.ts
             │   ├── simulation/         # controls, run/reset, timeline
@@ -54,11 +56,13 @@ mitsinjo-grid/
             │   ├── scenarios/          # cards, assumptions, export summary
             │   ├── copilot/            # chat UI, useCopilot, proposal dialog
             │   ├── hardware-link/      # scale-model bridge link (WebSocket hook + panel), local only
+            │   ├── vision-insert/      # /village editor + chat dialog: photo → appliance detection (PV), calls /api/vision
             │   └── design-system/      # /design UI kit catalog
             ├── components/{ui,layout,charts}/
             ├── stores/simulation.store.ts   # single source of UI state
             ├── server/copilot/         # server-only: provider, tools, prompts, loop, adaptive model router
             ├── server/perception/      # server-only: voice / vision / SAM clients (Meta + deterministic mock)
+            ├── server/media/           # server-only: engine result → image prompts + overlays (M5-T1, pure)
             ├── server/spend/           # server-only: estimated Meta spend per session, cap → mock
             ├── server/storage/         # server-only: R2 media (uploads, generated images), re-signed on session reopen
             ├── messages/{en,fr,mg}.json     # i18n copy (key parity enforced)
@@ -96,16 +100,17 @@ Scale model (local, `docs/maquette-physique.md`):
 
 ## 4. Ownership boundaries
 
-| Layer               | May                                       | May not                                   |
-| ------------------- | ----------------------------------------- | ----------------------------------------- |
-| `packages/engine`   | compute all numbers, validate input       | import React/Next, fetch, read env        |
-| `stores/`           | hold input, status, results, selection    | compute energy values                     |
-| `features/*/ui`     | render props                              | call engine or store directly (use hooks) |
-| `features/*/hooks`  | read store, call engine via store actions | fetch LLM except `copilot/hooks`          |
-| `server/copilot`    | call LLM + engine, validate tool args     | be imported by client code                |
-| `server/perception` | report what a model heard / saw           | compute energy values, apply changes      |
-| 3D scene            | map result fields → visuals               | derive or interpolate energy values       |
-| `apps/bridge`       | place frames on the sim clock, I/O        | compute energy values (calls the engine)  |
+| Layer               | May                                       | May not                                                                                      |
+| ------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `packages/engine`   | compute all numbers, validate input       | import React/Next, fetch, read env                                                           |
+| `stores/`           | hold input, status, results, selection    | compute energy values                                                                        |
+| `features/*/ui`     | render props                              | call engine or store directly (use hooks)                                                    |
+| `features/*/hooks`  | read store, call engine via store actions | fetch LLM except `copilot/hooks`, `vision-insert/hooks` (`/api/vision`, `/api/vision/shape`) |
+| `server/copilot`    | call LLM + engine, validate tool args     | be imported by client code                                                                   |
+| `server/perception` | report what a model heard / saw           | compute energy values, apply changes                                                         |
+| `server/media`      | turn engine results into prompts/overlays | put numbers in prompts, call the LLM                                                         |
+| 3D scene            | map result fields → visuals               | derive or interpolate energy values                                                          |
+| `apps/bridge`       | place frames on the sim clock, I/O        | compute energy values (calls the engine)                                                     |
 
 ## 5. Store shape (summary; types in contracts.md)
 

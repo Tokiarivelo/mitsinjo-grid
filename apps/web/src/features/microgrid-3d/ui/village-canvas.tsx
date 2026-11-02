@@ -1,13 +1,20 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
 import { SECTOR_IDS, type Priority, type SectorId } from '@mitsinjo/engine';
 import { useTranslations } from '@/lib/i18n';
 import { fmtKw } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { BatteryStatusColor, CameraPreset, SceneModel } from '../types';
+import type {
+  ApplianceMarkerSceneModel,
+  BatteryStatusColor,
+  CameraPreset,
+  SceneModel,
+} from '../types';
+import { useMarkerDrag } from '../hooks/use-marker-drag';
+import { useMoveMarker } from '../hooks/use-move-marker';
 import { useReducedMotion } from '../hooks/use-reduced-motion';
 import { usePerfFlag } from '../hooks/use-perf-flag';
 import { useInView } from '../hooks/use-in-view';
@@ -25,6 +32,7 @@ import { SolarArray } from './solar-array';
 import { BatteryUnit } from './battery-unit';
 import { DispatchControllerUnit } from './dispatch-controller-unit';
 import { FeederTags } from './feeder-tags';
+import { ApplianceMarkers, MarkerDragGhost } from './appliance-markers';
 import { DistributionLines } from './distribution-lines';
 import { VillageBuildings } from './buildings';
 import { CameraController } from './camera-controller';
@@ -39,6 +47,40 @@ import { BakedContactShadows, ResumeOnVisible, ShadowBake } from './render-contr
 import { VillageScenePlaceholder } from './scene-placeholder';
 
 export const SUNSET_HDRI_URL = '/3d/sunset_512.hdr';
+
+/**
+ * Marker select + drag (PP-T5). Lives inside the Canvas: `useMarkerDrag` needs the R3F context
+ * for the camera and orbit controls. Every page that shows the village (/village, /simulation,
+ * the overview preview) shares this wiring and the same input store.
+ */
+function DraggableApplianceMarkers({
+  markers,
+  selectedSector,
+  tagOf,
+  htmlPortal,
+}: {
+  markers: ApplianceMarkerSceneModel[];
+  selectedSector: SectorId | null;
+  tagOf: (m: ApplianceMarkerSceneModel) => string;
+  htmlPortal?: RefObject<HTMLElement | null>;
+}) {
+  const moveMarker = useMoveMarker();
+  const { selectedId, dragId, ghostRef, bindMarker } = useMarkerDrag({ onCommit: moveMarker });
+  return (
+    <>
+      <ApplianceMarkers
+        markers={markers}
+        selectedSector={selectedSector}
+        tagOf={tagOf}
+        htmlPortal={htmlPortal}
+        selectedId={selectedId}
+        dragId={dragId}
+        bindMarker={bindMarker}
+      />
+      <MarkerDragGhost ghostRef={ghostRef} visible={dragId !== null} />
+    </>
+  );
+}
 
 const KEY_LIGHT_DISTANCE = 70;
 
@@ -283,6 +325,14 @@ export function VillageCanvas({
           animate={animate}
           lampGlow={palette.lampGlow}
           halo={high}
+        />
+        <DraggableApplianceMarkers
+          markers={model.appliances}
+          selectedSector={selectedSector}
+          tagOf={(m) =>
+            tSim('applianceTag', { name: m.name, quantity: m.quantity, watts: m.watts })
+          }
+          htmlPortal={htmlPortal}
         />
         <VillageBuildings
           buildings={model.buildings}

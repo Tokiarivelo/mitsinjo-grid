@@ -1,0 +1,74 @@
+[
+  {
+    "id": "syn-1",
+    "prompt": "What happens if solar drops 40 % for 2 hours?",
+    "expectTool": "run_scenario",
+    "expectEvidence": true
+  },
+  {
+    "id": "syn-2",
+    "prompt": "Compare the strategies.",
+    "expectTool": "compare_strategies",
+    "expectEvidence": true
+  },
+  {
+    "id": "syn-3",
+    "prompt": "Why does the clinic get less energy?",
+    "expectTool": "get_sector_metrics",
+    "expectEvidence": true
+  },
+  {
+    "id": "syn-4",
+    "prompt": "What is the current state of the grid?",
+    "expectTool": "get_grid_state",
+    "expectEvidence": true
+  },
+  {
+    "id": "syn-5",
+    "prompt": "Cut the market tonight from 18:00 to 22:00.",
+    "expectTool": "propose_change",
+    "expectEvidence": true
+  },
+  {
+    "id": "syn-6",
+    "prompt": "What happens if solar drops 50 % for 3 hours this afternoon?",
+    "expectTool": "run_scenario",
+    "expectEvidence": true
+  },
+  {
+    "id": "syn-7",
+    "prompt": "Why does the water pump get less energy in the evening?",
+    "expectTool": "get_sector_metrics",
+    "expectEvidence": true
+  },
+  {
+    "id": "syn-8",
+    "prompt": "Compare the strategies for the clinic.",
+    "expectTool": "compare_strategies",
+    "expectEvidence": true
+  },
+  {
+    "id": "syn-9",
+    "prompt": "Plan the week with rain on Tuesday and market day Thursday.",
+    "expectTool": "simulate_week",
+    "expectEvidence": true
+  },
+  {
+    "id": "syn-10",
+    "prompt": "Why was the battery empty at 3am?",
+    "expectTool": "get_battery_story",
+    "expectEvidence": true
+  },
+  {
+    "id": "syn-11",
+    "prompt": "Was there an incident at the market today?",
+    "expectTool": "get_incidents",
+    "expectEvidence": false
+  },
+  {
+    "id": "syn-12",
+    "prompt": "Limit the factory to 2 kW during the day.",
+    "expectTool": "propose_change",
+    "expectEvidence": true
+  }
+]

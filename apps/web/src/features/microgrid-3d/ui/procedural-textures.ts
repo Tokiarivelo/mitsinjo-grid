@@ -4,9 +4,22 @@ import * as THREE from 'three';
 
 /**
  * Tiny canvas textures generated once on the client (no image downloads):
- * corrugated metal, PV cell grid, striped market canvas. Cached per key.
+ * corrugated metal, PV cell grid, striped market canvas, laterite grain, paddy field.
+ * Cached per key. Speckle uses a seeded PRNG so screenshots stay deterministic.
  */
 const cache = new Map<string, THREE.Texture>();
+
+/** Deterministic PRNG (mulberry32): same seed → same texture, every run. */
+export function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 function make(
   key: string,
@@ -68,6 +81,77 @@ export function stripeTexture(a: string, b: string): THREE.Texture {
     for (let i = 0; i < 4; i++) {
       g.fillStyle = i % 2 === 0 ? a : b;
       g.fillRect(i * 8, 0, 8, 4);
+    }
+  });
+}
+
+/**
+ * Laterite grain (M12-T1): near-white detail map that multiplies the vertex-colored ground —
+ * the palette survives, the soil gets pebbles and dry flecks. Look target: generated laterite.
+ */
+export function redEarthTexture(): THREE.Texture {
+  return make('red-earth', 128, 128, (g) => {
+    const rand = mulberry32(0x1a71e);
+    g.fillStyle = '#f5efe7';
+    g.fillRect(0, 0, 128, 128);
+    const dots: [string, number][] = [
+      ['#d9c2ac', 520],
+      ['#c39a7c', 220],
+      ['#8a5a3a', 40],
+      ['#ffffff', 120],
+    ];
+    for (const [color, n] of dots) {
+      g.fillStyle = color;
+      for (let i = 0; i < n; i++) {
+        g.fillRect(Math.floor(rand() * 128), Math.floor(rand() * 128), 1, 1);
+      }
+    }
+    // Dry grass flecks: short pale strokes.
+    g.strokeStyle = '#e3d3ae';
+    g.lineWidth = 1;
+    for (let i = 0; i < 60; i++) {
+      const x = rand() * 128;
+      const y = rand() * 128;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x + (rand() - 0.5) * 5, y + (rand() - 0.5) * 5);
+      g.stroke();
+    }
+  });
+}
+
+/**
+ * Rice paddy (M12-T1): one 4×4-bund parcel that tiles seamlessly (bunds on the grid lines).
+ * Look target: generated flooded paddy — muddy water, earth bunds, seedling dots.
+ */
+export function paddyTexture(): THREE.Texture {
+  return make('paddy', 128, 128, (g) => {
+    const rand = mulberry32(0x9a11ce);
+    g.fillStyle = '#77855f';
+    g.fillRect(0, 0, 128, 128);
+    // Water glints.
+    g.fillStyle = '#cfd8c4';
+    for (let i = 0; i < 40; i++) {
+      g.fillRect(Math.floor(rand() * 128), Math.floor(rand() * 128), 1, 1);
+    }
+    // Seedling dots, 3×3 per cell with jitter (never on the bunds).
+    g.fillStyle = '#3f7a2e';
+    for (let cx = 0; cx < 4; cx++) {
+      for (let cy = 0; cy < 4; cy++) {
+        for (let ix = 0; ix < 3; ix++) {
+          for (let iy = 0; iy < 3; iy++) {
+            const x = cx * 32 + 7 + ix * 8 + Math.floor((rand() - 0.5) * 3);
+            const y = cy * 32 + 7 + iy * 8 + Math.floor((rand() - 0.5) * 3);
+            g.fillRect(x, y, 2, 2);
+          }
+        }
+      }
+    }
+    // Earth bunds on the grid lines (tile edges included → seamless).
+    g.fillStyle = '#8a6f4d';
+    for (let k = 0; k < 4; k++) {
+      g.fillRect(k * 32, 0, 3, 128);
+      g.fillRect(0, k * 32, 128, 3);
     }
   });
 }

@@ -19,6 +19,8 @@ Use with components.md (EmptyState, StatusBadge). Sim status: ready | modified |
 | chart empty            | No data to chart yet                                    | Run the simulation to see `<chart name>`.                                                        | Run simulation       |
 | strategy compare empty | No comparison yet                                       | Run all strategies on the same scenario to compare them.                                         | Compare strategies   |
 | scenario not run       | Not run yet                                             | -                                                                                                | Open scenario        |
+| vision empty           | No appliance found on this photo.                       | Try a closer, well-lit photo.                                                                    | -                    |
+| vision error           | Appliance detection failed.                             | -                                                                                                | Try again            |
 
 ## Header status labels
 

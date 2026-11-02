@@ -1,0 +1,59 @@
+import { describe, expect, it } from 'vitest';
+import { buildFacadePrompt, generateFacadeImage } from '../facade-specialist';
+import type { ShapeTarget } from '@/lib/object-shape';
+
+describe('facade-specialist', () => {
+  describe('buildFacadePrompt', () => {
+    it('builds an orthographic architectural prompt for a house', () => {
+      const prompt = buildFacadePrompt('house', 'rural clinic cottage');
+      expect(prompt).toContain('Architectural orthographic front elevation');
+      expect(prompt).toContain('rural clinic cottage');
+      expect(prompt).toContain('0 degree perspective tilt');
+      expect(prompt).toContain('solid clean neutral background');
+    });
+
+    it('builds an orthographic prompt for a vehicle', () => {
+      const prompt = buildFacadePrompt('vehicle', 'solar maintenance van');
+      expect(prompt).toContain('Direct front orthographic elevation');
+      expect(prompt).toContain('solar maintenance van');
+      expect(prompt).toContain('symmetrical headlights');
+    });
+
+    it('incorporates additional user prompt details', () => {
+      const prompt = buildFacadePrompt(
+        'house',
+        'health center',
+        'red corrugated roof, double wooden doors'
+      );
+      expect(prompt).toContain('health center');
+      expect(prompt).toContain(
+        'Additional required architectural features: red corrugated roof, double wooden doors.'
+      );
+    });
+  });
+
+  describe('generateFacadeImage', () => {
+    const target: ShapeTarget = {
+      id: 'target-1',
+      label: 'cottage',
+      category: 'other',
+      scenery: 'building',
+      box: { x: 0.1, y: 0.2, w: 0.4, h: 0.5 },
+    };
+
+    it('generates a synthetic 2D facade image in mock mode and returns consultable data', async () => {
+      const result = await generateFacadeImage({
+        target,
+        userPrompt: 'wooden shutters',
+      });
+
+      expect(result.fileKey).toContain('vision/facades/target-1_');
+      expect(result.fileKey).toMatch(/\.png$/);
+      expect(result.imageUrl).toBeDefined();
+      expect(result.archetype).toBe('house');
+      expect(result.prompt).toContain('cottage');
+      expect(result.prompt).toContain('wooden shutters');
+      expect(result.source).toBe('mock');
+    });
+  });
+});

@@ -25,6 +25,7 @@ import { toSvgPath } from '../utils/flow-path';
 import { STATUS_BG_CLASS, STATUS_TEXT_CLASS } from '../utils/scene-palette';
 import { NO_LOAD_KW } from '../utils/feeder-tone';
 import { useFeederLabels } from '../hooks/use-feeder-labels';
+import { appliancesPerSector } from '../utils/appliance-markers';
 import { FlowWire, type WireState } from './flow-wire';
 import { DispatchShareBar, FeederChip, type DispatchSegment } from './dispatch-share-bar';
 
@@ -74,6 +75,7 @@ export function GridDiagram({
   useEffect(() => reset(), [variant, reset]);
   const feeders = useFeederLabels(model);
   const { lines, solar, battery, buildings } = model;
+  const applianceCounts = useMemo(() => appliancesPerSector(model.appliances), [model.appliances]);
   const feederOn = lines.batteryToBus.active;
 
   const batteryState = !model.hasResult
@@ -300,6 +302,11 @@ export function GridDiagram({
                   modeLabel={t(`feederMode.${buildings[id].mode}`)}
                   noLoadLabel={t('status.noLoad')}
                   fireLabel={t('onFire')}
+                  applianceLabel={
+                    applianceCounts[id] > 0
+                      ? t('applianceCount', { count: applianceCounts[id] })
+                      : undefined
+                  }
                   selected={selectedSector === id}
                   onSelect={onSelectSector}
                 />
@@ -432,6 +439,7 @@ function SectorCard({
   modeLabel,
   noLoadLabel,
   fireLabel,
+  applianceLabel,
   selected,
   onSelect,
 }: {
@@ -444,6 +452,8 @@ function SectorCard({
   noLoadLabel: string;
   /** Badge + status line of a burning sector (F1). */
   fireLabel: string;
+  /** « n added » when appliances from the village editor feed this sector (PV-T13). */
+  applianceLabel?: string;
   selected: boolean;
   onSelect?: (sector: SectorId | null) => void;
 }) {
@@ -520,6 +530,7 @@ function SectorCard({
           {fmtKw(hasResult ? building.servedKw : null)}
         </span>
         {hasResult && <span className="text-text-muted"> / {fmtKw(building.demandKw)}</span>}
+        {applianceLabel && <span className="text-energy-cyan"> · {applianceLabel}</span>}
       </span>
       <span
         className={cn('flex min-w-0 items-center gap-[0.5cqw]', STATUS_TEXT_CLASS[statusColor])}

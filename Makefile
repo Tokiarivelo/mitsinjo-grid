@@ -7,6 +7,7 @@ PNPM   ?= pnpm
 WEB    := web
 ENGINE := @mitsinjo/engine
 PORT   ?= $(shell node apps/web/scripts/port.mjs)
+COUNT  ?= 12
 URL    ?= http://localhost:$(PORT)
 ROUTES := overview simulation strategies scenarios copilot
 SHOTS  := design/shots
@@ -80,6 +81,32 @@ test-bridge: ## Run scale-model bridge tests only
 test-web: ## Run web unit tests only
 	$(need_ws)
 	$(PNPM) --filter $(WEB) test
+
+test-shape: ## Run the 3D shape golden set (5 photos, IoU / colour / gables / 300 ms budget)
+	$(need_ws)
+	SHAPE_BUDGET_STRICT=1 $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/golden-shape.test.ts
+
+shape-shots: ## Real 3D viewer shots of the shape-report recipes, dark + light (dev server must run; stubbed API)
+	$(need_ws)
+	@$(PNPM) --filter $(WEB) exec node scripts/object-viewer-shot.mjs $(URL) $(CURDIR)/test-results/shape-report
+
+shape-capture: ## Capture one live 3D run → offline fixtures (PHOTO=… ID=…, PR-0.4)
+	$(need_ws)
+	@test -n "$(PHOTO)" -a -n "$(ID)" || { echo "Usage: make shape-capture PHOTO=path/to/photo.jpg ID=car1"; exit 1; }
+	eval "$$(make -s env-export)" && SHAPE_CAPTURE=1 SHAPE_CAPTURE_PHOTO="$(abspath $(PHOTO))" SHAPE_CAPTURE_ID="$(ID)" SHAPE_CAPTURE_DIR="$(CURDIR)/apps/web/src/server/perception/__fixtures__/shape/real" $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/shape-capture.test.ts -t "make shape-capture"
+
+eval-shape: ## Kit eval on live Spark over the real captures (MODEL=…, PR-3.1, on demand, costs API calls)
+	$(need_ws)
+	eval "$$(make -s env-export)" && EVAL_SHAPE=1 EVAL_SHAPE_DIR="$(CURDIR)/apps/web/src/server/perception/__fixtures__/shape/real" $(if $(MODEL),META_VISION_MODEL="$(MODEL)") $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/eval-shape.test.ts -t "make eval-shape"
+
+facade-e2e: ## Facade → 3D house end to end on live Meta (FRONT=elevation.png OUT=dir [PROMPT=…], costs API calls)
+	$(need_ws)
+	@test -n "$(FRONT)" -a -n "$(OUT)" || { echo "Usage: make facade-e2e FRONT=path/front.png OUT=dir [PROMPT='cottage with a red tin roof' to draw FRONT first]"; exit 1; }
+	eval "$$(make -s env-export)" && FACADE_E2E_FRONT="$(abspath $(FRONT))" FACADE_E2E_OUT="$(abspath $(OUT))" $(if $(PROMPT),FACADE_E2E_FRONT_PROMPT="$(PROMPT)") $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/facade-e2e.test.ts
+
+shape-report: ## 3D shape report: scores + contact sheet → test-results/shape-report/ (/shape-loop)
+	$(need_ws)
+	SHAPE_REPORT=1 SHAPE_REPORT_DIR=$(CURDIR)/test-results/shape-report $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/shape-report.test.ts -t "make shape-report"
 
 test-watch: ## Run engine tests in watch mode
 	$(need_ws)
@@ -175,6 +202,26 @@ status: ## Show current phase/next task from HANDOFF.md
 todo: ## List unchecked tasks across all phases
 	@grep -n -- '- \[ \]' docs/tasks/P*.md | sed 's/:- \[ \] / /' | cut -c1-140
 
+gen-scenarios: ## Regenerate engine scenarios from deterministic templates (M12-T2, no key)
+	$(need_ws)
+	$(PNPM) --filter $(ENGINE) exec jiti scripts/gen-scenarios.ts
+
+gen-scenarios-live: ## Regenerate engine scenarios with Spark 1.2 (M12-T2, needs META_API_KEY)
+	$(need_ws)
+	$(PNPM) --filter $(ENGINE) exec jiti scripts/gen-scenarios.ts --live
+
+gen-evals: ## Regenerate synthetic copilot evals from templates (M12-T2, no key)
+	$(need_ws)
+	$(PNPM) --filter $(WEB) exec jiti scripts/gen-evals.ts
+
+gen-evals-live: ## Regenerate N synthetic evals with Contributor (M12-T2, needs META_API_KEY; COUNT=12)
+	$(need_ws)
+	$(PNPM) --filter $(WEB) exec jiti scripts/gen-evals.ts --live --count $(COUNT)
+
+db-migrate: ## Apply pending Neon migrations now (the app also does it on its first DB call)
+	$(need_ws)
+	$(PNPM) --filter $(WEB) exec jiti scripts/db-migrate.ts
+
 ##@ Deploy
 # Only `main` is deployed: pushes to main auto-deploy (Vercel Git integration); other branches are skipped.
 deploy-link: ## Link this clone to the Vercel project (once per machine)
@@ -190,5 +237,5 @@ clean: ## Remove build/test output (keeps node_modules)
 clean-all: clean ## Also remove node_modules
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
 
-.PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-watch coverage e2e \
+.PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-shape shape-capture facade-e2e shape-report shape-shots test-watch coverage e2e \
         typecheck lint bridge bridge-sim test-bridge format format-check format-changed git-hooks check ci shots mockups analyze scene-audit scene-audit-gpu lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all

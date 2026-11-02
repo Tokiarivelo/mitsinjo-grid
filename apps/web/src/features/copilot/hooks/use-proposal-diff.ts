@@ -1,15 +1,17 @@
 import {
   DEFAULT_DROP_DURATION_H,
   DEFAULT_DROP_START_HOUR,
+  fireEvents,
   getSolarDrop,
   resolveLifelineKw,
+  type Appliance,
   type SectorId,
 } from '@mitsinjo/engine';
 import { useTranslations } from '@/lib/i18n';
 import { useSimulationStore } from '@/stores';
 import { fmtKw } from '@/lib/format';
 import type { CopilotProposal, ProposalDiffItem } from '../types';
-import { proposalPartIds } from '../utils/proposal-parts';
+import { proposalPartIds, sameAppliance } from '../utils/proposal-parts';
 
 /**
  * Settings a proposal changes, each as "current → proposed", translated.
@@ -150,7 +152,46 @@ export function useProposalDiff(proposal: CopilotProposal): ProposalDiffItem[] {
       proposed: fmtLoad(mult),
     });
   }
+  for (const sector of patch?.clearFires ?? []) {
+    const fire = fireEvents(input.events).find((f) => f.sector === sector);
+    items.push({
+      label: `${tSectors(sector)} ${t('diffFireRestore')}`,
+      current: fire
+        ? t('fireCutRange', { from: fire.startHour, to: fire.startHour + fire.durationH })
+        : t('noValue'),
+      proposed: t('fireRestored'),
+    });
+  }
 
-  const ids = proposalPartIds(proposal);
+  // Appliance lines last, patch order then removals (mirrored in proposalPartIds).
+  const currentAppliances = input.appliances ?? [];
+  if (patch?.appliances !== undefined) {
+    const value = (a: Appliance) =>
+      t('diffApplianceValue', {
+        feeder: tSectors(a.sector),
+        watts: a.watts,
+        quantity: a.quantity,
+        position: a.position ? ` · (${a.position.x}, ${a.position.z})` : '',
+      });
+    const curById = new Map(currentAppliances.map((a) => [a.id, a]));
+    const patchIds = new Set<string>();
+    for (const a of patch.appliances) {
+      patchIds.add(a.id);
+      const cur = curById.get(a.id);
+      if (cur && sameAppliance(cur, a)) continue;
+      items.push({
+        label: a.name,
+        current: cur ? value(cur) : t('noValue'),
+        proposed: value(a),
+      });
+    }
+    for (const c of currentAppliances) {
+      if (!patchIds.has(c.id)) {
+        items.push({ label: c.name, current: value(c), proposed: t('diffRemoved') });
+      }
+    }
+  }
+
+  const ids = proposalPartIds(proposal, currentAppliances);
   return items.map((item, i) => ({ ...item, id: ids[i] }));
 }

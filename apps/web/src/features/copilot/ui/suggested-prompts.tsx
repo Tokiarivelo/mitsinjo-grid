@@ -2,10 +2,11 @@
 
 import { useMemo } from 'react';
 import { Sparkles, ArrowUpRight, Flame } from 'lucide-react';
-import type { SectorId, SimulationResult, StrategyId } from '@mitsinjo/engine';
+import type { SectorId, SimulationInput, SimulationResult, StrategyId } from '@mitsinjo/engine';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { suggestPrompts } from '../utils/suggest-prompts';
+import { RunSimulationCta } from './run-simulation-cta';
 
 export interface SuggestedPromptsProps {
   onSelectPrompt: (prompt: string) => void;
@@ -14,6 +15,8 @@ export interface SuggestedPromptsProps {
   result?: SimulationResult | null;
   activeStrategy?: StrategyId;
   scenarioId?: string;
+  /** Input of the run: its fires and events give scenario-specific questions. */
+  input?: Pick<SimulationInput, 'events'>;
   /** Sectors on fire at the shown hour: their questions come first (M2). */
   fires?: readonly SectorId[];
   /** `compact`: one horizontally scrollable line (under a running chat). */
@@ -27,6 +30,7 @@ export function SuggestedPrompts({
   result,
   activeStrategy,
   scenarioId,
+  input,
   fires,
   variant = 'full',
 }: SuggestedPromptsProps) {
@@ -35,8 +39,8 @@ export function SuggestedPrompts({
   const tStrategies = useTranslations('strategies');
 
   const promptItems = useMemo(
-    () => suggestPrompts({ result, activeStrategy, scenarioId, fires }),
-    [result, activeStrategy, scenarioId, fires]
+    () => suggestPrompts({ result, activeStrategy, scenarioId, input, fires }),
+    [result, activeStrategy, scenarioId, input, fires]
   );
   const incident = promptItems.some((p) => p.tone === 'incident');
   const header = incident
@@ -44,6 +48,11 @@ export function SuggestedPrompts({
     : tCopilot('suggestedPromptsHeader');
 
   const compact = variant === 'compact';
+
+  // No simulation yet: the questions come from its result, so ask for a run first.
+  if (promptItems.length === 0) {
+    return compact ? null : <RunSimulationCta className={cn('mt-2', className)} />;
+  }
 
   return (
     <div

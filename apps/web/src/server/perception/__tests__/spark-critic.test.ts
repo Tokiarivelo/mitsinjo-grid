@@ -1,0 +1,194 @@
+// @vitest-environment node
+import sharp from 'sharp';
+import { describe, expect, it, vi } from 'vitest';
+vi.mock('server-only', () => ({}));
+import { kitToRecipe } from '@/lib/object-kit';
+import type { ShapeTarget } from '@/lib/object-shape';
+import { GOLDEN_SHAPES, goldenBox, goldenOutline, goldenSvg, PHOTO } from '../__fixtures__/shape';
+import type { RgbGrid } from '../model-score';
+import { runObjectShape } from '../object-shape';
+import { scoreRecipe } from '../score-shape';
+import { CRITIC_WIDTH, criticImage, requestPatch, shapeWithCritic } from '../spark-critic';
+
+const car = () => kitToRecipe(GOLDEN_SHAPES.find((c) => c.name === 'car')!.prior);
+
+describe('spark critic image + patch (PR-0.6)', () => {
+  it('lays the crop left and the flat render right at critic width', async () => {
+    const crop: RgbGrid = { cols: 64, rows: 48, rgb: new Uint8ClampedArray(64 * 48 * 3).fill(200) };
+    const url = await criticImage(crop, car(), 4 / 3);
+    expect(url.startsWith('data:image/png;base64,')).toBe(true);
+    const meta = await sharp(Buffer.from(url.split(',')[1]!, 'base64')).metadata();
+    // Height follows the aspect (256 / (4/3) = 192); width = scaled crop + 256.
+    expect(meta.height).toBe(192);
+    expect(meta.width).toBe(256 + CRITIC_WIDTH);
+  });
+
+  it('passes the patch through, swallows failures', async () => {
+    const kit = GOLDEN_SHAPES.find((c) => c.name === 'car')!.prior;
+    const score = { iou: 0.7, edgeF1: 0.5, deltaE: 9, score: 62 };
+    const patch = { subtype: 'sedan' };
+    const ok = { criticizeShape: vi.fn().mockResolvedValue({ patch }) };
+    await expect(requestPatch(ok, 'data:img', kit, score)).resolves.toEqual(patch);
+    expect(ok.criticizeShape.mock.calls[0]![1]).toContain('62/100');
+    const bad = { criticizeShape: vi.fn().mockRejectedValue(new Error('boom')) };
+    await expect(requestPatch(bad, 'data:img', kit, score)).resolves.toBeNull();
+  });
+});
+
+describe('live critic round (PR-0.6)', () => {
+  const fridge = GOLDEN_SHAPES.find((c) => c.name === 'fridge')!;
+  const lampPrior = GOLDEN_SHAPES.find((c) => c.name === 'lamp post')!.prior;
+
+  async function fridgePhoto() {
+    const buffer = await sharp(Buffer.from(goldenSvg(fridge)))
+      .jpeg({ quality: 85 })
+      .toBuffer();
+    return { buffer, ...PHOTO };
+  }
+
+  function fridgeTarget(): ShapeTarget {
+    return {
+      id: 'fridge',
+      label: 'fridge',
+      category: 'other',
+      box: goldenBox(fridge),
+      outline: goldenOutline(fridge),
+    };
+  }
+
+  const sparkFor = (prior: typeof fridge.prior, critic: unknown) => ({
+    describeShape: vi.fn().mockResolvedValue({
+      recipe: kitToRecipe(prior),
+      kit: prior,
+      source: 'meta',
+      model: 'muse-spark-1.3',
+    }),
+    describeParts: vi.fn().mockResolvedValue({ recipe: null }),
+    criticizeShape: vi.fn().mockResolvedValue(critic),
+  });
+
+  it('skips the round when the score holds', async () => {
+    const photo = await fridgePhoto();
+    const spark = sparkFor(fridge.prior, { patch: { subtype: 'x' } });
+    const shape = await shapeWithCritic(spark, photo, 'data:full', fridgeTarget());
+    expect(shape.mode).toBe('recipe');
+    expect(spark.criticizeShape).not.toHaveBeenCalled();
+    expect(spark.describeShape).toHaveBeenCalledTimes(1);
+  }, 60_000);
+
+  it('a fixing patch re-fits and is kept', async () => {
+    const photo = await fridgePhoto();
+    // Wrong kit on purpose (lamp over a fridge, score 47): the critic fires.
+    const spark = sparkFor(lampPrior, { patch: { archetype: 'cabinet' } });
+    const shape = await shapeWithCritic(spark, photo, 'data:full', fridgeTarget());
+    expect(shape.mode).toBe('recipe');
+    expect(spark.criticizeShape).toHaveBeenCalledTimes(1);
+    expect(spark.describeShape).toHaveBeenCalledTimes(1);
+    // Kept: the retry (cabinet kit) replaced the lamp recipe.
+    expect(shape.kit?.archetype).toBe('cabinet');
+    expect(shape.recipe).not.toEqual(
+      (
+        await runObjectShape(
+          { describeShape: spark.describeShape, describeParts: spark.describeParts },
+          photo,
+          'data:full',
+          fridgeTarget()
+        )
+      ).recipe
+    );
+  }, 60_000);
+
+  it('the paid-for round completes even when the patch arrives past the budget', async () => {
+    const photo = await fridgePhoto();
+    const realNow = Date.now.bind(Date);
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => realNow());
+    try {
+      // Wrong kit on purpose (lamp over a fridge, score 47): the critic fires.
+      const spark = sparkFor(lampPrior, { patch: { archetype: 'cabinet' } });
+      // Live: 60 s budget, the patch came back 146 ms over; the clock jump simulates it.
+      spark.criticizeShape.mockImplementationOnce(async () => {
+        clock.mockImplementation(() => realNow() + 120_000);
+        return { patch: { archetype: 'cabinet' } };
+      });
+      const shape = await shapeWithCritic(spark, photo, 'data:full', fridgeTarget());
+      expect(shape.mode).toBe('recipe');
+      // Before: the retry crashed on AbortSignal.timeout(negative) ("shape failed") and the
+      // patch was lost; the stub-kit retry carries no LLM call, so it always runs.
+      expect(shape.kit?.archetype).toBe('cabinet');
+    } finally {
+      clock.mockRestore();
+    }
+  }, 60_000);
+
+  it('a useless patch is dropped, the original stands', async () => {
+    const photo = await fridgePhoto();
+    const spark = sparkFor(lampPrior, { patch: { subtype: 'tall' } });
+    const shape = await shapeWithCritic(spark, photo, 'data:full', fridgeTarget());
+    expect(shape.mode).toBe('recipe');
+    expect(spark.criticizeShape).toHaveBeenCalledTimes(1);
+    const plain = await runObjectShape(
+      { describeShape: spark.describeShape, describeParts: spark.describeParts },
+      photo,
+      'data:full',
+      fridgeTarget()
+    );
+    expect(shape.recipe).toEqual(plain.recipe);
+  }, 60_000);
+
+  it('no patch means no re-fit', async () => {
+    const photo = await fridgePhoto();
+    const spark = sparkFor(lampPrior, { patch: null });
+    const shape = await shapeWithCritic(spark, photo, 'data:full', fridgeTarget());
+    expect(shape.mode).toBe('recipe');
+    expect(spark.criticizeShape).toHaveBeenCalledTimes(1);
+    expect(spark.describeShape).toHaveBeenCalledTimes(1);
+  }, 60_000);
+
+  it('skips the round for an imagined recipe (no template to patch)', async () => {
+    const photo = await fridgePhoto();
+    // Person parts over a fridge photo: the score is low, but patching the person kit would
+    // rebuild the crude placeholder, so the round must not fire.
+    const personKit = {
+      archetype: 'person',
+      proportions: { w: 0.4, h: 1, d: 0.3 },
+      colors: { main: '#334455', secondary: '#c8a080', accent: '#222222' },
+    } as const;
+    const spark = {
+      describeShape: vi.fn().mockResolvedValue({
+        recipe: kitToRecipe(personKit),
+        kit: personKit,
+        source: 'meta',
+        model: 'muse-spark-1.3',
+      }),
+      describeParts: vi.fn().mockResolvedValue({
+        recipe: {
+          source: 'free',
+          proportions: { w: 0.4, h: 1, d: 0.3 },
+          parts: [
+            {
+              shape: 'cylinder',
+              at: [0, -0.05, 0],
+              size: [0.5, 0.6, 0.35],
+              color: '#334455',
+              front: true,
+            },
+            { shape: 'sphere', at: [0, 0.38, 0], size: [0.3, 0.28, 0.3], color: '#c8a080' },
+          ],
+        },
+      }),
+      criticizeShape: vi.fn().mockResolvedValue({ patch: { subtype: 'x' } }),
+    };
+    const shape = await shapeWithCritic(spark, photo, 'data:full', fridgeTarget());
+    expect(shape.mode).toBe('recipe');
+    expect(shape.recipe!.source).toBe('free');
+    // Non-vacuous: the score IS low enough to round.
+    const target = fridgeTarget();
+    const scored = await scoreRecipe(
+      photo,
+      { box: target.box, outline: shape.outline! },
+      shape.recipe!
+    );
+    expect(scored!.score.score).toBeLessThan(70);
+    expect(spark.criticizeShape).not.toHaveBeenCalled();
+  }, 60_000);
+});

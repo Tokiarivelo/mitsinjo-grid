@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MOCK_PERCEPTION_MODEL, MockPerceptionBackend } from '../mock';
 import {
+  DetectionResultSchema,
   SegmentResultSchema,
   TranscriptSchema,
   VisionResultSchema,
@@ -36,6 +37,10 @@ describe('MockPerceptionBackend', () => {
     ]);
     const smoke = await mock.analyzeImage('https://x/y.png', 'Is there smoke?');
     expect(smoke.result.observations[0]?.label).toBe('smoke');
+    const dust = await mock.analyzeImage('https://x/y.png', 'Is there dust on the panels?');
+    expect(dust.result.observations).toEqual([
+      { label: 'dusty_panel', value: 25, unit: '%', confidence: 0.5 },
+    ]);
     const none = await mock.analyzeImage('https://x/y.png', 'Describe this');
     expect(none.result.observations).toEqual([]);
     expect(VisionResultSchema.parse({ ...sky.result, ...asMock })).toBeTruthy();
@@ -47,5 +52,34 @@ describe('MockPerceptionBackend', () => {
     expect(result.boxCoverage).toBeGreaterThan(0);
     expect(result.boxCoverage).toBeLessThan(1);
     expect(SegmentResultSchema.parse({ ...result, ...asMock })).toBeTruthy();
+  });
+
+  it('detects the fixed sample-room appliances, valid and without power values', async () => {
+    const a = await mock.detectAppliances();
+    const b = await mock.detectAppliances();
+    expect(a).toEqual(b);
+    expect(a.result.detections.map((d) => d.category)).toEqual([
+      'fridge',
+      'tv',
+      'lamp',
+      'fan',
+      'phone_charger',
+    ]);
+    expect(DetectionResultSchema.parse({ ...a.result, ...asMock })).toBeTruthy();
+    for (const d of a.result.detections) {
+      expect(d.box.x + d.box.w).toBeLessThanOrEqual(1);
+      expect(d.box.y + d.box.h).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('never patches: the critic round is a no-op without Meta', async () => {
+    const out = await mock.criticizeShape('data:img', 'Patch?');
+    expect(out.result).toEqual({ patch: null });
+  });
+
+  it('never imagines parts: the orchestrator keeps the kit recipe', async () => {
+    const out = await mock.describeParts('data:img', { label: 'Guard', archetype: 'person' });
+    expect(out.result).toEqual({ recipe: null });
+    expect(out.usage).toEqual({});
   });
 });

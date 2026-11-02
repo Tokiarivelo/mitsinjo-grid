@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { kitToRecipe, type ObjectKit } from '@/lib/object-kit';
 import { MetaPerceptionBackend } from '../meta';
 
 const BASE = 'https://api.meta.ai/v1';
@@ -78,6 +79,7 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
     const body = JSON.parse(lastRequest(fetchMock).init.body as string);
     expect(lastRequest(fetchMock).url).toBe(`${BASE}/chat/completions`);
     expect(body.model).toBe('muse-spark-1.3');
+    expect(body.reasoning_effort).toBe('high');
     expect(body.response_format.type).toBe('json_schema');
     expect(body.messages[1].content[1]).toEqual({
       type: 'image_url',
@@ -87,6 +89,23 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
       { label: 'cloud_cover', value: 65, unit: '%', confidence: 0.85 },
     ]);
     expect(out.usage).toEqual({ inputTokens: 3202, outputTokens: 1314 });
+  });
+
+  it('criticizes a shape with the KitPatch schema and parses the patch', async () => {
+    const fetchMock = respond({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({ subtype: 'sedan', details: { wheels: 4 } }),
+          },
+        },
+      ],
+      usage: { prompt_tokens: 100, completion_tokens: 20 },
+    });
+    const out = await backend.criticizeShape('data:image/png;base64,AA', 'Patch?');
+    const body = JSON.parse(lastRequest(fetchMock).init.body as string);
+    expect(body.response_format.json_schema.name).toBe('KitPatch');
+    expect(out.result).toEqual({ patch: { subtype: 'sedan', details: { wheels: 4 } } });
   });
 
   it('prefers the contributor vision model and resends on the standard one when refused', async () => {
@@ -109,6 +128,197 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
     );
     expect(models).toEqual(['muse-spark-1.3-contributor', 'muse-spark-1.3']);
     expect(out.model).toBe('muse-spark-1.3');
+  });
+
+  it('detects appliances with the category enum schema and parses the boxes', async () => {
+    const fetchMock = respond({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              objects: [{ label: 'Fridge', category: 'refrigerator', bbox: [100, 200, 300, 1040] }],
+            }),
+          },
+        },
+      ],
+      usage: { prompt_tokens: 1500, completion_tokens: 120 },
+    });
+    const out = await backend.detectAppliances('data:image/jpeg;base64,AA');
+
+    const body = JSON.parse(lastRequest(fetchMock).init.body as string);
+    expect(lastRequest(fetchMock).url).toBe(`${BASE}/chat/completions`);
+    expect(body.model).toBe('muse-spark-1.3');
+    expect(body.reasoning_effort).toBe('high');
+    expect(body.response_format.json_schema.name).toBe('ApplianceDetections');
+    expect(
+      body.response_format.json_schema.schema.properties.objects.items.properties.category.enum
+    ).toContain('fridge_vaccine');
+    expect(body.messages[1].content[1].image_url.url).toBe('data:image/jpeg;base64,AA');
+    // Regression: an appliance-only question made Muse return [] on outdoor photos.
+    const question = body.messages[1].content[0].text as string;
+    expect(question).not.toMatch(/^List the electrical appliances/);
+    expect(question).toMatch(/buildings, vehicles, trees/);
+    expect(out.result.detections).toEqual([
+      { id: 'det-1', label: 'Fridge', category: 'fridge', box: { x: 0.1, y: 0.2, w: 0.2, h: 0.8 } },
+    ]);
+    expect(out.usage).toEqual({ inputTokens: 1500, outputTokens: 120 });
+  });
+
+  it('asks Spark for a short 3D kit on the standard model, then builds the recipe (PV-T9b)', async () => {
+    const kit = {
+      archetype: 'cabinet',
+      proportions: { w: 0.5, h: 1, d: 0.5 },
+      colors: { main: '#eeeeee', secondary: '#bbbbbb', accent: '#888888' },
+    };
+    const fetchMock = respond({
+      choices: [{ message: { content: JSON.stringify(kit) } }],
+      usage: { prompt_tokens: 900, completion_tokens: 80 },
+    });
+    const prefersContributor = new MetaPerceptionBackend({
+      apiKey: 'k',
+      baseUrl: BASE,
+      preferContributor: true,
+    });
+    const out = await prefersContributor.describeShape('data:image/jpeg;base64,AA', {
+      label: 'Fridge',
+      category: 'fridge',
+    });
+    const body = JSON.parse(lastRequest(fetchMock).init.body as string);
+    expect(lastRequest(fetchMock).url).toBe(`${BASE}/chat/completions`);
+    expect(body.response_format.json_schema.name).toBe('ObjectKit');
+    expect(body.reasoning_effort).toBe('high');
+    // Latency-sensitive: never the (slower) contributor id.
+    expect(body.model).not.toMatch(/contributor/);
+    expect(body.messages[1].content[0].text).toContain('"Fridge"');
+    expect(body.messages[1].content[0].text).toContain('probably a "cabinet"');
+    expect(out.result.recipe).toEqual(kitToRecipe(kit as ObjectKit));
+    expect(out.usage).toEqual({ inputTokens: 900, outputTokens: 80 });
+
+    respond({ choices: [{ message: { content: 'A white fridge.' } }] });
+    const prose = await backend.describeShape('data:image/jpeg;base64,AA', {
+      label: 'Fridge',
+      category: 'fridge',
+    });
+    expect(prose.result.recipe).toBeNull();
+  });
+
+  it('sends the validated 2D facade as a second image and tells Spark how to use it', async () => {
+    const kit = {
+      archetype: 'house',
+      proportions: { w: 1, h: 0.6, d: 0.7 },
+      colors: { main: '#e8dcc0', secondary: '#7a3b2e', accent: '#334455' },
+    };
+    const fetchMock = respond({ choices: [{ message: { content: JSON.stringify(kit) } }] });
+    await backend.describeShape('data:image/jpeg;base64,AA', {
+      label: 'House',
+      category: 'other',
+      scenery: 'building',
+      facadeUrl: 'https://r2.example/facade.png',
+    });
+    const content = JSON.parse(lastRequest(fetchMock).init.body as string).messages[1].content;
+    expect(content.map((c: { type: string }) => c.type)).toEqual([
+      'text',
+      'image_url',
+      'image_url',
+    ]);
+    expect(content[1].image_url.url).toBe('data:image/jpeg;base64,AA');
+    expect(content[2].image_url.url).toBe('https://r2.example/facade.png');
+    expect(content[0].text).toContain('second image is the validated front elevation');
+
+    const plainMock = respond({ choices: [{ message: { content: JSON.stringify(kit) } }] });
+    await backend.describeShape('data:image/jpeg;base64,AA', { label: 'House', category: 'other' });
+    const plain = JSON.parse(lastRequest(plainMock).init.body as string).messages[1].content;
+    expect(plain).toHaveLength(2);
+    expect(plain[0].text).not.toContain('second image');
+  });
+
+  it('logs the full 3D request and result, images as placeholders only', async () => {
+    const kit = {
+      archetype: 'cabinet',
+      proportions: { w: 0.5, h: 1, d: 0.5 },
+      colors: { main: '#eeeeee', secondary: '#bbbbbb', accent: '#888888' },
+    };
+    respond({
+      choices: [{ message: { content: JSON.stringify(kit) } }],
+      usage: { prompt_tokens: 900, completion_tokens: 80 },
+    });
+    const seen: string[] = [];
+    const info = vi.spyOn(console, 'info').mockImplementation((...a: unknown[]) => {
+      seen.push(a.map(String).join(' '));
+    });
+    try {
+      await backend.describeShape(`data:image/jpeg;base64,${'A'.repeat(200)}`, {
+        label: 'Fridge',
+        category: 'fridge',
+        aspect: 0.75,
+      });
+    } finally {
+      info.mockRestore();
+    }
+    const lines = seen.filter((l) => l.includes('3D describeShape'));
+    expect(lines).toHaveLength(4);
+    const all = lines.join('\n');
+    // Params, both prompts and the full result are logged…
+    expect(all).toContain('"label":"Fridge"');
+    expect(all).toContain('"aspect":0.75');
+    expect(all).toContain('schema ObjectKit');
+    expect(all).toContain('system: ');
+    expect(all).toContain('question: ');
+    expect(all).toContain('"archetype":"cabinet"');
+    expect(all).toContain('in 900, out 80');
+    // …but the pixels never leave as base64.
+    expect(all).not.toContain('base64,');
+    expect(all).not.toContain('A'.repeat(200));
+    expect(all).toContain('[image data-url, 223 chars]');
+  });
+
+  it('asks Spark for an imagined part list with the cut edges, stamped free (PV-T9c)', async () => {
+    const parts = {
+      proportions: { w: 0.4, h: 0.8, d: 0.3 },
+      parts: [
+        {
+          shape: 'cylinder',
+          at: [0, -0.05, 0],
+          size: [0.5, 0.6, 0.35],
+          color: '#334455',
+          front: true,
+        },
+      ],
+    };
+    const fetchMock = respond({
+      choices: [{ message: { content: JSON.stringify(parts) } }],
+      usage: { prompt_tokens: 900, completion_tokens: 120 },
+    });
+    const out = await backend.describeParts('data:image/jpeg;base64,AA', {
+      label: 'Guard',
+      archetype: 'person',
+      coverage: 'cut off at the left',
+    });
+    const body = JSON.parse(lastRequest(fetchMock).init.body as string);
+    expect(body.response_format.json_schema.name).toBe('ObjectParts');
+    expect(body.reasoning_effort).toBe('high');
+    expect(body.model).not.toMatch(/contributor/);
+    const text = body.messages[1].content[0].text as string;
+    expect(text).toContain('"Guard"');
+    expect(text).toContain('cut off at the left');
+    expect(text).toContain('WHOLE');
+    expect(out.result.recipe?.source).toBe('free');
+    expect(out.result.recipe?.proportions.w).toBe(0.5);
+    expect(out.result.recipe?.proportions.h).toBe(1);
+    expect(out.result.recipe?.proportions.d).toBeCloseTo(0.375, 10);
+    expect(out.usage).toEqual({ inputTokens: 900, outputTokens: 120 });
+
+    respond({ choices: [{ message: { content: 'A person, standing.' } }] });
+    const prose = await backend.describeParts('data:image/jpeg;base64,AA', {
+      label: 'Guard',
+      archetype: 'person',
+    });
+    expect(prose.result.recipe).toBeNull();
+  });
+
+  it('throws on a malformed detection reply so the client can fall back', async () => {
+    respond({ choices: [{ message: { content: 'A fridge, I think.' } }] });
+    await expect(backend.detectAppliances('data:image/jpeg;base64,AA')).rejects.toThrow(/JSON/);
   });
 
   it('segments through /responses and reads the boxes', async () => {
@@ -137,6 +347,26 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
     expect(out.result.count).toBe(1);
     expect(out.result.boxCoverage).toBeCloseTo(0.5);
     expect(out.usage).toEqual({ images: 1 });
+  });
+
+  it('segment: decodes full masks into outlines on each instance', async () => {
+    respond({
+      output: [
+        {
+          type: 'message',
+          content: [
+            {
+              type: 'output_text',
+              text:
+                '<0f>0<|box;x1=211;y1=228;x2=270;y2=254;w=320;h=334|>' +
+                "<|mask;x=0;y=0;data=27,60,~!!!!M!0c[0o91w?q1!pIH4pPRVp2B3'7`e.ioeAf6-k/#Xd8%dX9x(|>",
+            },
+          ],
+        },
+      ],
+    });
+    const out = await backend.segmentImage('https://x/p.png', 'button');
+    expect(out.result.instances[0]!.outline).toMatch(/^M.*Z$/);
   });
 
   it('throws on an HTTP error so the client can fall back', async () => {

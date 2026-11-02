@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boxUnionCoverage, parseSamOutput } from '../parse-sam';
+import { boxUnionCoverage, parseSamMask, parseSamOutput } from '../parse-sam';
 
 // Shape recorded from a real sam-3.1 call (masks shortened).
 const SAM_TEXT =
@@ -17,8 +17,32 @@ describe('parseSamOutput', () => {
     ]);
   });
 
+  it('keeps each mask (still encoded) aligned with its box; mask size = box size', () => {
+    const { masks, instances } = parseSamOutput(SAM_TEXT);
+    expect(masks).toEqual([
+      { encoding: 'one_bit', height: 487, width: 722, payload: '!!!!$q@' },
+      { encoding: 'one_bit', height: 509, width: 733, payload: '!!!!4P' },
+    ]);
+    const b = instances[0]!.box;
+    expect([b.y2 - b.y1 + 1, b.x2 - b.x1 + 1]).toEqual([487, 722]);
+  });
+
+  it('reads the lossless marker and rejects malformed mask data', () => {
+    expect(parseSamMask('x=0;y=0;data=2,3,~a=b!')).toEqual({
+      encoding: 'lossless',
+      height: 2,
+      width: 3,
+      payload: '~a=b!',
+    });
+    expect(parseSamMask('x=0;y=0;data=2,3,Zabc')).toBeNull();
+    expect(parseSamMask('x=0;y=0;data=0,3,!a')).toBeNull();
+    expect(parseSamMask('x=0;y=0')).toBeNull();
+    const noMask = parseSamOutput('<0f>0<|box;x1=0;y1=0;x2=9;y2=4;w=10;h=10|>');
+    expect(noMask.masks).toEqual([null]);
+  });
+
   it('returns no instance for an empty answer (no match)', () => {
-    expect(parseSamOutput('')).toEqual({ imageWidth: 0, imageHeight: 0, instances: [] });
+    expect(parseSamOutput('')).toEqual({ imageWidth: 0, imageHeight: 0, instances: [], masks: [] });
   });
 
   it('skips a malformed box', () => {

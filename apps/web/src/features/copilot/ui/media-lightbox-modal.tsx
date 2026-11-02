@@ -16,11 +16,32 @@ import {
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
+/** One segmentation mask over the photo (M8-T1): outline preferred, box as fallback. */
+export interface ActiveMediaMask {
+  outline?: string;
+  box?: { x1: number; y1: number; x2: number; y2: number };
+  imageWidth: number;
+  imageHeight: number;
+}
+
 export interface ActiveMedia {
   url: string;
   type: 'image' | 'video';
   title?: string;
   caption?: string;
+  masks?: ActiveMediaMask[];
+}
+
+/** Mask → 0–1 SVG path (same space as the vision-insert overlays). */
+function maskPath(mask: ActiveMediaMask): string | null {
+  if (mask.outline) return mask.outline;
+  if (!mask.box || mask.imageWidth <= 0 || mask.imageHeight <= 0) return null;
+  const r4 = (n: number) => Math.round(n * 10000) / 10000;
+  const x = r4(mask.box.x1 / mask.imageWidth);
+  const y = r4(mask.box.y1 / mask.imageHeight);
+  const w = r4((mask.box.x2 - mask.box.x1) / mask.imageWidth);
+  const h = r4((mask.box.y2 - mask.box.y1) / mask.imageHeight);
+  return `M${x} ${y}H${r4(x + w)}V${r4(y + h)}H${x}Z`;
 }
 
 export interface MediaLightboxModalProps {
@@ -386,13 +407,37 @@ export function MediaLightboxModal({ isOpen, media, onClose }: MediaLightboxModa
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
             }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={media.url}
-              alt={media.title || media.caption || 'Microgrid Media'}
-              draggable={false}
-              className="max-h-[85vh] max-w-full object-contain rounded-lg shadow-2xl pointer-events-none"
-            />
+            <span className="relative inline-block max-h-[85vh] max-w-full">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={media.url}
+                alt={media.title || media.caption || 'Microgrid Media'}
+                draggable={false}
+                className="block max-h-[85vh] max-w-full object-contain rounded-lg shadow-2xl pointer-events-none"
+              />
+              {media.masks && media.masks.length > 0 && (
+                <svg
+                  viewBox="0 0 1 1"
+                  preserveAspectRatio="none"
+                  data-masks=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full pointer-events-none"
+                >
+                  {media.masks.map((mask, i) => {
+                    const d = maskPath(mask);
+                    return d ? (
+                      <path
+                        key={i}
+                        d={d}
+                        vectorEffect="non-scaling-stroke"
+                        strokeWidth={2}
+                        className="fill-energy-cyan/20 stroke-energy-cyan"
+                      />
+                    ) : null;
+                  })}
+                </svg>
+              )}
+            </span>
           </div>
         )}
 

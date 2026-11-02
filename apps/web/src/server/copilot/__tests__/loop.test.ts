@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { scenarios } from '@mitsinjo/engine';
+import { scenarios, simulate } from '@mitsinjo/engine';
 import { runCopilotLoop, type SseEventName } from '../loop';
+import { rememberResult } from '../result-cache';
 import type { ChatMessage, LlmProvider } from '../provider';
 import { SpendGuard } from '@/server/spend';
 import { MockPerceptionBackend, PerceptionClient } from '@/server/perception';
@@ -76,6 +77,82 @@ describe('Copilot Loop (P6-T3)', () => {
     const eventNames = events.map((e) => e.name);
     expect(eventNames).toContain('evidence');
     expect(eventNames).toContain('done');
+  });
+
+  it('cloud failure steps down to the injected local provider, no fallback warning (M11-T1)', async () => {
+    const failingProvider: LlmProvider = {
+      name: 'failing-meta',
+      chat: vi.fn().mockRejectedValue(new Error('Meta API rate limit exceeded')),
+    };
+    const localChat = vi.fn().mockResolvedValue({
+      content: 'Local answer with no tools.',
+    });
+    const events: { name: SseEventName; data: Record<string, unknown> }[] = [];
+    const emit = (name: SseEventName, data: Record<string, unknown>) => {
+      events.push({ name, data });
+    };
+
+    await runCopilotLoop({
+      messages: [{ role: 'user', content: 'Compare the strategies.' }],
+      input: baseInput,
+      provider: failingProvider,
+      localProvider: { name: 'glimmer', chat: localChat },
+      emit,
+    });
+
+    expect(localChat).toHaveBeenCalledTimes(1);
+    expect(events.find((e) => e.name === 'error')).toBeUndefined();
+    expect(events.map((e) => e.name)).toContain('done');
+  });
+
+  it('cloud + local failure reaches the mock with one fallback warning (M11-T1)', async () => {
+    const failingProvider: LlmProvider = {
+      name: 'failing-meta',
+      chat: vi.fn().mockRejectedValue(new Error('Meta API rate limit exceeded')),
+    };
+    const events: { name: SseEventName; data: Record<string, unknown> }[] = [];
+    const emit = (name: SseEventName, data: Record<string, unknown>) => {
+      events.push({ name, data });
+    };
+
+    await runCopilotLoop({
+      messages: [{ role: 'user', content: 'Compare the strategies.' }],
+      input: baseInput,
+      provider: failingProvider,
+      localProvider: {
+        name: 'glimmer',
+        chat: vi.fn().mockRejectedValue(new Error('connection refused')),
+      },
+      emit,
+    });
+
+    const errors = events.filter((e) => e.name === 'error');
+    expect(errors).toHaveLength(1);
+    expect(errors[0]?.data.code).toBe('PROVIDER_FALLBACK');
+    expect(events.map((e) => e.name)).toContain('done');
+  });
+
+  it('glimmer primary is never billed and ignores a spent cap (M11-T1)', async () => {
+    const spendGuard = new SpendGuard(0); // every paid call blocked
+    const events: { name: SseEventName; data: Record<string, unknown> }[] = [];
+    const emit = (name: SseEventName, data: Record<string, unknown>) => {
+      events.push({ name, data });
+    };
+
+    await runCopilotLoop({
+      messages: [{ role: 'user', content: 'Compare the strategies.' }],
+      input: baseInput,
+      provider: {
+        name: 'glimmer',
+        chat: vi.fn().mockResolvedValue({ content: 'Local answer with no tools.' }),
+      },
+      spendGuard,
+      emit,
+    });
+
+    expect(spendGuard.spentUsd('global')).toBe(0);
+    expect(events.find((e) => e.name === 'error')).toBeUndefined();
+    expect(events.map((e) => e.name)).toContain('done');
   });
 
   it('stops if maximum tool rounds exceeded', async () => {
@@ -188,6 +265,44 @@ describe('Copilot Loop (P6-T3)', () => {
     expect(names[names.length - 1]).toBe('done');
     // The chat fallback must not keep the image model selected.
     expect(chatModels).toEqual(['muse-spark-1.3']);
+  });
+
+  it('generate_visual failure → text-only answer + PROVIDER_FALLBACK, no media event (M5-T4)', async () => {
+    const result = simulate(baseInput, 'proportional');
+    rememberResult(baseInput, result);
+    const events: { name: SseEventName; data: Record<string, unknown> }[] = [];
+    const provider: LlmProvider = {
+      name: 'fake',
+      chat: vi
+        .fn()
+        .mockResolvedValueOnce({
+          toolCalls: [
+            {
+              id: 't1',
+              name: 'generate_visual',
+              args: { kind: 'shedding_poster', resultId: result.id },
+            },
+          ],
+        })
+        .mockResolvedValueOnce({ content: 'Text answer instead of a poster.' }),
+      generateImage: vi.fn().mockRejectedValue(new Error('image model down')),
+    };
+
+    await runCopilotLoop({
+      messages: [{ role: 'user', content: 'Fais une affiche de délestage' }],
+      input: baseInput,
+      provider,
+      emit: (name, data) => events.push({ name, data }),
+    });
+
+    const names = events.map((e) => e.name);
+    expect(names).not.toContain('media');
+    expect(events.find((e) => e.name === 'error')?.data).toMatchObject({
+      code: 'PROVIDER_FALLBACK',
+      reason: 'provider_error',
+    });
+    expect(names).toContain('delta');
+    expect(names[names.length - 1]).toBe('done');
   });
 
   describe('spend cap and automatic model switch (PM-M0)', () => {
@@ -341,6 +456,38 @@ describe('Copilot Loop (P6-T3)', () => {
       expect(text).toContain('Perception IA');
     });
 
+    it('offline mock: photo + vision question → analyze_image → perception event + answer (M4-T2)', async () => {
+      const { events, emit } = collect();
+      await runCopilotLoop({
+        messages: [
+          {
+            role: 'user',
+            content: 'What does the meter read on this photo?',
+            media: [{ type: 'image', url: 'data:image/png;base64,AA' }],
+          },
+        ],
+        input: baseInput,
+        emit,
+        locale: 'en',
+        perception: new PerceptionClient(null, new MockPerceptionBackend(), new SpendGuard(1), 's'),
+      });
+      expect(
+        events.some(
+          (e) =>
+            e.name === 'perception' &&
+            (e.data as { kind?: string }).kind === 'analyze' &&
+            Array.isArray((e.data as { observations?: unknown[] }).observations)
+        )
+      ).toBe(true);
+      const text = events
+        .filter((e) => e.name === 'delta')
+        .map((e) => e.data.text)
+        .join('');
+      expect(text).toContain('meter_reading');
+      expect(text).toContain('1284');
+      expect(text).toContain('AI perception');
+    });
+
     it('offline mock: image request → generate_image → image event', async () => {
       const { events, emit } = collect();
       await runCopilotLoop({
@@ -350,6 +497,19 @@ describe('Copilot Loop (P6-T3)', () => {
         locale: 'fr',
       });
       expect(events.find((e) => e.name === 'image')?.data.imageUrl).toMatch(/^data:image\/svg/);
+    });
+
+    it('offline mock: shedding poster request → generate_visual → media event', async () => {
+      const { events, emit } = collect();
+      await runCopilotLoop({
+        messages: [{ role: 'user', content: 'Fais une affiche de délestage pour ce soir' }],
+        input: baseInput,
+        emit,
+        locale: 'fr',
+      });
+      const media = events.find((e) => e.name === 'media');
+      expect(media?.data.kind).toBe('shedding_poster');
+      expect(media?.data.imageUrl).toMatch(/^data:image\/svg/);
     });
 
     it('answers about an attached photo with the vision chat model', async () => {
