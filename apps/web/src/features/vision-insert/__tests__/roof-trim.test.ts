@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { RecipePart } from '@/lib/object-shape';
-import { EAVE_ROLL_SHARE, expandRoofTrim } from '../utils/roof-trim';
+import {
+  CAP_WIDEN,
+  EAVE_ROLL_SHARE,
+  expandChimneyCaps,
+  expandRoofTrim,
+  roofBulge,
+} from '../utils/roof-trim';
 import { recipeMesh } from '../utils/object-geometry';
 
 const P = { w: 1, h: 0.6, d: 0.5 };
@@ -55,5 +61,38 @@ describe('expandRoofTrim (PG-T12)', () => {
       plain.getAttribute('position').count
     );
     expect(thatch.getAttribute('position').count / 3).toBeLessThan(5_000);
+  });
+});
+
+describe('roof bulge + chimney cap (PG-T10)', () => {
+  it('bulge: thatch default, explicit value wins, 0 = no roll, slate none', () => {
+    expect(roofBulge(roof())).toBe(EAVE_ROLL_SHARE);
+    expect(roofBulge(roof({ bulge: 0.2 }))).toBe(0.2);
+    expect(expandRoofTrim([roof({ bulge: 0 })], P)).toHaveLength(1);
+    expect(expandRoofTrim([roof({ material: 'slate' })], P)).toHaveLength(1);
+    expect(expandRoofTrim([roof({ material: 'slate', bulge: 0.1 })], P)).toHaveLength(5);
+  });
+
+  it('a bigger bulge makes a thicker roll', () => {
+    const thin = expandRoofTrim([roof()], P)[1]!;
+    const thick = expandRoofTrim([roof({ bulge: 0.2 })], P)[1]!;
+    expect(thick.size[1]).toBeGreaterThan(thin.size[1]);
+  });
+
+  it('a capped chimney gets a wider slab right on its top; uncapped unchanged', () => {
+    const stack: RecipePart = {
+      shape: 'box',
+      at: [0.3, 0.4, 0],
+      size: [0.06, 0.2, 0.08],
+      color: '#9a4b3a',
+      material: 'brick',
+      kind: 'chimney',
+    };
+    expect(expandChimneyCaps([stack], P)).toHaveLength(1);
+    const [, cap] = expandChimneyCaps([{ ...stack, cap: true }], P);
+    expect(cap!.size[0]).toBeCloseTo(CAP_WIDEN * 0.06, 6);
+    const stackTop = (0.4 + 0.1) * P.h;
+    expect((cap!.at[1] - cap!.size[1] / 2) * P.h).toBeCloseTo(stackTop, 6);
+    expect(cap!.color).toBe(stack.color);
   });
 });

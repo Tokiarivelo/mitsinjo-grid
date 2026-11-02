@@ -39,10 +39,22 @@ export const EXTRUDE_POINTS_MAX = 64;
 export const LATHE_PROFILE_MAX = 32;
 export const MAX_RECIPE_PARTS = 12;
 /**
- * Parts of a recipe the server builds from measured views (PV-H: body, wheels, glass and lamp
- * skin patches, the AI check's additions); the LLM and photo paths keep `MAX_RECIPE_PARTS`.
+ * Components of a recipe the server builds from measured views (PV-H: body, wheels, glass and lamp
+ * skin patches, the AI check's additions; PG-T10: facade house assemblies). A component may be an
+ * assembly (window, door, chimney, roof) the 3D view expands into several boxes; triangles stay
+ * ≤ `MAX_TRIANGLES`. The LLM and photo paths keep `MAX_RECIPE_PARTS`.
  */
-export const MAX_BUILT_PARTS = 24;
+export const MAX_COMPONENTS = 32;
+/** Alias kept for the PV-H builders. */
+export const MAX_BUILT_PARTS = MAX_COMPONENTS;
+/** Triangle budget of one object's mesh (assemblies drop their details past it). */
+export const MAX_TRIANGLES = 5_000;
+/** Most raised panels on one door leaf (PG-T10). */
+export const MAX_DOOR_PANELS = 4;
+/** Largest glazed share of a door, from its top (PG-T10). */
+export const MAX_DOOR_GLAZED = 0.8;
+/** Largest eave roll of a roof, share of its height (PG-T10). */
+export const MAX_ROOF_BULGE = 0.3;
 /**
  * What a part is on the object (PV-G): set by the builders that know it (facade house), read by the
  * elevation score and the 3D view (opening look). Absent = guessed from shape and material.
@@ -158,6 +170,19 @@ export const RecipePartSchema = z
     grid: z
       .tuple([z.number().int().min(1).max(MAX_PANES), z.number().int().min(1).max(MAX_PANES)])
       .optional(),
+    /**
+     * Assembly options (PG-T10), read by the 3D view's expansion; absent = the part's default.
+     * Door: `leaves` (1 | 2), `glazed` top share with `grid` panes, `panels` per leaf below it.
+     * Window / door: `sill` (window default on), `lintel` above. Chimney: `cap` slab on top.
+     * Roof: `bulge` = eave roll radius, share of the roof height (thatch default 0.08, 0 = none).
+     */
+    leaves: z.number().int().min(1).max(2).optional(),
+    glazed: z.number().min(0).max(MAX_DOOR_GLAZED).optional(),
+    panels: z.number().int().min(0).max(MAX_DOOR_PANELS).optional(),
+    sill: z.boolean().optional(),
+    lintel: z.boolean().optional(),
+    cap: z.boolean().optional(),
+    bulge: z.number().min(0).max(MAX_ROOF_BULGE).optional(),
   })
   .superRefine((p, ctx) => {
     if ((p.shape === 'extrude' || p.shape === 'hull') && !p.points)
@@ -180,7 +205,7 @@ export type RecipePart = z.infer<typeof RecipePartSchema>;
 export const ObjectRecipeSchema = z.object({
   /** Real proportions of the object, largest side = 1. */
   proportions: z.object({ w: extent, h: extent, d: extent }),
-  parts: z.array(RecipePartSchema).min(1).max(MAX_BUILT_PARTS),
+  parts: z.array(RecipePartSchema).min(1).max(MAX_COMPONENTS),
   /**
    * Where the parts came from: a kit template (`kit`, the default when absent), the LLM-imagined
    * part list (`free`, archetypes without a real template) or the measured 2D elevations

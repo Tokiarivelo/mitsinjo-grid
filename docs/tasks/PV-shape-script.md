@@ -7,7 +7,7 @@ not faithful to the imagined 2D elevation. Example: « rural thatched house » (
 same blotchy photo texture**, three dark rectangles for windows and door. Ask: Spark writes a **generation
 script**, builds the model **piece by piece**, and an agent loop renders → compares → corrects each piece until
 the render matches; same for every kind of object.
-**Status:** 🟡 G0 + G1 + PG-T11/T12 + timber beams done (2026-11-02); live Meta run on the thatched-house drawing: facade path, elevation 87–91/100, IoU 0.98, first model in 48–68 s (chimney accessory score 0.44–0.71: roof hides its foot). Next PG-T10 (components budget), G3 loop. **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
+**Status:** 🟡 G0 + G1 + G2 done (2026-11-02); live Meta run on the thatched-house drawing: facade path, elevation 87–91/100, IoU 0.98, first model in 48–68 s (chimney accessory score 0.44–0.71: roof hides its foot). Next G3 loop (PG-T13…). **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
 writes vertices or runnable code (it writes Zod-checked ops, the engine builds); pure, seeded, tested geometry;
 never paste the photo on the model (small tileable swatches OK); ≤ 5 k triangles per object.
 **Skills:** `/shape-3d` (vocabulary, files) · `/shape-loop` (scores, log) · `/facade-2d` (target image).
@@ -93,11 +93,12 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
 
 ### G2 Components instead of parts (lift the 12-part ceiling)
 
-- [ ] **PG-T10 Assemblies.** _(partly: beams done as wall `timber` from SAM « timber beam » → `timberFrame`, drawn by `timber.ts`, cut around openings; plinth / step boxes since G1.)_ New recipe component kinds that the engine expands into boxes:
+- [x] **PG-T10 Assemblies.** _(beams = wall `timber` → `timber.ts`; plinth / step boxes since G1.)_ New recipe component kinds that the engine expands into boxes:
       `window {cols, rows, frame, sill, lintel}`, `door {leaves, glazedRows, panels}`, `plinth {h}`,
       `beam {from, to}`, `step`, `chimney {cap}`, `roof {kind, pitch, overhang, bulge}`. The budget counts
       **components (≤ 32)**, triangles stay ≤ 5 k (a 2 × 4 window ≈ 10 boxes ≈ 120 tris). The schema keeps v1
       recipes valid, and the viewer and flat render expand both. Update `docs/contracts.md`.
+      **Done:** assembly options on `RecipePart` (`leaves`, `glazed`, `panels`, `sill`, `lintel`, `cap`, `bulge`), `MAX_COMPONENTS = 32`; `openings.ts` expands door glazed top + transom + centre stile + raised panels + lintel, `roof-trim.ts` `roofBulge` / `expandChimneyCaps`; `recipeMesh` rebuilds at `detail: 'low'` past `MAX_TRIANGLES`. Facade builder: `doorGlazing` (SAM panes, or « windows » inside a door), wide door → `leaves: 2`, lintels unless timber frame, chimney caps, window sills. **Deviation:** components stay boxes with options, not new kinds; the flat render (score) still sees the plain component.
 - [x] **PG-T11 Wall cuts.** Openings really cut the wall mesh (PR-2.17 openings, now in the viewer too): a
       rectangle hole + reveal, no z-fighting decal.
       **Done (viewer):** `holed-wall.ts` `holedBox`: side faces triangulated with rectangular holes + 4 reveal faces; `layoutOpenings` finds the host wall face, the hole = inside the frame, glass / leaf at the bottom of the reveal (1.2 frame widths, ≤ 25 % of the wall). Flat render (score) still sees the plain wall.

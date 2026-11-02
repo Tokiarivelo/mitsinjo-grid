@@ -2,12 +2,12 @@ import type { ApplianceCategory } from '@mitsinjo/engine';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import type { ObjectRecipe, RecipePart } from '@/lib/object-shape';
+import { MAX_TRIANGLES, type ObjectRecipe, type RecipePart } from '@/lib/object-shape';
 import { HULL_LEVELS, HULL_SLICES, hullLoops } from '@/lib/hull';
 import { SURFACE_LOOK, SURFACES, surfaceIndex } from './surface-look';
 import { holedBox } from './holed-wall';
-import { layoutOpenings } from './openings';
-import { expandRoofTrim } from './roof-trim';
+import { type AssemblyDetail, layoutOpenings } from './openings';
+import { expandChimneyCaps, expandRoofTrim } from './roof-trim';
 import { timberBeams } from './timber';
 import { planarUvs } from './surface-maps';
 import { type ApplianceDetection, type NormBox, type SceneryType } from '@/lib/vision';
@@ -336,12 +336,24 @@ const color = new THREE.Color();
  * view draws stone matte and glass shiny in one mesh.
  */
 export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
+  // Assemblies at full detail; past the triangle budget, again without bars, panels, lintels (PG-T10).
+  const full = buildMesh(recipe, 'full');
+  if (triangleCount(full) <= MAX_TRIANGLES) return full;
+  full.dispose();
+  return buildMesh(recipe, 'low');
+}
+
+function buildMesh(recipe: ObjectRecipe, detail: AssemblyDetail): THREE.BufferGeometry {
   const dims = [recipe.proportions.w, recipe.proportions.h, recipe.proportions.d] as const;
   // Windows and doors drawn with frame, glass, bars and sill (PG-T8), cut into their wall (PG-T11).
-  const { parts: laid, holes } = layoutOpenings(recipe);
-  // Thatch roofs end in a rounded eave roll (PG-T12); half-timbered walls get their beams.
+  const { parts: laid, holes } = layoutOpenings(recipe, detail);
+  // Roofs with a bulge end in a rounded eave roll (PG-T12), chimneys may wear a cap (PG-T10);
+  // half-timbered walls get their beams.
   const sorted = [
-    ...expandRoofTrim(laid, recipe.proportions, ROOF_OVERHANG),
+    ...expandChimneyCaps(
+      expandRoofTrim(laid, recipe.proportions, ROOF_OVERHANG),
+      recipe.proportions
+    ),
     ...timberBeams(recipe),
   ]
     .map((p) => ({ p, surface: surfaceIndex(p.material) }))

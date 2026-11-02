@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ObjectRecipe, RecipePart } from '@/lib/object-shape';
-import { recipeMesh } from '../utils/object-geometry';
+import { recipeMesh, triangleCount } from '../utils/object-geometry';
 import {
   DEFAULT_WINDOW_GRID,
+  DOOR_GLASS,
   FRAME_DARK,
   FRAME_LIGHT,
   expandOpenings,
@@ -110,5 +111,74 @@ describe('expandOpenings (PG-T8)', () => {
     );
     const g = recipeMesh(many);
     expect(g.getAttribute('position').count / 3).toBeLessThanOrEqual(5_000);
+  });
+});
+
+describe('opening assemblies (PG-T10)', () => {
+  const door = (over: Partial<RecipePart> = {}) =>
+    win({ kind: 'door', material: 'wood', color: '#6b4a2f', size: [0.2, 0.35, 0.015], ...over });
+
+  it('a double door with a glazed top: glass over the top, leaf below, stile and transom', () => {
+    const parts = expandOpenings(house(door({ leaves: 2, glazed: 0.4, grid: [2, 2] })));
+    const glass = parts.filter((p) => p.material === 'glass');
+    expect(glass).toHaveLength(1);
+    expect(glass[0]!.color).toBe(DOOR_GLASS);
+    const leaf = parts.find((p) => p.kind === 'door' && p.material === 'wood')!;
+    // Glass above the leaf.
+    expect(glass[0]!.at[1]).toBeGreaterThan(leaf.at[1]);
+    expect(glass[0]!.size[1]).toBeLessThan(leaf.size[1]);
+    // wall + glass + leaf + 4 frame + stile + transom + 1 pane row bar (centre column = stile).
+    expect(parts).toHaveLength(1 + 2 + 4 + 1 + 1 + 1);
+  });
+
+  it('raised panels on each leaf, under the glass', () => {
+    const parts = expandOpenings(house(door({ leaves: 2, glazed: 0.4, panels: 2 })));
+    const leaf = parts.find((p) => p.kind === 'door' && p.material === 'wood' && p.size[0] > 0.1)!;
+    const panels = parts.filter(
+      (p) => p.kind === 'door' && p.material === 'wood' && p !== leaf && p.shape === 'box'
+    );
+    expect(panels).toHaveLength(4);
+    for (const p of panels)
+      expect(p.at[1] + p.size[1] / 2).toBeLessThanOrEqual(leaf.at[1] + leaf.size[1] / 2 + 1e-9);
+  });
+
+  it('a lintel above, a sill on a door only when asked, none on a window when sill is false', () => {
+    const w = win();
+    const withLintel = expandOpenings(house(win({ lintel: true })));
+    const top = w.at[1] + w.size[1] / 2;
+    expect(withLintel.some((p) => p.kind === 'frame' && p.at[1] > top)).toBe(true);
+    const noSill = expandOpenings(house(win({ sill: false })));
+    expect(noSill).toHaveLength(expandOpenings(house(win())).length - 1);
+    const doorSill = expandOpenings(house(door({ sill: true })));
+    expect(doorSill).toHaveLength(expandOpenings(house(door())).length + 1);
+  });
+
+  it('low detail drops bars, panels and lintels but keeps frame, glass and stile', () => {
+    const d = door({ leaves: 2, glazed: 0.4, grid: [4, 2], panels: 2, lintel: true });
+    const full = expandOpenings(house(d));
+    const low = expandOpenings(house(d), 'low');
+    expect(low.length).toBeLessThan(full.length);
+    // wall + glass + leaf + 4 frame + stile + transom.
+    expect(low).toHaveLength(1 + 2 + 4 + 1 + 1);
+  });
+
+  it('a heavily detailed house falls back to low detail within the triangle budget', () => {
+    const rich = {
+      leaves: 2,
+      glazed: 0.5,
+      grid: [6, 6] as [number, number],
+      panels: 4,
+      lintel: true,
+    };
+    const many = house(
+      ...Array.from({ length: 30 }, (_, i) =>
+        door({
+          at: [-0.45 + (i % 10) * 0.1, -0.2 + Math.floor(i / 10) * 0.2, 0.3075],
+          size: [0.08, 0.15, 0.015],
+          ...rich,
+        })
+      )
+    );
+    expect(triangleCount(recipeMesh(many))).toBeLessThanOrEqual(5_000);
   });
 });

@@ -2,7 +2,8 @@ import type { ObjectKit, PartMaterialKey } from '@/lib/object-kit';
 import {
   MAX_PANES,
   MAX_TIMBER,
-  MAX_RECIPE_PARTS,
+  MAX_COMPONENTS,
+  MAX_DOOR_GLAZED,
   type ObjectRecipe,
   type RecipeMaterial,
   type RecipePart,
@@ -88,6 +89,11 @@ export const DOOR_COLOR = '#6b4a2f';
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const right = (b: NormBox) => b.x + b.w;
 const bottomOf = (b: NormBox) => b.y + b.h;
+/** Whether the centre of `b` lies inside `o`. */
+const centreIn = (b: NormBox, o: NormBox) => {
+  const [cx, cy] = [b.x + b.w / 2, b.y + b.h / 2];
+  return cx > o.x && cx < right(o) && cy > o.y && cy < bottomOf(o);
+};
 
 /**
  * Flat share of the roof top from its outline: skyline columns within `RIDGE_BAND` of the
@@ -157,19 +163,17 @@ export function measureElevation(m: ElevationMasks): Elevation | null {
     ridge,
     // A glazed door's panes come back as « windows » (live 2026-11-02): drop those inside a door.
     windows: m.windows.filter(
-      (b) =>
-        inside(b) &&
-        b.y >= eave - 0.02 &&
-        !m.doors.some((d) => {
-          const [cx, cy] = [b.x + b.w / 2, b.y + b.h / 2];
-          return cx > d.x && cx < right(d) && cy > d.y && cy < bottomOf(d);
-        })
+      (b) => inside(b) && b.y >= eave - 0.02 && !m.doors.some((d) => centreIn(b, d))
     ),
     doors: m.doors.filter((b) => inside(b) && b.y >= eave - 0.02),
     chimneys: m.chimneys.filter((b) => b.y < top + 0.5 * (eave - top) && inside(b)),
     plinth: plinthOf(m.plinths ?? [], left, rightX, bottom, bodyH),
     steps: (m.steps ?? []).filter((b) => inside(b) && Math.abs(bottomOf(b) - bottom) < 0.1 * bodyH),
-    panes: (m.panes ?? []).filter((p) =>
+    // Windows SAM found inside a door are that door's glass panes (PG-T10 glazed top).
+    panes: [
+      ...(m.panes ?? []),
+      ...m.windows.filter((b) => m.doors.some((d) => centreIn(b, d))),
+    ].filter((p) =>
       [...m.windows, ...m.doors].some(
         (o) =>
           p.x >= o.x - 0.01 &&
@@ -385,6 +389,23 @@ export function paneGrid(opening: NormBox, panes: ReadonlyArray<NormBox>): [numb
 
 /** A door this wide for its height is a pair of leaves (the drawing's double door). */
 export const DOUBLE_DOOR_RATIO = 0.6;
+/** Glazed share of a door top: at least this (one pane row reads), at most `MAX_DOOR_GLAZED`. */
+const MIN_DOOR_GLAZED = 0.15;
+
+/**
+ * Glazed top of a door (PG-T10) from the SAM panes inside it: share of the door height from its
+ * top down to the lowest pane, and their grid. Null without a pane in the door.
+ */
+export function doorGlazing(
+  door: NormBox,
+  panes: ReadonlyArray<NormBox>
+): { glazed: number; grid: [number, number] } | null {
+  const inside = panes.filter((p) => centreIn(p, door));
+  if (!inside.length || !(door.h > 0)) return null;
+  const low = Math.max(...inside.map(bottomOf));
+  const glazed = clamp((low - door.y) / door.h, MIN_DOOR_GLAZED, MAX_DOOR_GLAZED);
+  return { glazed, grid: paneGrid(door, inside) ?? [1, 1] };
+}
 
 /** Wall width over body height, in pixels. */
 const wallRatio = (e: Elevation) => ((e.wallRight - e.wallLeft) * e.aspect) / (e.bottom - e.top);
@@ -590,19 +611,27 @@ export function facadeHouseRecipe({
       at: at((X(c.x) + X(right(c))) / 2 - cx, (topY + eaveY) / 2, chimneyZ),
       size: [w, topY - eaveY, w],
       kind: 'chimney',
+      cap: true,
       ...chimneyLook,
     };
   });
   const zFront = depth / 2 + t / 2;
-  const doors: RecipePart[] = front.doors.slice(0, 2).map((d) => ({
-    shape: 'box',
-    ...box(d, zFront, t),
-    kind: 'door',
-    // Wide door → two leaves: one bar down the middle (pixel ratio, image fractions × aspect).
-    ...((d.w * A) / d.h > DOUBLE_DOOR_RATIO ? { grid: [2, 1] as [number, number] } : {}),
-    color: DOOR_COLOR,
-    material: partMaterials?.door ?? 'wood',
-  }));
+  // Lintels over the openings unless the timber frame already draws a rail there.
+  const lintel = timber ? {} : { lintel: true };
+  const doors: RecipePart[] = front.doors.slice(0, 2).map((d) => {
+    const glazing = doorGlazing(d, front.panes);
+    return {
+      shape: 'box',
+      ...box(d, zFront, t),
+      kind: 'door',
+      // Wide door → two leaves (pixel ratio, image fractions × aspect).
+      ...((d.w * A) / d.h > DOUBLE_DOOR_RATIO ? { leaves: 2 } : {}),
+      ...(glazing ?? {}),
+      ...lintel,
+      color: DOOR_COLOR,
+      material: partMaterials?.door ?? 'wood',
+    };
+  });
   const glass = { color: colors.accent, material: 'glass' as const };
   const byArea = (a: NormBox, b: NormBox) => b.w * b.h - a.w * a.h;
   const windows: RecipePart[] = [...front.windows].sort(byArea).map((w) => {
@@ -612,6 +641,8 @@ export function facadeHouseRecipe({
       ...box(w, zFront, t),
       kind: 'window',
       ...(grid ? { grid } : {}),
+      sill: true,
+      ...lintel,
       ...glass,
     };
   });
@@ -698,7 +729,7 @@ export function facadeHouseRecipe({
     ...(plinthInferred ? base : []),
     ...(front.steps.length && !plinthInferred ? [] : steps),
   ].map((p) => ({ ...p, status: 'inferred' as const }));
-  const parts = [...measuredParts, ...inferredBase, ...sideWindows].slice(0, MAX_RECIPE_PARTS);
+  const parts = [...measuredParts, ...inferredBase, ...sideWindows].slice(0, MAX_COMPONENTS);
   // Bounds of every part → proportions (largest side 1); fitRecipe re-centres the parts.
   const lo = [Infinity, Infinity, Infinity];
   const hi = [-Infinity, -Infinity, -Infinity];

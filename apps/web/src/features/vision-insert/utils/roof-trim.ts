@@ -1,16 +1,49 @@
 import type { ObjectRecipe, RecipePart } from '@/lib/object-shape';
 
 /**
- * Thatch eave roll (PG-T12): a thatched roof ends in a thick rounded lip, not a knife edge (the
- * drawing's curved eave). Each eave line of a `thatch` roof part gets a cylinder of the roof's
- * colour along it. Viewer-only, like the opening expansion. Pure: recipe units in and out.
+ * Roof trim. Eave roll (PG-T12, `bulge` PG-T10): a thatched roof ends in a thick rounded lip, not
+ * a knife edge (the drawing's curved eave). Each eave line of a roof part with a bulge (thatch by
+ * default) gets a cylinder of the roof's colour along it. Chimney cap (PG-T10): a slab on top of a
+ * chimney with `cap`. Viewer-only, like the opening expansion. Pure: recipe units in and out.
  */
 
-/** Roll radius, share of the roof's height. */
+/** Default roll radius of a thatch roof, share of the roof's height. */
 export const EAVE_ROLL_SHARE = 0.08;
+/** Chimney cap: wider than the stack by this factor, this share of the stack's width thick. */
+export const CAP_WIDEN = 1.3;
+export const CAP_THICK = 0.25;
 
-const isThatchRoof = (p: RecipePart) =>
-  (p.shape === 'hip' || p.shape === 'prism') && p.material === 'thatch';
+/** Roll radius share of a roof part: its `bulge`, else the thatch default, else 0. */
+export function roofBulge(p: RecipePart): number {
+  if (p.shape !== 'hip' && p.shape !== 'prism') return 0;
+  return p.bulge ?? (p.material === 'thatch' ? EAVE_ROLL_SHARE : 0);
+}
+
+const isThatchRoof = (p: RecipePart) => roofBulge(p) > 0;
+
+/** Parts with a cap slab added after each chimney that asks for one. */
+export function expandChimneyCaps(
+  parts: ReadonlyArray<RecipePart>,
+  proportions: ObjectRecipe['proportions']
+): RecipePart[] {
+  const dims = [proportions.w, proportions.h, proportions.d];
+  return parts.flatMap((p) => {
+    if (p.kind !== 'chimney' || !p.cap || p.shape !== 'box') return [p];
+    const [sx, sy, sz] = p.size.map((v, i) => v * dims[i]!);
+    const t = Math.min(CAP_THICK * Math.min(sx!, sz!), 0.3 * sy!);
+    const top = p.at[1] * dims[1]! + sy! / 2;
+    const cap: RecipePart = {
+      shape: 'box',
+      at: [p.at[0], (top + t / 2) / dims[1]!, p.at[2]],
+      size: [(CAP_WIDEN * sx!) / dims[0]!, t / dims[1]!, (CAP_WIDEN * sz!) / dims[2]!],
+      color: p.color,
+      ...(p.material ? { material: p.material } : {}),
+      kind: 'chimney',
+      ...(p.status ? { status: p.status } : {}),
+    };
+    return [p, cap];
+  });
+}
 
 /**
  * Parts with an eave roll added after each thatch roof. `overhang` = the viewer's extra roof
@@ -29,7 +62,7 @@ export function expandRoofTrim(
 function rolls(p: RecipePart, dims: number[], overhang: number): RecipePart[] {
   const [cx, cy, cz] = p.at.map((v, i) => v * dims[i]!);
   const [sx, sy, sz] = p.size.map((v, i) => v * dims[i]!);
-  const r = EAVE_ROLL_SHARE * sy!;
+  const r = roofBulge(p) * sy!;
   const y = cy! - sy! / 2 + 0.6 * r;
   const look = { color: p.color, material: p.material, kind: 'roof' as const };
   const roll = (at: [number, number, number], axis: 'x' | 'z', len: number): RecipePart => ({

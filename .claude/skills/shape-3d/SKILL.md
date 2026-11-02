@@ -15,7 +15,7 @@ Judge every change with `/shape-loop`.
    repetition, yaw, part masks). Measurements win by confidence (`fusion.ts`).
 4. Shape math is pure, seeded TS in `server/perception/` (no `Math.random`), ≤ 300 ms per object; every function has
    a Vitest test; a fixed bug gets a regression test (« before: … »).
-5. ≤ 5 k triangles and ≤ 12 parts per object; one merged geometry, groups per material.
+5. ≤ 5 k triangles and ≤ 12 parts per object (Spark / photo path; server-built facade / views recipes ≤ 32 components `MAX_COMPONENTS`, assemblies expanded in the viewer, PG-T10); one merged geometry, groups per material.
 6. No energy value anywhere in this pipeline.
 
 **Map (read barrels first, then only what the task names)**

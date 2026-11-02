@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ObjectRecipeSchema, fitRecipe } from '@/lib/object-shape';
+import { MAX_COMPONENTS, ObjectRecipeSchema, fitRecipe } from '@/lib/object-shape';
 import {
   DEFAULT_DEPTH_RATIO,
   DOOR_COLOR,
@@ -8,6 +8,7 @@ import {
   fuseDepth,
   measureElevation,
   paneGrid,
+  doorGlazing,
   timberFrame,
   inferredTimber,
   separateRoofColor,
@@ -204,10 +205,12 @@ describe('facadeHouseRecipe', () => {
   it('is a valid recipe within the part budget, priorities kept', () => {
     const r = recipe();
     expect(ObjectRecipeSchema.safeParse(fitRecipe(r, 0)).success).toBe(true);
-    expect(r.parts).toHaveLength(12);
+    // PG-T10: components budget, no longer cut at 12 parts.
+    expect(r.parts.length).toBeGreaterThan(12);
+    expect(r.parts.length).toBeLessThanOrEqual(MAX_COMPONENTS);
     expect(r.parts[0]!.front).toBe(true);
     expect(r.parts[1]!.shape).toBe('hip');
-    expect(r.parts.filter((p) => p.material === 'glass')).toHaveLength(7);
+    expect(r.parts.filter((p) => p.material === 'glass')).toHaveLength(9);
     expect(r.parts.filter((p) => p.material === 'brick')).toHaveLength(2);
   });
 
@@ -368,7 +371,7 @@ describe('paneGrid + double doors (PG-T8)', () => {
       colors: { main: '#e6dccb', secondary: '#b8955a', accent: '#2b3440' },
     });
     const doors = r.parts.filter((p) => p.kind === 'door');
-    expect(doors.map((d) => d.grid ?? null)).toEqual([[2, 1], null]);
+    expect(doors.map((d) => d.leaves ?? 1)).toEqual([2, 1]);
     expect(r.parts.find((p) => p.kind === 'window')?.grid).toEqual([2, 4]);
   });
 });
@@ -566,5 +569,64 @@ describe('Spark details where SAM finds none (live 2026-11-02: line drawing)', (
 
   it('panes from Spark when SAM read none', () => {
     expect(build({ panes: [4, 4] }).parts.find((p) => p.kind === 'window')?.grid).toEqual([4, 4]);
+  });
+});
+
+describe('facade assemblies (PG-T10)', () => {
+  const door = { x: 0.4, y: 0.5, w: 0.2, h: 0.4 };
+  const pane = (c: number, r: number) => ({
+    x: 0.42 + c * 0.09,
+    y: 0.52 + r * 0.07,
+    w: 0.07,
+    h: 0.05,
+  });
+
+  it('doorGlazing: share from the top down to the lowest pane, and the pane grid', () => {
+    const g = doorGlazing(door, [pane(0, 0), pane(1, 0), pane(0, 1), pane(1, 1)])!;
+    expect(g.grid).toEqual([2, 2]);
+    expect(g.glazed).toBeCloseTo((0.52 + 0.07 + 0.05 - 0.5) / 0.4, 6);
+    expect(doorGlazing(door, [])).toBeNull();
+    expect(doorGlazing(door, [{ x: 0.8, y: 0.1, w: 0.05, h: 0.05 }])).toBeNull();
+    // One pane → one glass, glazed share at least the minimum.
+    expect(doorGlazing(door, [pane(0, 0)])!.grid).toEqual([1, 1]);
+  });
+
+  it('a glazed double door (its panes seen as windows) keeps them as door glass, not windows', () => {
+    const masks = {
+      aspect: 1.5,
+      house: { x: 0.1, y: 0.1, w: 0.8, h: 0.8 },
+      roof: { box: { x: 0.1, y: 0.1, w: 0.8, h: 0.35 } },
+      wall: { x: 0.12, y: 0.45, w: 0.76, h: 0.45 },
+      windows: [
+        { x: 0.2, y: 0.55, w: 0.1, h: 0.15 },
+        { x: 0.44, y: 0.62, w: 0.05, h: 0.08 },
+        { x: 0.51, y: 0.62, w: 0.05, h: 0.08 },
+      ],
+      doors: [{ x: 0.43, y: 0.6, w: 0.14, h: 0.3 }],
+      chimneys: [{ x: 0.7, y: 0.05, w: 0.05, h: 0.2 }],
+    };
+    const r = facadeHouseRecipe({
+      front: measureElevation(masks)!,
+      side: null,
+      colors: { main: '#e6dccb', secondary: '#b8955a', accent: '#2b3440' },
+    });
+    expect(r.parts.filter((p) => p.kind === 'window')).toHaveLength(1);
+    const d = r.parts.find((p) => p.kind === 'door')!;
+    expect(d.leaves).toBe(2);
+    expect(d.glazed).toBeGreaterThan(0.15);
+    expect(d.grid).toEqual([2, 1]);
+    expect(d.lintel).toBe(true);
+    expect(r.parts.find((p) => p.kind === 'window')!.sill).toBe(true);
+    expect(r.parts.filter((p) => p.kind === 'chimney').every((p) => p.cap)).toBe(true);
+  });
+
+  it('no lintels when a timber frame draws the rails', () => {
+    const r = facadeHouseRecipe({
+      front: front(),
+      side: null,
+      colors: COLORS,
+      details: { timberFrame: true },
+    });
+    if (r.parts[0]!.timber) expect(r.parts.some((p) => p.lintel)).toBe(false);
   });
 });
