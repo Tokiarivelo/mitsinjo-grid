@@ -23,3 +23,9 @@
 - **PA-3** (`docs/tasks/PA-ai-dispatch.md`): Orchestrateur et store
   - PA-T3a: Store `dispatchMode`, `dispatchLog`, `setDispatchMode`, `takeBackControl` (→ manual). Neon table `dispatch_log` via `server/db/migrations.ts`.
   - PA-T3b: Hook `useAiDispatch` (remplace `useAutopilot`) : à chaque heure simulée en mode autonome → détecter → décider → appliquer → journaliser.
+
+## Parallel session (Claude) — 3D by script, plan PV-G (`docs/tasks/PV-shape-script.md`)
+
+- G0 + G1 done (6f57587, 1774910): elevation score vs the 2D drawing (`elevation-score.ts`, log `[vision] 3D elevation n/100`),
+  drawn `partMaterials`, vetted swatches, slope UVs, framed windows/doors (`vision-insert/utils/openings.ts`), brick/stone colours.
+- Thatched golden 89/100 (openings 3/3). Next: G2 (PG-T10 assemblies, PG-T11 wall cuts). Live check: V96–V98.
