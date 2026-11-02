@@ -382,8 +382,15 @@ describe('checkAntiOscillation (PA-T2c)', () => {
       },
     ];
 
-    expect(checkAntiOscillation(sampleAction, 14, 0, history)).toBe(false);
-    expect(checkAntiOscillation(sampleAction, 15, 0, history)).toBe(true);
+    const capHealth: AutoAction = {
+      kind: 'cap_sector',
+      sector: 'health',
+      patch: { sectorCaps: [{ sector: 'health', maxKw: 1, fromHour: 14, toHour: 24 }] },
+    };
+    expect(checkAntiOscillation(capHealth, 14, 0, history)).toBe(false);
+    expect(checkAntiOscillation(capHealth, 15, 0, history)).toBe(true);
+    // Fire isolation is exempt from the hourly limit (F1)
+    expect(checkAntiOscillation(sampleAction, 14, 0, history)).toBe(true);
   });
 
   it('does not count alert_only towards the 2 actions/hour limit', () => {
@@ -545,6 +552,47 @@ describe('decideDispatch (PA-T2b)', () => {
         `Scenario ${id}: autonomous mode critical unserved ${iaCrit} should be <= best fixed ${bestFixed}`
       ).toBeLessThanOrEqual(bestFixed + 1e-4);
     }
+  });
+
+  it('keeps fire isolation even when another candidate scores better', () => {
+    const input = scenarios.village_fire.input;
+    const sim = simulate(input, 'proportional');
+    const incs = detectIncidents(input, sim, 14);
+    const decision = decideDispatch(input, 14, 'proportional', incs);
+    expect(decision.action?.kind).toBe('isolate_sector');
+    expect(decision.action?.sector).toBe('market');
+  });
+
+  it('isolates a burning sector even after 2 actions this hour', () => {
+    const input = scenarios.village_fire.input;
+    const sim = simulate(input, 'proportional');
+    const incs = detectIncidents(input, sim, 14);
+    const busy: DispatchLogEntry[] = [
+      { ...entry({ action: { kind: 'switch_strategy', strategy: 'balanced' } }), hash: 'h1' },
+      {
+        ...entry({ action: { kind: 'switch_strategy', strategy: 'essential_first' } }),
+        hash: 'h2',
+      },
+    ];
+    const decision = decideDispatch(input, 14, 'proportional', incs, DEFAULT_CONSTITUTION, busy);
+    expect(decision.action?.kind).toBe('isolate_sector');
+  });
+
+  it('restoring a sector after its fire also lifts its isolation cap', () => {
+    const base = structuredClone(scenarios.baseline.input);
+    base.events = [...base.events, { type: 'fire', sector: 'market', startHour: 14, durationH: 2 }];
+    const isolated = applyPatch(base, {
+      sectorCaps: [{ sector: 'market', maxKw: 0, fromHour: 14, toHour: 24 }],
+    });
+    const restore = candidateActions({ ...surplus, hour: 16 }, isolated).find(
+      (a) => a.kind === 'restore_sector' && a.patch?.clearFires?.includes('market')
+    );
+    expect(restore?.patch).toBeDefined();
+    const restored = applyPatch(isolated, restore!.patch!);
+    expect(restored.sectorCaps?.some((c) => c.sector === 'market') ?? false).toBe(false);
+    expect(simulate(restored, 'proportional').steps[16]?.sectors.market?.servedKw).toBeGreaterThan(
+      0
+    );
   });
 
   it('executes well within the < 20 ms / hour budget', () => {

@@ -597,12 +597,14 @@ export function candidateActions(incident: Incident, input: SimulationInput): Au
   if (input.events) {
     for (const e of input.events) {
       if (e.type === 'fire' && hour >= e.startHour + e.durationH) {
+        // Also lift the 0 kW isolation cap, otherwise the sector stays dark until midnight.
         actions.push(
           AutoActionSchema.parse({
             kind: 'restore_sector',
             sector: e.sector,
             patch: {
               clearFires: [e.sector],
+              sectorCaps: (input.sectorCaps ?? []).filter((c) => c.sector !== e.sector),
             },
             answers: incident.kind,
           })
@@ -694,6 +696,9 @@ export function checkAntiOscillation(
   day: number,
   history: readonly DispatchLogEntry[]
 ): boolean {
+  // Fire isolation is safety-critical and never blocked by anti-oscillation (F1)
+  if (action.kind === 'isolate_sector') return true;
+
   // 1. Max 2 actions per hour
   const actionsThisHour = history.filter(
     (e) => e.day === day && e.hour === hour && e.action && e.action.kind !== 'alert_only'
@@ -722,8 +727,7 @@ export function checkAntiOscillation(
         opposites.includes(e.action.kind)
     );
 
-    // Fire isolation is safety-critical and never blocked by anti-oscillation (F1)
-    if (action.kind !== 'isolate_sector' && recent.length > 0) {
+    if (recent.length > 0) {
       return false;
     }
   }
@@ -801,20 +805,6 @@ export function decideDispatch(
 
   const evaluatedCandidates: DispatchDecision['evaluatedCandidates'] = [];
 
-  // Check if we already hit max actions this hour (PA-T2c)
-  const actionsThisHour = history.filter(
-    (e) => e.day === day && e.hour === hour && e.action && e.action.kind !== 'alert_only'
-  );
-  if (actionsThisHour.length >= 2) {
-    return {
-      action: undefined,
-      before: counterfactual,
-      after: counterfactual,
-      counterfactual,
-      evaluatedCandidates: [],
-    };
-  }
-
   // 2. Collect candidate actions from incidents
   const candidates: AutoAction[] = [];
   const seenKeys = new Set<string>();
@@ -833,6 +823,9 @@ export function decideDispatch(
   // Active fires at hour t
   const firesNow = activeFires(input.events ?? [], hour);
   const burningNow = new Set(firesNow.map((f) => f.sector));
+
+  // Once a burning sector's isolation is chosen, no other candidate may replace it (F1).
+  let fireLocked = false;
 
   // 3. Evaluate each candidate
   for (const action of candidates) {
@@ -898,7 +891,11 @@ export function decideDispatch(
       action.sector !== undefined &&
       burningNow.has(action.sector);
 
-    if (isMandatoryFireIsolation || isSnapshotBetter(candSnapshot, bestSnapshot)) {
+    if (isMandatoryFireIsolation && !fireLocked) {
+      fireLocked = true;
+      bestSnapshot = candSnapshot;
+      bestAction = action;
+    } else if (!fireLocked && isSnapshotBetter(candSnapshot, bestSnapshot)) {
       bestSnapshot = candSnapshot;
       bestAction = action;
     }

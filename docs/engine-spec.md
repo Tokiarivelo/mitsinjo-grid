@@ -195,7 +195,9 @@ policy will use (PA-T1), evaluated on the result of the shown day at hour t:
 
 Policy (PA-T2) objective, compared on t…t+6: lower critical unserved, then lower unserved, then
 higher final SoC; constitution violators are dropped; a burning sector is never restored before its
-fire ends; at most 2 actions per hour and no reversal on the same sector within 2 h.
+fire ends; at most 2 actions per hour and no reversal on the same sector within 2 h. Isolating a
+burning sector is exempt from both limits and is never replaced by a better-scoring candidate.
+Restoring a sector after its fire also lifts its isolation cap.
 
 ## 7. Tests (Vitest, `packages/engine/src/__tests__`)
 
