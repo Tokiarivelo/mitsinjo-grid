@@ -7,6 +7,7 @@ import type { PartsSubject, PerceptionBackend, PerceptionCall, ShapeSubject } fr
 import { MetaPerceptionBackend } from './meta';
 import { MockPerceptionBackend } from './mock';
 import type {
+  ShapeOpsResult,
   CriticResult,
   DetectionResult,
   PerceptionSource,
@@ -143,6 +144,19 @@ export class PerceptionClient {
 
   checkViews(imageUrl: string, question: string, signal?: AbortSignal): Promise<ViewsCheckResult> {
     return this.run('checkViews', (b) => b.checkViews(imageUrl, question, signal));
+  }
+
+  /** Shape loop stage patch (PG-T15); a backend without it answers an empty patch. */
+  proposeShapeOps(
+    imageUrl: string,
+    question: string,
+    signal?: AbortSignal
+  ): Promise<ShapeOpsResult> {
+    return this.run('proposeShapeOps', (b) =>
+      b.proposeShapeOps
+        ? b.proposeShapeOps(imageUrl, question, signal)
+        : Promise.resolve({ model: b.name, usage: {}, result: { ops: [] } })
+    );
   }
 }
 

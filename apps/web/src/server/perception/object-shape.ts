@@ -38,6 +38,15 @@ import { extractSwatches } from './photo-swatches';
 import { withLatheBody } from './lathe-body';
 import { fetchFacadeMasks, type FacadeMasks } from './facade-masks';
 import { depthRatio, facadeHouseRecipe, type Elevation } from './facade-house';
+import { recipeToScript } from '@/lib/shape-script';
+import {
+  HOUSE_STAGES,
+  STAGE_MIN_MS,
+  STAGE_SAFETY_MS,
+  houseStageScorer,
+  runShapeStages,
+} from './shape-stages';
+import { sparkStageProposer } from './shape-stages-spark';
 import { formatElevationScore, scoreElevation, type ScoredElevation } from './elevation-score';
 import { ELEVATION_ARCHETYPES, measureFacadeElevations } from './facade-views';
 import { fetchPartMasks } from './part-masks';
@@ -53,6 +62,7 @@ import {
   VIEW_HULL_ARCHETYPES,
   VIEWS_TOTAL_MS,
   checkViewsModel,
+  imageBytes,
   measureObjectViews,
   sparkDepthRatio,
   viewIou,
@@ -163,7 +173,7 @@ export interface ObjectShapeOptions {
  */
 export async function runObjectShape(
   perception: Pick<PerceptionClient, 'describeShape' | 'describeParts'> &
-    Partial<Pick<PerceptionClient, 'segmentImage' | 'checkViews'>>,
+    Partial<Pick<PerceptionClient, 'segmentImage' | 'checkViews' | 'proposeShapeOps'>>,
   photo: PhotoForRegions | null,
   fullImageUrl: string,
   target: ShapeTarget,
@@ -393,6 +403,43 @@ export async function runObjectShape(
             if (Object.keys(swatches).length > 0) recipe.swatches = swatches;
           } catch (err) {
             console.warn('[vision] swatches failed:', err instanceof Error ? err.message : err);
+          }
+        }
+        // PG-T16: staged loop (Spark patches, kept only when the elevation stage score rises)
+        // while the first answer's budget allows; the seed is today's builder, so never worse.
+        const left = started + timeoutMs - STAGE_SAFETY_MS - Date.now();
+        if (perception.proposeShapeOps && left >= STAGE_MIN_MS) {
+          try {
+            const drawing = target.facadeUrl ? await imageBytes(target.facadeUrl, signal) : null;
+            const staged = await runShapeStages({
+              seed: recipeToScript(recipe),
+              stages: HOUSE_STAGES,
+              score: houseStageScorer(front, front.roofRings),
+              propose: sparkStageProposer({
+                proposeShapeOps: async (img, q, sig) => ({
+                  result: await perception.proposeShapeOps!(img, q, sig),
+                }),
+                front,
+                ...(front.roofRings ? { roofRings: front.roofRings } : {}),
+                drawing,
+                label: target.label,
+              }),
+              budgetMs: left,
+              ...(signal ? { signal } : {}),
+            });
+            console.info(
+              `[vision] 3D stages for "${target.label}": ${staged.stages.map((st) => `${st.id} ${st.before.toFixed(2)}→${st.after.toFixed(2)} (${st.stop}${st.kept ? `, ${st.kept} kept` : ''})`).join(' · ')}; overall ${staged.overall.before.toFixed(2)}→${staged.overall.after.toFixed(2)}`
+            );
+            recipe = {
+              ...staged.recipe,
+              ...(recipe.swatches ? { swatches: recipe.swatches } : {}),
+              ...(recipe.dimStatus ? { dimStatus: recipe.dimStatus } : {}),
+            };
+          } catch (err) {
+            console.warn(
+              '[vision] 3D stages failed, keeping the seed:',
+              err instanceof Error ? err.message : err
+            );
           }
         }
         // PG-T2: the model against the drawing it was built from (the staged loop's yardstick).

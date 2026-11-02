@@ -598,7 +598,7 @@ export function viewIou(recipe: ObjectRecipe, view: ViewMeasure, side: 'front' |
 const SHEET_ROWS = 200;
 
 /** An image URL (data: or https) → its bytes, or null. */
-async function imageBytes(url: string, signal?: AbortSignal): Promise<Buffer | null> {
+export async function imageBytes(url: string, signal?: AbortSignal): Promise<Buffer | null> {
   const m = /^data:[^;,]+;base64,(.*)$/s.exec(url);
   if (m) return Buffer.from(m[1]!, 'base64');
   try {

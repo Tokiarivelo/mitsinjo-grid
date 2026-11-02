@@ -33,11 +33,18 @@ import {
   shapeQuestion,
 } from './shape';
 import { boxUnionCoverage, parseSamOutput } from './parse-sam';
+import {
+  SHAPE_SCRIPT_JSON_SCHEMA,
+  SHAPE_SCRIPT_PROMPT_VERSION,
+  SHAPE_SCRIPT_SYSTEM_PROMPT,
+  parseStageOps,
+} from './shape-script-prompt';
 import { redactDataUrls, redactDataUrlsInText, type VisionCallLog } from './vision-log';
 import {
   ObservationSchema,
   type CriticResult,
   type ViewsCheckResult,
+  type ShapeOpsResult,
   type DetectionResult,
   type SegmentResult,
   type ShapeResult,
@@ -416,6 +423,27 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       `[vision] 3D views check from ${model}: ${check ? `${check.missing.map((m) => `${m.part} (${m.view})`).join(', ') || 'complete'}${check.redrawSide ? ', redraw side' : ''}` : 'unusable'}`
     );
     return { model, usage, result: { check } };
+  }
+
+  async proposeShapeOps(
+    imageUrl: string,
+    question: string,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<ShapeOpsResult>> {
+    const { content, model, usage } = await this.visionJson(
+      SHAPE_SCRIPT_SYSTEM_PROMPT,
+      question,
+      imageUrl,
+      SHAPE_SCRIPT_JSON_SCHEMA,
+      signal,
+      false,
+      { kind: 'proposeShapeOps', params: { promptVersion: SHAPE_SCRIPT_PROMPT_VERSION } }
+    );
+    const ops = parseStageOps(content);
+    console.info(
+      `[vision] 3D stage ops from ${model} (prompt v${SHAPE_SCRIPT_PROMPT_VERSION}): ${ops ? ops.map((o) => `${(o as { op: string }).op} ${(o as { id?: string }).id ?? ''}`.trim()).join(', ') || 'none' : 'unusable'}`
+    );
+    return { model, usage, result: { ops } };
   }
 
   async segmentImage(

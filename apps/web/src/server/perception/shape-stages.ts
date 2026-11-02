@@ -91,6 +91,11 @@ export const STAGE_ROUNDS = 3;
 /** A patch must raise the stage score by at least this much to be kept. */
 export const STAGE_MIN_GAIN = 0.005;
 
+/** Live request: stages start only with this much of the shape budget left (one Spark round). */
+export const STAGE_MIN_MS = 15_000;
+/** Live request: stop the stages this long before the shape deadline (answer + render). */
+export const STAGE_SAFETY_MS = 4_000;
+
 /** Stages of a house built from its elevation (scores from `scoreElevation().stages`). */
 export const HOUSE_STAGES: ReadonlyArray<
   StageSpec<'massing' | 'roof' | 'openings' | 'accessories'>

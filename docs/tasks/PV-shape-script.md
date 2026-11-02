@@ -7,7 +7,7 @@ not faithful to the imagined 2D elevation. Example: « rural thatched house » (
 same blotchy photo texture**, three dark rectangles for windows and door. Ask: Spark writes a **generation
 script**, builds the model **piece by piece**, and an agent loop renders → compares → corrects each piece until
 the render matches; same for every kind of object.
-**Status:** 🟡 G0 + G1 + G2 done (2026-11-02); live Meta run on the thatched-house drawing: facade path, elevation 87–91/100, IoU 0.98, first model in 48–68 s (chimney accessory score 0.44–0.71: roof hides its foot). G3: PG-T13/T14/T16 done, next PG-T15 stage prompt. **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
+**Status:** 🟡 G0 + G1 + G2 done (2026-11-02); live Meta run on the thatched-house drawing: facade path, elevation 87–91/100, IoU 0.98, first model in 48–68 s (chimney accessory score 0.44–0.71: roof hides its foot). G3: PG-T13–T16 done (loop live in the facade path), next PG-T17/T18 progressive UI + background stages. **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
 writes vertices or runnable code (it writes Zod-checked ops, the engine builds); pure, seeded, tested geometry;
 never paste the photo on the model (small tileable swatches OK); ≤ 5 k triangles per object.
 **Skills:** `/shape-3d` (vocabulary, files) · `/shape-loop` (scores, log) · `/facade-2d` (target image).
@@ -117,10 +117,11 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
 - [x] **PG-T14 Seed = today's builder.** `facadeHouseRecipe` → equivalent ShapeScript (`recipeToScript`). The
       loop starts from it, so the floor is the current result.
       **Done:** `recipeToScript`; the thatched-house builder output round-trips unchanged (no op dropped, nothing moved).
-- [ ] **PG-T15 Stage prompt.** One Spark call per round: target crop for the stage | render | diff overlay,
+- [x] **PG-T15 Stage prompt.** One Spark call per round: target crop for the stage | render | diff overlay,
       the stage's scores, the locked components (read-only) and the stage's components (editable). It answers
       patch ops for this stage only. Prompt versioned (`SHAPE_SCRIPT_PROMPT_VERSION`). Eval on captures
       (`make eval-shape`), keeping the wording that raises the scores.
+      **Done:** `shape-script-prompt.ts` (prompt v1, `ShapeStagePatch` schema, `stageQuestion`, `parseStageOps`: box adds only, ≤ 12 ops), `proposeShapeOps` on Meta / mock / client, `shape-stages-spark.ts` `stageSheet` + `sparkStageProposer`; wired into the facade path within the 60 s budget (≥ 15 s left). **Deviation:** no `make eval-shape` stage replay yet — it needs live captures of stage answers (next live run).
 - [x] **PG-T16 Loop runner.** `runShapeStages(seed, target, budget)`: S1…S7, ≤ 3 rounds per stage, keep a patch
       only if the stage score rises, stop a stage at its gate. The time budget is shared. Out of time → the rest
       keeps the seed. Deterministic given the same Spark answers (fixtures). Tests with a fake Spark: the score

@@ -234,4 +234,75 @@ describe('runObjectShape with a validated facade', () => {
     expect(r.parts.find((p) => p.material === 'wood')?.color).toBe(DOOR_COLOR);
     expect(r.dimStatus?.eave).toBe('measured');
   });
+
+  it('the staged loop asks Spark per stage and never makes the house worse (PG-T16)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 404 }))
+    );
+    const c = GOLDEN_SHAPES.find((g) => g.name === 'cottage row')!;
+    const buffer = await sharp(Buffer.from(goldenSvg(c)))
+      .jpeg({ quality: 85 })
+      .toBuffer();
+    const target: ShapeTarget = {
+      id: 'house',
+      label: 'house',
+      category: 'other',
+      scenery: 'building',
+      box: goldenBox(c),
+      outline: goldenOutline(c),
+      facadeUrl: 'https://r2.example/facade.png',
+    };
+    const kit = { ...c.prior, archetype: 'house' as const };
+    const spark = {
+      describeShape: vi.fn().mockResolvedValue({
+        recipe: kitToRecipe(kit),
+        kit,
+        source: 'meta',
+        model: 'muse-spark-1.3',
+      }),
+      describeParts: vi.fn().mockResolvedValue({ recipe: null }),
+    };
+    const facadeSam = fakeSam(600, 400, {
+      house: [[60, 40, 539, 359]],
+      roof: [[60, 40, 539, 159]],
+      wall: [[90, 160, 509, 359]],
+      window: [
+        [140, 200, 199, 259],
+        [400, 200, 459, 259],
+      ],
+      door: [[270, 240, 329, 359]],
+    });
+    const segmentImage = vi.fn(async (url: string, concept: string) =>
+      url === target.facadeUrl
+        ? facadeSam(url, concept)
+        : { ...(await facadeSam(url, concept)), instances: [], count: 0 }
+    );
+    // A harmful patch each round: shrink the walls, flatten the roof, drop a window.
+    const proposeShapeOps = vi.fn(async () => ({
+      source: 'meta' as const,
+      model: 'muse-spark-1.3',
+      ops: [
+        { op: 'set', id: 'wall', size: [0.3, 0.3, 0.3] },
+        { op: 'set', id: 'roof', ridge: 0 },
+        { op: 'remove', id: 'window' },
+      ],
+    }));
+    const run = (withLoop: boolean) =>
+      runObjectShape(
+        { ...spark, segmentImage, ...(withLoop ? { proposeShapeOps } : {}) },
+        { buffer, ...PHOTO },
+        'data:full',
+        target
+      );
+    const plain = await run(false);
+    const looped = await run(true);
+    vi.unstubAllGlobals();
+    expect(proposeShapeOps).toHaveBeenCalled();
+    const [img, question] = proposeShapeOps.mock.calls[0]! as unknown as [string, string];
+    expect(img).toMatch(/^data:image\/jpeg/);
+    expect(question).toMatch(/Stage: (massing|roof|openings|accessories)/);
+    expect(looped.recipe!.source).toBe('facade');
+    expect(looped.recipe!.parts).toEqual(plain.recipe!.parts);
+  });
 });

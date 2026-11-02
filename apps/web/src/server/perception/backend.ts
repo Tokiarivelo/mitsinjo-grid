@@ -5,6 +5,7 @@ import type { UsageSample } from '@/server/spend';
 import type {
   CriticResult,
   ViewsCheckResult,
+  ShapeOpsResult,
   DetectionResult,
   SegmentResult,
   ShapeResult,
@@ -87,6 +88,15 @@ export interface PerceptionBackend {
     question: string,
     signal?: AbortSignal
   ): Promise<PerceptionCall<ViewsCheckResult>>;
+  /**
+   * Shape loop stage (PG-T15): `imageUrl` is drawing | model | diff, `question` the stage, its
+   * scores and the components. One vision call; null ops when unusable. Optional: no loop without it.
+   */
+  proposeShapeOps?(
+    imageUrl: string,
+    question: string,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<ShapeOpsResult>>;
 }
 
 /** What `describeShape` is told about the object. */

@@ -124,6 +124,12 @@ export type ViewsCheckResult = Omit<z.infer<typeof ViewsCheckResultSchema>, 'che
   check: import('./views-check').ViewsCheck | null;
 };
 
+/** Stage patch of the shape loop (PG-T15): raw ShapeScript ops, null when unusable or mock. */
+export const ShapeOpsResultSchema = PerceptionSourceSchema.extend({
+  ops: z.array(z.unknown()).nullable(),
+});
+export type ShapeOpsResult = z.infer<typeof ShapeOpsResultSchema>;
+
 export const DetectionResultSchema = PerceptionSourceSchema.extend({
   detections: z.array(ApplianceDetectionSchema),
 });
