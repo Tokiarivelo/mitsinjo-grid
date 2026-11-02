@@ -99,10 +99,10 @@ eval-shape: ## Kit eval on live Spark over the real captures (MODEL=…, PR-3.1,
 	$(need_ws)
 	eval "$$(make -s env-export)" && EVAL_SHAPE=1 EVAL_SHAPE_DIR="$(CURDIR)/apps/web/src/server/perception/__fixtures__/shape/real" $(if $(MODEL),META_VISION_MODEL="$(MODEL)") $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/eval-shape.test.ts -t "make eval-shape"
 
-facade-e2e: ## Facade → 3D house end to end on live Meta (FRONT=elevation.png OUT=dir [PROMPT=…], costs API calls)
+facade-e2e: ## Facade → 3D end to end on live Meta (FRONT=view.png OUT=dir [LABEL='purple vintage car' SCENERY=vehicle] [PROMPT=…], costs API calls)
 	$(need_ws)
 	@test -n "$(FRONT)" -a -n "$(OUT)" || { echo "Usage: make facade-e2e FRONT=path/front.png OUT=dir [PROMPT='cottage with a red tin roof' to draw FRONT first]"; exit 1; }
-	eval "$$(make -s env-export)" && FACADE_E2E_FRONT="$(abspath $(FRONT))" FACADE_E2E_OUT="$(abspath $(OUT))" $(if $(PROMPT),FACADE_E2E_FRONT_PROMPT="$(PROMPT)") $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/facade-e2e.test.ts
+	eval "$$(make -s env-export)" && FACADE_E2E_FRONT="$(abspath $(FRONT))" FACADE_E2E_OUT="$(abspath $(OUT))" $(if $(PROMPT),FACADE_E2E_FRONT_PROMPT="$(PROMPT)") $(if $(LABEL),FACADE_E2E_LABEL="$(LABEL)") $(if $(SCENERY),FACADE_E2E_SCENERY="$(SCENERY)") $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/facade-e2e.test.ts
 
 shape-report: ## 3D shape report: scores + contact sheet → test-results/shape-report/ (/shape-loop)
 	$(need_ws)

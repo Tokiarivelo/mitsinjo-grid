@@ -4,6 +4,7 @@ import type { SceneryType } from '@/lib/vision';
 import type { UsageSample } from '@/server/spend';
 import type {
   CriticResult,
+  ViewsCheckResult,
   DetectionResult,
   SegmentResult,
   ShapeResult,
@@ -77,6 +78,15 @@ export interface PerceptionBackend {
     question: string,
     signal?: AbortSignal
   ): Promise<PerceptionCall<CriticResult>>;
+  /**
+   * AI check of a views model (PV-H): `imageUrl` is the 2 × 2 drawings | model sheet, `question`
+   * the label and silhouette match. One vision call; null check when unusable.
+   */
+  checkViews(
+    imageUrl: string,
+    question: string,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<ViewsCheckResult>>;
 }
 
 /** What `describeShape` is told about the object. */

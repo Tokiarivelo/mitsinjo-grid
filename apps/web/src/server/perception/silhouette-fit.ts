@@ -5,6 +5,7 @@
  * scored `J = 1 − IoU + λ·chamfer + μ·prior` and minimised with Nelder–Mead from the PF-T3…T5 estimates.
  * Pure and deterministic; geometry only.
  */
+import { hullSamplePoints } from '@/lib/hull';
 import { kitToRecipe, uniformRoof, type ObjectKit } from '@/lib/object-kit';
 import { fitRecipe, MAX_YAW, type ObjectRecipe, type RecipePart } from '@/lib/object-shape';
 import { nelderMead } from './nelder-mead';
@@ -114,6 +115,10 @@ function unitPoints(p: RecipePart): Array<[number, number, number]> {
       return [-0.5, 0.5].flatMap((z) =>
         ring.map(([x, y]) => [x, y, z] as [number, number, number])
       );
+    }
+    case 'hull': {
+      const pts = hullSamplePoints(p.points ?? [], p.section ?? []);
+      return pts.length ? pts : unitPoints({ ...p, shape: 'box' });
     }
     case 'lathe': {
       const profile = p.profile ?? [];

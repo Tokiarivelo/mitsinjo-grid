@@ -13,7 +13,7 @@ import { renderFlat, type FlatView } from '../flat-render';
 import { runObjectShape } from '../object-shape';
 import { elevationDiff, formatElevationScore, type ScoredElevation } from '../elevation-score';
 import type { Elevation } from '../facade-house';
-import { samBoxToNorm } from '../outline';
+import { conceptOf, samBoxToNorm } from '../outline';
 
 /**
  * Facade → 3D end to end on the live Meta models (`make facade-e2e FRONT=… OUT=…`, costs API
@@ -24,9 +24,13 @@ import { samBoxToNorm } from '../outline';
 const FRONT = process.env.FACADE_E2E_FRONT;
 const OUT = process.env.FACADE_E2E_OUT ?? '';
 
+/** Any object (PV-H): label and scenery type, a house by default. */
+const LABEL = process.env.FACADE_E2E_LABEL ?? 'house';
+const SCENERY = (process.env.FACADE_E2E_SCENERY ?? 'building') as ShapeTarget['scenery'];
+
 const PHOTO_PROMPT =
   process.env.FACADE_E2E_PHOTO_PROMPT ??
-  'A realistic daylight photograph of this exact house, seen from the front-left at a three-quarter angle, standing in a rural Malagasy village, a small tree partly hiding its right corner. Photographic, natural colours.';
+  `A realistic daylight photograph of this exact ${LABEL}, seen from the front-left at a three-quarter angle, in a rural Malagasy village, a small bush partly hiding its right corner. Photographic, natural colours.`;
 
 const VIEWS: Record<string, FlatView> = {
   front: { yaw: 0, pitch: 0 },
@@ -57,7 +61,13 @@ describe.skipIf(!FRONT)('facade → 3D end to end (live)', () => {
     if (!existsSync(FRONT!) && process.env.FACADE_E2E_FRONT_PROMPT)
       writeFileSync(
         FRONT!,
-        await museImage(buildFacadePrompt('house', 'house', process.env.FACADE_E2E_FRONT_PROMPT))
+        await museImage(
+          buildFacadePrompt(
+            SCENERY === 'building' ? 'house' : 'other',
+            LABEL,
+            process.env.FACADE_E2E_FRONT_PROMPT
+          )
+        )
       );
     const front = readFileSync(FRONT!);
     const frontUrl = `data:image/png;base64,${front.toString('base64')}`;
@@ -68,15 +78,15 @@ describe.skipIf(!FRONT)('facade → 3D end to end (live)', () => {
     const photo = { buffer, width: meta.width!, height: meta.height! };
     const photoUrl = `data:image/jpeg;base64,${buffer.toString('base64')}`;
     const client = getPerceptionClient('facade-e2e');
-    const seg = await client.segmentImage(photoUrl, 'house');
+    const seg = await client.segmentImage(photoUrl, conceptOf({ label: LABEL }));
     const inst = [...seg.instances].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
     const box = inst && samBoxToNorm(inst.box, seg.imageWidth, seg.imageHeight);
     expect(box).toBeTruthy();
     const target: ShapeTarget = {
       id: 'facade-e2e',
-      label: 'house',
+      label: LABEL,
       category: 'other',
-      scenery: 'building',
+      ...(SCENERY ? { scenery: SCENERY } : {}),
       box: box!,
       ...(inst!.outline && inst!.outline.length < 6000 ? { outline: inst!.outline } : {}),
       facadeUrl: frontUrl,

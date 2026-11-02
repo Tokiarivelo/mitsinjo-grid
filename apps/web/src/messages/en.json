@@ -932,11 +932,12 @@
       "model3dCause": "Cause: {cause}",
       "model3dStepsLabel": "AI steps for the 3D model",
       "model3dSeconds": "{s} s",
-      "model3dWaitHint": "Muse Spark usually needs 15 to 40 s (limit {max} s); a house rebuilt from its 2D facade, up to 90 s.",
+      "model3dWaitHint": "Muse Spark usually needs 15 to 40 s (limit {max} s); a house or any object rebuilt from its 2D view, checked by the AI, up to 90 s.",
       "model3dStep": {
         "crop": "Extracting the object from the photo (crop, enlarge)",
         "model": "Muse Spark imagines the parts and colours",
-        "fit": "Fitting the parts to the photo proportions"
+        "fit": "Fitting the parts to the photo proportions",
+        "check": "Muse Spark checks every side against the drawings and adds what is missing"
       },
       "insertTitle": "Add to the simulation",
       "insertSourceLabel": "Where the power comes from",

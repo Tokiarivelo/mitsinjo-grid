@@ -203,6 +203,9 @@ function clipPolygon(s: Span, o: V3, d: V3, ring: ReadonlyArray<Pt2>): void {
   for (const h of toggles) {
     if (h.t <= t || h.t >= s.tout) continue;
     if (inside) {
+      // Entered at t (or already inside at the span entry), leaves here.
+      s.tin = t;
+      s.n = n;
       s.tout = h.t;
       return;
     }
@@ -418,6 +421,15 @@ function intersect(p: RecipePart, o: V3, d: V3): Span | null {
     case 'lathe':
       clipLathe(s, o, d, p.profile ?? []);
       break;
+    case 'hull': {
+      // Front ring along z ∩ side ring along x (PV-H): the side clip runs in swapped (z, y, x) space.
+      clipPolygon(s, o, d, p.points ?? []);
+      if (s.tout === -Infinity) break;
+      const before = s.n;
+      clipPolygon(s, [o[2], o[1], o[0]], [d[2], d[1], d[0]], p.section ?? []);
+      if (s.n && s.n !== before) s.n = [s.n[2], s.n[1], s.n[0]];
+      break;
+    }
   }
   return s.n && s.tin < s.tout ? s : null;
 }

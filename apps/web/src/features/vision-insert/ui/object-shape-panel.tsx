@@ -117,14 +117,18 @@ function DimStatusLine({ recipe }: { recipe: ObjectRecipe }) {
   );
 }
 
-/** Live list of the server steps (crop → Spark → fit), current one spinning with its seconds. */
+/**
+ * Live list of the server steps (crop → Spark → fit), current one spinning with its seconds; the
+ * AI check (views path only) joins the list when it starts.
+ */
 function ShapeSteps({ step, seconds }: { step: ShapeStep; seconds: number }) {
   const t = useTranslations('features.visionInsert');
-  const current = SHAPE_STEPS.indexOf(step);
+  const steps = SHAPE_STEPS.filter((s) => s !== 'check' || step === 'check');
+  const current = steps.indexOf(step);
   return (
     <div className="flex flex-col gap-1.5 rounded-control border border-ai-violet/30 bg-ai-violet/5 p-3">
       <ol aria-label={t('model3dStepsLabel')} className="flex flex-col gap-1.5 text-xs">
-        {SHAPE_STEPS.map((s, i) => {
+        {steps.map((s, i) => {
           const state = i < current ? 'done' : i === current ? 'active' : 'todo';
           return (
             <li

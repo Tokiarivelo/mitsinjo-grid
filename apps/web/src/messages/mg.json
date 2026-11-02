@@ -932,11 +932,12 @@
       "model3dCause": "Antony: {cause}",
       "model3dStepsLabel": "Dingan'ny AI ho an'ny modely 3D",
       "model3dSeconds": "{s} s",
-      "model3dWaitHint": "Matetika 15 ka hatramin'ny 40 s i Muse Spark (fetra {max} s); trano namboarina avy amin'ny endriny 2D, hatramin'ny 90 s.",
+      "model3dWaitHint": "Matetika 15 ka hatramin'ny 40 s i Muse Spark (fetra {max} s); trano na zavatra namboarina avy amin'ny endriny 2D ary nohamarinin'ny IA, hatramin'ny 90 s.",
       "model3dStep": {
         "crop": "Fanalana ilay zavatra amin'ny sary (fanapahana, fanitarana)",
         "model": "Mamorona ny ampahany sy ny loko i Muse Spark",
-        "fit": "Fampifanarahana ny ampahany amin'ny haben'ny sary"
+        "fit": "Fampifanarahana ny ampahany amin'ny haben'ny sary",
+        "check": "Muse Spark manamarina ny lafiny tsirairay amin'ny sary ary manampy izay tsy ampy"
       },
       "insertTitle": "Ampidiro ao amin'ny simulation",
       "insertSourceLabel": "Avy aiza ny herinaratra",

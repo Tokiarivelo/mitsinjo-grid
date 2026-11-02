@@ -82,7 +82,7 @@ export async function criticImage(
  */
 export async function shapeWithCritic(
   perception: Pick<PerceptionClient, 'describeShape' | 'describeParts' | 'criticizeShape'> &
-    Partial<Pick<PerceptionClient, 'segmentImage'>>,
+    Partial<Pick<PerceptionClient, 'segmentImage' | 'checkViews'>>,
   photo: PhotoForRegions | null,
   fullImageUrl: string,
   target: ShapeTarget,
@@ -101,8 +101,9 @@ export async function shapeWithCritic(
       // Free recipes have no template to patch: rebuilding from a patched kit would swap the
       // imagined parts for the crude placeholder ones.
       shape.recipe.source === 'free' ||
-      // Facade recipes are measured on the elevations, not on the photo: nothing to patch.
+      // Facade / views recipes are measured on the drawn views, not on the photo: nothing to patch.
       shape.recipe.source === 'facade' ||
+      shape.recipe.source === 'views' ||
       timeoutMs - (Date.now() - started) < CRITIC_TIME_MIN_MS
     ) {
       return shape;

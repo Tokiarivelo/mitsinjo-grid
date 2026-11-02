@@ -196,8 +196,9 @@ make test-shape
 
 # 3D shape report: scores + contact sheet (photo | flat | ¾) → test-results/shape-report/
 make shape-report
-# Facade → 3D house on live Meta (front + side elevations, sheet.png in OUT)
+# Facade → 3D on live Meta (front + side, sheet.png in OUT); any object with LABEL/SCENERY
 make facade-e2e FRONT=front.png OUT=test-results/facade
+make facade-e2e FRONT=car.png OUT=test-results/car LABEL='purple vintage car' SCENERY=vehicle
 
 # Real 3D viewer shots of those recipes, dark + light (dev server running, API stubbed)
 make shape-shots

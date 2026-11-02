@@ -14,6 +14,7 @@ import {
   unitExtrude,
   unitLathe,
   unitHip,
+  unitHull,
   unitPrism,
 } from '../utils/object-geometry';
 import { SURFACE_LOOK } from '../utils/surface-look';
@@ -394,5 +395,61 @@ describe('unitLathe (PR-2.3)', () => {
       return [0.5 * (0.9 + 0.1 * Math.cos(y * Math.PI)), y] as [number, number];
     });
     expect(triangleCount(unitLathe(barrel))).toBeLessThan(2000);
+  });
+});
+
+describe('unitHull (PV-H)', () => {
+  const square: [number, number][] = [
+    [-0.5, -0.5],
+    [0.5, -0.5],
+    [0.5, 0.5],
+    [-0.5, 0.5],
+  ];
+  const roof: [number, number][] = [
+    [-0.5, -0.5],
+    [0.5, -0.5],
+    [0.5, 0.1],
+    [0, 0.5],
+    [-0.5, 0.1],
+  ];
+
+  it('fills the unit box, closed, under the triangle budget', () => {
+    const g = unitHull(roof, square);
+    g.computeBoundingBox();
+    const b = g.boundingBox!;
+    expect(b.min.x).toBeCloseTo(-0.5, 2);
+    expect(b.max.y).toBeCloseTo(0.5, 2);
+    expect(b.max.z).toBeCloseTo(0.5, 2);
+    expect(g.getAttribute('position').count / 3).toBeLessThan(2500);
+  });
+
+  it('normals point out (right side +x, front cap +z)', () => {
+    const g = unitHull(square, square);
+    const pos = g.getAttribute('position');
+    const nor = g.getAttribute('normal');
+    for (let i = 0; i < pos.count; i++) {
+      const [x, y, z] = [pos.getX(i), pos.getY(i), pos.getZ(i)];
+      if (x > 0.49 && Math.abs(y) < 0.3 && Math.abs(z) < 0.3)
+        expect(nor.getX(i)).toBeGreaterThan(0);
+      if (z > 0.49 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3)
+        expect(nor.getZ(i)).toBeGreaterThan(0);
+    }
+  });
+
+  it('a recipe with a hull body builds a mesh', () => {
+    const mesh = recipeMesh({
+      proportions: { w: 0.5, h: 0.4, d: 1 },
+      parts: [
+        {
+          shape: 'hull',
+          at: [0, 0, 0],
+          size: [1, 1, 1],
+          points: roof,
+          section: square,
+          color: '#5a4aca',
+        },
+      ],
+    });
+    expect(triangleCount(mesh)).toBeGreaterThan(100);
   });
 });

@@ -27,7 +27,8 @@ Meta feature and carries external-API risk; 3D is local work and easy to time-bo
 | —   | PV-P Free placement of inserted objects (position + feeder)  | `PV-free-placement.md`     | ❌ planned               |
 | —   | PV-F 3D shape fidelity (measured colours, roofline, fit)     | `PV-shape-fidelity.md`     | ✅ done                  |
 | —   | PV-R 3D realism (light, soft shapes, part masks, views)      | `PV-shape-realism.md`      | ❌ planned               |
-| —   | PV-G 3D by script, piece by piece, loop vs 2D elevation      | `PV-shape-script.md`       | ❌ planned               |
+| —   | PV-G 3D by script, piece by piece, loop vs 2D elevation      | `PV-shape-script.md`       | 🟡 G0–G1 done            |
+| —   | PV-H Any object from its 2D view (hull + AI check)           | `PV-any-object.md`         | 🟡 H1–H2 done            |
 | —   | PA AI dispatch (autonomous mode, event log, chat scenarios)  | `PA-ai-dispatch.md`        | ❌ planned               |
 
 ## Cut order if late

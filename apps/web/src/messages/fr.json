@@ -932,11 +932,12 @@
       "model3dCause": "Cause : {cause}",
       "model3dStepsLabel": "Étapes de l'IA pour le modèle 3D",
       "model3dSeconds": "{s} s",
-      "model3dWaitHint": "Muse Spark met en général 15 à 40 s (limite {max} s) ; une maison reconstruite depuis sa façade 2D, jusqu'à 90 s.",
+      "model3dWaitHint": "Muse Spark met en général 15 à 40 s (limite {max} s) ; une maison ou un objet reconstruit depuis sa vue 2D et vérifié par l'IA, jusqu'à 90 s.",
       "model3dStep": {
         "crop": "Extraction de l'objet de la photo (recadrage, agrandissement)",
         "model": "Muse Spark imagine les pièces et les couleurs",
-        "fit": "Ajustement des pièces aux proportions de la photo"
+        "fit": "Ajustement des pièces aux proportions de la photo",
+        "check": "Muse Spark vérifie chaque côté par rapport aux dessins et ajoute ce qui manque"
       },
       "insertTitle": "Ajouter à la simulation",
       "insertSourceLabel": "Origine de la puissance",

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { ObjectRecipe, RecipePart } from '@/lib/object-shape';
+import { HULL_LEVELS, HULL_SLICES, hullLoops } from '@/lib/hull';
 import { SURFACE_LOOK, SURFACES, surfaceIndex } from './surface-look';
 import { holedBox } from './holed-wall';
 import { layoutOpenings } from './openings';
@@ -231,15 +232,83 @@ export function unitLathe(profile: ReadonlyArray<readonly [number, number]>): TH
   return flat;
 }
 
+/**
+ * Unit visual hull (PV-H): cross-section loops along z (`hullLoops`) stitched into a smooth skin,
+ * flat caps front and back. Non-indexed so parts merge; ≈ 1.6 k triangles.
+ */
+export function unitHull(
+  points: ReadonlyArray<readonly [number, number]>,
+  section: ReadonlyArray<readonly [number, number]>,
+  slices = HULL_SLICES,
+  levels = HULL_LEVELS
+): THREE.BufferGeometry {
+  const loops = hullLoops(points, section, slices, levels);
+  if (loops.length < 2) return new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
+  const n = loops[0]!.loop.length;
+  const pos: number[] = [];
+  loops.forEach(({ z, loop }) => loop.forEach(([x, y]) => pos.push(x, y, z)));
+  const index: number[] = [];
+  for (let i = 0; i + 1 < loops.length; i++)
+    for (let j = 0; j < n; j++) {
+      const a = i * n + j;
+      const b = i * n + ((j + 1) % n);
+      const c = b + n;
+      const d = a + n;
+      index.push(a, b, c, a, c, d);
+    }
+  const skin = new THREE.BufferGeometry();
+  skin.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  skin.setIndex(index);
+  skin.computeVertexNormals();
+  const flat = skin.toNonIndexed();
+  skin.dispose();
+  // Caps: fans from each end loop's centre, facing out (−z at the back, +z at the front).
+  const cap: number[] = [];
+  const capN: number[] = [];
+  for (const [k, out] of [
+    [0, -1],
+    [loops.length - 1, 1],
+  ] as const) {
+    const { z, loop } = loops[k]!;
+    const cx = loop.reduce((t, p) => t + p[0], 0) / n;
+    const cy = loop.reduce((t, p) => t + p[1], 0) / n;
+    for (let j = 0; j < n; j++) {
+      const p = loop[j]!;
+      const q = loop[(j + 1) % n]!;
+      const [b, c] = out > 0 ? [p, q] : [q, p];
+      cap.push(cx, cy, z, b[0], b[1], z, c[0], c[1], z);
+      for (let v = 0; v < 3; v++) capN.push(0, 0, out);
+    }
+  }
+  const caps = new THREE.BufferGeometry();
+  caps.setAttribute('position', new THREE.Float32BufferAttribute(cap, 3));
+  caps.setAttribute('normal', new THREE.Float32BufferAttribute(capN, 3));
+  const merged = mergeGeometries([flat, caps])!;
+  flat.dispose();
+  caps.dispose();
+  return merged;
+}
+
+/** Slices and levels of a skin patch hull (≈ 100 triangles). */
+const SKIN_SLICES = 8;
+const SKIN_LEVELS = 6;
+
 /** Unit primitive (1 × 1 × 1 bounds) along y, non-indexed so parts merge. */
 function unitPart(
   shape: RecipePart['shape'],
   apex?: number,
   points?: RecipePart['points'],
   profile?: RecipePart['profile'],
-  ridge?: number
+  ridge?: number,
+  section?: RecipePart['section'],
+  body = true
 ): THREE.BufferGeometry {
   switch (shape) {
+    case 'hull':
+      // Skin patches (glass, grille on a hull body) are small: a coarse skin is enough.
+      return body
+        ? unitHull(points ?? [], section ?? [])
+        : unitHull(points ?? [], section ?? [], SKIN_SLICES, SKIN_LEVELS);
     case 'prism':
       return unitPrism(apex);
     case 'hip':
@@ -286,7 +355,7 @@ export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
     } else if (p.shape === 'box') {
       g = roundedBox(sx, sy, sz, SURFACE_LOOK[SURFACES[surface]!].radius);
     } else {
-      g = unitPart(p.shape, p.apex, p.points, p.profile, p.ridge);
+      g = unitPart(p.shape, p.apex, p.points, p.profile, p.ridge, p.section, !!p.front);
       // Round parts turn to their axis before taking the part's own x / y / z extent.
       if (p.axis === 'x') g.rotateZ(Math.PI / 2);
       else if (p.axis === 'z') g.rotateX(Math.PI / 2);

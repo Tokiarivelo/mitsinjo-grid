@@ -116,6 +116,14 @@ export type CriticResult = Omit<z.infer<typeof CriticResultSchema>, 'patch'> & {
   patch: Partial<ObjectKit> | null;
 };
 
+/** AI check of a views model (PV-H): what is missing, per view; null when unusable or mock. */
+export const ViewsCheckResultSchema = PerceptionSourceSchema.extend({
+  check: z.record(z.string(), z.unknown()).nullable(),
+});
+export type ViewsCheckResult = Omit<z.infer<typeof ViewsCheckResultSchema>, 'check'> & {
+  check: import('./views-check').ViewsCheck | null;
+};
+
 export const DetectionResultSchema = PerceptionSourceSchema.extend({
   detections: z.array(ApplianceDetectionSchema),
 });

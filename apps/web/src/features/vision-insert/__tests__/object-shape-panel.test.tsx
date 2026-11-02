@@ -136,9 +136,18 @@ describe('ObjectShapePanel (PV-T10)', () => {
     expect(items[2]!.getAttribute('aria-current')).toBeNull();
     expect(
       screen.getByText(
-        /usually needs 15 to 40 s \(limit 60 s\); a house rebuilt from its 2D facade, up to 90 s/
+        /usually needs 15 to 40 s \(limit 60 s\); a house or any object rebuilt from its 2D view, checked by the AI, up to 90 s/
       )
     ).toBeTruthy();
+  });
+
+  it('the AI check joins the steps when it starts (views path)', () => {
+    renderPanel({ status: 'loading', shape: undefined, step: 'check', startedAt: Date.now() });
+    const steps = screen.getByRole('list', { name: 'AI steps for the 3D model' });
+    const items = within(steps).getAllByRole('listitem');
+    expect(items).toHaveLength(4);
+    expect(items[3]!.getAttribute('aria-current')).toBe('step');
+    expect(items[3]!.textContent).toContain('checks every side against the drawings');
   });
 
   it('recipe: AI badge, labelled viewer and the orbit hint', async () => {

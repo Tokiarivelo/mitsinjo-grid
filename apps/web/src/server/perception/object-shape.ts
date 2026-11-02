@@ -49,6 +49,15 @@ import { withMaskWheels } from './mask-wheels';
 import { withProfileBody } from './profile-body';
 import { scoreRecipe } from './score-shape';
 import { generateImaginedViews } from './views-generation';
+import {
+  VIEW_HULL_ARCHETYPES,
+  VIEWS_TOTAL_MS,
+  checkViewsModel,
+  measureObjectViews,
+  sparkDepthRatio,
+  viewIou,
+  viewsRecipe,
+} from './object-views';
 
 export { SHAPE_TIMEOUT_MS };
 
@@ -154,7 +163,7 @@ export interface ObjectShapeOptions {
  */
 export async function runObjectShape(
   perception: Pick<PerceptionClient, 'describeShape' | 'describeParts'> &
-    Partial<Pick<PerceptionClient, 'segmentImage'>>,
+    Partial<Pick<PerceptionClient, 'segmentImage' | 'checkViews'>>,
   photo: PhotoForRegions | null,
   fullImageUrl: string,
   target: ShapeTarget,
@@ -235,6 +244,18 @@ export async function runObjectShape(
             perception.segmentImage.bind(perception),
             target.facadeUrl,
             hint,
+            { ...(signal ? { signal } : {}), ...(onSideView ? { onSideView } : {}) }
+          ).catch(() => null)
+        : Promise.resolve(null);
+    // PV-H: any other object with a validated 2D view → hull of that view and its drawn side.
+    const views =
+      target.facadeUrl && perception.segmentImage && VIEW_HULL_ARCHETYPES.includes(hint)
+        ? measureObjectViews(
+            perception.segmentImage.bind(perception),
+            target.facadeUrl,
+            hint,
+            target.label,
+            conceptOf(target),
             { ...(signal ? { signal } : {}), ...(onSideView ? { onSideView } : {}) }
           ).catch(() => null)
         : Promise.resolve(null);
@@ -392,6 +413,52 @@ export async function runObjectShape(
           ...(shaped.outline ? { outline: shaped.outline } : {}),
           ...source,
         };
+      }
+      const seen =
+        found.kit && VIEW_HULL_ARCHETYPES.includes(found.kit.archetype) ? await views : null;
+      if (found.kit && seen) {
+        const kit = colors ? { ...found.kit, colors } : found.kit;
+        let recipe = viewsRecipe(seen, kit);
+        // After the build, the AI checks every side against the drawings and the model is fixed.
+        if (perception.checkViews && perception.segmentImage) {
+          onStep?.('check');
+          const checked = await checkViewsModel(
+            {
+              checkViews: perception.checkViews.bind(perception),
+              segmentImage: perception.segmentImage.bind(perception),
+            },
+            recipe,
+            seen,
+            kit,
+            target.label,
+            conceptOf(target),
+            { ...(signal ? { signal } : {}), deadline: started + VIEWS_TOTAL_MS }
+          );
+          recipe = checked.recipe;
+          seen.front = checked.views.front;
+          seen.side = checked.views.side;
+        }
+        const iou = {
+          front: viewIou(recipe, seen.front, 'front'),
+          side: seen.side ? viewIou(recipe, seen.side, 'side') : null,
+        };
+        const counts = new Map<string, number>();
+        for (const p of [...seen.front.parts, ...(seen.side?.parts ?? [])])
+          counts.set(p.concept, (counts.get(p.concept) ?? 0) + 1);
+        console.info(
+          `[vision] 3D views for "${target.label}": ${recipe.parts[0]!.shape} body, ${recipe.parts.length} parts, side ${seen.side ? `drawn (length/width ${(seen.side.aspect / seen.front.aspect).toFixed(2)})` : `none (Spark depth ${sparkDepthRatio(kit).toFixed(2)})`}, SAM ${[...counts].map(([c, n]) => `${c}×${n}`).join(', ') || 'no parts'}; silhouette IoU front ${iou.front}${iou.side !== null ? `, side ${iou.side}` : ''}, w:h:d ${[recipe.proportions.w, recipe.proportions.h, recipe.proportions.d].map((v) => v.toFixed(2)).join(':')} (${seconds} s Spark)`
+        );
+        const issue = recipeIssue(recipe);
+        if (!issue)
+          return {
+            ...base,
+            mode: 'recipe',
+            recipe,
+            kit: found.kit,
+            ...(shaped.outline ? { outline: shaped.outline } : {}),
+            ...source,
+          };
+        console.info(`[vision] 3D views recipe rejected (${issue}), photo pipeline`);
       }
       let roofMeasured = false;
       if (found.kit) {

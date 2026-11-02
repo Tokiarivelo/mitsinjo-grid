@@ -1,0 +1,441 @@
+// @vitest-environment node
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('server-only', () => ({}));
+
+const museImage = vi.fn();
+vi.mock('../facade-specialist', () => ({
+  museImage: (...a: unknown[]) => museImage(...a),
+  museImageReady: () => true,
+}));
+
+import { hullLoops, spanAt } from '@/lib/hull';
+import { ObjectRecipeSchema, recipeIssue } from '@/lib/object-shape';
+import sharp from 'sharp';
+import { MAX_MISSING, knownConcept, parseViewsCheck, viewsCheckQuestion } from '../views-check';
+import {
+  VIEW_HULL_ARCHETYPES,
+  applyViewsCheck,
+  checkViewsModel,
+  measureObjectViews,
+  objectSidePrompt,
+  sideLooksNew,
+  sparkDepthRatio,
+  viewIou,
+  viewsRecipe,
+  type ViewMeasure,
+} from '../object-views';
+
+type Pt = [number, number];
+/** Car side, object-box fractions (u right, v up), front on the left: long hood, short trunk. */
+const SIDE: Pt[] = [
+  [0, 0.15],
+  [0, 0.5],
+  [0.05, 0.55],
+  [0.3, 0.6],
+  [0.4, 0.95],
+  [0.75, 0.95],
+  [0.85, 0.6],
+  [1, 0.55],
+  [1, 0.15],
+  [0.88, 0.15],
+  [0.88, 0],
+  [0.72, 0],
+  [0.72, 0.15],
+  [0.28, 0.15],
+  [0.28, 0],
+  [0.12, 0],
+  [0.12, 0.15],
+];
+/** Car front: body, narrower cabin, two tires. */
+const FRONT: Pt[] = [
+  [0, 0.15],
+  [0, 0.6],
+  [0.15, 0.65],
+  [0.25, 0.95],
+  [0.75, 0.95],
+  [0.85, 0.65],
+  [1, 0.6],
+  [1, 0.15],
+  [0.95, 0.15],
+  [0.95, 0],
+  [0.8, 0],
+  [0.8, 0.15],
+  [0.2, 0.15],
+  [0.2, 0],
+  [0.05, 0],
+  [0.05, 0.15],
+];
+const KIT = {
+  archetype: 'vehicle' as const,
+  proportions: { w: 1, h: 0.43, d: 0.48 },
+  colors: { main: '#5a4aca', secondary: '#c0c6cc', accent: '#2f3a45' },
+  materials: { main: 'metal' as const },
+};
+const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h });
+const front: ViewMeasure = {
+  aspect: 1.3,
+  box: box(0.2, 0.1, 0.6, 0.8),
+  ring: FRONT,
+  parts: [
+    { concept: 'headlight', box: box(0.08, 0.3, 0.12, 0.15) },
+    { concept: 'headlight', box: box(0.8, 0.3, 0.12, 0.15) },
+    { concept: 'bumper', box: box(0.02, 0.72, 0.96, 0.1) },
+    { concept: 'windshield', box: box(0.27, 0.07, 0.46, 0.25) },
+    { concept: 'grille', box: box(0.3, 0.5, 0.4, 0.15) },
+    { concept: 'wheel', box: box(0.05, 0.85, 0.15, 0.15) },
+  ],
+};
+const side: ViewMeasure = {
+  aspect: 2.9,
+  box: box(0.05, 0.3, 0.9, 0.4),
+  ring: SIDE,
+  parts: [
+    { concept: 'wheel', box: box(0.12, 0.7, 0.16, 0.3) },
+    { concept: 'wheel', box: box(0.72, 0.7, 0.16, 0.3) },
+    { concept: 'window', box: box(0.42, 0.08, 0.15, 0.3) },
+    { concept: 'window', box: box(0.58, 0.08, 0.15, 0.3) },
+  ],
+};
+
+describe('hull helpers (PV-H)', () => {
+  it('reads the outer span of a ring on a line', () => {
+    expect(spanAt(FRONT, 0.8)).toEqual([expect.closeTo(0.2, 6), expect.closeTo(0.8, 6)]);
+    expect(spanAt(FRONT, 2)).toBeNull();
+  });
+
+  it('builds one counter-clockwise loop per slice, rising z', () => {
+    const pts = FRONT.map(([u, v]) => [u - 0.5, v - 0.5] as Pt);
+    const sec = SIDE.map(([u, v]) => [0.5 - u, v - 0.5] as Pt);
+    const loops = hullLoops(pts, sec, 10, 6);
+    expect(loops.length).toBe(10);
+    expect(loops[1]!.z).toBeGreaterThan(loops[0]!.z);
+    const ring = loops[5]!.loop;
+    let a = 0;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++)
+      a += ring[j]![0] * ring[i]![1] - ring[i]![0] * ring[j]![1];
+    expect(a).toBeGreaterThan(0);
+  });
+});
+
+describe('viewsRecipe (PV-H)', () => {
+  it('rebuilds the whole car: hull body, 4 wheels, glass, lights, bumper, longer than wide', () => {
+    const r = viewsRecipe({ front, side }, KIT);
+    expect(ObjectRecipeSchema.safeParse(r).success).toBe(true);
+    expect(recipeIssue(r)).toBeNull();
+    expect(r.source).toBe('views');
+    expect(r.parts[0]).toMatchObject({ shape: 'hull', front: true, color: '#5a4aca' });
+    expect(r.parts.filter((p) => p.material === 'rubber')).toHaveLength(4);
+    expect(r.parts.filter((p) => p.material === 'glass').length).toBeGreaterThanOrEqual(4);
+    expect(r.parts.some((p) => p.material === 'metal' && p.shape === 'box')).toBe(true);
+    expect(r.parts.length).toBeLessThanOrEqual(12);
+    // Side glass, windshield and grille hug the body: skin patches, not flat boxes.
+    const skins = r.parts.filter((p) => p.shape === 'hull' && !p.front);
+    expect(skins.map((p) => p.material).sort()).toEqual(['glass', 'glass', 'glass', 'metal']);
+    expect(r.proportions.d / r.proportions.w).toBeCloseTo(2.9 / 1.3, 1);
+    expect(r.dimStatus?.depth).toBe('measured');
+  });
+
+  it('matches both drawn silhouettes, the side the right way round', () => {
+    const r = viewsRecipe({ front, side }, KIT);
+    expect(viewIou(r, front, 'front')).toBeGreaterThan(0.85);
+    expect(viewIou(r, side, 'side')).toBeGreaterThan(0.85);
+    // Mirrored profile (hood at the back) scores worse: the side is read front-left.
+    const mirrored = { ...side, ring: SIDE.map(([u, v]) => [1 - u, v] as Pt) };
+    expect(viewIou(r, mirrored, 'side')).toBeLessThan(viewIou(r, side, 'side'));
+  });
+
+  it('front only: the front extruded to Spark depth (a vehicle kit w is its length)', () => {
+    expect(sparkDepthRatio(KIT)).toBeCloseTo(1 / 0.48, 2);
+    expect(sparkDepthRatio({ archetype: 'cabinet', proportions: { w: 1, h: 1, d: 0.6 } })).toBe(
+      0.6
+    );
+    const r = viewsRecipe({ front, side: null }, KIT);
+    expect(r.parts[0]!.shape).toBe('extrude');
+    expect(r.dimStatus?.depth).toBe('estimated');
+    expect(ObjectRecipeSchema.safeParse(r).success).toBe(true);
+  });
+
+  it('a side that is a redrawn front is no side', () => {
+    expect(sideLooksNew(front, { ...side, aspect: 1.32 })).toBe(false);
+    expect(sideLooksNew(front, side)).toBe(true);
+  });
+
+  it('asks Muse Image for the side, front to the left, never energy', () => {
+    const p = objectSidePrompt('purple "vintage" car');
+    expect(p).toContain('front pointing to the LEFT');
+    expect(p).not.toContain('"');
+    expect(p).not.toMatch(/watt|kw/i);
+  });
+});
+
+describe('measureObjectViews (PV-H)', () => {
+  const W = 1200;
+  const H = 800;
+  const path = (ring: Pt[], [x, y, w, h]: [number, number, number, number]) =>
+    'M ' + ring.map(([u, v]) => `${x + u * w} ${y + (1 - v) * h}`).join(' L ') + ' Z';
+  const inst = ([x, y, w, h]: [number, number, number, number], outline?: string) => ({
+    box: { x1: x * W, y1: y * H, x2: (x + w) * W - 1, y2: (y + h) * H - 1 },
+    confidence: 0.9,
+    ...(outline ? { outline } : {}),
+  });
+  const reply = (instances: ReturnType<typeof inst>[]) => ({
+    source: 'meta' as const,
+    model: 'sam',
+    concept: 'x',
+    imageWidth: W,
+    imageHeight: H,
+    instances,
+    count: instances.length,
+    boxCoverage: 0.3,
+  });
+  const FB: [number, number, number, number] = [0.3, 0.2, 0.4, 0.46];
+  const SB: [number, number, number, number] = [0.05, 0.3, 0.9, 0.4];
+  const segment = vi.fn(async (url: string, concept: string) => {
+    const isSide = url.startsWith('data:image/png');
+    if (concept === 'car')
+      return reply([inst(isSide ? SB : FB, path(isSide ? SIDE : FRONT, isSide ? SB : FB))]);
+    if (concept === 'wheel' && isSide)
+      return reply([inst([0.15, 0.58, 0.14, 0.12]), inst([0.7, 0.58, 0.14, 0.12])]);
+    return reply([]);
+  });
+
+  beforeEach(() => {
+    museImage.mockReset();
+    segment.mockClear();
+  });
+
+  it('measures the front, draws and measures the side', async () => {
+    museImage.mockResolvedValue(Buffer.from('side'));
+    const sides: Buffer[] = [];
+    const v = await measureObjectViews(segment, 'https://x/front.png', 'vehicle', 'car', 'car', {
+      onSideView: (p) => sides.push(p),
+    });
+    expect(museImage).toHaveBeenCalledTimes(1);
+    expect(sides).toHaveLength(1);
+    // Box = the outline's own bounds (the drawn ring tops out at 0.95).
+    expect(v?.front.aspect).toBeCloseTo((0.4 * W) / (0.95 * 0.46 * H), 2);
+    expect(v?.side?.aspect).toBeCloseTo((0.9 * W) / (0.95 * 0.4 * H), 2);
+    expect(v?.side?.parts.filter((p) => p.concept === 'wheel')).toHaveLength(2);
+    expect(v?.front.ring[0]![1]).toBeCloseTo(0.15 / 0.95, 2);
+  });
+
+  it('keeps the front alone when Muse Image is unavailable', async () => {
+    museImage.mockRejectedValue(new Error('down'));
+    const v = await measureObjectViews(segment, 'https://x/front.png', 'vehicle', 'car', 'car');
+    expect(v?.side).toBeNull();
+  });
+
+  it('houses keep their elevations; a mock SAM answer gives nothing', async () => {
+    expect(VIEW_HULL_ARCHETYPES).not.toContain('house');
+    expect(await measureObjectViews(segment, 'u', 'house', 'house', 'house')).toBeNull();
+    const mock = vi.fn(async () => ({
+      ...reply([inst(FB, path(FRONT, FB))]),
+      source: 'mock' as const,
+    }));
+    expect(await measureObjectViews(mock, 'u', 'vehicle', 'car', 'car')).toBeNull();
+  });
+});
+
+describe('AI views check (PV-H)', () => {
+  it('parses what Spark says is missing: plain names, per view, capped, colours kept', () => {
+    const c = parseViewsCheck(
+      JSON.stringify({
+        missing: [
+          { part: 'Side Mirror!', view: 'front', color: '#C8CDD2', material: 'metal' },
+          { part: 'side mirror', view: 'front' },
+          { part: 'rear bumper', view: 'side', color: 'grey', material: 'gold' },
+          { part: 'x', view: 'top' },
+          { part: 'a', view: 'side' },
+          { part: 'b', view: 'side' },
+          { part: 'c', view: 'side' },
+        ],
+        redrawSide: true,
+      })
+    )!;
+    expect(c.missing).toHaveLength(MAX_MISSING);
+    expect(c.missing[0]).toEqual({
+      part: 'side mirror',
+      view: 'front',
+      color: '#c8cdd2',
+      material: 'metal',
+    });
+    expect(c.missing[1]).toEqual({ part: 'rear bumper', view: 'side' });
+    expect(c.redrawSide).toBe(true);
+    expect(parseViewsCheck('the model is fine')).toBeNull();
+  });
+
+  it('maps known parts to the builder rules, others become patches', () => {
+    expect(knownConcept('rear tire')).toBe('wheel');
+    expect(knownConcept('windscreen')).toBe('windshield');
+    expect(knownConcept('side mirror')).toBeNull();
+    expect(knownConcept('rear bumper')).toBeNull();
+    expect(viewsCheckQuestion('car', { front: 0.87, side: 0.81 })).toContain(
+      'front 87 %, side 81 %'
+    );
+  });
+
+  it('a part SAM finds on the side becomes a patch on both sides, in the colour read', async () => {
+    const sidePng = await sharp({
+      create: { width: 120, height: 60, channels: 3, background: '#ffffff' },
+    })
+      .png()
+      .toBuffer();
+    const views = { front, side, frontUrl: 'data:image/png;base64,AA', sidePng };
+    const segment = vi.fn(async (_u: string, concept: string) => ({
+      source: 'meta' as const,
+      model: 'sam',
+      concept,
+      imageWidth: 1000,
+      imageHeight: 1000,
+      instances:
+        concept === 'side mirror'
+          ? [{ box: { x1: 300, y1: 450, x2: 349, y2: 499 }, confidence: 0.9 }]
+          : [],
+      count: 1,
+      boxCoverage: 0.01,
+    }));
+    const fixed = await applyViewsCheck(
+      segment,
+      views,
+      {
+        missing: [
+          { part: 'side mirror', view: 'side', color: '#aa1111', material: 'metal' },
+          { part: 'spoiler', view: 'side' },
+        ],
+        redrawSide: false,
+      },
+      'car',
+      'car',
+      []
+    );
+    expect(fixed?.applied).toEqual(['side mirror (side)']);
+    const r = viewsRecipe(fixed!.views, KIT);
+    const mirrors = r.parts.filter((p) => p.color === '#aa1111' && p.shape === 'hull');
+    expect(mirrors).toHaveLength(2);
+    expect(mirrors.map((p) => p.status).sort()).toEqual(['inferred', 'measured']);
+  });
+
+  it('checks, fixes, and keeps the round when the silhouette holds; mock answers change nothing', async () => {
+    const png = await sharp({
+      create: { width: 200, height: 160, channels: 3, background: '#8060c0' },
+    })
+      .png()
+      .toBuffer();
+    const sidePng = await sharp({
+      create: { width: 300, height: 100, channels: 3, background: '#8060c0' },
+    })
+      .png()
+      .toBuffer();
+    const views = {
+      front,
+      side,
+      frontUrl: `data:image/png;base64,${png.toString('base64')}`,
+      sidePng,
+    };
+    const recipe = viewsRecipe(views, KIT);
+    const segmentImage = vi.fn(async (_u: string, concept: string) => ({
+      source: 'meta' as const,
+      model: 'sam',
+      concept,
+      imageWidth: 1000,
+      imageHeight: 1000,
+      instances:
+        concept === 'side mirror'
+          ? [{ box: { x1: 300, y1: 400, x2: 339, y2: 439 }, confidence: 0.9 }]
+          : [],
+      count: 1,
+      boxCoverage: 0.01,
+    }));
+    const sheets: string[] = [];
+    const checkViews = vi.fn(async (url: string) => {
+      sheets.push(url);
+      return {
+        source: 'meta' as const,
+        model: 'muse-spark',
+        check:
+          sheets.length === 1
+            ? {
+                missing: [{ part: 'side mirror', view: 'side' as const, color: '#aa1111' }],
+                redrawSide: false,
+              }
+            : { missing: [], redrawSide: false },
+      };
+    });
+    const out = await checkViewsModel(
+      { checkViews, segmentImage },
+      recipe,
+      views,
+      KIT,
+      'car',
+      'car'
+    );
+    expect(sheets[0]).toMatch(/^data:image\/jpeg;base64,/);
+    expect(checkViews).toHaveBeenCalledTimes(2);
+    // The mirror pair joins; built recipes have room (24) so nothing measured gives way.
+    expect(out.recipe.parts).toHaveLength(recipe.parts.length + 2);
+    expect(out.recipe.parts.filter((p) => p.color === '#aa1111')).toHaveLength(2);
+
+    const mock = vi.fn(async () => ({ source: 'mock' as const, model: 'mock', check: null }));
+    const same = await checkViewsModel(
+      { checkViews: mock, segmentImage },
+      recipe,
+      views,
+      KIT,
+      'car',
+      'car'
+    );
+    expect(same.recipe).toBe(recipe);
+  }, 30_000);
+
+  it('rear parts read on the side go on the back face: a band, or a pair of lamps', () => {
+    const withBack = {
+      front,
+      side: {
+        ...side,
+        parts: [
+          ...side.parts,
+          { concept: 'rear bumper', box: box(0.93, 0.75, 0.07, 0.1), look: { color: '#bbbbbb' } },
+          { concept: 'taillight', box: box(0.95, 0.45, 0.04, 0.1), look: { color: '#cc2222' } },
+        ],
+      },
+    };
+    const r = viewsRecipe(withBack, KIT);
+    const back = (c: string) => r.parts.filter((p) => p.color === c);
+    expect(back('#bbbbbb')).toHaveLength(1);
+    expect(back('#cc2222')).toHaveLength(2);
+    // On the back: every section point sits behind the middle.
+    for (const p of [...back('#bbbbbb'), ...back('#cc2222')])
+      expect(Math.max(...p.section!.map(([z]) => z))).toBeLessThan(0);
+  });
+
+  it('skips a round with no time left, and never asks SAM again for a part it already measured', async () => {
+    const views = { front, side, frontUrl: 'data:image/png;base64,AA', sidePng: null };
+    const recipe = viewsRecipe(views, KIT);
+    const checkViews = vi.fn();
+    const segmentImage = vi.fn();
+    const out = await checkViewsModel(
+      { checkViews, segmentImage },
+      recipe,
+      views,
+      KIT,
+      'car',
+      'car',
+      {
+        deadline: Date.now() + 1000,
+      }
+    );
+    expect(checkViews).not.toHaveBeenCalled();
+    expect(out.recipe).toBe(recipe);
+    const none = await applyViewsCheck(
+      segmentImage,
+      views,
+      { missing: [{ part: 'front bumper', view: 'front' }], redrawSide: false },
+      'car',
+      'car',
+      []
+    );
+    expect(none).toBeNull();
+    expect(segmentImage).not.toHaveBeenCalled();
+  });
+});

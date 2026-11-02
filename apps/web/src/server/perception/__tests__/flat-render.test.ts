@@ -258,3 +258,31 @@ describe('lathe body (PR-2.3)', () => {
     });
   });
 });
+
+describe('ray entry through a ring edge (PV-H regression)', () => {
+  const square: [number, number][] = [
+    [-0.5, -0.5],
+    [0.5, -0.5],
+    [0.5, 0.5],
+    [-0.5, 0.5],
+  ];
+  const filled = (r: ReturnType<typeof renderFlat>) => r.mask.data.reduce((s, v) => s + v, 0);
+
+  it('an extrusion seen from the side is drawn (it rendered empty before)', () => {
+    const side = renderFlat(recipe([part({ shape: 'extrude', points: square })]), 1, 20, 20, {
+      yaw: -Math.PI / 2,
+      pitch: 0,
+    });
+    expect(filled(side)).toBeGreaterThan(0.6 * 400);
+  });
+
+  it('a hull of two squares draws like a box from the front and the side', () => {
+    const hull = part({ shape: 'hull', points: square, section: square });
+    for (const yaw of [0, -Math.PI / 2]) {
+      const view = { yaw, pitch: 0 };
+      const h = renderFlat(recipe([hull]), 1, 20, 20, view);
+      const b = renderFlat(recipe([part({})]), 1, 20, 20, view);
+      expect(iou(h.mask, b.mask)).toBeGreaterThan(0.95);
+    }
+  });
+});

@@ -5,6 +5,7 @@ import { classifyLabel } from './detect';
 import type {
   ApplianceDetection,
   CriticResult,
+  ViewsCheckResult,
   DetectionResult,
   Observation,
   SegmentResult,
@@ -238,5 +239,13 @@ export class MockPerceptionBackend implements PerceptionBackend {
   ): Promise<PerceptionCall<CriticResult>> {
     // The mock never patches: the critic round is a no-op without Meta.
     return { model: MOCK_PERCEPTION_MODEL, usage: {}, result: { patch: null } };
+  }
+
+  async checkViews(
+    _imageUrl: string,
+    _question: string
+  ): Promise<PerceptionCall<ViewsCheckResult>> {
+    // No check without Meta: the views model stays as built.
+    return { model: MOCK_PERCEPTION_MODEL, usage: {}, result: { check: null } };
   }
 }

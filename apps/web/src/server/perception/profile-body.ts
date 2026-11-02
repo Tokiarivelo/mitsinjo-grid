@@ -36,7 +36,7 @@ function cleanRing(ring: ReadonlyArray<Pt>): Array<[number, number]> {
 }
 
 /** Douglas–Peucker down to the point budget, doubling the tolerance, then stride sampling. */
-function budgetRing(ring: ReadonlyArray<Pt>): Array<[number, number]> {
+export function budgetRing(ring: ReadonlyArray<Pt>): Array<[number, number]> {
   const clean = cleanRing(ring);
   if (clean.length <= EXTRUDE_POINTS_MAX) return clean;
   let tol = 0.004;

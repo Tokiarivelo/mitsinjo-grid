@@ -20,6 +20,7 @@ import {
   visibilityFromCoverage,
 } from './free-recipe';
 import { maskToOutline } from './mask-outline';
+import { VIEWS_CHECK_JSON_SCHEMA, VIEWS_CHECK_SYSTEM_PROMPT, parseViewsCheck } from './views-check';
 import { REGION_SYSTEM_PROMPT, regionQuestion } from './region-prompt';
 import { defaultArchetype, kitToRecipe } from '@/lib/object-kit';
 import {
@@ -36,6 +37,7 @@ import { redactDataUrls, redactDataUrlsInText, type VisionCallLog } from './visi
 import {
   ObservationSchema,
   type CriticResult,
+  type ViewsCheckResult,
   type DetectionResult,
   type SegmentResult,
   type ShapeResult,
@@ -393,6 +395,27 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       `[vision] 3D critic from ${model}: ${patch ? Object.keys(patch).join(',') : 'no patch'}`
     );
     return { model, usage, result: { patch } };
+  }
+
+  async checkViews(
+    imageUrl: string,
+    question: string,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<ViewsCheckResult>> {
+    const { content, model, usage } = await this.visionJson(
+      VIEWS_CHECK_SYSTEM_PROMPT,
+      question,
+      imageUrl,
+      VIEWS_CHECK_JSON_SCHEMA,
+      signal,
+      false,
+      { kind: 'checkViews' }
+    );
+    const check = parseViewsCheck(content);
+    console.info(
+      `[vision] 3D views check from ${model}: ${check ? `${check.missing.map((m) => `${m.part} (${m.view})`).join(', ') || 'complete'}${check.redrawSide ? ', redraw side' : ''}` : 'unusable'}`
+    );
+    return { model, usage, result: { check } };
   }
 
   async segmentImage(

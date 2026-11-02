@@ -14,6 +14,7 @@ import type {
   ShapeResult,
   TranscribeOptions,
   Transcript,
+  ViewsCheckResult,
   VisionResult,
 } from './schemas';
 
@@ -138,6 +139,10 @@ export class PerceptionClient {
 
   criticizeShape(imageUrl: string, question: string, signal?: AbortSignal): Promise<CriticResult> {
     return this.run('criticizeShape', (b) => b.criticizeShape(imageUrl, question, signal));
+  }
+
+  checkViews(imageUrl: string, question: string, signal?: AbortSignal): Promise<ViewsCheckResult> {
+    return this.run('checkViews', (b) => b.checkViews(imageUrl, question, signal));
   }
 }
 
