@@ -7,6 +7,9 @@ import {
   facadeHouseRecipe,
   fuseDepth,
   measureElevation,
+  paneGrid,
+  separateRoofColor,
+  ROOF_WALL_MIN_DE,
   ridgeShare,
   roofKind,
   sideConsistent,
@@ -15,6 +18,7 @@ import {
   type ElevationMasks,
 } from '../facade-house';
 import { renderFlat } from '../flat-render';
+import { deltaE2000, hexToLab } from '../color-measure';
 
 /** Rectangle ring (image fractions). */
 const rect = (x0: number, y0: number, x1: number, y1: number) => [
@@ -266,5 +270,184 @@ describe('facadeHouseRecipe', () => {
     for (const c of r.parts.filter((p) => p.material === 'brick')) expect(c.at[2]).toBe(0);
     expect(r.proportions.d / r.proportions.w).toBeGreaterThan(0.45);
     expect(r.proportions.d / r.proportions.w).toBeLessThan(0.6);
+  });
+});
+
+describe('facade house materials and base (PG-T5, PG-T3)', () => {
+  const masks = {
+    aspect: 1.5,
+    house: { x: 0.1, y: 0.1, w: 0.8, h: 0.8 },
+    roof: { box: { x: 0.1, y: 0.1, w: 0.8, h: 0.35 } },
+    wall: { x: 0.12, y: 0.45, w: 0.76, h: 0.45 },
+    windows: [{ x: 0.2, y: 0.55, w: 0.1, h: 0.15 }],
+    doors: [{ x: 0.45, y: 0.6, w: 0.1, h: 0.3 }],
+    chimneys: [{ x: 0.2, y: 0.05, w: 0.04, h: 0.15 }],
+    plinths: [{ x: 0.12, y: 0.86, w: 0.76, h: 0.04 }],
+    steps: [{ x: 0.43, y: 0.88, w: 0.14, h: 0.02 }],
+  };
+  const COL = { main: '#e6dccb', secondary: '#b8955a', accent: '#2b3440' };
+
+  it('the drawing names each part: thatch roof over plaster walls, not one material for both', () => {
+    const r = facadeHouseRecipe({
+      front: measureElevation(masks)!,
+      side: null,
+      colors: COL,
+      materials: { main: 'wood', secondary: 'wood' },
+      partMaterials: { roof: 'thatch', walls: 'plaster', chimney: 'brick', plinth: 'stone' },
+    });
+    const of = (k: string) => r.parts.find((p) => p.kind === k);
+    expect(of('roof')?.material).toBe('thatch');
+    expect(of('wall')?.material).toBe('plaster');
+    expect(of('chimney')?.material).toBe('brick');
+    expect(of('door')?.material).toBe('wood');
+    expect(of('window')?.material).toBe('glass');
+  });
+
+  it('falls back to the colour-role materials without a drawing reading', () => {
+    const r = facadeHouseRecipe({
+      front: measureElevation(masks)!,
+      side: null,
+      colors: COL,
+      materials: { main: 'stone', secondary: 'slate' },
+    });
+    expect(r.parts.find((p) => p.kind === 'roof')?.material).toBe('slate');
+    expect(r.parts.find((p) => p.kind === 'wall')?.material).toBe('stone');
+  });
+
+  it('adds the measured plinth (wider than the walls, on the ground) and the step', () => {
+    const r = facadeHouseRecipe({ front: measureElevation(masks)!, side: null, colors: COL });
+    const wall = r.parts.find((p) => p.kind === 'wall')!;
+    const base = r.parts.find((p) => p.kind === 'plinth')!;
+    expect(base.size[0]).toBeGreaterThan(wall.size[0]);
+    expect(base.at[1] - base.size[1] / 2).toBeCloseTo(wall.at[1] - wall.size[1] / 2, 5);
+    expect(base.material).toBe('stone');
+    const step = r.parts.find((p) => p.kind === 'step')!;
+    expect(step.at[2]).toBeGreaterThan(wall.size[2] / 2);
+    expect(r.parts.length).toBeLessThanOrEqual(12);
+  });
+});
+
+describe('paneGrid + double doors (PG-T8)', () => {
+  const box = { x: 0.2, y: 0.5, w: 0.1, h: 0.2 };
+  const pane = (c: number, r: number) => ({
+    x: 0.2 + c * 0.05 + 0.005,
+    y: 0.5 + r * 0.05 + 0.005,
+    w: 0.04,
+    h: 0.04,
+  });
+
+  it('reads the user window grid: 2 across × 4 down', () => {
+    const panes = [0, 1].flatMap((c) => [0, 1, 2, 3].map((r) => pane(c, r)));
+    expect(paneGrid(box, panes)).toEqual([2, 4]);
+  });
+
+  it('ignores panes of another window; null under 2 panes', () => {
+    expect(paneGrid(box, [pane(0, 0), { x: 0.8, y: 0.5, w: 0.04, h: 0.04 }])).toBeNull();
+  });
+
+  it('a wide door is a pair of leaves, a narrow one a single leaf', () => {
+    const masks = {
+      aspect: 1.5,
+      house: { x: 0.1, y: 0.1, w: 0.8, h: 0.8 },
+      roof: { box: { x: 0.1, y: 0.1, w: 0.8, h: 0.35 } },
+      wall: { x: 0.12, y: 0.45, w: 0.76, h: 0.45 },
+      windows: [box],
+      doors: [
+        { x: 0.43, y: 0.6, w: 0.14, h: 0.3 },
+        { x: 0.7, y: 0.65, w: 0.05, h: 0.25 },
+      ],
+      chimneys: [],
+      panes: [0, 1].flatMap((c) => [0, 1, 2, 3].map((r) => pane(c, r))),
+    };
+    const r = facadeHouseRecipe({
+      front: measureElevation(masks)!,
+      side: null,
+      colors: { main: '#e6dccb', secondary: '#b8955a', accent: '#2b3440' },
+    });
+    const doors = r.parts.filter((p) => p.kind === 'door');
+    expect(doors.map((d) => d.grid ?? null)).toEqual([[2, 1], null]);
+    expect(r.parts.find((p) => p.kind === 'window')?.grid).toEqual([2, 4]);
+  });
+});
+
+describe('roof / wall colour guard (PG-T9)', () => {
+  it('user case: thatch roof and plaster walls of one photo colour → roof pulled toward straw', () => {
+    const out = separateRoofColor(
+      { color: '#8a5a3c', material: 'thatch' },
+      { color: '#8c5c3e', material: 'plaster' }
+    );
+    expect(out.nudged).toBe(true);
+    expect(deltaE2000(hexToLab(out.color), hexToLab('#8c5c3e'))).toBeGreaterThanOrEqual(
+      ROOF_WALL_MIN_DE
+    );
+  });
+
+  it('leaves distinct colours, same materials and unknown materials alone', () => {
+    expect(
+      separateRoofColor(
+        { color: '#5f5a55', material: 'slate' },
+        { color: '#e6dccb', material: 'plaster' }
+      )
+    ).toEqual({ color: '#5f5a55', nudged: false });
+    expect(
+      separateRoofColor(
+        { color: '#8a5a3c', material: 'wood' },
+        { color: '#8c5c3e', material: 'wood' }
+      ).nudged
+    ).toBe(false);
+    expect(
+      separateRoofColor({ color: '#8a5a3c' }, { color: '#8c5c3e', material: 'wood' }).nudged
+    ).toBe(false);
+  });
+
+  it('the facade builder applies it to the roof part', () => {
+    const masks = {
+      aspect: 1.5,
+      house: { x: 0.1, y: 0.1, w: 0.8, h: 0.8 },
+      roof: { box: { x: 0.1, y: 0.1, w: 0.8, h: 0.35 } },
+      wall: { x: 0.12, y: 0.45, w: 0.76, h: 0.45 },
+      windows: [],
+      doors: [],
+      chimneys: [],
+    };
+    const r = facadeHouseRecipe({
+      front: measureElevation(masks)!,
+      side: null,
+      colors: { main: '#8c5c3e', secondary: '#8a5a3c', accent: '#2b3440' },
+      partMaterials: { roof: 'thatch', walls: 'plaster' },
+    });
+    const roof = r.parts.find((p) => p.kind === 'roof')!;
+    const wall = r.parts.find((p) => p.kind === 'wall')!;
+    expect(deltaE2000(hexToLab(roof.color), hexToLab(wall.color))).toBeGreaterThanOrEqual(
+      ROOF_WALL_MIN_DE
+    );
+  });
+});
+
+describe('chimney and base colours (viewer review 2026-11-02)', () => {
+  it('regression: white chimneys and a straw base on a white thatched house → brick and stone', () => {
+    const masks = {
+      aspect: 1.5,
+      house: { x: 0.1, y: 0.05, w: 0.8, h: 0.85 },
+      roof: { box: { x: 0.1, y: 0.1, w: 0.8, h: 0.35 } },
+      wall: { x: 0.12, y: 0.45, w: 0.76, h: 0.45 },
+      windows: [],
+      doors: [],
+      chimneys: [{ x: 0.2, y: 0.05, w: 0.04, h: 0.15 }],
+      plinths: [{ x: 0.12, y: 0.86, w: 0.76, h: 0.04 }],
+    };
+    const colors = { main: '#e6dccb', secondary: '#c8a060', accent: '#2b3440' };
+    const r = facadeHouseRecipe({
+      front: measureElevation(masks)!,
+      side: null,
+      colors,
+      partMaterials: { roof: 'thatch', walls: 'plaster', chimney: 'brick', plinth: 'stone' },
+    });
+    const de = (a: string, b: string) => deltaE2000(hexToLab(a), hexToLab(b));
+    const chimney = r.parts.find((p) => p.kind === 'chimney')!;
+    const base = r.parts.find((p) => p.kind === 'plinth')!;
+    expect(de(chimney.color, colors.main)).toBeGreaterThanOrEqual(ROOF_WALL_MIN_DE);
+    expect(de(base.color, colors.main)).toBeGreaterThanOrEqual(ROOF_WALL_MIN_DE);
+    expect(de(base.color, colors.secondary)).toBeGreaterThanOrEqual(ROOF_WALL_MIN_DE);
   });
 });

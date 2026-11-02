@@ -27,7 +27,8 @@ export const SURFACE_LOOK: Record<Surface, SurfaceLook> = {
   tile: { roughness: 0.6, metalness: 0, radius: 0.01 },
   slate: { roughness: 0.55, metalness: 0.05, radius: 0.008 },
   metal: { roughness: 0.35, metalness: 0.6, radius: 0.04 },
-  glass: { roughness: 0.08, metalness: 0.4, radius: 0.01 },
+  // Glass: no metalness (PG-T8: at 0.4 it mirrored the dark studio and windows read as holes).
+  glass: { roughness: 0.1, metalness: 0, radius: 0.01 },
   plastic: { roughness: 0.4, metalness: 0, radius: 0.03 },
   fabric: { roughness: 1, metalness: 0, radius: 0.03 },
   rubber: { roughness: 0.9, metalness: 0, radius: 0.04 },

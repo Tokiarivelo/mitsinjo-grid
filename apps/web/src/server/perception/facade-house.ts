@@ -1,5 +1,12 @@
-import type { ObjectKit } from '@/lib/object-kit';
-import { MAX_RECIPE_PARTS, type ObjectRecipe, type RecipePart } from '@/lib/object-shape';
+import type { ObjectKit, PartMaterialKey } from '@/lib/object-kit';
+import {
+  MAX_PANES,
+  MAX_RECIPE_PARTS,
+  type ObjectRecipe,
+  type RecipeMaterial,
+  type RecipePart,
+} from '@/lib/object-shape';
+import { deltaE2000, hexToLab, hexToRgb } from './color-measure';
 import type { NormBox } from './schemas';
 import { skylineFromRings } from './roofline';
 
@@ -68,6 +75,8 @@ export const DEFAULT_DEPTH_RATIO = 0.6;
 const DEPTH_RANGE = [0.2, 3] as const;
 /** Decal thickness (windows, doors), share of the body height. */
 const DECAL = 0.015;
+/** How far the plinth stands proud of the walls, share of the depth. */
+const PLINTH_PROUD = 0.02;
 /** Fixed door paint when no colour says otherwise: a door is wood or painted, never the roof. */
 export const DOOR_COLOR = '#6b4a2f';
 
@@ -179,6 +188,106 @@ function plinthOf(
   return ok.length ? ok.reduce((a, b) => (b.w > a.w ? b : a)) : null;
 }
 
+/** Roof and walls closer than this ΔE2000 read as one surface (the user's 2026-11-02 render). */
+export const ROOF_WALL_MIN_DE = 10;
+
+/** Typical colour of each roofing / walling material, used only to pull apart look-alike parts. */
+export const MATERIAL_BASE: Partial<Record<RecipeMaterial, string>> = {
+  thatch: '#b8955a',
+  slate: '#5f5a55',
+  tile: '#a0522d',
+  metal: '#8a9099',
+  wood: '#7a5a3a',
+  stone: '#a39a8a',
+  brick: '#9c4a32',
+  plaster: '#e6dccb',
+  concrete: '#9a9a96',
+};
+
+const mixHex = (a: string, b: string, t: number) => {
+  const [p, q] = [hexToRgb(a), hexToRgb(b)];
+  return `#${p
+    .map((v, i) =>
+      Math.round(v + (q[i]! - v) * t)
+        .toString(16)
+        .padStart(2, '0')
+    )
+    .join('')}`;
+};
+
+/**
+ * PG-T9 guard: when the drawing names different materials for a part and the surface next to it
+ * but their colours are one surface (ΔE < `ROOF_WALL_MIN_DE`), the part is pulled toward its
+ * material's typical colour, in quarter steps, until they part. Same materials or no base →
+ * unchanged. Used for the roof against the walls, and chimney / plinth against walls and roof.
+ */
+export function separateColor(
+  part: { color: string; material?: RecipeMaterial | undefined },
+  ...others: ReadonlyArray<{ color: string; material?: RecipeMaterial | undefined }>
+): { color: string; nudged: boolean } {
+  const base = part.material && MATERIAL_BASE[part.material];
+  const against = others.filter((o) => o.material !== part.material).map((o) => hexToLab(o.color));
+  if (!base || !against.length) return { color: part.color, nudged: false };
+  const far = (c: string) =>
+    against.every((lab) => deltaE2000(hexToLab(c), lab) >= ROOF_WALL_MIN_DE);
+  if (far(part.color)) return { color: part.color, nudged: false };
+  for (const t of [0.25, 0.5, 0.75, 1]) {
+    const c = mixHex(part.color, base, t);
+    if (far(c)) return { color: c, nudged: true };
+  }
+  return { color: base, nudged: true };
+}
+
+/** The roof against the walls (PG-T9). */
+export const separateRoofColor = (
+  roof: { color: string; material?: RecipeMaterial | undefined },
+  wall: { color: string; material?: RecipeMaterial | undefined }
+) => separateColor(roof, wall);
+
+/** Distinct values of `xs` (sorted), merged when closer than `tol`. */
+function clusters(xs: number[], tol: number): number {
+  const v = [...xs].sort((a, b) => a - b);
+  let n = 0;
+  let last = -Infinity;
+  for (const x of v) {
+    if (x - last > tol) n++;
+    last = x;
+  }
+  return n;
+}
+
+/**
+ * Pane grid of one opening (PG-T8) from the SAM panes inside it: columns and rows of distinct
+ * pane centres. Null below 2 panes (the 3D view then draws its default cross).
+ */
+export function paneGrid(opening: NormBox, panes: ReadonlyArray<NormBox>): [number, number] | null {
+  const inside = panes.filter((p) => {
+    const [cx, cy] = [p.x + p.w / 2, p.y + p.h / 2];
+    return cx > opening.x && cx < right(opening) && cy > opening.y && cy < bottomOf(opening);
+  });
+  if (inside.length < 2) return null;
+  const mw = Math.min(...inside.map((p) => p.w));
+  const mh = Math.min(...inside.map((p) => p.h));
+  const cap = (k: number) => clamp(k, 1, MAX_PANES);
+  return [
+    cap(
+      clusters(
+        inside.map((p) => p.x + p.w / 2),
+        mw / 2
+      )
+    ),
+    cap(
+      clusters(
+        inside.map((p) => p.y + p.h / 2),
+        mh / 2
+      )
+    ),
+  ];
+}
+
+/** A door this wide for its height is a pair of leaves (the drawing's double door). */
+export const DOUBLE_DOOR_RATIO = 0.6;
+
 /** Wall width over body height, in pixels. */
 const wallRatio = (e: Elevation) => ((e.wallRight - e.wallLeft) * e.aspect) / (e.bottom - e.top);
 
@@ -267,6 +376,8 @@ export interface FacadeHouseInput {
   side: Elevation | null;
   colors: ObjectKit['colors'];
   materials?: ObjectKit['materials'];
+  /** Material per part read on the drawing (PG-T5); wins over the colour-role materials. */
+  partMaterials?: ObjectKit['partMaterials'];
   /** Depth / width read by Spark on the photo (its kit proportions). */
   sparkDepth?: number;
 }
@@ -281,6 +392,7 @@ export function facadeHouseRecipe({
   side,
   colors,
   materials,
+  partMaterials,
   sparkDepth,
 }: FacadeHouseInput): ObjectRecipe {
   const A = front.aspect;
@@ -294,10 +406,11 @@ export function facadeHouseRecipe({
   const depth = wallW * fuseDepth(depthRatio(front, side), sparkDepth);
   const yMid = -0.5; // body centre: half way from the ridge (0) to the ground (−1)
   const eaveY = Y(front.eave);
-  const role = (r: keyof ObjectKit['colors']) => ({
-    color: colors[r],
-    ...(materials?.[r] ? { material: materials[r] } : {}),
-  });
+  // Colour from the photo role, material from the drawing first (PG-T5), else the role's.
+  const role = (r: keyof ObjectKit['colors'], part?: PartMaterialKey) => {
+    const material = (part && partMaterials?.[part]) ?? materials?.[r];
+    return { color: colors[r], ...(material ? { material } : {}) };
+  };
   const at = (x: number, y: number, z: number): RecipePart['at'] => [x, y - yMid, z];
   const box = (b: NormBox, z: number, thick: number): Pick<RecipePart, 'at' | 'size'> => ({
     at: at((X(b.x) + X(right(b))) / 2 - cx, (Y(b.y) + Y(bottomOf(b))) / 2, z),
@@ -309,9 +422,29 @@ export function facadeHouseRecipe({
     at: at(0, (eaveY - 1) / 2, 0),
     size: [wallW, eaveY + 1, depth],
     front: true,
-    ...role('main'),
+    kind: 'wall',
+    ...role('main', 'walls'),
   };
   const { kind, ridge } = roofKind(front, side);
+  const roofLook = role('secondary', 'roof');
+  const roofColor = separateRoofColor(roofLook, walls).color;
+  const roofFinal = { ...roofLook, color: roofColor };
+  // Chimney and base have no measured colour of their own: their material's typical colour
+  // (brick red, stone grey), not the wall's (white chimneys on white walls, review 2026-11-02).
+  const chimneyMat = partMaterials?.chimney ?? 'brick';
+  const chimneyLook = {
+    material: chimneyMat,
+    color:
+      MATERIAL_BASE[chimneyMat] ??
+      separateColor({ color: colors.main, material: chimneyMat }, walls, roofFinal).color,
+  };
+  const baseMat = partMaterials?.plinth ?? 'stone';
+  const baseLook = {
+    material: baseMat,
+    color:
+      MATERIAL_BASE[baseMat] ??
+      separateColor({ color: colors.main, material: baseMat }, walls, roofFinal).color,
+  };
   const roofH = -eaveY;
   const roof: RecipePart[] =
     kind === 'flat'
@@ -322,7 +455,9 @@ export function facadeHouseRecipe({
             at: at((X(front.left) + X(front.right)) / 2 - cx, eaveY / 2, 0),
             size: [roofW, roofH, depth + 2 * overhang],
             ...(kind === 'hip' ? { ridge } : { apex: 0.5 }),
-            ...role('secondary'),
+            kind: 'roof' as const,
+            ...roofLook,
+            color: roofColor,
           },
         ];
   // Side image → house frame: x maps to depth z (image left = front, the right wall seen from
@@ -350,22 +485,32 @@ export function facadeHouseRecipe({
       shape: 'box',
       at: at((X(c.x) + X(right(c))) / 2 - cx, (topY + eaveY) / 2, chimneyZ),
       size: [w, topY - eaveY, w],
-      ...role('main'),
-      material: 'brick',
+      kind: 'chimney',
+      ...chimneyLook,
     };
   });
   const zFront = depth / 2 + t / 2;
   const doors: RecipePart[] = front.doors.slice(0, 2).map((d) => ({
     shape: 'box',
     ...box(d, zFront, t),
+    kind: 'door',
+    // Wide door → two leaves: one bar down the middle (pixel ratio, image fractions × aspect).
+    ...((d.w * A) / d.h > DOUBLE_DOOR_RATIO ? { grid: [2, 1] as [number, number] } : {}),
     color: DOOR_COLOR,
-    material: 'wood',
+    material: partMaterials?.door ?? 'wood',
   }));
   const glass = { color: colors.accent, material: 'glass' as const };
   const byArea = (a: NormBox, b: NormBox) => b.w * b.h - a.w * a.h;
-  const windows: RecipePart[] = [...front.windows]
-    .sort(byArea)
-    .map((w) => ({ shape: 'box', ...box(w, zFront, t), ...glass }));
+  const windows: RecipePart[] = [...front.windows].sort(byArea).map((w) => {
+    const grid = paneGrid(w, front.panes);
+    return {
+      shape: 'box',
+      ...box(w, zFront, t),
+      kind: 'window',
+      ...(grid ? { grid } : {}),
+      ...glass,
+    };
+  });
   // Side windows on the right wall: side image x → depth z (image left = front).
   const sideWindows: RecipePart[] =
     side && sideMap
@@ -377,17 +522,48 @@ export function facadeHouseRecipe({
             sideMap.z(w.x + w.w / 2)
           ),
           size: [t, sideMap.y(w.y) - sideMap.y(bottomOf(w)), sideMap.dz(w.w)] as RecipePart['size'],
+          kind: 'window' as const,
           ...glass,
           // Seen on the imagined side elevation only.
           status: 'inferred' as const,
         }))
       : [];
-  const measuredParts: RecipePart[] = [walls, ...roof, ...doors, ...chimneys, ...windows].map(
-    (p) => ({
-      ...p,
-      status: 'measured' as const,
-    })
-  );
+  // Stone base and entry step (PG-T3 boxes): proud of the wall by `PLINTH_PROUD` of the depth.
+  const proud = PLINTH_PROUD * depth;
+  const base: RecipePart[] = front.plinth
+    ? [
+        {
+          shape: 'box',
+          at: at(0, (Y(front.plinth.y) + Y(front.bottom)) / 2, 0),
+          size: [wallW + 2 * proud, Y(front.plinth.y) - Y(front.bottom), depth + 2 * proud],
+          kind: 'plinth',
+          ...baseLook,
+        },
+      ]
+    : [];
+  const steps: RecipePart[] = front.steps.slice(0, 1).map((st) => {
+    const h = Math.max(Y(st.y) - Y(bottomOf(st)), 0.02);
+    const d = Math.max(4 * h, 2 * proud);
+    return {
+      shape: 'box',
+      at: at((X(st.x) + X(right(st))) / 2 - cx, Y(front.bottom) + h / 2, depth / 2 + d / 2),
+      size: [X(right(st)) - X(st.x), h, d],
+      kind: 'step',
+      ...baseLook,
+    };
+  });
+  const measuredParts: RecipePart[] = [
+    walls,
+    ...roof,
+    ...doors,
+    ...chimneys,
+    ...windows,
+    ...base,
+    ...steps,
+  ].map((p) => ({
+    ...p,
+    status: 'measured' as const,
+  }));
   const parts = [...measuredParts, ...sideWindows].slice(0, MAX_RECIPE_PARTS);
   // Bounds of every part → proportions (largest side 1); fitRecipe re-centres the parts.
   const lo = [Infinity, Infinity, Infinity];

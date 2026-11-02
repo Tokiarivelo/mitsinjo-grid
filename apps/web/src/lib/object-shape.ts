@@ -35,6 +35,24 @@ export const EXTRUDE_POINTS_MAX = 64;
 /** Profile points of a `lathe` part (PR-2.3): radius-vs-height, non-decreasing y. */
 export const LATHE_PROFILE_MAX = 32;
 export const MAX_RECIPE_PARTS = 12;
+/**
+ * What a part is on the object (PV-G): set by the builders that know it (facade house), read by the
+ * elevation score and the 3D view (opening look). Absent = guessed from shape and material.
+ */
+export const PART_KINDS = [
+  'wall',
+  'roof',
+  'chimney',
+  'door',
+  'window',
+  'plinth',
+  'step',
+  'frame',
+] as const;
+export const PartKindSchema = z.enum(PART_KINDS);
+/** Most glass panes across or down one window (PG-T8). */
+export const MAX_PANES = 6;
+export type PartKind = z.infer<typeof PartKindSchema>;
 /** A part may stick out of the object box by this much (handles, feet) before the recipe counts as poor. */
 export const RECIPE_BOUND = 0.6;
 /**
@@ -112,6 +130,12 @@ export const RecipePartSchema = z
     material: RecipeMaterialSchema.optional(),
     /** Main body of the object (walls, cabinet). */
     front: z.boolean().optional(),
+    /** What the part is (PV-G); absent on older shapes. */
+    kind: PartKindSchema.optional(),
+    /** Window / door only (PG-T8): glass panes across × down, read on the drawing; the 3D view adds the bars. */
+    grid: z
+      .tuple([z.number().int().min(1).max(MAX_PANES), z.number().int().min(1).max(MAX_PANES)])
+      .optional(),
   })
   .superRefine((p, ctx) => {
     if (p.shape === 'extrude' && !p.points)

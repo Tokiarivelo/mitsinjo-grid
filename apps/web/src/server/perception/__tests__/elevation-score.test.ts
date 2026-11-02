@@ -29,7 +29,7 @@ const built = (): ObjectRecipe =>
   );
 
 describe('elevation render (PG-T1)', () => {
-  it('draws the built house back onto its own drawing (walls, eave, ground ±1.5 px)', () => {
+  it('draws the built house back onto its own drawing (walls, eave, base, ground ±1.5 px)', () => {
     const e = front();
     const r = renderElevation(built(), e);
     const labels = renderLabels(built(), r);
@@ -44,7 +44,13 @@ describe('elevation render (PG-T1)', () => {
     const tol = 1.5;
     expect(Math.abs(c0 - e.wallLeft * r.cols)).toBeLessThan(tol + 0.5);
     expect(Math.abs(c1 + 1 - e.wallRight * r.cols)).toBeLessThan(tol + 0.5);
-    expect(Math.abs(r1 + 1 - e.bottom * r.rows)).toBeLessThan(tol + 0.5);
+    // The wall stops on the stone base, the base stands on the ground.
+    expect(Math.abs(r1 + 1 - e.plinth!.y * r.rows)).toBeLessThan(tol + 0.5);
+    const plinth = ELEVATION_CONCEPTS.indexOf('plinth');
+    const baseRows = Array.from(labels).flatMap((v, i) =>
+      v === plinth ? [Math.floor(i / r.cols)] : []
+    );
+    expect(Math.abs(Math.max(...baseRows) + 1 - e.bottom * r.rows)).toBeLessThan(tol + 0.5);
     // The top of the visible wall is the eave (the roof overhang hides nothing above it).
     expect(Math.abs(r0 - e.eave * r.rows)).toBeLessThan(tol + 0.5);
   });

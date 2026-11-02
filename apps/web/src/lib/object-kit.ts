@@ -54,6 +54,10 @@ export type KitRoof = z.infer<typeof KitRoofSchema>;
 const hex = z.string().regex(/^#[0-9a-f]{6}$/i);
 const count = (max: number) => z.number().int().min(0).max(max);
 
+/** Building parts whose material Spark reads on the 2D drawing (PG-T5). */
+export const PART_MATERIAL_KEYS = ['roof', 'walls', 'frame', 'plinth', 'chimney', 'door'] as const;
+export type PartMaterialKey = (typeof PART_MATERIAL_KEYS)[number];
+
 export const ObjectKitSchema = z.object({
   archetype: z.enum(KIT_ARCHETYPES),
   /** Optional subtype (vehicle: sedan, hatchback, vintage, van, truck; house: cottage, gable; tree: round, conifer). */
@@ -73,6 +77,17 @@ export const ObjectKitSchema = z.object({
       secondary: RecipeMaterialSchema.optional(),
       accent: RecipeMaterialSchema.optional(),
     })
+    .optional(),
+  /**
+   * Material per building part read on the validated 2D drawing (PG-T5: labels, hatching — « REED
+   * THATCH » → thatch). Wins over the colour-role materials for that part; absent without a drawing.
+   */
+  partMaterials: z
+    .object(
+      Object.fromEntries(
+        PART_MATERIAL_KEYS.map((k) => [k, RecipeMaterialSchema.optional()])
+      ) as Record<PartMaterialKey, z.ZodOptional<typeof RecipeMaterialSchema>>
+    )
     .optional(),
   /** Front windows (houses: per floor), doors, wheels, legs, floors. Absent = template default. */
   details: z

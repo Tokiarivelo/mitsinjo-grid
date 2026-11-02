@@ -99,4 +99,32 @@ describe('planarUvs (PR-1.4)', () => {
     expect(Array.from(tri([1, 0, 0]).slice(0, 2))).toEqual([0.3 / t, 0.2 / t].map(Math.fround));
     expect(Array.from(tri([0, 1, 0]).slice(0, 2))).toEqual([0.3 / t, 0.1 / t].map(Math.fround));
   });
+
+  it('maps a roof slope in its own plane: v up the fall line, u along the eave (PG-T7)', () => {
+    // Front slope of a 45° roof: normal (0, 1, 1)/√2; points at the eave and higher up the slope.
+    const s = Math.SQRT1_2;
+    const n = [0, s, s];
+    const eaveL = [-1, 0, 0.5];
+    const eaveR = [1, 0, 0.5];
+    const high = [-1, 0.5, 0]; // 0.5 up and 0.5 back = √0.5 up the slope
+    const uv = planarUvs([...eaveL, ...eaveR, ...high], [...n, ...n, ...n], true);
+    const t = MAP_TILE;
+    // Along the eave only u changes: the strands never shear across the eave.
+    expect(uv[1]).toBeCloseTo(uv[3]!, 5);
+    expect(Math.abs(uv[2]! - uv[0]!)).toBeCloseTo(2 / t, 4);
+    // Up the slope only v changes, by the true slope length.
+    expect(uv[4]).toBeCloseTo(uv[0]!, 5);
+    expect(uv[5]! - uv[1]!).toBeCloseTo(Math.SQRT1_2 / t, 4);
+    // Without `slopes` the same face is box-projected (stretched), as before.
+    const box = planarUvs([...eaveL, ...eaveR, ...high], [...n, ...n, ...n]);
+    expect(box[5]! - box[1]!).not.toBeCloseTo(Math.SQRT1_2 / t, 2);
+  });
+
+  it('keeps walls and flat tops box-projected even with slopes on', () => {
+    const tri = (nn: [number, number, number]) =>
+      planarUvs([0.1, 0.2, 0.3, 0.1, 0.2, 0.3, 0.1, 0.2, 0.3], [...nn, ...nn, ...nn], true);
+    const t = MAP_TILE;
+    expect(Array.from(tri([0, 0, 1]).slice(0, 2))).toEqual([0.1 / t, 0.2 / t].map(Math.fround));
+    expect(Array.from(tri([0, 1, 0]).slice(0, 2))).toEqual([0.3 / t, 0.1 / t].map(Math.fround));
+  });
 });

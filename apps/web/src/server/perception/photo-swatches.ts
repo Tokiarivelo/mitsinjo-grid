@@ -9,7 +9,7 @@ import {
   SWATCH_BASELINE,
   SWATCH_SIZE,
 } from '@/features/vision-insert/utils/surface-maps';
-import { hexToRgb } from './color-measure';
+import { deltaE2000, hexToLab, hexToRgb, linearToLab, srgbToLinear } from './color-measure';
 import { renderFlat } from './flat-render';
 import type { PhotoForRegions } from './region';
 import { pixelBox } from './shape-colors';
@@ -207,8 +207,134 @@ export function findBestPatch(
   return null;
 }
 
+/** Region shrink before choosing a patch, share of the crop's short side (PG-T6: misregistration). */
+export const SWATCH_ERODE_SHARE = 0.02;
+/** Smallest region for a swatch, share of the crop (PG-T6). */
+export const SWATCH_MIN_SHARE = 0.03;
+/** Luminance spread (std, 0–1) above which a patch is shadows and objects, not a surface. */
+export const SWATCH_MAX_SPREAD = 0.2;
+/** Spread a kept patch is compressed to at most, so it tiles as grain, not as blotches. */
+export const SWATCH_TARGET_SPREAD = 0.07;
+/** Patch mean farther than this ΔE2000 from the part's measured colour: cut from another surface. */
+export const SWATCH_MAX_COLOR_DE = 20;
+/** Two materials' patches closer than this ΔE2000: one surface twice (roof ≈ wall), both dropped. */
+export const SWATCH_MIN_PAIR_DE = 8;
+
+/** One cut patch before encoding: where, its raw pixels and stats. */
+export interface SwatchCandidate {
+  material: RecipeMaterial;
+  patch: BestPatch;
+  /** Raw RGB of the patch (size² × 3). */
+  rgb: Uint8Array;
+  /** Mean colour, CIELAB. */
+  lab: [number, number, number];
+  /** Luminance std, 0–1. */
+  spread: number;
+  /** ΔE2000 of the mean to the part's measured colour. */
+  colorDE: number;
+}
+
+/** Why a candidate was dropped (logged; the part keeps its procedural map). */
+export type SwatchRejection = 'blotchy' | 'off_colour' | 'same_as_other';
+
+/** Mean Lab and luminance std of a raw RGB patch. */
+export function patchStats(rgb: Uint8Array): { lab: [number, number, number]; spread: number } {
+  const n = rgb.length / 3;
+  let [r, g, b, sum, sum2] = [0, 0, 0, 0, 0];
+  for (let i = 0; i < n; i++) {
+    r += rgb[i * 3]!;
+    g += rgb[i * 3 + 1]!;
+    b += rgb[i * 3 + 2]!;
+    const l = (0.299 * rgb[i * 3]! + 0.587 * rgb[i * 3 + 1]! + 0.114 * rgb[i * 3 + 2]!) / 255;
+    sum += l;
+    sum2 += l * l;
+  }
+  const mean = sum / n;
+  return {
+    lab: linearToLab(...srgbToLinear(r / n, g / n, b / n)),
+    spread: Math.sqrt(Math.max(0, sum2 / n - mean * mean)),
+  };
+}
+
 /**
- * Extract photo swatches for all textured materials on a recipe (PR-1.5).
+ * Compress the patch's deviations around its mean so its luminance std is at most `target`
+ * (keeps grain, removes the light / shadow blotches that tile into a pattern).
+ */
+export function limitContrast(rgb: Uint8Array, spread: number, target = SWATCH_TARGET_SPREAD) {
+  if (!(spread > target)) return rgb;
+  const k = target / spread;
+  const n = rgb.length / 3;
+  const mean = [0, 0, 0];
+  for (let i = 0; i < n; i++) for (let c = 0; c < 3; c++) mean[c]! += rgb[i * 3 + c]! / n;
+  const out = new Uint8Array(rgb.length);
+  for (let i = 0; i < rgb.length; i++) {
+    const m = mean[i % 3]!;
+    out[i] = Math.min(255, Math.max(0, Math.round(m + (rgb[i]! - m) * k)));
+  }
+  return out;
+}
+
+const overlap = (a: BestPatch, b: BestPatch) =>
+  a.x0 < b.x0 + b.size && b.x0 < a.x0 + a.size && a.y0 < b.y0 + b.size && b.y0 < a.y0 + a.size;
+
+/**
+ * PG-T6 checks on the cut patches: too blotchy, or off the part's measured colour → dropped;
+ * two materials cut from overlapping pixels or of the same colour (roof ≈ wall) → both dropped,
+ * since we cannot tell which one is right. The parts then keep their procedural maps.
+ */
+export function vetSwatches(candidates: ReadonlyArray<SwatchCandidate>): {
+  kept: SwatchCandidate[];
+  rejected: Array<{ material: RecipeMaterial; why: SwatchRejection }>;
+} {
+  const rejected: Array<{ material: RecipeMaterial; why: SwatchRejection }> = [];
+  const ok = candidates.filter((c) => {
+    if (c.spread > SWATCH_MAX_SPREAD) rejected.push({ material: c.material, why: 'blotchy' });
+    else if (c.colorDE > SWATCH_MAX_COLOR_DE)
+      rejected.push({ material: c.material, why: 'off_colour' });
+    else return true;
+    return false;
+  });
+  const same = new Set<RecipeMaterial>();
+  for (let i = 0; i < ok.length; i++)
+    for (let j = i + 1; j < ok.length; j++) {
+      const [a, b] = [ok[i]!, ok[j]!];
+      if (overlap(a.patch, b.patch) || deltaE2000(a.lab, b.lab) < SWATCH_MIN_PAIR_DE) {
+        same.add(a.material);
+        same.add(b.material);
+      }
+    }
+  for (const m of same) rejected.push({ material: m, why: 'same_as_other' });
+  return { kept: ok.filter((c) => !same.has(c.material)), rejected };
+}
+
+/** `mask` shrunk by `r` px (a pixel stays when its whole (2r+1)² square is set). */
+export function erodeMask(mask: Uint8Array, width: number, height: number, r: number): Uint8Array {
+  if (r <= 0) return mask;
+  const sat = new Int32Array((width + 1) * (height + 1));
+  for (let y = 0; y < height; y++) {
+    let row = 0;
+    for (let x = 0; x < width; x++) {
+      row += mask[y * width + x]!;
+      sat[(y + 1) * (width + 1) + x + 1] = sat[y * (width + 1) + x + 1]! + row;
+    }
+  }
+  const out = new Uint8Array(mask.length);
+  const side = (2 * r + 1) ** 2;
+  for (let y = r; y < height - r; y++)
+    for (let x = r; x < width - r; x++) {
+      const [x0, y0, x1, y1] = [x - r, y - r, x + r + 1, y + r + 1];
+      const n =
+        sat[y1 * (width + 1) + x1]! -
+        sat[y0 * (width + 1) + x1]! -
+        sat[y1 * (width + 1) + x0]! +
+        sat[y0 * (width + 1) + x0]!;
+      if (n === side) out[y * width + x] = 1;
+    }
+  return out;
+}
+
+/**
+ * Extract photo swatches for all textured materials on a recipe (PR-1.5, vetted PG-T6).
  * Returns a dictionary mapping material name to a tileable 64 px PNG data URL (≤ 8 kB each).
  */
 export async function extractSwatches(
@@ -241,30 +367,31 @@ export async function extractSwatches(
   const flat = renderFlat(recipe, aspect, width, height);
   const rings = target.outline ? pathToRings(target.outline).filter((r) => r.length >= 3) : [];
   const outline = ringsMask(rings, target.box, width, height);
+  const erode = Math.max(1, Math.round(SWATCH_ERODE_SHARE * Math.min(width, height)));
+  const minArea = Math.max(256, SWATCH_MIN_SHARE * width * height);
 
-  const swatches: Partial<Record<RecipeMaterial, string>> = {};
-
+  const candidates: SwatchCandidate[] = [];
   for (const m of materials) {
     // Find measured color from the recipe parts of this material.
     const part = recipe.parts.find((p) => p.material === m);
     if (!part) continue;
     const targetColor = hexToRgb(part.color);
 
-    // Mask of where this material is visible on the photo.
-    const materialMask = new Uint8Array(width * height);
-    let area = 0;
-    for (let i = 0; i < materialMask.length; i++) {
+    // Mask of where this material is visible on the photo, shrunk off its borders: the model
+    // and the photo never line up to the pixel, the border is the next surface.
+    const raw = new Uint8Array(width * height);
+    for (let i = 0; i < raw.length; i++) {
       if (
         outline.data[i] === 1 &&
         flat.part[i]! >= 0 &&
         recipe.parts[flat.part[i]!]?.material === m
-      ) {
-        materialMask[i] = 1;
-        area++;
-      }
+      )
+        raw[i] = 1;
     }
-    // Need at least 16×16 pixels to extract any swatch.
-    if (area < 256) continue;
+    const materialMask = erodeMask(raw, width, height, erode);
+    let area = 0;
+    for (let i = 0; i < materialMask.length; i++) area += materialMask[i]!;
+    if (area < minArea) continue;
 
     const best = findBestPatch(boxRgb, width, height, materialMask, targetColor, SWATCH_SIZE);
     if (!best) continue;
@@ -282,34 +409,43 @@ export async function extractSwatches(
         patchRaw[dstIdx + 2] = boxRgb[srcIdx + 2]!;
       }
     }
+    const stats = patchStats(patchRaw);
+    candidates.push({
+      material: m,
+      patch: best,
+      rgb: patchRaw,
+      ...stats,
+      colorDE: deltaE2000(stats.lab, hexToLab(part.color)),
+    });
+  }
 
-    // Resize to 64x64 if cut from a smaller window.
-    let patch64 = patchRaw;
-    if (best.size !== SWATCH_SIZE) {
-      const resized = await sharp(Buffer.from(patchRaw), {
-        raw: { width: best.size, height: best.size, channels: 3 },
+  const { kept, rejected } = vetSwatches(candidates);
+  if (rejected.length)
+    console.info(
+      `[vision] swatches dropped: ${rejected.map((r) => `${r.material} ${r.why}`).join(', ')}`
+    );
+
+  const swatches: Partial<Record<RecipeMaterial, string>> = {};
+  for (const c of kept) {
+    const size = c.patch.size;
+    let patch64 = limitContrast(c.rgb, c.spread);
+    if (size !== SWATCH_SIZE) {
+      const resized = await sharp(Buffer.from(patch64), {
+        raw: { width: size, height: size, channels: 3 },
       })
         .resize(SWATCH_SIZE, SWATCH_SIZE, { fit: 'fill' })
         .raw()
         .toBuffer();
       patch64 = new Uint8Array(resized);
     }
-
-    // Blend with half-offset copy to make tileable.
-    const blended = blendHalfOffset(patch64, SWATCH_SIZE);
-
-    // Normalise to average 1 (baseline = SWATCH_BASELINE).
-    const normalised = normaliseSwatch(blended, SWATCH_SIZE, SWATCH_BASELINE);
-
-    // Convert to PNG data URL.
+    // Tileable, then normalised to average 1 (the part's measured colour tints it).
+    const normalised = normaliseSwatch(blendHalfOffset(patch64, SWATCH_SIZE), SWATCH_SIZE);
     const pngBuffer = await sharp(Buffer.from(normalised), {
       raw: { width: SWATCH_SIZE, height: SWATCH_SIZE, channels: 3 },
     })
       .png()
       .toBuffer();
-
-    swatches[m] = `data:image/png;base64,${pngBuffer.toString('base64')}`;
+    swatches[c.material] = `data:image/png;base64,${pngBuffer.toString('base64')}`;
   }
-
   return swatches;
 }

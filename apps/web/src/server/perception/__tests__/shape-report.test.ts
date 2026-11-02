@@ -29,7 +29,7 @@ import { elevationMarkdown, type ElevationRow } from '../shape-report';
 import { runGolden } from './golden-run';
 
 /** Grey levels of the drawing's concepts (label map tile, PG-T4). */
-const LABEL_GREY = [200, 120, 70, 90, 30];
+const LABEL_GREY = [200, 160, 120, 70, 90, 30];
 
 /** One elevation row: drawing labels | render | diff, ×2 nearest. */
 async function elevationTile(
@@ -132,7 +132,7 @@ describe('shape report (PR-0.3)', () => {
     expect(md).toContain('## Elevation');
     expect(md).toMatch(/\| thatched house \| \d+ \| (1|0\.9\d*) ✓ \|/);
     expect(md).toContain('| 3/3 |');
-    expect(ELEVATION_CONCEPTS).toHaveLength(5);
+    expect(ELEVATION_CONCEPTS).toHaveLength(6);
     expect(elevationTarget(front).openings).toHaveLength(3);
   });
 
@@ -202,6 +202,7 @@ describe.runIf(process.env.SHAPE_REPORT)('make shape-report', () => {
         front.roofRings ? { roofRings: front.roofRings } : {}
       );
       elevRows.push({ name: g.name, score: s });
+      recipes.push({ name: g.name, recipe });
       elevTiles.push(await elevationTile(recipe, s));
     }
     const elevMd = elevationMarkdown(elevRows);

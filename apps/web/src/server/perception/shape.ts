@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
   KIT_ARCHETYPES,
   ObjectKitSchema,
+  PART_MATERIAL_KEYS,
   type KitArchetype,
   type ObjectKit,
 } from '@/lib/object-kit';
@@ -28,6 +29,7 @@ export const SHAPE_SYSTEM_PROMPT = [
   'accent = glass, windows, handle, lamp or wheels; each #rrggbb as seen or inferred.',
   `materials: what main, secondary and accent are made of, each one of: ${RECIPE_MATERIALS.join(', ')} (e.g. stone walls, slate roof, glass windows, metal body, rubber wheels).`,
   'details (optional, small integers): windows on the front face, doors, wheels, legs, floors, chimney, units (houses side by side in a row).',
+  `partMaterials (buildings, optional): what the roof, walls, frame (window and door frames), plinth, chimney and door are made of, each one of the materials above; read them on the drawing when there is one (labels, hatching: « REED THATCH » = thatch, brick courses = brick, stone base = stone).`,
   'Never give watts, kW or any energy value.',
 ].join(' ');
 
@@ -80,6 +82,10 @@ export const SHAPE_JSON_SCHEMA = {
         type: 'object',
         properties: { main: material, secondary: material, accent: material },
       },
+      partMaterials: {
+        type: 'object',
+        properties: Object.fromEntries(PART_MATERIAL_KEYS.map((k) => [k, material])),
+      },
       details: {
         type: 'object',
         properties: {
@@ -108,6 +114,7 @@ const ReplySchema = z.object({
   proportions: z.object({ w: z.number(), h: z.number(), d: z.number() }),
   colors: z.record(z.string(), z.unknown()).optional(),
   materials: z.record(z.string(), z.unknown()).optional(),
+  partMaterials: z.record(z.string(), z.unknown()).optional(),
   details: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -316,6 +323,11 @@ export function parseKit(content: string, fallback: KitArchetype = 'other'): Obj
     const m = RECIPE_MATERIALS.find((x) => x === v);
     if (m) materials[k] = m;
   }
+  const partMaterials: NonNullable<ObjectKit['partMaterials']> = {};
+  for (const k of PART_MATERIAL_KEYS) {
+    const m = RECIPE_MATERIALS.find((x) => x === reply.data.partMaterials?.[k]);
+    if (m) partMaterials[k] = m;
+  }
   const kit = ObjectKitSchema.safeParse({
     archetype,
     ...(subtype ? { subtype } : {}),
@@ -326,6 +338,7 @@ export function parseKit(content: string, fallback: KitArchetype = 'other'): Obj
     },
     colors: { main: pick('main'), secondary: pick('secondary'), accent: pick('accent') },
     ...(Object.keys(materials).length ? { materials } : {}),
+    ...(Object.keys(partMaterials).length ? { partMaterials } : {}),
     ...(Object.keys(details).length ? { details } : {}),
   });
   return kit.success ? kit.data : null;

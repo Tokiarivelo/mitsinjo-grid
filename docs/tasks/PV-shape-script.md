@@ -7,7 +7,7 @@ not faithful to the imagined 2D elevation. Example: « rural thatched house » (
 same blotchy photo texture**, three dark rectangles for windows and door. Ask: Spark writes a **generation
 script**, builds the model **piece by piece**, and an agent loop renders → compares → corrects each piece until
 the render matches; same for every kind of object.
-**Status:** 🟡 G0 done (2026-11-02), G1 in progress. **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
+**Status:** 🟡 G0 + G1 done (2026-11-02); next G2 (PG-T10 assemblies, PG-T11 wall cuts). **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
 writes vertices or runnable code (it writes Zod-checked ops, the engine builds); pure, seeded, tested geometry;
 never paste the photo on the model (small tileable swatches OK); ≤ 5 k triangles per object.
 **Skills:** `/shape-3d` (vocabulary, files) · `/shape-loop` (scores, log) · `/facade-2d` (target image).
@@ -69,22 +69,27 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
 
 ### G1 Fix what is visibly wrong now (no loop needed, biggest gain per hour)
 
-- [ ] **PG-T5 Materials from the 2D.** Spark reads the elevation (labels, hatching) → material per component
+- [x] **PG-T5 Materials from the 2D.** Spark reads the elevation (labels, hatching) → material per component
       (`roof: thatch`, `walls: plaster`, `frame: wood`, `plinth: stone`, `chimney: brick`). The elevation wins
       over the photo for _which_ material, and the photo keeps the _colour_ (measured ΔE).
-- [ ] **PG-T6 Safe swatches.** A swatch region = SAM concept mask on the photo (`roof`, `wall`), not the
+      **Done:** kit `partMaterials` {roof, walls, frame, plinth, chimney, door} in the Spark schema + prompt line; `facadeHouseRecipe` uses them first; parts carry `kind`. Plinth and step boxes added from the PG-T3 masks (scored as `plinth`).
+- [x] **PG-T6 Safe swatches.** A swatch region = SAM concept mask on the photo (`roof`, `wall`), not the
       flat-render part map. The swatch is rejected (back to procedural maps) when (a) the region is under 3 % of the
       crop, (b) the luminance spread is too high (shadows, objects), or (c) it is too close to another material's
       swatch (histogram distance under the threshold: roof ≈ wall). Contrast is clamped before tiling. Test: user
       case with roof and wall patches from the same pixels → rejected.
-- [ ] **PG-T7 Slope UVs.** Per-face planar UV for `prism` / `hip`: u along the eave, v along the fall line, so
+      **Done:** `vetSwatches` (blotchy / off_colour / same_as_other), `erodeMask` (2 % of the short side), min region 3 %, `limitContrast` to std 0.07. **Deviation:** region = flat-render part map shrunk, not a SAM roof/wall mask on the photo (one SAM call less; revisit if the loop shows misregistration).
+- [x] **PG-T7 Slope UVs.** Per-face planar UV for `prism` / `hip`: u along the eave, v along the fall line, so
       thatch strands and slate rows run downhill. Box UV stays for vertical faces. No diagonal stretch.
-- [ ] **PG-T8 Readable openings.** Openings are **recessed** (inset ≈ 0.04 of wall depth, reveal faces drawn)
+      **Done:** `planarUvs(…, slopes)` for `prism` / `hip`: u along the eave, v up the fall line; walls, tops and curved parts unchanged.
+- [x] **PG-T8 Readable openings.** Openings are **recessed** (inset ≈ 0.04 of wall depth, reveal faces drawn)
       instead of decals. Glass = metalness 0, roughness 0.1, dark-blue tint, light reflection from the env map. The
       frame colour must reach ΔE ≥ 15 against the wall, or it is pushed lighter or darker. Test: frame vs wall
       contrast on the golden set.
-- [ ] **PG-T9 Roof/wall contrast guard.** After colours: if ΔE(roof, wall) < 10 and the 2D says different
+      **Done (G1 form):** `features/vision-insert/utils/openings.ts` `expandOpenings`: frame proud, glass / leaf set back, bars from `grid` (SAM panes → `paneGrid`, default cross), window sill, double door when w/h > 0.6; frame dark or light by wall luminance; glass metalness 0. **Deviation:** no wall cut yet (PG-T11), so the opening sits on the wall, not in a reveal; the expansion is viewer-only (flat render scores the plain opening box).
+- [x] **PG-T9 Roof/wall contrast guard.** After colours: if ΔE(roof, wall) < 10 and the 2D says different
       materials, nudge the roof toward its procedural material base (thatch straw, slate grey). Logged as `estimated`.
+      **Done:** `separateRoofColor` (ΔE < 10 and different materials → quarter steps toward `MATERIAL_BASE`).
 
 ### G2 Components instead of parts (lift the 12-part ceiling)
 

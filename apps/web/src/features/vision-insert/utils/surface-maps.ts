@@ -195,12 +195,21 @@ export function surfaceMaps(surface: Surface, size = MAP_SIZE): SurfaceMaps | nu
   return { size, normal, roughness, shade, gain };
 }
 
+/** A face is a roof slope (not a wall, not a flat top) when its normal's up share is inside this. */
+export const SLOPE_RANGE = [0.1, 0.98] as const;
+
 /**
  * Planar UVs in object units (box projection per triangle): each triangle is projected on the plane its
  * normal faces most, scaled by `MAP_TILE`, so a pattern keeps its size whatever the part's size.
+ * With `slopes` (roof parts, PG-T7): a sloped face is mapped in its own plane instead — u along the
+ * eave, v up the fall line — so thatch strands and slate rows run downhill, not stretched across.
  * `position` and `normal` are non-indexed xyz triplets; returns uv pairs.
  */
-export function planarUvs(position: ArrayLike<number>, normal: ArrayLike<number>): Float32Array {
+export function planarUvs(
+  position: ArrayLike<number>,
+  normal: ArrayLike<number>,
+  slopes = false
+): Float32Array {
   const count = position.length / 3;
   const uv = new Float32Array(count * 2);
   for (let t = 0; t + 2 < count; t += 3) {
@@ -210,12 +219,27 @@ export function planarUvs(position: ArrayLike<number>, normal: ArrayLike<number>
       ny += normal[k * 3 + 1]!;
       nz += normal[k * 3 + 2]!;
     }
-    const [ax, ay, az] = [Math.abs(nx), Math.abs(ny), Math.abs(nz)];
+    const len = Math.hypot(nx, ny, nz) || 1;
+    [nx, ny, nz] = [nx / len, ny / len, nz / len];
+    const up = Math.abs(ny);
+    const slope = slopes && up >= SLOPE_RANGE[0] && up <= SLOPE_RANGE[1];
+    // Slope frame: eave direction (horizontal, in the face) and fall line (up projected on the face).
+    const hl = Math.hypot(nx, nz) || 1;
+    const eave = [nz / hl, 0, -nx / hl] as const;
+    const fall = [-nx * ny, 1 - ny * ny, -nz * ny] as const;
+    const fl = Math.hypot(...fall) || 1;
+    const [ax, ay, az] = [Math.abs(nx), up, Math.abs(nz)];
     for (let k = t; k < t + 3; k++) {
       const [x, y, z] = [position[k * 3]!, position[k * 3 + 1]!, position[k * 3 + 2]!];
-      // Walls: u along the wall, v up. Faces turned up (roof slopes, tops): u along z = along a gable
+      // Walls: u along the wall, v up. Faces turned up (tops): u along z = along a gable
       // ridge (ridges run front to back), so slate rows and courses follow the ridge.
-      const [u, v] = ax >= ay && ax >= az ? [z, y] : az >= ay ? [x, y] : [z, x];
+      const [u, v] = slope
+        ? [x * eave[0] + z * eave[2], (x * fall[0] + y * fall[1] + z * fall[2]) / fl]
+        : ax >= ay && ax >= az
+          ? [z, y]
+          : az >= ay
+            ? [x, y]
+            : [z, x];
       uv[k * 2] = u / MAP_TILE;
       uv[k * 2 + 1] = v / MAP_TILE;
     }

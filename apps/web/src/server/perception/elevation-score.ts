@@ -15,7 +15,7 @@ import { distanceTo, emptyMask, iou, ringsMask, type Mask } from './silhouette-f
 type Ring = ReadonlyArray<readonly [number, number]>;
 
 /** Concepts compared on an elevation, in paint order (a window wins over its wall). */
-export const ELEVATION_CONCEPTS = ['wall', 'roof', 'chimney', 'door', 'window'] as const;
+export const ELEVATION_CONCEPTS = ['wall', 'plinth', 'roof', 'chimney', 'door', 'window'] as const;
 export type ElevationConcept = (typeof ELEVATION_CONCEPTS)[number];
 
 /** Build stages scored separately (PV-G loop, house). */
@@ -58,10 +58,16 @@ export function elevationBox(e: Elevation): NormBox {
 }
 
 /**
- * Which concept a recipe part draws. Roofs are slopes, glass is a window, brick a chimney, the
+ * Which concept a recipe part draws: its `kind` when set (a step counts as base, a frame is
+ * not scored yet), else guessed — roofs are slopes, glass is a window, brick a chimney, the
  * door paint a door, the main body the wall; anything else is not scored by concept.
  */
 export function partConcept(p: RecipePart): ElevationConcept | null {
+  if (p.kind === 'step') return 'plinth';
+  if (p.kind)
+    return (ELEVATION_CONCEPTS as readonly string[]).includes(p.kind)
+      ? (p.kind as ElevationConcept)
+      : null;
   if (p.shape === 'prism' || p.shape === 'hip') return 'roof';
   if (p.material === 'glass') return 'window';
   if (p.material === 'brick') return 'chimney';
@@ -129,7 +135,7 @@ function fillRect(label: Int8Array, cols: number, rows: number, b: NormBox, valu
 }
 
 /**
- * Target label map from the measured elevation: walls under the eave, the roof (its SAM outline
+ * Target label map from the measured elevation: walls under the eave, the base (plinth, steps), the roof (its SAM outline
  * inside the roof band when given, else the band), then chimneys, doors and windows on top.
  */
 export function elevationTarget(
@@ -156,6 +162,8 @@ export function elevationTarget(
       for (let i = 0; i < label.length; i++) if (m.data[i] && inBand[i]) label[i] = idx('roof');
     } else fillRect(label, cols, rows, band, idx('roof'));
   }
+  if (e.plinth) fillRect(label, cols, rows, e.plinth, idx('plinth'));
+  for (const st of e.steps) fillRect(label, cols, rows, st, idx('plinth'));
   for (const c of e.chimneys) fillRect(label, cols, rows, c, idx('chimney'));
   for (const d of e.doors) fillRect(label, cols, rows, d, idx('door'));
   for (const w of e.windows) fillRect(label, cols, rows, w, idx('window'));
@@ -362,7 +370,11 @@ export function scoreElevation(
   );
   const silhouette = iou(render.mask, silT);
   const stages: Record<ElevationStage, number> = {
-    massing: concepts.wall ?? silhouette,
+    // Walls, and the base when the drawing or the model has one.
+    massing:
+      concepts.plinth === undefined
+        ? (concepts.wall ?? silhouette)
+        : ((concepts.wall ?? silhouette) + concepts.plinth) / 2,
     roof: concepts.roof ?? 1,
     openings: openings.score,
     accessories: concepts.chimney ?? 1,

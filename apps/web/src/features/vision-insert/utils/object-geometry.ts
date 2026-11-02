@@ -4,6 +4,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { ObjectRecipe, RecipePart } from '@/lib/object-shape';
 import { SURFACE_LOOK, SURFACES, surfaceIndex } from './surface-look';
+import { expandOpenings } from './openings';
 import { planarUvs } from './surface-maps';
 import { type ApplianceDetection, type NormBox, type SceneryType } from '@/lib/vision';
 
@@ -264,7 +265,8 @@ const color = new THREE.Color();
  */
 export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
   const dims = [recipe.proportions.w, recipe.proportions.h, recipe.proportions.d] as const;
-  const sorted = recipe.parts
+  // Windows and doors drawn with frame, glass, bars and sill (PG-T8).
+  const sorted = expandOpenings(recipe)
     .map((p) => ({ p, surface: surfaceIndex(p.material) }))
     .sort((a, b) => a.surface - b.surface);
   const parts = sorted.map(({ p, surface }) => {
@@ -281,11 +283,16 @@ export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
       g.scale(sx + eave, sy, sz + eave);
     }
     g.translate(p.at[0] * dims[0], p.at[1] * dims[1], p.at[2] * dims[2]);
-    // Surface maps (PR-1.4) tile in object units, aligned with the walls (before the yaw).
+    // Surface maps (PR-1.4) tile in object units, aligned with the walls (before the yaw); roof
+    // slopes in their own plane (PG-T7).
     g.setAttribute(
       'uv',
       new THREE.BufferAttribute(
-        planarUvs(g.getAttribute('position').array, g.getAttribute('normal').array),
+        planarUvs(
+          g.getAttribute('position').array,
+          g.getAttribute('normal').array,
+          p.shape === 'prism' || p.shape === 'hip'
+        ),
         2
       )
     );
