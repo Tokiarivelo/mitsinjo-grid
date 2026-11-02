@@ -633,10 +633,6 @@ interface DispatchLogEntry { id; day; hour; mode: DispatchMode; origin: 'ai' | '
 dispatchLogHash(entry): string   // fnv1a64(canonicalJson(entry without hash))
 sortIncidents(incidents): Incident[] // severity, then day, then hour; no mutation
 detectIncidents(input, result, hour, lookaheadH = 3, day = 0): Incident[] // pure detectors, sorted by severity
-candidateActions(incident, input): AutoAction[] // pure generator for all incident kinds (PA-T2a)
-simulateHorizon(input, strategy, startHour, endHour, initialStoredKwh): DispatchSnapshot // fast forward lookahead
-checkAntiOscillation(action, hour, day, history): boolean // max 2 actions/h, no reversal in 2h, fire exception (PA-T2c)
-decideDispatch(input, hour, strategy, incidents, rules?, history?, day?): DispatchDecision // evaluates candidates over horizon, drops constitution violations, selects best (PA-T2b)
 ```
 
 `AutoAction` refinements: `switch_strategy` needs `strategy`; `alert_only` carries neither patch nor
