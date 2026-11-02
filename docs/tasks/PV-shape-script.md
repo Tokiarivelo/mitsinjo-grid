@@ -114,9 +114,16 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
 - [ ] **PG-T17 Progressive build in the UI.** SSE `ShapeStepEvent` gains `stage` + partial recipe. The viewer
       shows each accepted stage (massing → roof → openings → details). The panel names the current stage and its
       score. i18n en/fr/mg, both themes, mobile. Design gate: `/design-check`.
-- [ ] **PG-T18 Budget decision.** ⚠ Needs the user: the staged loop needs about 60–120 s on live Meta. Options:
-      (a) raise `SHAPE_TIMEOUT_MS` to 120 s for facade builds, (b) keep 60 s and continue the loop in the
-      background, with the viewer updating as stages land, (c) loop only on « Améliorer » (user click). Recommended: (b).
+- [ ] **PG-T18 Background loop (decided, user 2026-11-02: option b).** The first answer keeps the 60 s budget
+      (`SHAPE_TIMEOUT_MS`): seed + every stage done in time. The remaining stages continue on the server in the
+      background (job id, same SSE stream, or poll on reconnect), and the viewer swaps in each accepted stage. The
+      user can rotate, edit or place the object meanwhile, and a manual edit cancels the stages that would overwrite it.
+      **Improvement indicator** (user ask): a visible chip on the 3D viewer and the panel reads « Amélioration :
+      étape 3/7 — Ouvertures » with a progress bar, a spinner and the stage score before → after. When the loop
+      ends it shows « Modèle finalisé » (or « Amélioration arrêtée : <cause> » on timeout or error), then fades
+      out. It is announced to screen readers (`aria-live="polite"`), uses i18n en/fr/mg, theme tokens, and fits at 320 px.
+      Tests: the hook follows the stage events, a dropped stream resumes from the last stage, and the chip
+      reaches its final state on success and on error.
 
 ### G4 Every kind of object
 
@@ -142,14 +149,13 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
 
 Global IoU ≥ 0.9 · edge F1 ≥ 0.75 · every opening matched (count exact, centre error ≤ 3 % of width) · ΔE(roof,
 wall) ≥ 10 when the 2D names different materials · frame vs wall ΔE ≥ 15 · designer ≥ 4/5 · ≤ 5 k triangles ·
-the request finishes in the agreed budget (PG-T18).
+first answer ≤ 60 s, background stages finish ≤ 3 min (PG-T18).
 Thatched house acceptance: thatch roof with a rounded eave, clearly different from plastered walls. Two windows
 with a 2 × 4 pane grid and sills, a double door with a glazed top, a stone plinth and two brick chimneys.
 
 ## Order
 
-G0 (T1–T4, ≈ 1 day) → G1 (T5–T9: what the user sees today, no loop needed) → G2 (T10–T12) → G3 (T13–T18,
-T18 decided first) → G4 one archetype at a time (vehicle next) → G5. Every task ends with a `/shape-loop`
+G0 (T1–T4, ≈ 1 day) → G1 (T5–T9: what the user sees today, no loop needed) → G2 (T10–T12) → G3 (T13–T18) → G4 one archetype at a time (vehicle next) → G5. Every task ends with a `/shape-loop`
 measure and a row in `PV-shape-realism.md` « Loop log ».
 
 ## Non-goals

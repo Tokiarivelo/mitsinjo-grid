@@ -1,46 +1,23 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-02 (/village & /copilot UX revamps) · **By:** Antigravity · **Branch:** current
+**Updated:** 2026-11-02 (PA-T1 detectIncidents complete) · **By:** Antigravity · **Branch:** current
 
 ## State
 
-- **/village UX Overhaul complete**: Studio Workbench layout (`max-w-[1720px]`), responsive canvas viewport with filterable palette, tabbed Studio Inspector (`Active Object`, `Installed Appliances`, `Microgrid Twin`).
-- **6-Angle 2D Imagination Removed**: Completely removed redundant 6-angle views / `previewViews` carousel. Elevation handled exclusively by Meta Muse 2D Façade (`Facade2dPanel`), validating into 3D reconstruction.
-- **/copilot UX Overhaul complete**:
-  - **Studio Launchpad Empty State**: Microgrid snapshot pill (scenario name, active strategy, PV kW, Battery kWh), 4 capability discovery cards (_Strategy Trade-offs_, _Lifeline Protection_, _Meeting Diarization_, _Visual Perception_), and dynamic action prompts.
-  - **Mobile / Tablet Segmented Tabs**: Switch seamlessly between `[💬 Chat & Insights]`, `[⚡ Grid Telemetry]`, and `[👥 Village Meeting]` without vertical scroll fatigue.
-  - **Modern Studio Header**: Animated AI badge, session history pill, active model dropdown, HUD fire action.
+- **AI autonomous dispatch (PA-T1) complete**:
+  - `detectIncidents(input, result, hour, lookaheadH = 3, day = 0)` implemented in `packages/engine/src/autonomy.ts`.
+  - Detects all 8 incident kinds: `fire`, `critical_forecast`, `overload`, `lifeline_shortfall`, `reserve_low`, `demand_surge`, `meter_anomaly`, `solar_surplus`.
+  - Validates outputs against `IncidentSchema` and sorts by severity (`critical` > `warning` > `info`).
+  - Contracts in `docs/contracts.md` and task checked in `docs/tasks/PA-ai-dispatch.md`.
+  - Tests in `packages/engine/src/__tests__/autonomy.test.ts`: 13/13 passed. Total engine tests: 312/312 passed.
+- **/village & /copilot UX Overhauls**: Studio Workbench layout, tabbed Inspector, mobile tabs, empty launchpad, 100% i18n parity.
 - **Quality & Verification**:
   - `pnpm --filter web typecheck`: 0 errors.
-  - `pnpm --filter web lint`: 0 errors.
-  - `pnpm --filter web test src/features/vision-insert`: 23/23 suites passed (156/156 tests).
-  - `pnpm --filter web test src/features/copilot`: 34/34 suites passed (175/175 tests).
-  - `make check-i18n`: 100% key parity across `en.json`, `fr.json`, `mg.json`.
-  - Responsive mobile touch targets ≥ 44px, zero horizontal overflow, dual theme support.
-
-## PR-2.23 House rebuilt from its 2D elevations (Claude, in 8a0cbb9)
-
-- Facade validated on a house → SAM measures it, Muse Image draws the side from it (roof hint, copy check, 1 retry),
-  `facade-house.ts` builds walls / `hip` or gable roof / chimneys / wood door / glass windows; `source: 'facade'`.
-- New primitive `hip` (+ `ridge`) in schema, viewer, flat render, outline fit. Depth = Spark unless side agrees ×1.3.
-- Live check: `make facade-e2e FRONT=… OUT=…` (sheet.png: elevations vs renders). `object-viewer-shot.mjs` fixed for the
-  facade-first flow. Scenarios V90–V95. Golden shape metrics unchanged; 300 ms budget flaky under load (avg ≈ 9).
-- Not done: side windows rarely fit the 12-part budget; walls colour comes from the photo (can look dark).
+  - `make test-engine`: 25/25 files passed (312/312 tests).
+  - `make check-i18n`: 100% key parity (en, fr, mg).
 
 ## Next task
 
-- **3D plan PV-G** (`docs/tasks/PV-shape-script.md`): ShapeScript ops + staged agent loop vs the 2D elevation;
-  start G0 (PG-T1 elevation render) then G1 quick fixes (materials from 2D, safe swatches, slope UVs, recessed
-  windows). PG-T18 (time budget) needs a user decision.
-
-- Check live UI at `http://localhost:3001/village` and `http://localhost:3001/copilot`.
-- Proceed with PR review or subsequent tasks.
-
-## Parallel session (Claude, uncommitted) — copilot prompts + village fire + PA plan
-
-- Scenario `village_fire` (market fire 14 h → water pumps 15 h); scenario lists read `ScenarioIdSchema.options`.
-- Copilot questions built from the run only: `RunSimulationCta` before any run, no static list.
-- Plan AI autonomous dispatch: `docs/tasks/PA-ai-dispatch.md` — PA-T0a needs a human decision first.
-- To check live: A112–A115, C16–C17, D15; design-gate shots of /copilot empty state and /scenarios.
-- PA-T0a/T0b done: rule in CLAUDE.md; engine `schemas/autonomy.ts` + `dispatchLogHash`/`sortIncidents` (7 tests).
-- Neon: versioned migrations `server/db/migrations.ts` (auto on 1st DB call + `make db-migrate`); applied to the .env DB.
+- **PA-T2a / PA-T2b** (`docs/tasks/PA-ai-dispatch.md`):
+  - `candidateActions(incident, input)`: isolate, cap, shed flexible, switch strategy, clinic floor, night reserve, shift flexible, restore.
+  - `decideDispatch(input, hour, strategy, incidents, rules)`: simulate candidates over `hour..hour+6`, filter constitution violations, choose best outcome.
