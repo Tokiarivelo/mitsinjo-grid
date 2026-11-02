@@ -99,13 +99,13 @@ autonome » attend PA-3.
 
 ### PA-2 — Politique de décision (pur, moteur) · J3–J4
 
-- [ ] **PA-T2a** `candidateActions(incident, input)` : isoler, plafonner, délester flexible, stratégie,
+- [x] **PA-T2a** `candidateActions(incident, input)` : isoler, plafonner, délester flexible, stratégie,
       plancher dispensaire, réserve nuit (min SoC ↑), décaler charge flexible, rétablir.
-- [ ] **PA-T2b** `decideDispatch(input, hour, strategy, incidents, rules)` : simule chaque candidat sur
+- [x] **PA-T2b** `decideDispatch(input, hour, strategy, incidents, rules)` : simule chaque candidat sur
       `hour..hour+6`, écarte les violations de constitution, garde le meilleur (critique non servi ↓, puis non servi ↓,
       puis SoC fin ↑) ; renvoie aussi le contrefactuel « rien faire ». Déterministe, budget < 20 ms / heure.
       **Done when** sur les 7 scénarios : critique non servi en mode IA ≤ meilleure stratégie fixe ; tests.
-- [ ] **PA-T2c** Anti-oscillation : pas d'action contraire à la précédente sur le même secteur en moins de 2 h ;
+- [x] **PA-T2c** Anti-oscillation : pas d'action contraire à la précédente sur le même secteur en moins de 2 h ;
       max 2 actions / heure. Tests.
 
 ### PA-3 — Orchestrateur et store · J5

@@ -30,7 +30,7 @@ import {
 import { generateWarnings } from './warnings';
 import { effectiveSectorCaps } from './fire';
 
-function allocateWithCaps(
+export function allocateWithCaps(
   strategy: StrategyId,
   availableKw: number,
   sectors: readonly SectorDemandStep[],

@@ -18,3 +18,4 @@ export * from './safety';
 export * from './fire';
 export * from './appliances';
 export * from './autonomy';
+export * from './constitution';

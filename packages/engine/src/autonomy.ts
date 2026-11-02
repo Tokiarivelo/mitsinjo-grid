@@ -1,15 +1,30 @@
+import { sectorApplianceKw } from './appliances';
 import { EPS } from './constants';
-import { activeFires } from './fire';
-import { canonicalJson, fnv1a64 } from './hash';
+import { checkConstitution, DEFAULT_CONSTITUTION, type ConstitutionRule } from './constitution';
+import { activeFires, effectiveSectorCaps } from './fire';
+import { canonicalJson, computeInputHash, computeResultId, fnv1a64 } from './hash';
 import {
+  computeBatteryStep,
+  computeDemandStep,
+  computeDischargeMaxKw,
+  computeSolarStep,
+} from './model';
+import { applyPatch } from './patch';
+import {
+  AutoActionSchema,
+  DispatchSnapshotSchema,
   IncidentSchema,
   SEVERITY_RANK,
+  type AutoAction,
   type DispatchLogEntry,
+  type DispatchSnapshot,
   type Incident,
   type SectorId,
   type SimulationInput,
   type SimulationResult,
+  type StrategyId,
 } from './schemas';
+import { allocateWithCaps, simulate } from './simulate';
 
 /**
  * Audit hash of a log line (PA): FNV-1a 64 of its canonical JSON, `hash` field excluded.
@@ -273,4 +288,627 @@ export function detectIncidents(
   }
 
   return sortIncidents(incidents);
+}
+
+/**
+ * Generates candidate actions in response to an incident (PA-T2a).
+ * Pure engine function: never mutates input, all candidates validated by AutoActionSchema.
+ */
+export function candidateActions(incident: Incident, input: SimulationInput): AutoAction[] {
+  const actions: AutoAction[] = [];
+  const hour = incident.hour;
+
+  const buildCapsWithSector = (sector: SectorId, maxKw: number) => {
+    const existing = (input.sectorCaps ?? []).filter((c) => c.sector !== sector);
+    return [
+      ...existing,
+      {
+        sector,
+        maxKw,
+        fromHour: hour,
+        toHour: 24,
+      },
+    ];
+  };
+
+  switch (incident.kind) {
+    case 'fire': {
+      if (incident.sector) {
+        actions.push(
+          AutoActionSchema.parse({
+            kind: 'isolate_sector',
+            sector: incident.sector,
+            patch: {
+              sectorCaps: buildCapsWithSector(incident.sector, 0),
+            },
+            answers: 'fire',
+          })
+        );
+      }
+      break;
+    }
+
+    case 'critical_forecast':
+    case 'lifeline_shortfall': {
+      // 1. Switch to essential_first (protects critical tier)
+      actions.push(
+        AutoActionSchema.parse({
+          kind: 'switch_strategy',
+          strategy: 'essential_first',
+          answers: incident.kind,
+        })
+      );
+
+      // 2. Switch to balanced (protects critical tier across all sectors)
+      actions.push(
+        AutoActionSchema.parse({
+          kind: 'switch_strategy',
+          strategy: 'balanced',
+          answers: incident.kind,
+        })
+      );
+
+      // 3. Raise clinic lifeline floor
+      actions.push(
+        AutoActionSchema.parse({
+          kind: 'raise_clinic_floor',
+          patch: {
+            lifeline: {
+              enabled: true,
+              kw: { health: 1.5 },
+            },
+          },
+          answers: incident.kind,
+        })
+      );
+
+      // 4. Shed flexible sectors (industry, water)
+      for (const s of input.sectors) {
+        if (s.flexible && (s.loadMultiplier ?? 1) > 0) {
+          actions.push(
+            AutoActionSchema.parse({
+              kind: 'shed_flexible',
+              sector: s.id,
+              patch: {
+                sectorCaps: buildCapsWithSector(s.id, 0),
+              },
+              answers: incident.kind,
+            })
+          );
+        }
+      }
+
+      // 5. Cap low-priority sectors
+      for (const s of input.sectors) {
+        if (s.priority === 'low' && !s.flexible) {
+          actions.push(
+            AutoActionSchema.parse({
+              kind: 'cap_sector',
+              sector: s.id,
+              patch: {
+                sectorCaps: buildCapsWithSector(s.id, 1.0),
+              },
+              answers: incident.kind,
+            })
+          );
+        }
+      }
+      break;
+    }
+
+    case 'overload': {
+      // 1. Switch strategy: essential_first & balanced
+      actions.push(
+        AutoActionSchema.parse({
+          kind: 'switch_strategy',
+          strategy: 'essential_first',
+          answers: 'overload',
+        })
+      );
+      actions.push(
+        AutoActionSchema.parse({
+          kind: 'switch_strategy',
+          strategy: 'balanced',
+          answers: 'overload',
+        })
+      );
+
+      // 2. Shed flexible sectors
+      for (const s of input.sectors) {
+        if (s.flexible && (s.loadMultiplier ?? 1) > 0) {
+          actions.push(
+            AutoActionSchema.parse({
+              kind: 'shed_flexible',
+              sector: s.id,
+              patch: {
+                sectorCaps: buildCapsWithSector(s.id, 0),
+              },
+              answers: 'overload',
+            })
+          );
+        }
+      }
+
+      // 3. Cap market
+      actions.push(
+        AutoActionSchema.parse({
+          kind: 'cap_sector',
+          sector: 'market',
+          patch: {
+            sectorCaps: buildCapsWithSector('market', 1.0),
+          },
+          answers: 'overload',
+        })
+      );
+      break;
+    }
+
+    case 'demand_surge': {
+      if (incident.sector) {
+        const sec = input.sectors.find((s) => s.id === incident.sector);
+        const normalKw = sec?.profileKw[hour] ?? 1.0;
+        actions.push(
+          AutoActionSchema.parse({
+            kind: 'cap_sector',
+            sector: incident.sector,
+            patch: {
+              sectorCaps: buildCapsWithSector(incident.sector, Math.max(0.5, normalKw)),
+            },
+            answers: 'demand_surge',
+          })
+        );
+      }
+      actions.push(
+        AutoActionSchema.parse({
+          kind: 'switch_strategy',
+          strategy: 'essential_first',
+          answers: 'demand_surge',
+        })
+      );
+      actions.push(
+        AutoActionSchema.parse({
+          kind: 'switch_strategy',
+          strategy: 'balanced',
+          answers: 'demand_surge',
+        })
+      );
+      break;
+    }
+
+    case 'reserve_low': {
+      // 1. Night reserve: raise minSocPct only during evening/night (≥18h or ≤5h)
+      if (hour >= 18 || hour <= 5) {
+        const maxAllowedMinSoc = Math.max(input.battery.minSocPct, input.battery.initialSocPct - 1);
+        const targetMinSoc = Math.min(maxAllowedMinSoc, input.battery.minSocPct + 5);
+        if (targetMinSoc > input.battery.minSocPct + EPS) {
+          actions.push(
+            AutoActionSchema.parse({
+              kind: 'reserve_night',
+              patch: {
+                minSocPct: targetMinSoc,
+              },
+              answers: 'reserve_low',
+            })
+          );
+        }
+      }
+
+      // 2. Shed flexible
+      for (const s of input.sectors) {
+        if (s.flexible && (s.loadMultiplier ?? 1) > 0) {
+          actions.push(
+            AutoActionSchema.parse({
+              kind: 'shed_flexible',
+              sector: s.id,
+              patch: {
+                sectorCaps: buildCapsWithSector(s.id, 0),
+              },
+              answers: 'reserve_low',
+            })
+          );
+        }
+      }
+
+      actions.push(
+        AutoActionSchema.parse({
+          kind: 'switch_strategy',
+          strategy: 'essential_first',
+          answers: 'reserve_low',
+        })
+      );
+      actions.push(
+        AutoActionSchema.parse({
+          kind: 'switch_strategy',
+          strategy: 'balanced',
+          answers: 'reserve_low',
+        })
+      );
+      break;
+    }
+
+    case 'solar_surplus': {
+      // 1. Shift flexible load: connect industry or increase water
+      for (const s of input.sectors) {
+        if (s.flexible) {
+          actions.push(
+            AutoActionSchema.parse({
+              kind: 'shift_flexible',
+              sector: s.id,
+              patch: {
+                sectorLoads: {
+                  [s.id]: 1.0,
+                },
+              },
+              answers: 'solar_surplus',
+            })
+          );
+        }
+      }
+
+      // 2. Restore any previously capped sectors
+      if (input.sectorCaps && input.sectorCaps.length > 0) {
+        const cappedSectors = new Set(input.sectorCaps.map((c) => c.sector));
+        for (const s of cappedSectors) {
+          const remainingCaps = input.sectorCaps.filter((c) => c.sector !== s);
+          actions.push(
+            AutoActionSchema.parse({
+              kind: 'restore_sector',
+              sector: s,
+              patch: {
+                sectorCaps: remainingCaps,
+              },
+              answers: 'solar_surplus',
+            })
+          );
+        }
+      }
+
+      // 3. Switch back to proportional if abundant sun
+      actions.push(
+        AutoActionSchema.parse({
+          kind: 'switch_strategy',
+          strategy: 'proportional',
+          answers: 'solar_surplus',
+        })
+      );
+
+      // 4. Alert only
+      actions.push(
+        AutoActionSchema.parse({
+          kind: 'alert_only',
+          answers: 'solar_surplus',
+        })
+      );
+      break;
+    }
+
+    case 'meter_anomaly': {
+      actions.push(
+        AutoActionSchema.parse({
+          kind: 'alert_only',
+          answers: 'meter_anomaly',
+        })
+      );
+      break;
+    }
+  }
+
+  // Restore cleared fires if any fire event ended
+  if (input.events) {
+    for (const e of input.events) {
+      if (e.type === 'fire' && hour >= e.startHour + e.durationH) {
+        actions.push(
+          AutoActionSchema.parse({
+            kind: 'restore_sector',
+            sector: e.sector,
+            patch: {
+              clearFires: [e.sector],
+            },
+            answers: incident.kind,
+          })
+        );
+      }
+    }
+  }
+
+  return actions;
+}
+
+/**
+ * Fast forward simulation over a lookahead window [startHour, endHour] starting
+ * from an exact stored battery energy (initialStoredKwh).
+ * Does not mutate input or past steps.
+ */
+export function simulateHorizon(
+  input: SimulationInput,
+  strategy: StrategyId,
+  startHour: number,
+  endHour: number,
+  initialStoredKwh: number
+): DispatchSnapshot {
+  let storedKwh = Math.max(0, initialStoredKwh);
+  let criticalUnservedKwh = 0;
+  let unservedKwh = 0;
+  const sectorCaps = effectiveSectorCaps(input);
+  const lifelineEnabled = input.strategyParams?.lifeline?.enabled !== false;
+  const applianceKw = sectorApplianceKw(input.appliances);
+
+  for (let t = startHour; t <= endHour; t++) {
+    const solarKw = computeSolarStep(input.solar, input.events, t);
+    const demandResult = computeDemandStep(
+      input.sectors,
+      input.demandMultiplier,
+      input.events,
+      t,
+      applianceKw
+    );
+    const { dischargeMaxKw } = computeDischargeMaxKw(input.battery, storedKwh);
+    const availableKw = solarKw + dischargeMaxKw;
+    const activeCaps = sectorCaps?.filter((c) => t >= c.fromHour && t < c.toHour) ?? [];
+    const sectorSteps = allocateWithCaps(
+      strategy,
+      availableKw,
+      demandResult.sectorList,
+      activeCaps,
+      input.strategyParams?.balancedWeights,
+      lifelineEnabled
+    );
+
+    let servedKw = 0;
+    for (const sectorItem of demandResult.sectorList) {
+      const stepForSec = sectorSteps[sectorItem.sectorId];
+      if (stepForSec) {
+        servedKw += stepForSec.servedKw;
+        criticalUnservedKwh += Math.max(
+          0,
+          stepForSec.criticalDemandKw - stepForSec.criticalServedKw
+        );
+      }
+    }
+
+    const batteryResult = computeBatteryStep(input.battery, storedKwh, solarKw, servedKw);
+    unservedKwh += Math.max(0, demandResult.demandKw - servedKw);
+    storedKwh = batteryResult.storedKwh;
+  }
+
+  const socEndPct = Math.max(0, Math.min(100, (storedKwh / input.battery.capacityKwh) * 100));
+  const inputHash = computeInputHash(input);
+  const resultId = computeResultId(inputHash, strategy);
+
+  return DispatchSnapshotSchema.parse({
+    resultId,
+    unservedKwh,
+    criticalUnservedKwh,
+    socEndPct,
+  });
+}
+
+/**
+ * Checks anti-oscillation rules (PA-T2c):
+ * - At most 2 actions per hour
+ * - No action contrary to the previous on the same sector within 2h (except mandatory fire isolation)
+ */
+export function checkAntiOscillation(
+  action: AutoAction,
+  hour: number,
+  day: number,
+  history: readonly DispatchLogEntry[]
+): boolean {
+  // 1. Max 2 actions per hour
+  const actionsThisHour = history.filter(
+    (e) => e.day === day && e.hour === hour && e.action && e.action.kind !== 'alert_only'
+  );
+  if (actionsThisHour.length >= 2) {
+    return false;
+  }
+
+  // 2. No action contrary to the previous on the same sector within 2h
+  if (action.sector) {
+    const recentOpposites: Record<string, string[]> = {
+      isolate_sector: ['restore_sector'],
+      restore_sector: ['isolate_sector', 'shed_flexible', 'cap_sector'],
+      shed_flexible: ['shift_flexible', 'restore_sector'],
+      shift_flexible: ['shed_flexible', 'isolate_sector'],
+      cap_sector: ['restore_sector'],
+    };
+
+    const opposites = recentOpposites[action.kind] ?? [];
+    const recent = history.filter(
+      (e) =>
+        e.day === day &&
+        Math.abs(e.hour - hour) <= 2 &&
+        e.action &&
+        e.action.sector === action.sector &&
+        opposites.includes(e.action.kind)
+    );
+
+    // Fire isolation is safety-critical and never blocked by anti-oscillation (F1)
+    if (action.kind !== 'isolate_sector' && recent.length > 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Compares two snapshots according to the PA-T2 policy objective:
+ * 1. lower critical unserved (by > EPS)
+ * 2. then lower unserved (by > EPS)
+ * 3. then higher final SoC (by > 0.1)
+ */
+function isSnapshotBetter(candidate: DispatchSnapshot, current: DispatchSnapshot): boolean {
+  if (candidate.criticalUnservedKwh < current.criticalUnservedKwh - EPS) {
+    return true;
+  }
+  if (candidate.criticalUnservedKwh > current.criticalUnservedKwh + EPS) {
+    return false;
+  }
+
+  if (candidate.unservedKwh < current.unservedKwh - EPS) {
+    return true;
+  }
+  if (candidate.unservedKwh > current.unservedKwh + EPS) {
+    return false;
+  }
+
+  if (candidate.socEndPct > current.socEndPct + 0.1) {
+    return true;
+  }
+
+  return false;
+}
+
+export interface DispatchDecision {
+  action?: AutoAction;
+  before: DispatchSnapshot;
+  after: DispatchSnapshot;
+  counterfactual: DispatchSnapshot;
+  evaluatedCandidates: {
+    action: AutoAction;
+    snapshot: DispatchSnapshot;
+    violatesConstitution: boolean;
+  }[];
+}
+
+/**
+ * Evaluates candidate dispatch actions on t..t+6, drops constitution violators,
+ * and selects the action that best achieves the objective (PA-T2b).
+ * Deterministic and pure engine code (< 20 ms / hour).
+ */
+export function decideDispatch(
+  input: SimulationInput,
+  hour: number,
+  strategy: StrategyId,
+  incidents: readonly Incident[],
+  rules: readonly ConstitutionRule[] = DEFAULT_CONSTITUTION,
+  history: readonly DispatchLogEntry[] = [],
+  day = 0
+): DispatchDecision {
+  const windowEnd = Math.min(23, hour + 6);
+
+  // 1. Counterfactual: run simulation with current input and strategy
+  const baseSim = simulate(input, strategy);
+  const prevStep = hour > 0 ? baseSim.steps[hour - 1] : undefined;
+  const storedAtH =
+    prevStep?.socPct !== undefined
+      ? (prevStep.socPct / 100) * input.battery.capacityKwh
+      : (input.battery.initialSocPct / 100) * input.battery.capacityKwh;
+
+  const counterfactual = simulateHorizon(input, strategy, hour, windowEnd, storedAtH);
+  let bestSnapshot = counterfactual;
+  let bestAction: AutoAction | undefined = undefined;
+
+  const evaluatedCandidates: DispatchDecision['evaluatedCandidates'] = [];
+
+  // Check if we already hit max actions this hour (PA-T2c)
+  const actionsThisHour = history.filter(
+    (e) => e.day === day && e.hour === hour && e.action && e.action.kind !== 'alert_only'
+  );
+  if (actionsThisHour.length >= 2) {
+    return {
+      action: undefined,
+      before: counterfactual,
+      after: counterfactual,
+      counterfactual,
+      evaluatedCandidates: [],
+    };
+  }
+
+  // 2. Collect candidate actions from incidents
+  const candidates: AutoAction[] = [];
+  const seenKeys = new Set<string>();
+
+  for (const inc of incidents) {
+    const list = candidateActions(inc, input);
+    for (const a of list) {
+      const key = `${a.kind}:${a.sector ?? ''}:${a.strategy ?? ''}:${JSON.stringify(a.patch ?? {})}`;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        candidates.push(a);
+      }
+    }
+  }
+
+  // Active fires at hour t
+  const firesNow = activeFires(input.events ?? [], hour);
+  const burningNow = new Set(firesNow.map((f) => f.sector));
+
+  // 3. Evaluate each candidate
+  for (const action of candidates) {
+    // Alert only changes nothing on the grid
+    if (action.kind === 'alert_only') {
+      evaluatedCandidates.push({
+        action,
+        snapshot: counterfactual,
+        violatesConstitution: false,
+      });
+      if (!bestAction) {
+        bestAction = action;
+      }
+      continue;
+    }
+
+    // Safety rule: never restore a burning sector before its fire ends
+    if (action.kind === 'restore_sector' && action.sector && burningNow.has(action.sector)) {
+      continue;
+    }
+
+    // Constitution check
+    const { violations } = checkConstitution(rules, {
+      patch: action.patch,
+      strategy: action.strategy,
+    });
+    if (violations.length > 0) {
+      evaluatedCandidates.push({
+        action,
+        snapshot: counterfactual,
+        violatesConstitution: true,
+      });
+      continue;
+    }
+
+    // Anti-oscillation check
+    if (!checkAntiOscillation(action, hour, day, history)) {
+      continue;
+    }
+
+    // Apply patch to input for candidate simulation
+    let patchedInput = input;
+    if (action.patch) {
+      try {
+        patchedInput = applyPatch(input, action.patch);
+      } catch {
+        continue;
+      }
+    }
+    const candStrategy = action.strategy ?? strategy;
+    const candSnapshot = simulateHorizon(patchedInput, candStrategy, hour, windowEnd, storedAtH);
+
+    evaluatedCandidates.push({
+      action,
+      snapshot: candSnapshot,
+      violatesConstitution: false,
+    });
+
+    // Check if candidate improves on bestSnapshot
+    // For fire isolation: always apply isolate_sector for an active fire!
+    const isMandatoryFireIsolation =
+      action.kind === 'isolate_sector' &&
+      action.sector !== undefined &&
+      burningNow.has(action.sector);
+
+    if (isMandatoryFireIsolation || isSnapshotBetter(candSnapshot, bestSnapshot)) {
+      bestSnapshot = candSnapshot;
+      bestAction = action;
+    }
+  }
+
+  return {
+    action: bestAction,
+    before: counterfactual,
+    after: bestAction && bestAction.kind !== 'alert_only' ? bestSnapshot : counterfactual,
+    counterfactual,
+    evaluatedCandidates,
+  };
 }
