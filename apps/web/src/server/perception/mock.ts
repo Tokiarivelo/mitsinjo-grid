@@ -1,4 +1,4 @@
-import type { PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
+import type { PartsSubject, PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
 import { mockRecipe } from './shape';
 import { boxUnionCoverage } from './parse-sam';
 import { classifyLabel } from './detect';
@@ -201,7 +201,10 @@ export class MockPerceptionBackend implements PerceptionBackend {
   }
 
   /** No imagined parts in mock mode (null recipe): the orchestrator keeps the kit recipe. */
-  async describeParts(): Promise<PerceptionCall<ShapeResult>> {
+  async describeParts(
+    _imageUrl: string,
+    _target: PartsSubject
+  ): Promise<PerceptionCall<ShapeResult>> {
     return {
       model: MOCK_PERCEPTION_MODEL,
       usage: {},
