@@ -87,29 +87,50 @@ export interface VisionImage {
   inlineUrl?: string;
 }
 
+/** Milliseconds to wait for an R2 vision upload before giving up and sending base64 directly to the model. */
+const VISION_UPLOAD_TIMEOUT_MS = 4_000;
+
 /**
  * Photo for Muse / SAM: uploaded once to R2 under `vision/`, so every call sends a short link instead of
- * the base64 bytes (one Muse call + up to 8 SAM calls per photo). R2 off, not an image, or upload error →
- * the base64 data URL only. Never throws.
+ * the base64 bytes (one Muse call + up to 8 SAM calls per photo). R2 off, not an image, upload error, or
+ * upload timeout → base64 is sent directly to the model (`url = inlineUrl`). `inlineUrl` is always set
+ * so vision-pipeline can still retry with base64 if Meta later rejects a hosted link. Never throws.
  */
 export async function hostVisionImage(
   buffer: Buffer,
   contentType: string,
-  opts: { store?: MediaStore; now?: number } = {}
+  opts: { store?: MediaStore; now?: number; uploadTimeoutMs?: number } = {}
 ): Promise<VisionImage> {
   const inlineUrl = `data:${contentType};base64,${buffer.toString('base64')}`;
   const store = opts.store ?? r2MediaStore;
   const ext = EXTENSION[contentType.toLowerCase()];
   if (!ext || !store.configured()) return { url: inlineUrl };
   const now = opts.now ?? Date.now();
+  const timeoutMs = opts.uploadTimeoutMs ?? VISION_UPLOAD_TIMEOUT_MS;
   const key = `vision/${now}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const url = await store.upload(key, buffer, contentType);
+    const url = await Promise.race([
+      store.upload(key, buffer, contentType),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`R2 upload timed out after ${timeoutMs}ms`)),
+          timeoutMs
+        );
+      }),
+    ]);
+    clearTimeout(timer);
     // A mock store path (`/mock-storage/…`) is not reachable from Meta.
     return /^https?:\/\//i.test(url) ? { url, inlineUrl } : { url: inlineUrl };
   } catch (err) {
-    console.warn('[storage:media] Vision photo upload failed, sending base64:', err);
-    return { url: inlineUrl };
+    clearTimeout(timer);
+    console.warn(
+      '[storage:media] Vision photo upload failed, sending base64 directly to model:',
+      err
+    );
+    // url = inlineUrl: model receives base64 directly without waiting for R2.
+    // inlineUrl stays set: vision-pipeline can retry on a Meta media_url error.
+    return { url: inlineUrl, inlineUrl };
   }
 }
 
