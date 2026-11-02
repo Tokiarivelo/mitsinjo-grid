@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createBaselineInput } from '../scenarios/baseline';
 import { GeneratedScenarioSchema, type GeneratedAssertion } from '../scenarios/generated-schema';
+import { GENERATED_FILES } from '../scenarios/generated';
 import { simulate } from '../simulate';
 import { SimulationInputSchema, type StrategyId } from '../schemas';
 
-const FILES = import.meta.glob<{ default: unknown }>('../scenarios/generated/*.json', {
-  eager: true,
-});
+const FILES = GENERATED_FILES;
 
 const ALL_STRATEGIES: readonly StrategyId[] = ['proportional', 'essential_first', 'balanced'];
 
@@ -32,7 +31,7 @@ describe('Generated scenarios (M12-T2, D1)', () => {
   });
 
   for (const [path, mod] of entries) {
-    const parsed = GeneratedScenarioSchema.parse(mod.default);
+    const parsed = GeneratedScenarioSchema.parse(mod);
     describe(`Scenario: ${parsed.id} (${path})`, () => {
       for (const strat of ALL_STRATEGIES) {
         it(`runs with ${strat} with 0 invariant violations`, () => {

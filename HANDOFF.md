@@ -18,6 +18,15 @@
   - `make check-i18n`: 100% key parity across `en.json`, `fr.json`, `mg.json`.
   - Responsive mobile touch targets ≥ 44px, zero horizontal overflow, dual theme support.
 
+## PR-2.23 House rebuilt from its 2D elevations (Claude, in 8a0cbb9)
+
+- Facade validated on a house → SAM measures it, Muse Image draws the side from it (roof hint, copy check, 1 retry),
+  `facade-house.ts` builds walls / `hip` or gable roof / chimneys / wood door / glass windows; `source: 'facade'`.
+- New primitive `hip` (+ `ridge`) in schema, viewer, flat render, outline fit. Depth = Spark unless side agrees ×1.3.
+- Live check: `make facade-e2e FRONT=… OUT=…` (sheet.png: elevations vs renders). `object-viewer-shot.mjs` fixed for the
+  facade-first flow. Scenarios V90–V95. Golden shape metrics unchanged; 300 ms budget flaky under load (avg ≈ 9).
+- Not done: side windows rarely fit the 12-part budget; walls colour comes from the photo (can look dark).
+
 ## Next task
 
 - Check live UI at `http://localhost:3001/village` and `http://localhost:3001/copilot`.

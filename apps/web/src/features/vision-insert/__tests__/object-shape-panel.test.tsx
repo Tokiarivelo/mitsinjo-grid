@@ -134,7 +134,11 @@ describe('ObjectShapePanel (PV-T10)', () => {
     expect(items[1]!.getAttribute('aria-current')).toBe('step');
     expect(items[1]!.textContent).toMatch(/Muse Spark imagines the parts.*0 s/);
     expect(items[2]!.getAttribute('aria-current')).toBeNull();
-    expect(screen.getByText(/usually needs 15 to 40 s \(limit 60 s\); a house rebuilt from its 2D facade, up to 90 s/)).toBeTruthy();
+    expect(
+      screen.getByText(
+        /usually needs 15 to 40 s \(limit 60 s\); a house rebuilt from its 2D facade, up to 90 s/
+      )
+    ).toBeTruthy();
   });
 
   it('recipe: AI badge, labelled viewer and the orbit hint', async () => {
