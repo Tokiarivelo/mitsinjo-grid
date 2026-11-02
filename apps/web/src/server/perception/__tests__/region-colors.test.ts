@@ -231,6 +231,7 @@ describe('withRegionColors (PR-2.8)', () => {
         source: 'meta',
         model: 'muse-spark-1.3',
       }),
+      describeParts: vi.fn().mockResolvedValue({ recipe: null }),
     };
     const plain = await runObjectShape(spark, photo, 'data:full', target);
     expect(plain.mode).toBe('recipe');

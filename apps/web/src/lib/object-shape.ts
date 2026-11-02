@@ -125,6 +125,8 @@ export const ObjectRecipeSchema = z.object({
   /** Real proportions of the object, largest side = 1. */
   proportions: z.object({ w: extent, h: extent, d: extent }),
   parts: z.array(RecipePartSchema).min(1).max(MAX_RECIPE_PARTS),
+  /** Where the parts came from: a kit template (`kit`, the default when absent) or the LLM-imagined part list (`free`, archetypes without a real template). */
+  source: z.enum(['kit', 'free']).optional(),
   /** Measured turn of the front away from the camera (PF-T5), radians, + = right end farther. */
   yaw: z.number().min(-MAX_YAW).max(MAX_YAW).optional(),
   /** One tileable 64 px photo swatch per material (PR-1.5), base64 data URL (≤ 8 kB each). */
@@ -291,6 +293,7 @@ export function fitRecipe(recipe: ObjectRecipe, boxAspect: number, yaw = 0): Obj
     },
     parts,
     ...(turn !== 0 ? { yaw: turn } : {}),
+    ...(recipe.source ? { source: recipe.source } : {}),
     ...(recipe.swatches ? { swatches: recipe.swatches } : {}),
   };
 }

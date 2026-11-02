@@ -28,6 +28,7 @@ export async function runGolden(c: GoldenCase) {
       source: 'meta',
       model: 'muse-spark-1.3',
     }),
+    describeParts: vi.fn().mockResolvedValue({ recipe: null }),
   };
   const t0 = performance.now();
   const shape = await runObjectShape(spark, photo, 'data:full', target);

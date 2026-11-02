@@ -1,4 +1,5 @@
 import type { ApplianceCategory } from '@mitsinjo/engine';
+import type { KitArchetype } from '@/lib/object-kit';
 import type { SceneryType } from '@/lib/vision';
 import type { UsageSample } from '@/server/spend';
 import type {
@@ -59,6 +60,15 @@ export interface PerceptionBackend {
     signal?: AbortSignal
   ): Promise<PerceptionCall<ShapeResult>>;
   /**
+   * LLM-imagined part list (free recipe): same crop, but the model lists the solid parts itself.
+   * Only for archetypes without a real kit template (`needsFreeParts`); no `kit` in the result.
+   */
+  describeParts(
+    imageUrl: string,
+    target: PartsSubject,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<ShapeResult>>;
+  /**
    * Visual critic (PR-0.6): `imageUrl` is crop | flat render side by side, `question` carries the
    * kit + scores. One vision call, partial-kit schema; null patch when the model matches.
    */
@@ -77,4 +87,15 @@ export interface ShapeSubject {
   scenery?: SceneryType;
   /** Width / height of the object on the photo, in pixels (thin pole ≈ 0.1, wide car ≈ 2). */
   aspect?: number;
+}
+
+/** What `describeParts` is told about the object. */
+export interface PartsSubject {
+  label: string;
+  archetype: KitArchetype;
+  /**
+   * Which photo edges cut the object (from `coverageForBox`, e.g. `cut off at the left and
+   * bottom`) — absent when the box shows it whole. The model must imagine the whole object either way.
+   */
+  coverage?: string;
 }

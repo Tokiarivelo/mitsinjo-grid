@@ -25,6 +25,7 @@ Judge every change with `/shape-loop`.
 | Kit schema, templates       | `apps/web/src/lib/object-kit.ts` (`TEMPLATES`, `facade`, `kitToRecipe`)                               |
 | Recipe schema, fit to box   | `apps/web/src/lib/object-shape.ts` (`RecipePart`, `fitRecipe`, materials)                             |
 | Spark prompt / parse        | `server/perception/shape.ts` (`SHAPE_SYSTEM_PROMPT`, `SHAPE_JSON_SCHEMA`, `parseKit`)                 |
+| Free parts (PV-T9c)         | `server/perception/free-recipe.ts`: template-less archetypes get imagined parts (`source: 'free'`)    |
 | Pipeline                    | `server/perception/object-shape.ts` (`runObjectShape`, logs `[vision] 3D …`)                          |
 | Measurements                | `color-measure`, `shape-colors`, `roofline`, `repetition`, `perspective`, `silhouette-fit`, `fusion`  |
 | Viewer geometry / materials | `features/vision-insert/utils/object-geometry.ts`, `utils/surface-look.ts`, `ui/object-editor-3d.tsx` |

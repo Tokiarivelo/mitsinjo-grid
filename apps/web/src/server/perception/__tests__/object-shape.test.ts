@@ -26,7 +26,11 @@ const meta = (recipe: ObjectRecipe | null, extra: Partial<ShapeResult> = {}): Sh
   model: 'muse-spark-1.3',
   ...extra,
 });
-const client = (out: ShapeResult) => ({ describeShape: vi.fn().mockResolvedValue(out) });
+const client = (out: ShapeResult) => ({
+  describeShape: vi.fn().mockResolvedValue(out),
+  // No imagination round by default: kit archetypes never call it.
+  describeParts: vi.fn().mockResolvedValue({ recipe: null }),
+});
 
 async function photo() {
   const buffer = await sharp({
@@ -130,6 +134,7 @@ describe('runObjectShape (PV-T9)', () => {
         seen = signal;
         return Promise.reject(new Error('boom'));
       }),
+      describeParts: vi.fn(),
     };
     const out = await runObjectShape(p, null, 'data:full', target, { timeoutMs: 5 });
     expect(out).toMatchObject({ mode: 'silhouette', reason: 'provider_error' });
@@ -250,6 +255,7 @@ describe('runObjectShape measured colours (PF-T2)', () => {
     );
     const p = {
       describeShape: client(meta(kitToRecipe(guessed), { kit: guessed })).describeShape,
+      describeParts: vi.fn().mockResolvedValue({ recipe: null }),
       segmentImage,
     };
     const boxOnly = { ...cottage, outline: undefined };
@@ -451,13 +457,19 @@ describe('runObjectShape perspective (PF-T5)', () => {
     }));
     const withSeg = {
       describeShape: vi.fn().mockResolvedValue(meta(kitToRecipe(vehicle), { kit: vehicle })),
+      describeParts: vi.fn().mockResolvedValue({ recipe: null }),
       segmentImage,
     };
     const out = await runObjectShape(withSeg, await photo(), 'data:full', car);
     expect(out.mode).toBe('recipe');
-    // 'car' first: the missing outline is segmented on demand (PR-2.20, no match here),
-    // then the part concepts on the crop.
-    expect(segmentImage.mock.calls.map((c) => c[1]).sort()).toEqual(['car', 'wheel', 'window']);
+    // 'car' twice: the missing outline is segmented on demand (PR-2.20, no match here), full
+    // photo then the shape crop (FIX 2 retry); then the part concepts on the crop.
+    expect(segmentImage.mock.calls.map((c) => c[1]).sort()).toEqual([
+      'car',
+      'car',
+      'wheel',
+      'window',
+    ]);
     expect(out.partMasks!.map((m) => m.concept).sort()).toEqual(['wheel', 'window']);
     expect(ObjectShapeSchema.safeParse(out).success).toBe(true);
 
@@ -465,5 +477,124 @@ describe('runObjectShape perspective (PF-T5)', () => {
     const out2 = await runObjectShape(withoutSeg, await photo(), 'data:full', car);
     expect(out2.mode).toBe('recipe');
     expect(out2.partMasks).toBeUndefined();
+  });
+});
+
+describe('free recipe (PV-T9c)', () => {
+  const personKit: ObjectKit = {
+    archetype: 'person',
+    proportions: { w: 0.4, h: 1, d: 0.3 },
+    colors: { main: '#334455', secondary: '#c8a080', accent: '#222222' },
+  };
+  const animalKit: ObjectKit = {
+    archetype: 'animal',
+    proportions: { w: 1, h: 0.6, d: 0.4 },
+    colors: { main: '#8a6f4d', secondary: '#5d4a33', accent: '#2b2b2b' },
+  };
+  /** What the imagination call returns for the guard: head, torso, two legs, one arm. */
+  const imaginedPerson: ObjectRecipe = {
+    source: 'free',
+    proportions: { w: 0.4, h: 1, d: 0.3 },
+    parts: [
+      {
+        shape: 'cylinder',
+        at: [0, -0.05, 0],
+        size: [0.5, 0.6, 0.35],
+        color: '#334455',
+        front: true,
+      },
+      { shape: 'sphere', at: [0, 0.38, 0], size: [0.3, 0.28, 0.3], color: '#c8a080' },
+      { shape: 'cylinder', at: [-0.14, -0.35, 0], size: [0.16, 0.3, 0.18], color: '#222222' },
+      { shape: 'cylinder', at: [0.14, -0.35, 0], size: [0.16, 0.3, 0.18], color: '#222222' },
+      { shape: 'cylinder', at: [0.3, 0.05, 0], size: [0.12, 0.4, 0.14], color: '#334455' },
+    ],
+  };
+  const imaginedAnimal: ObjectRecipe = {
+    source: 'free',
+    proportions: { w: 1, h: 0.6, d: 0.4 },
+    parts: [
+      { shape: 'box', at: [0, 0.05, 0], size: [0.75, 0.45, 0.5], color: '#8a6f4d', front: true },
+      { shape: 'box', at: [0.42, 0.28, 0], size: [0.22, 0.3, 0.3], color: '#5d4a33' },
+      { shape: 'cylinder', at: [-0.25, -0.32, 0], size: [0.12, 0.36, 0.14], color: '#5d4a33' },
+      { shape: 'cylinder', at: [0.25, -0.32, 0], size: [0.12, 0.36, 0.14], color: '#5d4a33' },
+    ],
+  };
+  const guard: ShapeTarget = {
+    id: 'det-p',
+    label: 'Guard',
+    category: 'other',
+    box: { x: 0.1, y: 0.1, w: 0.2, h: 0.6 },
+  };
+
+  it('adopts the imagined parts for an archetype without a real template', async () => {
+    const p = client(meta(kitToRecipe(personKit), { kit: personKit }));
+    p.describeParts.mockResolvedValue({ recipe: imaginedPerson });
+    const out = await runObjectShape(p, await photo(), 'data:full', guard);
+    expect(out.mode).toBe('recipe');
+    expect(out.recipe!.parts).toHaveLength(5);
+    expect(out.recipe!.source).toBe('free');
+    expect(out).toHaveProperty('kit', personKit);
+    expect(p.describeParts).toHaveBeenCalledTimes(1);
+    const [url, subject, signal] = p.describeParts.mock.calls[0]!;
+    expect(url).toMatch(/^data:image\/jpeg;base64,/);
+    expect(subject).toEqual({ label: 'Guard', archetype: 'person' });
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(ObjectShapeSchema.safeParse(out).success).toBe(true);
+  });
+
+  it('tells the imagination call which photo edges cut the object', async () => {
+    const p = client(meta(kitToRecipe(personKit), { kit: personKit }));
+    p.describeParts.mockResolvedValue({ recipe: null });
+    const cut = { ...guard, box: { x: 0, y: 0.2, w: 0.3, h: 0.5 } };
+    await runObjectShape(p, await photo(), 'data:full', cut);
+    expect(p.describeParts.mock.calls[0]![1]).toEqual({
+      label: 'Guard',
+      archetype: 'person',
+      coverage: 'cut off at the left',
+    });
+  });
+
+  it('keeps the kit recipe when the imagination call answers nothing usable', async () => {
+    const p = client(meta(kitToRecipe(personKit), { kit: personKit }));
+    p.describeParts.mockResolvedValue({ recipe: null });
+    const out = await runObjectShape(p, await photo(), 'data:full', guard);
+    expect(out.mode).toBe('recipe');
+    // The crude person placeholder: body + head.
+    expect(out.recipe!.parts).toHaveLength(2);
+    expect(out.recipe!.source).toBeUndefined();
+  });
+
+  it('keeps the kit recipe when the imagination call fails', async () => {
+    const p = client(meta(kitToRecipe(personKit), { kit: personKit }));
+    p.describeParts.mockRejectedValue(new Error('overloaded'));
+    const out = await runObjectShape(p, await photo(), 'data:full', guard);
+    expect(out.mode).toBe('recipe');
+    expect(out.recipe!.parts).toHaveLength(2);
+    expect(out.recipe!.source).toBeUndefined();
+  });
+
+  it('never imagines for an archetype with a real template', async () => {
+    const vehicle: ObjectKit = {
+      archetype: 'vehicle',
+      proportions: { w: 1, h: 0.4, d: 0.45 },
+      colors: { main: '#a33327', secondary: '#cfd6dd', accent: '#1c1c1e' },
+    };
+    const p = client(meta(kitToRecipe(vehicle), { kit: vehicle }));
+    const car: ShapeTarget = { id: 'car', label: 'Car', category: 'other', box: guard.box };
+    const out = await runObjectShape(p, await photo(), 'data:full', car);
+    expect(out.mode).toBe('recipe');
+    expect(p.describeParts).not.toHaveBeenCalled();
+    expect(out.recipe!.source).toBeUndefined();
+  });
+
+  it('skips the outline fit over imagined parts (the optimizer only knows templates)', async () => {
+    const p = client(meta(kitToRecipe(animalKit), { kit: animalKit }));
+    p.describeParts.mockResolvedValue({ recipe: imaginedAnimal });
+    const outlined = { ...guard, label: 'Zebu', outline: 'M0 0.3L1 0.3L1 1L0 1Z' };
+    const out = await runObjectShape(p, await photo(), 'data:full', outlined);
+    expect(out.mode).toBe('recipe');
+    expect(out.recipe!.parts).toHaveLength(4);
+    expect(out.recipe!.source).toBe('free');
+    expect(out).not.toHaveProperty('fit');
   });
 });

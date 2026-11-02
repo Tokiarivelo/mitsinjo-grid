@@ -72,4 +72,10 @@ describe('MockPerceptionBackend', () => {
     const out = await mock.criticizeShape('data:img', 'Patch?');
     expect(out.result).toEqual({ patch: null });
   });
+
+  it('never imagines parts: the orchestrator keeps the kit recipe', async () => {
+    const out = await mock.describeParts('data:img', { label: 'Guard', archetype: 'person' });
+    expect(out.result).toEqual({ recipe: null });
+    expect(out.usage).toEqual({});
+  });
 });

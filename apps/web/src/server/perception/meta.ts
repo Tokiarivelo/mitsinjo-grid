@@ -5,13 +5,20 @@ import { env } from '@/lib/env';
 import { DEFAULT_META_BASE_URL } from '@/server/copilot/providers/meta';
 import { fetchPreferringContributor } from '@/server/copilot/providers/contributor';
 import type { UsageSample } from '@/server/spend';
-import type { PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
+import type { PartsSubject, PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
 import {
   DETECT_JSON_SCHEMA,
   DETECT_QUESTION,
   DETECT_SYSTEM_PROMPT,
   parseDetections,
 } from './detect';
+import {
+  parseFreeParts,
+  PARTS_JSON_SCHEMA,
+  PARTS_SYSTEM_PROMPT,
+  shapePartsQuestion,
+  visibilityFromCoverage,
+} from './free-recipe';
 import { maskToOutline } from './mask-outline';
 import { REGION_SYSTEM_PROMPT, regionQuestion } from './region-prompt';
 import { defaultArchetype, kitToRecipe } from '@/lib/object-kit';
@@ -310,6 +317,30 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       usage,
       result: { recipe: kit ? kitToRecipe(kit) : null, ...(kit ? { kit } : {}) },
     };
+  }
+
+  async describeParts(
+    imageUrl: string,
+    target: PartsSubject,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<ShapeResult>> {
+    // Standard id, not the contributor one: the operator waits on this answer (same as the kit call).
+    const { content, model, usage } = await this.visionJson(
+      PARTS_SYSTEM_PROMPT,
+      shapePartsQuestion(target.label, target.archetype, visibilityFromCoverage(target.coverage)),
+      imageUrl,
+      PARTS_JSON_SCHEMA,
+      signal,
+      false
+    );
+    const recipe = parseFreeParts(content);
+    if (!recipe)
+      console.info(`[vision] ${model} gave no usable part list: ${content.slice(0, 300)}`);
+    else
+      console.info(
+        `[vision] free part list from ${model}: ${recipe.parts.length} parts (${target.archetype})`
+      );
+    return { model, usage, result: { recipe } };
   }
 
   async criticizeShape(

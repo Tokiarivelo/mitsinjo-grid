@@ -21,6 +21,7 @@ import { measurePerspective, type Perspective } from './perspective';
 import { measureRepetition, type GrayGrid, type Repetition } from './repetition';
 import { measureRoof, type RoofMeasure } from './roofline';
 import { confidence, mixColors, mixNumber, mixRecipe, pickCount } from './fusion';
+import { coverageForBox, needsFreeParts } from './free-recipe';
 import { fitSilhouette } from './silhouette-fit';
 import {
   EDGE_COLUMNS,
@@ -132,7 +133,9 @@ export interface ObjectShapeOptions {
 
 /**
  * Selected object → its 3D shape (PV-T9), Meta models only. One Spark call on a crop around the object
- * returns a kit → parts recipe, fitted to the photo box (`fitRecipe`). Colours are measured on the photo
+ * returns a kit → parts recipe, fitted to the photo box (`fitRecipe`); archetypes without a real kit
+ * template get a second call on the same crop where Spark lists the parts itself (PV-T9c, free recipe).
+ * Colours are measured on the photo
  * pixels inside the SAM outline while Spark thinks (PF-T2), and replace Spark's guessed colours; houses get the roofline
  * read on that outline (PF-T3) and the houses / windows counted by edge repetition (PF-T4); straight-edged objects are turned by the yaw read on
  * their vanishing points (PF-T5); with an outline, the template parameters are then fitted to it
@@ -142,7 +145,7 @@ export interface ObjectShapeOptions {
  * Mock mode: fixed recipe per category, not checked. Never throws.
  */
 export async function runObjectShape(
-  perception: Pick<PerceptionClient, 'describeShape'> &
+  perception: Pick<PerceptionClient, 'describeShape' | 'describeParts'> &
     Partial<Pick<PerceptionClient, 'segmentImage'>>,
   photo: PhotoForRegions | null,
   fullImageUrl: string,
@@ -242,10 +245,39 @@ export async function runObjectShape(
       );
       return silhouette(reason, source);
     }
+    // Free recipe (PV-T9c): archetypes without a real kit template (person, animal, bush,
+    // water, other) get their part list imagined by the LLM on the same crop, still under
+    // the `model` step. Best effort: a failure keeps the kit recipe.
+    let freeRecipe: ObjectRecipe | null = null;
+    if (found.kit && needsFreeParts(found.kit.archetype)) {
+      try {
+        const coverage = coverageForBox(target.box, photo);
+        const parts = await perception.describeParts(
+          imageUrl,
+          {
+            label: target.label,
+            archetype: found.kit.archetype,
+            ...(coverage ? { coverage } : {}),
+          },
+          signal ? AbortSignal.any([signal, timeout]) : timeout
+        );
+        freeRecipe = parts.recipe;
+        console.info(
+          freeRecipe
+            ? `[vision] 3D free parts for "${target.label}": ${freeRecipe.parts.length} parts (${found.kit.archetype}${coverage ? `, ${coverage}` : ''})`
+            : `[vision] 3D free parts for "${target.label}" unusable, keeping the kit recipe`
+        );
+      } catch (err) {
+        console.warn(
+          '[vision] 3D free parts failed, keeping the kit recipe:',
+          err instanceof Error ? err.message : err
+        );
+      }
+    }
     onStep?.('fit');
     if (!found.recipe) return silhouette('malformed', source);
     if (found.source === 'meta') {
-      let built = found.recipe;
+      let built = freeRecipe ?? found.recipe;
       let finalKit = found.kit;
       const px = found.kit ? await pixels : null;
       const measuredColors = found.kit && px ? measureKitColors(px, found.kit.archetype) : null;
@@ -284,7 +316,8 @@ export async function runObjectShape(
           );
         }
         finalKit = rep.kit;
-        if (colors || measure || rep.repetition) built = kitToRecipe(rep.kit);
+        // Never over a free recipe: the rebuild expresses the (crude) kit template.
+        if ((colors || measure || rep.repetition) && !freeRecipe) built = kitToRecipe(rep.kit);
       }
       // PR-2.5: the archetype's part concepts segmented on the crop (wheels, windows…),
       // best effort — skipped without a photo or a segmenting client.
@@ -311,8 +344,10 @@ export async function runObjectShape(
       conf.yaw = persp ? confidence.perspective(persp.inliers) : 0;
       // Spark gives no yaw: its prior is « facing the camera ».
       const yaw0 = persp ? mixNumber(persp.yaw, 0, conf.yaw) : 0;
+      // No outline fit over a free recipe either: the optimizer only knows kit templates,
+      // and the mix would swap the imagined parts for the fitted crude ones.
       const fit =
-        finalKit && rings.length
+        finalKit && rings.length && !freeRecipe
           ? fitSilhouette({
               kit: finalKit,
               rings,

@@ -50,6 +50,7 @@ async function goldenRun(onKit?: (kit: ObjectKit) => void) {
       source: 'meta',
       model: 'muse-spark-1.3',
     }),
+    describeParts: vi.fn().mockResolvedValue({ recipe: null }),
   };
   const shape = await runObjectShape(spark, photo, 'data:full', target, { onKit });
   return { photo, target, shape, prior: c.prior };
@@ -147,6 +148,7 @@ describe('criticReplay (PR-0.6)', () => {
         source: 'meta',
         model: 'muse-spark-1.3',
       }),
+      describeParts: vi.fn().mockResolvedValue({ recipe: null }),
     };
     const shape = await runObjectShape(spark, photo, 'data:full', target);
     if (shape.mode !== 'recipe' || !shape.recipe) throw new Error('no recipe');

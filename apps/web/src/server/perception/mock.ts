@@ -200,6 +200,15 @@ export class MockPerceptionBackend implements PerceptionBackend {
     };
   }
 
+  /** No imagined parts in mock mode (null recipe): the orchestrator keeps the kit recipe. */
+  async describeParts(): Promise<PerceptionCall<ShapeResult>> {
+    return {
+      model: MOCK_PERCEPTION_MODEL,
+      usage: {},
+      result: { recipe: null },
+    };
+  }
+
   async detectAppliances(): Promise<PerceptionCall<DetectionResult>> {
     return {
       model: MOCK_PERCEPTION_MODEL,

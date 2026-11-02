@@ -54,6 +54,7 @@ describe('user photo car generation & fidelity loop', () => {
           model: 'muse-spark-1.3',
         };
       }),
+      describeParts: vi.fn().mockResolvedValue({ recipe: null }),
     };
 
     const shape = await runObjectShape(client, photo, 'data:full', target);

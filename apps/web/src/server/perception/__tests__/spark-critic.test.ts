@@ -7,6 +7,7 @@ import type { ShapeTarget } from '@/lib/object-shape';
 import { GOLDEN_SHAPES, goldenBox, goldenOutline, goldenSvg, PHOTO } from '../__fixtures__/shape';
 import type { RgbGrid } from '../model-score';
 import { runObjectShape } from '../object-shape';
+import { scoreRecipe } from '../score-shape';
 import { CRITIC_WIDTH, criticImage, requestPatch, shapeWithCritic } from '../spark-critic';
 
 const car = () => kitToRecipe(GOLDEN_SHAPES.find((c) => c.name === 'car')!.prior);
@@ -62,6 +63,7 @@ describe('live critic round (PR-0.6)', () => {
       source: 'meta',
       model: 'muse-spark-1.3',
     }),
+    describeParts: vi.fn().mockResolvedValue({ recipe: null }),
     criticizeShape: vi.fn().mockResolvedValue(critic),
   });
 
@@ -87,7 +89,7 @@ describe('live critic round (PR-0.6)', () => {
     expect(shape.recipe).not.toEqual(
       (
         await runObjectShape(
-          { describeShape: spark.describeShape },
+          { describeShape: spark.describeShape, describeParts: spark.describeParts },
           photo,
           'data:full',
           fridgeTarget()
@@ -103,7 +105,7 @@ describe('live critic round (PR-0.6)', () => {
     expect(shape.mode).toBe('recipe');
     expect(spark.criticizeShape).toHaveBeenCalledTimes(1);
     const plain = await runObjectShape(
-      { describeShape: spark.describeShape },
+      { describeShape: spark.describeShape, describeParts: spark.describeParts },
       photo,
       'data:full',
       fridgeTarget()
@@ -118,5 +120,53 @@ describe('live critic round (PR-0.6)', () => {
     expect(shape.mode).toBe('recipe');
     expect(spark.criticizeShape).toHaveBeenCalledTimes(1);
     expect(spark.describeShape).toHaveBeenCalledTimes(1);
+  }, 60_000);
+
+  it('skips the round for an imagined recipe (no template to patch)', async () => {
+    const photo = await fridgePhoto();
+    // Person parts over a fridge photo: the score is low, but patching the person kit would
+    // rebuild the crude placeholder, so the round must not fire.
+    const personKit = {
+      archetype: 'person',
+      proportions: { w: 0.4, h: 1, d: 0.3 },
+      colors: { main: '#334455', secondary: '#c8a080', accent: '#222222' },
+    } as const;
+    const spark = {
+      describeShape: vi.fn().mockResolvedValue({
+        recipe: kitToRecipe(personKit),
+        kit: personKit,
+        source: 'meta',
+        model: 'muse-spark-1.3',
+      }),
+      describeParts: vi.fn().mockResolvedValue({
+        recipe: {
+          source: 'free',
+          proportions: { w: 0.4, h: 1, d: 0.3 },
+          parts: [
+            {
+              shape: 'cylinder',
+              at: [0, -0.05, 0],
+              size: [0.5, 0.6, 0.35],
+              color: '#334455',
+              front: true,
+            },
+            { shape: 'sphere', at: [0, 0.38, 0], size: [0.3, 0.28, 0.3], color: '#c8a080' },
+          ],
+        },
+      }),
+      criticizeShape: vi.fn().mockResolvedValue({ patch: { subtype: 'x' } }),
+    };
+    const shape = await shapeWithCritic(spark, photo, 'data:full', fridgeTarget());
+    expect(shape.mode).toBe('recipe');
+    expect(shape.recipe!.source).toBe('free');
+    // Non-vacuous: the score IS low enough to round.
+    const target = fridgeTarget();
+    const scored = await scoreRecipe(
+      photo,
+      { box: target.box, outline: shape.outline! },
+      shape.recipe!
+    );
+    expect(scored!.score.score).toBeLessThan(70);
+    expect(spark.criticizeShape).not.toHaveBeenCalled();
   }, 60_000);
 });

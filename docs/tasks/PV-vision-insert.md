@@ -104,6 +104,12 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
       mock recipes; no error is ever shown. _(Nothing stored: no GLB, crop sent inline.)_
 - [x] **PV-T9b** Spark answered > 60 s on a building (user, 2026-11-01): it now returns an `ObjectKit` (archetype, proportions,
       3 colours, counts; ≈ 80 tokens) and `kitToRecipe` builds the parts from templates; standard model only, crop ≤ 768 px.
+- [x] **PV-T9c** Free recipe (user, 2026-11-02: imagine full parts for every object type, even half-visible): archetypes
+      without a real template (`other`, `water`, `person`, `animal`, `bush`) get a second Spark call on the same crop
+      (`describeParts`, `ObjectParts` schema) listing the solid parts; the prompt names the cut photo edges so the WHOLE
+      object is imagined. Adopted as `source: 'free'` (kit fallback on failure); no kit rebuild, no outline fit, no critic
+      round over it. _(Live probe 2026-11-02: whole person 12 parts in 17 s; legs-cut person imagined legs + shoes in 30 s;
+      e2e recipe in 46 s.)_
 - [x] **PV-T10** `object-editor-3d.tsx`: R3F viewer (orbit, auto-fit, lazy-loaded) of the `useObjectShape` result:
       recipe parts merged (reuse `merge-parts` / scene palette) with the photo on the `frontPartIndex` part's front face
       (texture offset/repeat = detection box), or the `silhouetteRings` extrusion (depth per category) with the photo on the front.

@@ -66,6 +66,12 @@ describe('fitRecipe + recipeIssue (PV-T9)', () => {
     }
   });
 
+  it('keeps the recipe source: free provenance survives the fit', () => {
+    const free = { ...fridge, source: 'free' as const };
+    expect(fitRecipe(free, 2).source).toBe('free');
+    expect(fitRecipe(fridge, 2)).not.toHaveProperty('source');
+  });
+
   it('takes width / height from the photo box, depth stays relative to height', () => {
     const fit = fitRecipe(fridge, 2);
     expect(fit.proportions.w).toBe(1);

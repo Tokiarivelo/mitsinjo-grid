@@ -164,6 +164,8 @@ export async function criticReplay(
 }> {
   const { capture, cropPhoto } = await readCapture(dir, id);
   if (!capture.recipe) throw new Error(`capture ${id}: no recipe to replay`);
+  if (capture.recipe.source === 'free')
+    throw new Error(`capture ${id}: free recipe, no kit template to patch`);
   const target = ShapeTargetSchema.parse({
     id: capture.target.id,
     label: capture.target.label,
@@ -220,6 +222,12 @@ export async function criticReplay(
         describeShape: async () => ({
           recipe: kitToRecipe(patched),
           kit: patched,
+          source: 'meta' as const,
+          model: capture.model,
+        }),
+        // Kit-driven replay: no imagination round off the patched kit.
+        describeParts: async () => ({
+          recipe: null,
           source: 'meta' as const,
           model: capture.model,
         }),

@@ -202,6 +202,50 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
     expect(prose.result.recipe).toBeNull();
   });
 
+  it('asks Spark for an imagined part list with the cut edges, stamped free (PV-T9c)', async () => {
+    const parts = {
+      proportions: { w: 0.4, h: 0.8, d: 0.3 },
+      parts: [
+        {
+          shape: 'cylinder',
+          at: [0, -0.05, 0],
+          size: [0.5, 0.6, 0.35],
+          color: '#334455',
+          front: true,
+        },
+      ],
+    };
+    const fetchMock = respond({
+      choices: [{ message: { content: JSON.stringify(parts) } }],
+      usage: { prompt_tokens: 900, completion_tokens: 120 },
+    });
+    const out = await backend.describeParts('data:image/jpeg;base64,AA', {
+      label: 'Guard',
+      archetype: 'person',
+      coverage: 'cut off at the left',
+    });
+    const body = JSON.parse(lastRequest(fetchMock).init.body as string);
+    expect(body.response_format.json_schema.name).toBe('ObjectParts');
+    expect(body.reasoning_effort).toBe('high');
+    expect(body.model).not.toMatch(/contributor/);
+    const text = body.messages[1].content[0].text as string;
+    expect(text).toContain('"Guard"');
+    expect(text).toContain('cut off at the left');
+    expect(text).toContain('WHOLE');
+    expect(out.result.recipe?.source).toBe('free');
+    expect(out.result.recipe?.proportions.w).toBe(0.5);
+    expect(out.result.recipe?.proportions.h).toBe(1);
+    expect(out.result.recipe?.proportions.d).toBeCloseTo(0.375, 10);
+    expect(out.usage).toEqual({ inputTokens: 900, outputTokens: 120 });
+
+    respond({ choices: [{ message: { content: 'A person, standing.' } }] });
+    const prose = await backend.describeParts('data:image/jpeg;base64,AA', {
+      label: 'Guard',
+      archetype: 'person',
+    });
+    expect(prose.result.recipe).toBeNull();
+  });
+
   it('throws on a malformed detection reply so the client can fall back', async () => {
     respond({ choices: [{ message: { content: 'A fridge, I think.' } }] });
     await expect(backend.detectAppliances('data:image/jpeg;base64,AA')).rejects.toThrow(/JSON/);

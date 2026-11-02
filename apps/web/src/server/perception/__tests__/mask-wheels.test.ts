@@ -276,6 +276,7 @@ describe('withMaskWheels (PR-2.6)', () => {
         source: 'meta',
         model: 'muse-spark-1.3',
       }),
+      describeParts: vi.fn().mockResolvedValue({ recipe: null }),
     };
     const plain = await runObjectShape(spark, photo, 'data:full', target);
     expect(plain.mode).toBe('recipe');

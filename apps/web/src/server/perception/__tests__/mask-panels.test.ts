@@ -359,6 +359,7 @@ describe('withMaskPanels (PR-2.7)', () => {
         source: 'meta',
         model: 'muse-spark-1.3',
       }),
+      describeParts: vi.fn().mockResolvedValue({ recipe: null }),
     };
     const plain = await runObjectShape(spark, photo, 'data:full', target);
     expect(plain.mode).toBe('recipe');
@@ -503,6 +504,7 @@ describe('withMaskPanels (PR-2.7)', () => {
         source: 'meta',
         model: 'muse-spark-1.3',
       }),
+      describeParts: vi.fn().mockResolvedValue({ recipe: null }),
     };
     const plain = await runObjectShape(spark, photo, 'data:full', target);
     expect(plain.mode).toBe('recipe');

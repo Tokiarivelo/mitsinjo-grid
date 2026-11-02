@@ -2,7 +2,7 @@ import 'server-only';
 
 import { env } from '@/lib/env';
 import { spendGuard, type SpendGuard } from '@/server/spend';
-import type { PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
+import type { PartsSubject, PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
 import { MetaPerceptionBackend } from './meta';
 import { MockPerceptionBackend } from './mock';
 import type {
@@ -111,6 +111,14 @@ export class PerceptionClient {
     signal?: AbortSignal
   ): Promise<ShapeResult> {
     return this.run('describeShape', (b) => b.describeShape(imageUrl, target, signal));
+  }
+
+  describeParts(
+    imageUrl: string,
+    target: PartsSubject,
+    signal?: AbortSignal
+  ): Promise<ShapeResult> {
+    return this.run('describeParts', (b) => b.describeParts(imageUrl, target, signal));
   }
 
   criticizeShape(imageUrl: string, question: string, signal?: AbortSignal): Promise<CriticResult> {

@@ -81,7 +81,7 @@ export async function criticImage(
  * outline-less runs never round (no kit, or nothing to score against). Never throws.
  */
 export async function shapeWithCritic(
-  perception: Pick<PerceptionClient, 'describeShape' | 'criticizeShape'> &
+  perception: Pick<PerceptionClient, 'describeShape' | 'describeParts' | 'criticizeShape'> &
     Partial<Pick<PerceptionClient, 'segmentImage'>>,
   photo: PhotoForRegions | null,
   fullImageUrl: string,
@@ -98,6 +98,9 @@ export async function shapeWithCritic(
       !shape.recipe ||
       !shape.kit ||
       !shape.outline ||
+      // Free recipes have no template to patch: rebuilding from a patched kit would swap the
+      // imagined parts for the crude placeholder ones.
+      shape.recipe.source === 'free' ||
       timeoutMs - (Date.now() - started) < CRITIC_TIME_MIN_MS
     ) {
       return shape;
@@ -129,6 +132,8 @@ export async function shapeWithCritic(
           source: shape.source,
           model: shape.model,
         }),
+        // The retry is kit-driven by design: no second imagination round off the patched kit.
+        describeParts: async () => ({ recipe: null, source: shape.source, model: shape.model }),
         // No spread: the client is a class, its methods live on the prototype.
         ...(perception.segmentImage
           ? { segmentImage: perception.segmentImage.bind(perception) }
