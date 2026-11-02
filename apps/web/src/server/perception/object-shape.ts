@@ -28,7 +28,7 @@ import {
   sampleObjectPixels,
   sampleObjectRgb,
 } from './shape-colors';
-import { conceptOf, fetchOutlineForBox } from './outline';
+import { conceptOf, fetchOutlineForBox, type OutlineCrop } from './outline';
 import { applyConstraints, buildGraph } from './object-graph';
 import { deduceHiddenSides } from './hidden-sides';
 import { enforcePartBudget } from './mask-geometry';
@@ -160,9 +160,18 @@ export async function runObjectShape(
     const { w, h } = target.box;
     const aspect = photo && h > 0 ? (w * photo.width) / (h * photo.height) : 0;
     let imageUrl = fullImageUrl;
+    // The crop doubles as the outline fallback's pixels (FIX 2) — only when the crop itself
+    // succeeded, else the rect would remap the whole photo into nonsense.
+    let outlineCrop: OutlineCrop | undefined;
     if (photo) {
       try {
         imageUrl = await cropForShape(photo, target.box);
+        outlineCrop = {
+          url: imageUrl,
+          rect: cropRectForShape(photo.width, photo.height, target.box),
+          photoW: photo.width,
+          photoH: photo.height,
+        };
       } catch (err) {
         console.warn('[vision] shape crop failed, sending the whole photo:', err);
       }
@@ -176,7 +185,8 @@ export async function runObjectShape(
             perception.segmentImage,
             fullImageUrl,
             conceptOf(target),
-            target.box
+            target.box,
+            outlineCrop ? { crop: outlineCrop } : {}
           ).then(
             (hit) => hit ?? undefined,
             () => undefined

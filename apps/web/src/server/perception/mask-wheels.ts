@@ -155,9 +155,10 @@ export function withMaskWheels(
     (p) => p.shape === 'cylinder' && p.axis === 'z' && p.at[1] < midY
   );
   if (templateWheels.length === 0) return recipe;
+  // Filter-then-cap (FIX 3): out-of-span false positives used to spend the 3-mask budget
+  // before the real wheels were even considered.
   const wheels = masks
     .filter((m) => m.concept === 'wheel')
-    .slice(0, WHEEL_MASKS_MAX)
     .map((m) => maskWheel(geom, m))
     .filter((w): w is NonNullable<typeof w> => w !== null)
     .filter(
@@ -168,7 +169,8 @@ export function withMaskWheels(
         w.ry <= 0.5 &&
         Math.abs(w.x) <= 0.6 &&
         Math.abs(w.y) <= 0.6
-    );
+    )
+    .slice(0, WHEEL_MASKS_MAX);
   if (wheels.length === 0) return recipe;
 
   const first = templateWheels[0]!;

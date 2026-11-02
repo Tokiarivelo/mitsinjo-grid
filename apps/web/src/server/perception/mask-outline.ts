@@ -102,3 +102,27 @@ export function maskToOutline(
     .map((r) => `M${r.map((p) => `${fmt(p[0])} ${fmt(p[1])}`).join('L')}Z`);
   return parts.length ? parts.join('') : null;
 }
+
+/**
+ * Crop fractions → photo fractions (FIX 2): an outline SAM drew on the shape crop, remapped
+ * into photo space like a detection outline. Affine, so ring point counts are preserved. Null
+ * without a usable rect, image size, or ring.
+ */
+export function remapOutlineToPhoto(
+  path: string,
+  rect: { left: number; top: number; width: number; height: number },
+  photoW: number,
+  photoH: number
+): string | null {
+  if (!(photoW > 0) || !(photoH > 0) || !(rect.width > 0) || !(rect.height > 0)) return null;
+  const rings = pathToRings(path)
+    .map((r): Pt[] =>
+      r.map(([u, v]): Pt => [
+        (rect.left + u * rect.width) / photoW,
+        (rect.top + v * rect.height) / photoH,
+      ])
+    )
+    .filter((r) => r.length >= 3);
+  if (rings.length === 0) return null;
+  return rings.map((r) => `M${r.map((p) => `${fmt(p[0])} ${fmt(p[1])}`).join('L')}Z`).join('');
+}

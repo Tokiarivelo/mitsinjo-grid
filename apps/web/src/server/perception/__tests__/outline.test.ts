@@ -96,20 +96,145 @@ describe('fetchOutlineForBox (PR-2.20)', () => {
     expect(out).toBe(OUTLINE);
   });
   it('no match, mock answer or failure → null, never throws', async () => {
-    const far = { x: 0, y: 0, w: 0.1, h: 0.1 };
-    expect(await fetchOutlineForBox(async () => outlined(), 'data:x', 'car', far)).toBeNull();
-    const mock = { ...outlined(), source: 'mock' as const };
-    expect(await fetchOutlineForBox(async () => mock, 'data:x', 'car', car)).toBeNull();
-    expect(
-      await fetchOutlineForBox(
-        async () => {
-          throw new Error('boom');
-        },
-        'data:x',
-        'car',
-        car
-      )
-    ).toBeNull();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const far = { x: 0, y: 0, w: 0.1, h: 0.1 };
+      expect(await fetchOutlineForBox(async () => outlined(), 'data:x', 'car', far)).toBeNull();
+      const mock = { ...outlined(), source: 'mock' as const };
+      expect(await fetchOutlineForBox(async () => mock, 'data:x', 'car', car)).toBeNull();
+      expect(
+        await fetchOutlineForBox(
+          async () => {
+            throw new Error('boom');
+          },
+          'data:x',
+          'car',
+          car
+        )
+      ).toBeNull();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
+
+describe('fetchOutlineForBox miss causes (FIX 1)', () => {
+  const OUTLINE = 'M0.61 0.46L0.99 0.46L0.99 0.84L0.61 0.84Z';
+  const car = { x: 0.6, y: 0.45, w: 0.4, h: 0.4 };
+  const outlined = () => {
+    const seg = samResult('car');
+    seg.instances[0] = { ...seg.instances[0]!, outline: OUTLINE };
+    return seg;
+  };
+  const silenced = () => vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+  it('timeout names the concept and the budget', async () => {
+    const warn = silenced();
+    try {
+      const hanging = () => new Promise<SegmentResult>(() => {});
+      expect(await fetchOutlineForBox(hanging, 'data:x', 'car', car, { timeoutMs: 20 })).toBeNull();
+      expect(warn).toHaveBeenCalledWith(
+        '[vision] 3D outline missed for "car": SAM timed out after 20ms'
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('empty answer and no-match warn with the best IoU', async () => {
+    const warn = silenced();
+    try {
+      expect(
+        await fetchOutlineForBox(async () => samResult('car', ''), 'data:x', 'car', car)
+      ).toBeNull();
+      expect(warn).toHaveBeenCalledWith('[vision] 3D outline missed for "car": SAM found nothing');
+      const far = { x: 0, y: 0, w: 0.1, h: 0.1 };
+      expect(await fetchOutlineForBox(async () => outlined(), 'data:x', 'car', far)).toBeNull();
+      expect(warn).toHaveBeenCalledWith(
+        '[vision] 3D outline missed for "car": best IoU 0.00 < 0.3 (2 instances)'
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('crop fallback (FIX 2): full miss + crop hit → outline remapped to photo space', async () => {
+    const warn = silenced();
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    try {
+      // Photo 200×100, box (40, 20, 80×40); crop rect (20, 10, 160×80) sent at 640×320.
+      const box = { x: 0.2, y: 0.2, w: 0.4, h: 0.4 };
+      const crop = {
+        url: 'data:crop',
+        rect: { left: 20, top: 10, width: 160, height: 80, outWidth: 640, outHeight: 320 },
+        photoW: 200,
+        photoH: 100,
+      };
+      const cropSeg = samResult('car', '<0f>0<|box;x1=80;y1=40;x2=399;y2=199;w=640;h=320;c=0.9|>');
+      cropSeg.instances[0] = {
+        ...cropSeg.instances[0]!,
+        outline: 'M0.125 0.125L0.625 0.125L0.625 0.625L0.125 0.625Z',
+      };
+      const segmentImage = vi.fn(async (url: string, concept: string) => {
+        expect(concept).toBe('car');
+        return url === 'data:crop' ? cropSeg : samResult('car', '');
+      });
+      const out = await fetchOutlineForBox(segmentImage, 'data:full', 'car', box, { crop });
+      expect(out).toBe('M0.2 0.2L0.6 0.2L0.6 0.6L0.2 0.6Z');
+      expect(segmentImage.mock.calls.map((c) => c[0])).toEqual(['data:full', 'data:crop']);
+      expect(warn).not.toHaveBeenCalled();
+      expect(info).toHaveBeenCalledWith(
+        '[vision] 3D outline for "car" adopted from the crop (full photo: SAM found nothing)'
+      );
+    } finally {
+      warn.mockRestore();
+      info.mockRestore();
+    }
+  });
+
+  it('crop fallback: full hit skips the crop; double miss warns once with both causes', async () => {
+    const warn = silenced();
+    try {
+      const crop = {
+        url: 'data:crop',
+        rect: { left: 0, top: 0, width: 100, height: 100, outWidth: 640, outHeight: 640 },
+        photoW: 100,
+        photoH: 100,
+      };
+      const hitOnce = vi.fn(async () => outlined());
+      expect(await fetchOutlineForBox(hitOnce, 'data:full', 'car', car, { crop })).toBe(OUTLINE);
+      expect(hitOnce).toHaveBeenCalledTimes(1);
+
+      const doubleMiss = vi.fn(async (url: string) => {
+        if (url === 'data:full') throw new Error('boom');
+        return samResult('car', '');
+      });
+      expect(await fetchOutlineForBox(doubleMiss, 'data:full', 'car', car, { crop })).toBeNull();
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith(
+        '[vision] 3D outline missed for "car": SAM call failed; crop: SAM found nothing'
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('instances without readable masks say so; a hit stays silent', async () => {
+    const warn = silenced();
+    try {
+      // parseSamOutput never attaches outlines (meta.ts does): a match without one.
+      expect(
+        await fetchOutlineForBox(async () => samResult('car'), 'data:x', 'car', car)
+      ).toBeNull();
+      expect(warn).toHaveBeenCalledWith(
+        '[vision] 3D outline missed for "car": no instance has a readable mask (2 instances)'
+      );
+      warn.mockClear();
+      expect(await fetchOutlineForBox(async () => outlined(), 'data:x', 'car', car)).toBe(OUTLINE);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
 

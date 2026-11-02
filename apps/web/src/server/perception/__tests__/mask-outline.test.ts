@@ -1,6 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { MAX_OUTLINE_POINTS, maskToOutline, pathToRings, simplify } from '../mask-outline';
+import {
+  MAX_OUTLINE_POINTS,
+  maskToOutline,
+  pathToRings,
+  remapOutlineToPhoto,
+  simplify,
+} from '../mask-outline';
 import { parseSamOutput } from '../parse-sam';
 
 // Complete sam-3.1 records (lossless masks) from the @meta-sam/parser README: 320 × 334 frame, prompt "button".
@@ -78,5 +84,27 @@ describe('path helpers', () => {
       [2, 0],
       [2, 2],
     ]);
+  });
+});
+
+describe('remapOutlineToPhoto (FIX 2)', () => {
+  const rect = { left: 20, top: 10, width: 160, height: 80 };
+
+  it('maps crop fractions onto the photo rect', () => {
+    expect(remapOutlineToPhoto('M0 0L1 0L1 1L0 1Z', rect, 200, 100)).toBe(
+      'M0.1 0.1L0.9 0.1L0.9 0.9L0.1 0.9Z'
+    );
+    // A corner square of the crop lands inside the photo.
+    expect(remapOutlineToPhoto('M0 0L0.5 0L0.5 0.5L0 0.5Z', rect, 200, 100)).toBe(
+      'M0.1 0.1L0.5 0.1L0.5 0.5L0.1 0.5Z'
+    );
+  });
+
+  it('degenerate rect, size, or path → null', () => {
+    const path = 'M0 0L1 0L1 1L0 1Z';
+    expect(remapOutlineToPhoto(path, { ...rect, width: 0 }, 200, 100)).toBeNull();
+    expect(remapOutlineToPhoto(path, rect, 0, 100)).toBeNull();
+    expect(remapOutlineToPhoto('', rect, 200, 100)).toBeNull();
+    expect(remapOutlineToPhoto('M0 0L1 1Z', rect, 200, 100)).toBeNull();
   });
 });

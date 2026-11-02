@@ -1,5 +1,7 @@
 import type { PerceptionClient } from './client';
-import type { ApplianceDetection, NormBox, SegmentResult } from './schemas';
+import type { ApplianceDetection, NormBox, PerceptionSource, SegmentResult } from './schemas';
+import type { CropRect } from './shape-crop';
+import { remapOutlineToPhoto } from './mask-outline';
 
 /** Longest wait for one SAM call; past it the Muse box is kept. */
 export const SEGMENT_TIMEOUT_MS = 8000;
@@ -72,14 +74,18 @@ export function conceptOf(d: Pick<ApplianceDetection, 'label'>): string {
   return label;
 }
 
-/** Resolves to null after `ms` (the client also gets the abort signal). */
-async function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, ms: number) {
+/** Resolves to TIMEOUT after `ms` (the client also gets the abort signal), null on error. */
+const TIMEOUT = Symbol('timeout');
+async function withTimeout<T>(
+  run: (signal: AbortSignal) => Promise<T>,
+  ms: number
+): Promise<T | null | typeof TIMEOUT> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<null>((resolve) => {
+  const timeout = new Promise<typeof TIMEOUT>((resolve) => {
     timer = setTimeout(() => {
       controller.abort();
-      resolve(null);
+      resolve(TIMEOUT);
     }, ms);
   });
   try {
@@ -129,33 +135,114 @@ export interface RefineResult {
   skipped: string[];
 }
 
+/** The shape crop, so a full-photo miss can retry where the object fills the frame (FIX 2). */
+export interface OutlineCrop {
+  url: string;
+  rect: CropRect;
+  photoW: number;
+  photoH: number;
+}
+
+/** Best-matching instance of one SAM answer, or the miss cause (FIX 1 strings, kept exact). */
+function pickOutline(
+  seg: SegmentResult,
+  box: NormBox
+): { outline: string; score: number } | { miss: string } {
+  if (seg.instances.length === 0) return { miss: 'SAM found nothing' };
+  let best: { outline: string; score: number } | null = null;
+  let closest = 0;
+  let outlined = 0;
+  for (const inst of seg.instances) {
+    if (!inst.outline) continue;
+    outlined += 1;
+    const found = samBoxToNorm(inst.box, seg.imageWidth, seg.imageHeight);
+    if (!found) continue;
+    const score = iou(box, found);
+    if (score > closest) closest = score;
+    if (score >= MATCH_MIN_IOU && (!best || score > best.score)) {
+      best = { outline: inst.outline, score };
+    }
+  }
+  if (!best) {
+    return {
+      miss: `${outlined === 0 ? 'no instance has a readable mask' : `best IoU ${closest.toFixed(2)} < ${MATCH_MIN_IOU}`} (${seg.instances.length} instances)`,
+    };
+  }
+  return best;
+}
+
+/** A usable SAM answer, else the miss cause (timeout, failure, or mock). */
+function usableAnswer(
+  seg: (SegmentResult & PerceptionSource) | null | typeof TIMEOUT,
+  timeoutMs: number
+): { seg: SegmentResult & PerceptionSource } | { miss: string } {
+  if (seg === TIMEOUT) return { miss: `SAM timed out after ${timeoutMs}ms` };
+  if (!seg || seg.source !== 'meta' || seg.fallback) {
+    return { miss: !seg ? 'SAM call failed' : 'mock answer ignored' };
+  }
+  return { seg };
+}
+
 /**
  * Mask outline for one box on demand (PR-2.20): SAM segments the full photo for `concept`
  * (already normalized), and the best-matching instance (IoU ≥ 0.3) lends its outline. Photo
- * fractions, like detection outlines — no remap. Best effort: failure, timeout, a mock answer,
- * no match, or a match without a readable mask → null. Never throws.
+ * fractions, like detection outlines — no remap. When the full photo misses and `crop` is set
+ * (FIX 2), SAM retries on the shape crop — the object fills the frame there, and that variant
+ * answers where the full photo stays silent (proven live on the green Mini) — and the winner
+ * is remapped to photo fractions. Best effort: failure, timeout, a mock answer, no match, or
+ * a match without a readable mask → null (one warn with the cause). Never throws.
  */
 export async function fetchOutlineForBox(
   segmentImage: PerceptionClient['segmentImage'],
   imageUrl: string,
   concept: string,
   box: NormBox,
-  { timeoutMs = SEGMENT_TIMEOUT_MS }: { timeoutMs?: number } = {}
+  { timeoutMs = SEGMENT_TIMEOUT_MS, crop }: { timeoutMs?: number; crop?: OutlineCrop } = {}
 ): Promise<string | null> {
-  const seg = await withTimeout((signal) => segmentImage(imageUrl, concept, signal), timeoutMs);
+  const full = await withTimeout((signal) => segmentImage(imageUrl, concept, signal), timeoutMs);
   // Only a real SAM answer counts (the mock's boxes belong to another image).
-  if (!seg || seg.source !== 'meta' || seg.fallback) return null;
-  let best: { outline: string; score: number } | null = null;
-  for (const inst of seg.instances) {
-    if (!inst.outline) continue;
-    const found = samBoxToNorm(inst.box, seg.imageWidth, seg.imageHeight);
-    if (!found) continue;
-    const score = iou(box, found);
-    if (score >= MATCH_MIN_IOU && (!best || score > best.score)) {
-      best = { outline: inst.outline, score };
+  const answered = usableAnswer(full, timeoutMs);
+  let miss: string;
+  if ('miss' in answered) {
+    miss = answered.miss;
+  } else {
+    const picked = pickOutline(answered.seg, box);
+    if ('outline' in picked) return picked.outline;
+    miss = picked.miss;
+  }
+  if (crop) {
+    const boxInCrop: NormBox = {
+      x: (box.x * crop.photoW - crop.rect.left) / crop.rect.width,
+      y: (box.y * crop.photoH - crop.rect.top) / crop.rect.height,
+      w: (box.w * crop.photoW) / crop.rect.width,
+      h: (box.h * crop.photoH) / crop.rect.height,
+    };
+    const onCrop = await withTimeout(
+      (signal) => segmentImage(crop.url, concept, signal),
+      timeoutMs
+    );
+    const cropAnswered = usableAnswer(onCrop, timeoutMs);
+    if ('miss' in cropAnswered) {
+      miss = `${miss}; crop: ${cropAnswered.miss}`;
+    } else {
+      const picked = pickOutline(cropAnswered.seg, boxInCrop);
+      if ('outline' in picked) {
+        const remapped = remapOutlineToPhoto(picked.outline, crop.rect, crop.photoW, crop.photoH);
+        if (remapped) {
+          console.info(
+            `[vision] 3D outline for "${concept}" adopted from the crop (full photo: ${miss})`
+          );
+          return remapped;
+        }
+        miss = `${miss}; crop: outline unreadable after remap`;
+      } else {
+        miss = `${miss}; crop: ${picked.miss}`;
+      }
     }
   }
-  return best?.outline ?? null;
+  // Every miss logs its cause: a silent null here used to cost a whole investigation session.
+  console.warn(`[vision] 3D outline missed for "${concept}": ${miss}`);
+  return null;
 }
 
 /**
@@ -190,7 +277,7 @@ export async function refineDetections(
   concepts.forEach((concept, k) => {
     const seg = results[k];
     // Only a real SAM answer refines: the mock's boxes belong to another image.
-    if (!seg || seg.source !== 'meta' || seg.fallback) {
+    if (seg === TIMEOUT || !seg || seg.source !== 'meta' || seg.fallback) {
       skipped.push(concept);
       return;
     }

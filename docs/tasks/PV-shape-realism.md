@@ -332,6 +332,28 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
       (prompt v2, model choice), performance (render + math budgets).
 - [x] **PR-5.2 Scenarios** in `test-scenarios/06-village.md` for each visible step (car, hut, tree, mock unchanged).
 
+### Toy-Mini investigation (user-ordered, 2026-11-02)
+
+Live Mini (Bibury photo, 21:47): olive-green toy car — box-only hedge colours, no SAM outline, no part
+masks, 12 parts estimated/inferred, fit/profile/panels all skipped. Probed live SAM on pixels extracted
+from the user screenshot (full photo + true crop): SAM answers swing with the pixels (same car: tight
+0.73 on one overlay variant, merged car+hedge 0.54 on another, empty text for missing concepts); the
+no-outline miss cascades through fit → profile → measured colours → wheels/panels. Imagined 2D/3D
+(6 mirror+re-render views) is faithful — the toy views come from the toy recipe, no fix there. Skills
+and prompts audited: kit prompt + critic prompt worked on the Mini (vehicle/vintage/purple correct);
+no prompt change proven (the « topiary → full vehicle anatomy » line is a latent toy-maker for the
+neighbouring hedge-sculpture, left for a topiary fixture).
+
+- [x] **FIX 1 Miss-cause logs.** `fetchOutlineForBox` + `fetchPartMasks` warn why (timeout ms / call
+      failed / mock ignored / empty / best IoU / unreadable masks, per concept for parts); hits stay
+      silent. 5 new tests.
+- [x] **FIX 2 Crop fallback for the outline.** Full-photo miss → SAM retries on the shape crop (object
+      fills the frame; probe: crop-`car` 0.81 tight where full merged) and the winner is remapped to
+      photo fractions (`remapOutlineToPhoto`); full hit skips the crop (no added spend/latency on hit);
+      double miss warns once with both causes. 4 new tests.
+- [x] **FIX 3 Wheel filter-then-cap.** `withMaskWheels` filtered after slicing 3, so out-of-span false
+      positives spent the budget before the real wheels; cap moved after the span filter. 1 new test.
+
 ## Order
 
 S0 first (½–1 day): without the score the loop is guesswork. Then S1 (biggest visible change for every object),
@@ -382,3 +404,4 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-02 | PR-3.4 model choice (eval × 3) + PR-3.6 pass                           | 0.98     | 0.91    | 3.4     | —        | 1.3: 23/26, 13.8s kept; 1.2: 22/26, 5.8s fallback; wonder: 21/28, 17s dropped; S3 pass: no drops                                                                                                             |
 | 2026-11-02 | PR-4.1 S4 spike: STOP                                                  | 0.98     | 0.91    | 3.4     | —        | img2img 9–26.5s; 2/3 views wrong (top→front, side→front); hull needs every view right → PR-4.2…4.5 not built                                                                                                 |
 | 2026-11-02 | PR-5.1/5.2 docs + scenarios (V75…V77)                                  | 0.98     | 0.91    | 3.4     | —        | contracts (subtype, withViews, kit/outline), copilot (prompt v2, model choice), perf budgets; `texture` superseded by swatches/material                                                                      |
+| 2026-11-02 | Toy-Mini investigation FIX 1–3                                         | 0.98     | 0.91    | 3.4     | —        | miss-cause logs + crop outline fallback + wheel filter-then-cap; goldens identical (mean 93); 10 new tests; + header « run detection again » button (V78)                                                    |

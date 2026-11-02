@@ -183,6 +183,25 @@ describe('withMaskWheels (PR-2.6)', () => {
     expect(tyre.size[1]).toBeCloseTo(1 / 3, 3);
   });
 
+  it('filter-then-cap (FIX 3): out-of-span FPs first do not starve the real wheels', () => {
+    const geom = geomA();
+    const recipe = kitToRecipe(kit());
+    // Before: slice(0, 3) kept these three (|x| or |y| > 0.6), all rejected, recipe unchanged.
+    const masks = [
+      wheelMask(geom, 2, 50, 8),
+      wheelMask(geom, 198, 50, 8),
+      wheelMask(geom, 100, 1, 8),
+      wheelMask(geom, 60, 70, 12),
+      wheelMask(geom, 140, 70, 12),
+    ];
+    const out = withMaskWheels('vehicle', recipe, masks, geom);
+    expect(out).not.toBe(recipe);
+    const tyres = out.parts.filter(
+      (p) => p.shape === 'cylinder' && p.axis === 'z' && p.color === '#1c1c1e' && p.at[2] > 0
+    );
+    expect(tyres).toHaveLength(2);
+  });
+
   it('motorbike wheels on the centre plane are placed once, not mirrored', () => {
     const geom = geomA();
     const bike = kitToRecipe(kit({ details: { wheels: 2 } }));

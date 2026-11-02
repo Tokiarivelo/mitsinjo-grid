@@ -77,12 +77,17 @@ describe('fetchPartMasks (PR-2.5)', () => {
   });
 
   it('only real SAM answers count: mock source and fallbacks are ignored', async () => {
-    const segmentImage = vi.fn(async (_url: string, concept: string) =>
-      concept === 'wheel'
-        ? seg(concept, [inst(0, 10)], { source: 'mock' })
-        : seg(concept, [inst(0, 10)], { fallback: 'provider_error' })
-    );
-    await expect(fetchPartMasks(segmentImage, 'data:crop', 'vehicle')).resolves.toEqual([]);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const segmentImage = vi.fn(async (_url: string, concept: string) =>
+        concept === 'wheel'
+          ? seg(concept, [inst(0, 10)], { source: 'mock' })
+          : seg(concept, [inst(0, 10)], { fallback: 'provider_error' })
+      );
+      await expect(fetchPartMasks(segmentImage, 'data:crop', 'vehicle')).resolves.toEqual([]);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('keeps the 8 most confident instances per concept', async () => {
@@ -94,13 +99,66 @@ describe('fetchPartMasks (PR-2.5)', () => {
   });
 
   it('archetypes without concepts never call SAM; unreadable boxes are dropped', async () => {
-    const segmentImage = vi.fn(async (_url: string, concept: string) => seg(concept, []));
-    await expect(fetchPartMasks(segmentImage, 'data:crop', 'tree')).resolves.toEqual([]);
-    expect(segmentImage).not.toHaveBeenCalled();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const segmentImage = vi.fn(async (_url: string, concept: string) => seg(concept, []));
+      await expect(fetchPartMasks(segmentImage, 'data:crop', 'tree')).resolves.toEqual([]);
+      expect(segmentImage).not.toHaveBeenCalled();
 
-    const bad = vi.fn(async (_url: string, concept: string) =>
-      seg(concept, [inst(50, 50)], { imageWidth: 0, imageHeight: 0 })
-    );
-    await expect(fetchPartMasks(bad, 'data:crop', 'lamp_post')).resolves.toEqual([]);
+      const bad = vi.fn(async (_url: string, concept: string) =>
+        seg(concept, [inst(50, 50)], { imageWidth: 0, imageHeight: 0 })
+      );
+      await expect(fetchPartMasks(bad, 'data:crop', 'lamp_post')).resolves.toEqual([]);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
+
+describe('fetchPartMasks miss causes (FIX 1)', () => {
+  const silenced = () => vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+  it('every concept missed → one warn naming each cause', async () => {
+    const warn = silenced();
+    try {
+      const segmentImage = vi.fn(async (_url: string, concept: string) => {
+        if (concept === 'wheel') throw new Error('boom');
+        return seg(concept, []);
+      });
+      await expect(fetchPartMasks(segmentImage, 'data:crop', 'vehicle')).resolves.toEqual([]);
+      expect(warn).toHaveBeenCalledTimes(1);
+      const msg = warn.mock.calls[0]![0] as string;
+      expect(msg).toContain('[vision] 3D part masks missed for "vehicle"');
+      expect(msg).toContain('wheel call failed');
+      expect(msg).toContain('window SAM found nothing');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('a hanging concept reports a timeout; a partial batch stays silent', async () => {
+    const warn = silenced();
+    try {
+      const hanging = vi.fn(
+        (_url: string, _concept: string) => new Promise<SegmentResult>(() => {})
+      );
+      await expect(
+        fetchPartMasks(hanging, 'data:crop', 'lamp_post', { timeoutMs: 20 })
+      ).resolves.toEqual([]);
+      expect(warn).toHaveBeenCalledWith(
+        '[vision] 3D part masks missed for "lamp_post": lamp timed out'
+      );
+
+      warn.mockClear();
+      const partial = vi.fn(async (_url: string, concept: string) => {
+        if (concept === 'wheel') throw new Error('boom');
+        return seg(concept, [inst(0, 10)]);
+      });
+      const masks = await fetchPartMasks(partial, 'data:crop', 'vehicle');
+      expect(masks.map((m) => m.concept)).toEqual(['window']);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

@@ -49,21 +49,39 @@ export async function fetchPartMasks(
   const deadline = Date.now() + timeoutMs;
   const controller = new AbortController();
   const abortTimer = setTimeout(() => controller.abort(), timeoutMs);
+  // Per-concept miss cause, for the one warn when every concept misses (else the caller logs
+  // the hits and the misses stay invisible — the green Mini lost its wheels silently).
+  const missed = new Map<string, string>();
   try {
     const perConcept = await Promise.all(
       concepts.map(async (concept): Promise<PartMask[]> => {
         const remaining = Math.max(0, deadline - Date.now());
-        const call = (async () => {
-          try {
-            return await segmentImage(cropUrl, concept, controller.signal);
-          } catch {
-            return null;
-          }
-        })();
-        const late = new Promise<null>((resolve) => setTimeout(() => resolve(null), remaining));
-        const seg = await Promise.race([call, late]);
-        if (!seg || seg.source !== 'meta' || seg.fallback) return [];
-        return seg.instances
+        type Settled =
+          | { status: 'answer'; seg: Awaited<ReturnType<typeof segmentImage>> }
+          | { status: 'error' }
+          | { status: 'late' };
+        const call: Promise<Settled> = segmentImage(cropUrl, concept, controller.signal).then(
+          (seg) => ({ status: 'answer', seg }) as const,
+          () => ({ status: 'error' }) as const
+        );
+        const late: Promise<Settled> = new Promise((resolve) =>
+          setTimeout(() => resolve({ status: 'late' }), remaining)
+        );
+        const settled = await Promise.race([call, late]);
+        if (settled.status !== 'answer') {
+          missed.set(concept, settled.status === 'late' ? 'timed out' : 'call failed');
+          return [];
+        }
+        const { seg } = settled;
+        if (seg.source !== 'meta' || seg.fallback) {
+          missed.set(concept, 'mock answer ignored');
+          return [];
+        }
+        if (seg.instances.length === 0) {
+          missed.set(concept, 'SAM found nothing');
+          return [];
+        }
+        const masks = seg.instances
           .map((inst) => ({
             inst,
             box: samBoxToNorm(inst.box, seg.imageWidth, seg.imageHeight),
@@ -78,9 +96,17 @@ export async function fetchPartMasks(
             box,
             ...(inst.outline ? { outline: inst.outline } : {}),
           }));
+        if (masks.length === 0) missed.set(concept, 'no usable boxes');
+        return masks;
       })
     );
-    return perConcept.flat();
+    const masks = perConcept.flat();
+    if (masks.length === 0 && missed.size > 0) {
+      console.warn(
+        `[vision] 3D part masks missed for "${archetype}": ${[...missed].map(([c, why]) => `${c} ${why}`).join(', ')}`
+      );
+    }
+    return masks;
   } finally {
     clearTimeout(abortTimer);
   }
