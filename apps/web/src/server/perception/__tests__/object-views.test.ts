@@ -11,14 +11,18 @@ vi.mock('../facade-specialist', () => ({
 
 import { hullLoops, spanAt } from '@/lib/hull';
 import { ObjectRecipeSchema, recipeIssue } from '@/lib/object-shape';
+import { kitToRecipe } from '@/lib/object-kit';
 import sharp from 'sharp';
 import { MAX_MISSING, knownConcept, parseViewsCheck, viewsCheckQuestion } from '../views-check';
 import {
+  ROUND_VIEW_ARCHETYPES,
+  VIEW_ARCHETYPES,
   VIEW_HULL_ARCHETYPES,
   applyViewsCheck,
   checkViewsModel,
   measureObjectViews,
   objectSidePrompt,
+  roundViewRecipe,
   sideLooksNew,
   sparkDepthRatio,
   viewIou,
@@ -437,5 +441,84 @@ describe('AI views check (PV-H)', () => {
     );
     expect(none).toBeNull();
     expect(segmentImage).not.toHaveBeenCalled();
+  });
+});
+
+describe('round objects from their 2D view (PG-T19)', () => {
+  /** Drawn tree, object-box fractions (u right, v up): thin trunk, wide round crown. */
+  const TREE: Pt[] = [
+    [0.45, 0],
+    [0.55, 0],
+    [0.55, 0.3],
+    [0.85, 0.35],
+    [1, 0.55],
+    [0.9, 0.85],
+    [0.5, 1],
+    [0.1, 0.85],
+    [0, 0.55],
+    [0.15, 0.35],
+    [0.45, 0.3],
+  ];
+  const TREE_KIT = {
+    archetype: 'tree' as const,
+    proportions: { w: 0.6, h: 1, d: 0.6 },
+    colors: { main: '#3f7a3a', secondary: '#6b4a2f', accent: '#5a8a40' },
+  };
+
+  it('trees, bushes, poles and lamp posts are built from the view; panels on the hull path', () => {
+    for (const a of ['tree', 'bush', 'pole', 'lamp_post'] as const) {
+      expect(ROUND_VIEW_ARCHETYPES).toContain(a);
+      expect(VIEW_ARCHETYPES).toContain(a);
+    }
+    expect(VIEW_HULL_ARCHETYPES).toContain('panel');
+    expect(VIEW_ARCHETYPES).not.toContain('house');
+  });
+
+  it('a tree: lathe crown from the drawn silhouette, drawing proportions, trunk kept', () => {
+    const r = roundViewRecipe({ aspect: 0.8, ring: TREE }, TREE_KIT);
+    expect(ObjectRecipeSchema.safeParse(r).success).toBe(true);
+    expect(recipeIssue(r)).toBeNull();
+    expect(r.source).toBe('views');
+    expect(r.proportions.w / r.proportions.h).toBeCloseTo(0.8, 2);
+    expect(r.proportions.d).toBeCloseTo(r.proportions.w, 6);
+    const body = r.parts.find((p) => p.front)!;
+    expect(body.shape).toBe('lathe');
+    expect(body.color).toBe(TREE_KIT.colors.main);
+    // The trunk (secondary colour) is still there under the crown.
+    expect(r.parts.some((p) => p.color === TREE_KIT.colors.secondary)).toBe(true);
+    // Template canopy fillers inside the lathe are gone (fewer parts than the template).
+    expect(r.parts.length).toBeLessThan(kitToRecipe(TREE_KIT).parts.length);
+  });
+
+  it('round objects draw no side (their side is their front)', async () => {
+    museImage.mockReset();
+    const W = 1000;
+    const H = 1000;
+    const segment = vi.fn(async (_u: string, concept: string) => ({
+      source: 'meta' as const,
+      model: 'sam',
+      concept,
+      imageWidth: W,
+      imageHeight: H,
+      instances:
+        concept === 'tree'
+          ? [
+              {
+                box: { x1: 300, y1: 100, x2: 699, y2: 899 },
+                confidence: 0.9,
+                outline:
+                  'M ' +
+                  TREE.map(([u, v]) => `${300 + u * 400} ${100 + (1 - v) * 800}`).join(' L ') +
+                  ' Z',
+              },
+            ]
+          : [],
+      count: concept === 'tree' ? 1 : 0,
+      boxCoverage: 0.3,
+    }));
+    const v = await measureObjectViews(segment, 'https://x/tree.png', 'tree', 'mango tree', 'tree');
+    expect(museImage).not.toHaveBeenCalled();
+    expect(v?.side).toBeNull();
+    expect(v?.front.aspect).toBeCloseTo(0.5, 1);
   });
 });

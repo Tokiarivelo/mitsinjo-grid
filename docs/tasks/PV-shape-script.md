@@ -145,9 +145,10 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
 
 ### G4 Every kind of object
 
-- [ ] **PG-T19 2D target for all archetypes.** `ELEVATION_ARCHETYPES` today = house, building. Add vehicle,
+- [x] **PG-T19 2D target for all archetypes.** `ELEVATION_ARCHETYPES` today = house, building. Add vehicle,
       appliance, lamp/pole, tree, solar panel, battery, generic `other`. Muse Image draws a straight-on
       elevation (`/facade-2d`), and the user validates it as for houses.
+      **Done:** every archetype now has a straight-on prompt (tree / bush added; vehicle, panel, pole, appliances existed). With a validated view: vehicle, appliances, other and now **solar panel** → hull path (PV-H, side drawn); **tree, bush, lamp post, pole** → `roundViewRecipe` (no side drawn: their side is their front; template body → lathe of the drawn silhouette, `withLatheBody`; trunk / head kept). Houses keep the elevation builder. **Deviation:** battery = `cabinet` archetype (already on the hull path).
 - [ ] **PG-T20 Stage lists per archetype** (same runner, different stages and concepts):
       vehicle: body profile → cabin + glass → wheels → bumpers + lights → materials;
       appliance: body → doors / panels → handles + display → materials;

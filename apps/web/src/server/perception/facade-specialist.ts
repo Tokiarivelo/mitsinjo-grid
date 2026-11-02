@@ -32,6 +32,10 @@ export function buildFacadePrompt(
     case 'pole':
       basePrompt = `Direct front elevation view of a complete utility pole or lamp post, ${label}. Straight-on vertical elevation, unoccluded, clean solid neutral background.`;
       break;
+    case 'tree':
+    case 'bush':
+      basePrompt = `Direct front elevation view of a complete ${label}, botanical illustration. Straight-on eye-level view of the whole plant from the ground to its top, clear silhouette of the crown and the trunk, unoccluded, centered on a solid clean neutral background.`;
+      break;
     case 'cabinet':
     case 'machine':
     case 'fan':

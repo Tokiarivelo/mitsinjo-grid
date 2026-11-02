@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { ringRange, spanAt, type Ring } from '@/lib/hull';
-import type { KitArchetype, ObjectKit } from '@/lib/object-kit';
+import { kitToRecipe, type KitArchetype, type ObjectKit } from '@/lib/object-kit';
 import {
   MAX_BUILT_PARTS,
   fitRecipe,
@@ -9,13 +9,14 @@ import {
   type RecipeMaterial,
   type RecipePart,
 } from '@/lib/object-shape';
-import { pathToRings, type NormBox } from '@/lib/vision';
+import { pathToRings, polygonPath, type NormBox } from '@/lib/vision';
 import sharp from 'sharp';
 import type { PerceptionClient } from './client';
 import { compactDataUrl, imagineSideView } from './facade-views';
 import { renderFlat, type FlatView } from './flat-render';
 import { samBoxToNorm } from './outline';
 import { fetchPartMasks } from './part-masks';
+import { withLatheBody } from './lathe-body';
 import { budgetRing } from './profile-body';
 import { MAX_MISSING, knownConcept, viewsCheckQuestion, type ViewsCheck } from './views-check';
 
@@ -38,6 +39,25 @@ export const VIEW_HULL_ARCHETYPES: ReadonlyArray<KitArchetype> = [
   'animal',
   'person',
   'other',
+  // PG-T19: a solar panel's side drawing shows its tilt and legs.
+  'panel',
+];
+
+/**
+ * Round objects (PG-T19): their side looks like their front, so no side is drawn; the template
+ * body becomes a lathe of the silhouette measured on the validated 2D view (`roundViewRecipe`).
+ */
+export const ROUND_VIEW_ARCHETYPES: ReadonlyArray<KitArchetype> = [
+  'tree',
+  'bush',
+  'lamp_post',
+  'pole',
+];
+
+/** Every archetype built from its validated 2D view (houses keep their elevation builder). */
+export const VIEW_ARCHETYPES: ReadonlyArray<KitArchetype> = [
+  ...VIEW_HULL_ARCHETYPES,
+  ...ROUND_VIEW_ARCHETYPES,
 ];
 
 /** SAM concepts read on each view, per archetype (placed on the hull by `viewsRecipe`). */
@@ -181,11 +201,11 @@ export async function measureObjectViews(
   concept: string,
   {
     signal,
-    withSide = true,
+    withSide = !ROUND_VIEW_ARCHETYPES.includes(archetype),
     onSideView,
   }: { signal?: AbortSignal; withSide?: boolean; onSideView?: (png: Buffer) => void } = {}
 ): Promise<ObjectViews | null> {
-  if (!VIEW_HULL_ARCHETYPES.includes(archetype)) return null;
+  if (!VIEW_ARCHETYPES.includes(archetype)) return null;
   const concepts = VIEW_PART_CONCEPTS[archetype];
   try {
     // The side is drawn while the front is measured (both ≈ 10–35 s).
@@ -222,6 +242,33 @@ export async function measureObjectViews(
     console.warn('[vision] 3D views failed:', err instanceof Error ? err.message : err);
     return null;
   }
+}
+
+/**
+ * Round object from its validated 2D view (PG-T19): the kit template at the drawing's
+ * proportions (width / height measured, depth = width), its main body turned into a lathe of
+ * the drawn silhouette (`withLatheBody`, as on the photo outline). Trunk, head or arm keep the
+ * template. Pure.
+ */
+export function roundViewRecipe(
+  front: Pick<ViewMeasure, 'aspect' | 'ring'>,
+  kit: ObjectKit
+): ObjectRecipe {
+  const template = kitToRecipe(kit);
+  // Width / height from the drawing; a round object is as deep as it is wide.
+  const w = Math.max(0.01, front.aspect);
+  const m = Math.max(w, 1);
+  const fitted = fitRecipe(
+    { ...template, proportions: { w: w / m, h: 1 / m, d: w / m } },
+    front.aspect
+  );
+  // Object-box fractions, y down: the outline the lathe scanner reads (box = the whole unit).
+  const outline = polygonPath(front.ring.map(([u, v]) => [u, 1 - v] as [number, number]));
+  const lathed = withLatheBody(kit.archetype, fitted, {
+    box: { x: 0, y: 0, w: 1, h: 1 },
+    outline,
+  });
+  return { ...lathed, source: 'views' };
 }
 
 /** Depth over front width from Spark's kit when no side is drawn (a vehicle's `w` is its length). */

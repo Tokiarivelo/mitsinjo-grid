@@ -52,11 +52,13 @@ import { withProfileBody } from './profile-body';
 import { scoreRecipe } from './score-shape';
 import { generateImaginedViews } from './views-generation';
 import {
-  VIEW_HULL_ARCHETYPES,
+  ROUND_VIEW_ARCHETYPES,
+  VIEW_ARCHETYPES,
   VIEWS_TOTAL_MS,
   checkViewsModel,
   imageBytes,
   measureObjectViews,
+  roundViewRecipe,
   sparkDepthRatio,
   viewIou,
   viewsRecipe,
@@ -258,7 +260,7 @@ export async function runObjectShape(
         : Promise.resolve(null);
     // PV-H: any other object with a validated 2D view → hull of that view and its drawn side.
     const views =
-      target.facadeUrl && perception.segmentImage && VIEW_HULL_ARCHETYPES.includes(hint)
+      target.facadeUrl && perception.segmentImage && VIEW_ARCHETYPES.includes(hint)
         ? measureObjectViews(
             perception.segmentImage.bind(perception),
             target.facadeUrl,
@@ -477,13 +479,14 @@ export async function runObjectShape(
           ...source,
         };
       }
-      const seen =
-        found.kit && VIEW_HULL_ARCHETYPES.includes(found.kit.archetype) ? await views : null;
+      const seen = found.kit && VIEW_ARCHETYPES.includes(found.kit.archetype) ? await views : null;
       if (found.kit && seen) {
         const kit = colors ? { ...found.kit, colors } : found.kit;
-        let recipe = viewsRecipe(seen, kit);
+        // Round objects (PG-T19): lathe of the drawn silhouette, no side, no views check.
+        const round = ROUND_VIEW_ARCHETYPES.includes(kit.archetype);
+        let recipe = round ? roundViewRecipe(seen.front, kit) : viewsRecipe(seen, kit);
         // After the build, the AI checks every side against the drawings and the model is fixed.
-        if (perception.checkViews && perception.segmentImage) {
+        if (!round && perception.checkViews && perception.segmentImage) {
           onStep?.('check');
           const checked = await checkViewsModel(
             {

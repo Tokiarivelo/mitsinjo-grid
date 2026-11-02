@@ -19,6 +19,13 @@ describe('facade-specialist', () => {
       expect(prompt).toContain('symmetrical headlights');
     });
 
+    it('builds a whole-plant elevation for a tree (PG-T19)', () => {
+      const prompt = buildFacadePrompt('tree', 'mango tree');
+      expect(prompt).toContain('mango tree');
+      expect(prompt).toContain('from the ground to its top');
+      expect(prompt).toContain('solid clean neutral background');
+    });
+
     it('incorporates additional user prompt details', () => {
       const prompt = buildFacadePrompt(
         'house',
