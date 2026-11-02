@@ -117,4 +117,42 @@ describe('useProposalDiff', () => {
       },
     ]);
   });
+
+  it('fire restore lines show the cut range → restored, with aligned ids (M2-T4)', () => {
+    useSimulationStore.setState({ timeIndex: 14 });
+    useSimulationStore.getState().reportFire('school');
+    const { result } = renderHook(() =>
+      useProposalDiff({
+        proposalId: 'P',
+        reason: 'r',
+        patch: { clearFires: ['school'] },
+      })
+    );
+    expect(result.current).toEqual([
+      {
+        id: 'clearFires.school',
+        label: 'Primary School Fire restore',
+        current: 'Cut 14:00–24:00',
+        proposed: 'Power restored',
+      },
+    ]);
+  });
+
+  it('restore without a burning fire shows None as current (M2-T4)', () => {
+    const { result } = renderHook(() =>
+      useProposalDiff({
+        proposalId: 'P',
+        reason: 'r',
+        patch: { clearFires: ['market'] },
+      })
+    );
+    expect(result.current).toEqual([
+      {
+        id: 'clearFires.market',
+        label: 'Local Market & Artisans Fire restore',
+        current: 'None',
+        proposed: 'Power restored',
+      },
+    ]);
+  });
 });

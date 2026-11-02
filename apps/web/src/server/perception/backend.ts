@@ -87,6 +87,11 @@ export interface ShapeSubject {
   scenery?: SceneryType;
   /** Width / height of the object on the photo, in pixels (thin pole ≈ 0.1, wide car ≈ 2). */
   aspect?: number;
+  /**
+   * Validated 2D facade (front elevation, unoccluded): a second image beside the crop. The crop
+   * keeps size, pose and measured colours; the facade refines windows, doors, materials, parts.
+   */
+  facadeUrl?: string;
 }
 
 /** What `describeParts` is told about the object. */
@@ -98,4 +103,9 @@ export interface PartsSubject {
    * bottom`) — absent when the box shows it whole. The model must imagine the whole object either way.
    */
   coverage?: string;
+  /**
+   * Validated 2D facade (front elevation, unoccluded): a second image beside the crop. The crop
+   * keeps size, pose and measured colours; the facade refines windows, doors, materials, parts.
+   */
+  facadeUrl?: string;
 }

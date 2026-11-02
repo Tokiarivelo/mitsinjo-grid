@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { scenarios, simulate, type Appliance } from '@mitsinjo/engine';
+import {
+  scenarios,
+  simulate,
+  applianceSummary,
+  sectorApplianceKw,
+  type Appliance,
+} from '@mitsinjo/engine';
+import { getResultEntry } from '../result-cache';
 import {
   executeTool,
   GetGridStateSchema,
@@ -7,6 +14,7 @@ import {
   CompareStrategiesSchema,
   GetSectorMetricsSchema,
   ProposeChangeSchema,
+  TOOL_DEFINITIONS,
 } from '../tools';
 
 describe('Copilot Tools (P6-T2)', () => {
@@ -333,6 +341,288 @@ describe('Copilot Tools (P6-T2)', () => {
     it('returns structured error for unknown tool', () => {
       const res = executeTool('hack_grid', {}, ctx);
       expect(res.error).toContain('Unknown tool: hack_grid');
+    });
+
+    it('run_scenario remembers its result for generate_visual (M5-T1)', () => {
+      const res = executeTool('run_scenario', { scenarioId: 'cloudy_afternoon' }, ctx);
+      expect(res.error).toBeUndefined();
+      expect(res.resultId).toBeTruthy();
+      expect(getResultEntry(res.resultId ?? '')).not.toBeNull();
+    });
+
+    describe('get_battery_story (M7-T3)', () => {
+      const cloudyCtx = {
+        input: scenarios.cloudy_afternoon.input,
+        activeStrategy: 'proportional' as const,
+      };
+
+      it('traces the drain window with engine evidence', () => {
+        const res = executeTool('get_battery_story', { hour: 3 }, cloudyCtx);
+        expect(res.error).toBeUndefined();
+        const story = res.data as { hour: number; socPct: number; peak: { hour: number } };
+        expect(story.hour).toBe(3);
+        expect(res.evidence?.battery_socPct).toBe(story.socPct);
+        expect(res.evidence?.battery_peakHour).toBe(story.peak.hour);
+      });
+
+      it('defaults to the emptiest hour and rejects out-of-range hours', () => {
+        const res = executeTool('get_battery_story', {}, cloudyCtx);
+        expect(res.error).toBeUndefined();
+        expect((res.data as { hour: number }).hour).toBeGreaterThanOrEqual(0);
+        expect(executeTool('get_battery_story', { hour: 99 }, cloudyCtx).error).toContain(
+          'Invalid args for get_battery_story'
+        );
+      });
+    });
+
+    describe('simulate_week (M7-T2)', () => {
+      const stormWeek = Array.from({ length: 7 }, () => ({ weather: 'storm' as const }));
+
+      it('simulates 7 days with battery carryover, totals, plan and worst day', () => {
+        const res = executeTool('simulate_week', { days: stormWeek }, ctx);
+        expect(res.error).toBeUndefined();
+        const data = res.data as {
+          days: { day: number; weather: string; resultId: string; unservedKwh: number }[];
+          totals: { unservedKwh: number; criticalUnservedKwh: number };
+          plan: { strategy: string; worstDay: number };
+        };
+        expect(data.days).toHaveLength(7);
+        expect(data.days.map((d) => d.weather)).toEqual(Array(7).fill('storm'));
+        // Totals are the days' sums (rounded).
+        const sum = data.days.reduce((n, d) => n + d.unservedKwh, 0);
+        expect(data.totals.unservedKwh).toBeCloseTo(Math.round(sum * 100) / 100, 5);
+        // The plan recommends a real strategy and names the worst day.
+        expect(['proportional', 'essential_first', 'balanced']).toContain(data.plan.strategy);
+        const worst = data.days.reduce((a, b) => (b.unservedKwh > a.unservedKwh ? b : a));
+        expect(data.plan.worstDay).toBe(worst.day);
+        // Evidence carries the week numbers (cited by the answer).
+        expect(res.evidence?.week_unservedKwh).toBe(data.totals.unservedKwh);
+        // Each day is remembered for generate_visual.
+        for (const d of data.days) {
+          expect(getResultEntry(d.resultId)).not.toBeNull();
+        }
+      });
+
+      it('rejects bad weather and weeks over 7 days', () => {
+        expect(
+          executeTool('simulate_week', { days: [{ weather: 'tornado' }] }, ctx).error
+        ).toContain('Invalid args for simulate_week');
+        expect(
+          executeTool(
+            'simulate_week',
+            { days: Array.from({ length: 8 }, () => ({ weather: 'sunny' })) },
+            ctx
+          ).error
+        ).toContain('Invalid args for simulate_week');
+      });
+    });
+
+    describe('appliance reporting (PV-T14)', () => {
+      const pump1: Appliance = {
+        id: 'pump-1',
+        name: 'Village Pump',
+        category: 'water_pump',
+        sector: 'water',
+        watts: 750,
+        quantity: 1,
+      };
+      const pump2: Appliance = {
+        id: 'pump-2',
+        name: 'Field Pump',
+        category: 'water_pump',
+        sector: 'water',
+        watts: 750,
+        quantity: 2,
+      };
+      const lamp: Appliance = {
+        id: 'lamp-1',
+        name: 'Lamp',
+        category: 'lamp',
+        sector: 'households',
+        watts: 10,
+        quantity: 2,
+      };
+      const appCtx = {
+        input: { ...baseInput, appliances: [pump1, pump2, lamp] },
+        activeStrategy: 'proportional' as const,
+      };
+      const round2 = (n: number) => Math.round(n * 100) / 100;
+
+      it('run_scenario and propose_change expose the appliances patch to the model', () => {
+        for (const name of ['run_scenario', 'propose_change']) {
+          const def = TOOL_DEFINITIONS.find((d) => d.name === name);
+          const patchProps = (
+            def?.parameters.properties as Record<string, { properties?: Record<string, unknown> }>
+          ).patch?.properties;
+          expect(patchProps?.appliances).toBeDefined();
+        }
+      });
+
+      it('get_sector_metrics lists the inserted lines with engine loads, all in evidence', () => {
+        const res = executeTool('get_sector_metrics', { sector: 'water' }, appCtx);
+        expect(res.error).toBeUndefined();
+        const appliances = res.data?.appliances as {
+          count: number;
+          dailyKwh: number;
+          peakKw: number;
+          lines: { id: string; name: string; quantity: number; watts: number }[];
+        };
+        expect(appliances.count).toBe(2);
+        expect(appliances.lines.map((l) => l.name)).toEqual(['Village Pump', 'Field Pump']);
+        const expectedKwh = round2(
+          applianceSummary(pump1).dailyKwh + applianceSummary(pump2).dailyKwh
+        );
+        expect(appliances.dailyKwh).toBe(expectedKwh);
+        const profile = sectorApplianceKw([pump1, pump2]).water ?? [];
+        expect(appliances.peakKw).toBe(round2(Math.max(...profile)));
+        expect(res.evidence?.water_applianceKwh).toBe(expectedKwh);
+        expect(res.evidence?.water_appliancePeakKw).toBe(appliances.peakKw);
+        expect(res.evidence?.water_applianceCount).toBe(2);
+      });
+
+      it('get_sector_metrics without inserted loads reports an empty list, no appliance evidence', () => {
+        const res = executeTool('get_sector_metrics', { sector: 'water' }, ctx);
+        expect(res.error).toBeUndefined();
+        expect(res.data?.appliances).toEqual({ count: 0, dailyKwh: 0, peakKw: 0, lines: [] });
+        expect(res.evidence?.water_applianceKwh).toBeUndefined();
+      });
+
+      it('run_scenario accepts an appliances patch and reports totals', () => {
+        const res = executeTool(
+          'run_scenario',
+          { patch: { appliances: [pump1, pump2] }, strategy: 'proportional' },
+          ctx
+        );
+        expect(res.error).toBeUndefined();
+        const appliances = res.data?.appliances as {
+          count: number;
+          dailyKwh: number;
+          perSector: Record<string, { count: number; dailyKwh: number }>;
+        };
+        expect(appliances.count).toBe(2);
+        expect(appliances.perSector.water?.count).toBe(2);
+        expect(res.evidence?.applianceKwh).toBe(appliances.dailyKwh);
+        expect(res.evidence?.applianceCount).toBe(2);
+        expect(res.evidence?.water_applianceKwh).toBe(appliances.perSector.water?.dailyKwh);
+        // The patched load really runs: demand grows by the pumps' day.
+        const metrics = res.data?.metrics as { demandKwh: number };
+        const plain = simulate(ctx.input, 'proportional');
+        expect(metrics.demandKwh).toBeCloseTo(plain.metrics.demandKwh + appliances.dailyKwh, 1);
+      });
+
+      it('run_scenario rejects an out-of-bounds appliance patch gracefully', () => {
+        const res = executeTool(
+          'run_scenario',
+          { patch: { appliances: [{ ...pump1, watts: 1000000 }] }, strategy: 'proportional' },
+          ctx
+        );
+        expect(res.error).toContain('Invalid args for run_scenario');
+        expect(res.data).toBeUndefined();
+      });
+
+      it('propose_change reports the after-list and its kWh delta', () => {
+        const res = executeTool(
+          'propose_change',
+          { patch: { appliances: [pump1, pump2, lamp] }, reason: 'Add inserted loads' },
+          ctx
+        );
+        expect(res.error).toBeUndefined();
+        const appliances = res.data?.appliances as { count: number; dailyKwh: number };
+        expect(appliances.count).toBe(3);
+        expect(res.data?.applianceKwhDelta).toBe(appliances.dailyKwh);
+        expect(res.evidence?.applianceKwhDelta).toBe(appliances.dailyKwh);
+      });
+    });
+
+    describe('get_incidents + clearFires restore (M2-T4)', () => {
+      const burning = {
+        ...baseInput,
+        events: [
+          ...baseInput.events,
+          { type: 'fire', sector: 'school', startHour: 14, durationH: 4 } as const,
+        ],
+      };
+      const fireCtx = { input: burning, activeStrategy: 'proportional' as const, hour: 15 };
+
+      it('exposes get_incidents and the clearFires patch to the model', () => {
+        expect(TOOL_DEFINITIONS.some((d) => d.name === 'get_incidents')).toBe(true);
+        for (const name of ['run_scenario', 'propose_change']) {
+          const def = TOOL_DEFINITIONS.find((d) => d.name === name);
+          const patchProps = (
+            def?.parameters.properties as Record<string, { properties?: Record<string, unknown> }>
+          ).patch?.properties;
+          expect(patchProps?.clearFires).toBeDefined();
+        }
+      });
+
+      it('reports the burning sector with its engine impact, all in evidence', () => {
+        const res = executeTool('get_incidents', { hour: 15 }, fireCtx);
+        expect(res.error).toBeUndefined();
+        const data = res.data as {
+          count: number;
+          incidents: {
+            sector: string;
+            startHour: number;
+            endHour: number;
+            status: string;
+            unservedKwh: number;
+          }[];
+        };
+        expect(data.count).toBe(1);
+        expect(data.incidents).toEqual([
+          {
+            sector: 'school',
+            startHour: 14,
+            endHour: 18,
+            status: 'burning',
+            unservedKwh: data.incidents[0]!.unservedKwh,
+          },
+        ]);
+        expect(data.incidents[0]!.unservedKwh).toBeGreaterThan(0);
+        expect(res.evidence?.incidentCount).toBe(1);
+        expect(res.evidence?.school_fireUnservedKwh).toBe(data.incidents[0]!.unservedKwh);
+        expect(res.evidence?.school_fireStartHour).toBe(14);
+        expect(res.evidence?.school_fireEndHour).toBe(18);
+      });
+
+      it('status follows the hour; defaults to the app hour and active strategy', () => {
+        const upcoming = executeTool('get_incidents', { hour: 10 }, fireCtx);
+        expect((upcoming.data as { incidents: { status: string }[] }).incidents[0]?.status).toBe(
+          'upcoming'
+        );
+        const over = executeTool('get_incidents', { hour: 20 }, fireCtx);
+        expect((over.data as { incidents: { status: string }[] }).incidents[0]?.status).toBe(
+          'over'
+        );
+        const implicit = executeTool('get_incidents', {}, fireCtx);
+        expect((implicit.data as { hour: number }).hour).toBe(15);
+        expect((implicit.data as { strategy: string }).strategy).toBe('proportional');
+      });
+
+      it('without fire reports zero incidents and no per-sector evidence', () => {
+        const res = executeTool('get_incidents', {}, ctx);
+        expect(res.error).toBeUndefined();
+        expect(res.data).toMatchObject({ count: 0, incidents: [] });
+        expect(res.evidence?.incidentCount).toBe(0);
+        expect(res.evidence?.school_fireUnservedKwh).toBeUndefined();
+      });
+
+      it('rejects an out-of-range hour gracefully', () => {
+        const res = executeTool('get_incidents', { hour: 30 }, fireCtx);
+        expect(res.error).toContain('Invalid args for get_incidents');
+      });
+
+      it('propose_change restores with clearFires: impact shows the sector served again', () => {
+        const res = executeTool(
+          'propose_change',
+          { patch: { clearFires: ['school'] }, reason: 'Fire out, restore the school' },
+          fireCtx
+        );
+        expect(res.error).toBeUndefined();
+        expect(res.proposal?.patch?.clearFires).toEqual(['school']);
+        const school = res.proposal?.impact?.sectors.school;
+        expect(school?.servedKwhAfter).toBeGreaterThan(school?.servedKwhBefore ?? 0);
+      });
     });
 
     describe('edit_appliance (PV-T11b)', () => {

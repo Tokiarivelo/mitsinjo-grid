@@ -6,17 +6,32 @@ import {
   LAKE_CENTER,
   LAKE_LEVEL,
   LAKE_RADIUS,
+  PADDY_CENTER,
+  PADDY_SIZE,
   POND_CENTER,
   POND_RADIUS,
   TERRAIN_RADIUS,
   terrainHeight,
 } from '../utils/landscape';
 import { terrainColor } from '../utils/terrain-colors';
+import { paddyTexture, redEarthTexture } from './procedural-textures';
 import type { SceneQuality } from '../hooks/use-scene-quality';
+
+// Laterite grain multiplies the vertex colors (M12-T1): palette survives, soil gets pebbles.
+const groundDetail = redEarthTexture().clone();
+groundDetail.needsUpdate = true;
+groundDetail.repeat.set(64, 64);
 
 const GROUND_MAT = new THREE.MeshStandardMaterial({
   vertexColors: true,
+  map: groundDetail,
   roughness: 0.96,
+  metalness: 0,
+});
+
+const PADDY_MAT = new THREE.MeshStandardMaterial({
+  map: paddyTexture(),
+  roughness: 0.4,
   metalness: 0,
 });
 
@@ -54,13 +69,37 @@ export interface VillageTerrainProps {
   quality?: SceneQuality;
 }
 
+/** Rice paddy parcel: flat plane draped on the relief (+3.5 cm, no z-fighting). */
+function buildPaddy(): THREE.BufferGeometry {
+  const g = new THREE.PlaneGeometry(PADDY_SIZE[0], PADDY_SIZE[1], 7, 5);
+  g.rotateX(-Math.PI / 2);
+  const pos = g.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i) + PADDY_CENTER[0];
+    const z = pos.getZ(i) + PADDY_CENTER[1];
+    pos.setY(i, terrainHeight(x, z) + 0.035);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
 export function VillageTerrain({ quality = 'high' }: VillageTerrainProps) {
   const segments = quality === 'high' ? 220 : 110;
   const ground = useMemo(() => buildGround(segments), [segments]);
+  const paddy = useMemo(() => buildPaddy(), []);
 
   return (
     <group name="terrain">
       <mesh geometry={ground} material={GROUND_MAT} receiveShadow name="ground" />
+
+      {/* Rice paddy parcel west of the pond (M12-T1, +1 draw call) */}
+      <mesh
+        geometry={paddy}
+        material={PADDY_MAT}
+        receiveShadow
+        name="paddy"
+        position={[PADDY_CENTER[0], 0, PADDY_CENTER[1]]}
+      />
 
       {/* Village pond beside the water station */}
       <group position={[POND_CENTER[0], 0, POND_CENTER[1]]}>

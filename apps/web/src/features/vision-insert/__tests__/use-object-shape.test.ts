@@ -176,6 +176,39 @@ describe('useObjectShape (PV-T9)', () => {
     await waitFor(() => expect(result.current.status).toBe('ready'));
   });
 
+  it('a validated facade is sent, asks again past a kept model, and stays for Regenerate', async () => {
+    fetchMock.mockImplementation(async () => sse(recipeShape));
+    const sent = (i: number) =>
+      JSON.parse(
+        ((fetchMock.mock.calls[i] as [string, RequestInit])[1].body as FormData).get(
+          'target'
+        ) as string
+      ) as ShapeTarget;
+    const { result } = renderHook(() => useObjectShape());
+    await act(() => result.current.requestShape('data:image/png;base64,AA', target));
+    const facade = { facadeUrl: 'https://r2.example/f1.png', facadeKey: 'vision/facades/f1.png' };
+    // Same object, now with a facade: the model made without it is not reused.
+    await act(() =>
+      result.current.requestShape('data:image/png;base64,AA', { ...target, ...facade })
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(sent(1)).toMatchObject(facade);
+    // Same facade again → kept answer, no new call.
+    await act(() =>
+      result.current.requestShape('data:image/png;base64,AA', { ...target, ...facade })
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // Regenerate from a request without the facade fields still sends the remembered facade.
+    await act(() =>
+      result.current.requestShape('data:image/png;base64,AA', target, undefined, true)
+    );
+    expect(sent(2)).toMatchObject(facade);
+    // New photo: the facade is forgotten.
+    act(() => result.current.clear());
+    await act(() => result.current.requestShape('data:image/png;base64,AA', target));
+    expect(sent(3).facadeUrl).toBeUndefined();
+  });
+
   it('requestViews previews the 6 angles once per object; a failure keeps direct generation', async () => {
     const views = CANONICAL_ANGLES.map((angle, i) => ({
       angle,

@@ -111,4 +111,77 @@ describe('useVoiceInput (M3-T2)', () => {
     expect(result.current.analyser).toBeNull();
     expect(close).toHaveBeenCalled();
   });
+
+  describe('hands-free mode (M3-T5)', () => {
+    /** Scripted microphone energy: one RMS value per 100 ms sample. */
+    function stubAudio(frames: number[]) {
+      let i = 0;
+      const node = {
+        fftSize: 1024,
+        getByteTimeDomainData(arr: Uint8Array) {
+          const amp = frames[Math.min(i++, frames.length - 1)]! * 128;
+          for (let k = 0; k < arr.length; k++) arr[k] = 128 + (k % 2 === 0 ? amp : -amp);
+        },
+      };
+      class FakeAudioContext {
+        createAnalyser = () => node;
+        createMediaStreamSource = () => ({ connect: vi.fn() });
+        close = vi.fn(async () => {});
+      }
+      vi.stubGlobal('AudioContext', FakeAudioContext);
+    }
+
+    it('silence after speech stops, transcribes and auto-sends', async () => {
+      stubAudio([0.2, 0.2, 0.2, ...Array(30).fill(0.001)]);
+      setup(
+        async () => stream,
+        async () => ({ ok: true, json: async () => ({ text: 'Allume la lumière' }) }) as Response
+      );
+      const onText = vi.fn();
+      const onAutoSend = vi.fn();
+      const { result } = renderHook(() => useVoiceInput({ locale: 'fr', onText, onAutoSend }));
+      act(() => result.current.toggleHandsFree());
+      expect(result.current.handsFree).toBe(true);
+      await act(async () => result.current.toggle());
+      await waitFor(() => expect(onText).toHaveBeenCalledWith('Allume la lumière'), {
+        timeout: 5000,
+      });
+      expect(onAutoSend).toHaveBeenCalledWith('Allume la lumière');
+      expect(result.current.status).toBe('idle');
+    }, 10000);
+
+    it('without hands-free nothing auto-sends (manual stop as before)', async () => {
+      stubAudio([0.2, 0.2, 0.2, ...Array(30).fill(0.001)]);
+      setup(
+        async () => stream,
+        async () => ({ ok: true, json: async () => ({ text: 'Coucou' }) }) as Response
+      );
+      const onText = vi.fn();
+      const onAutoSend = vi.fn();
+      const { result } = renderHook(() => useVoiceInput({ locale: 'fr', onText, onAutoSend }));
+      expect(result.current.handsFree).toBe(false);
+      await act(async () => result.current.toggle());
+      await act(async () => result.current.toggle());
+      await waitFor(() => expect(onText).toHaveBeenCalledWith('Coucou'));
+      expect(onAutoSend).not.toHaveBeenCalled();
+    });
+
+    it('without Web Audio hands-free waits for a manual stop', async () => {
+      setup(
+        async () => stream,
+        async () => ({ ok: true, json: async () => ({ text: 'Coucou' }) }) as Response
+      );
+      const onText = vi.fn();
+      const { result } = renderHook(() => useVoiceInput({ locale: 'fr', onText }));
+      act(() => result.current.toggleHandsFree());
+      await act(async () => result.current.toggle());
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 1600));
+      });
+      expect(result.current.status).toBe('recording');
+      expect(onText).not.toHaveBeenCalled();
+      await act(async () => result.current.toggle());
+      await waitFor(() => expect(onText).toHaveBeenCalledWith('Coucou'));
+    }, 10000);
+  });
 });

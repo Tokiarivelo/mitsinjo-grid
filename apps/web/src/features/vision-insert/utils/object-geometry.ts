@@ -105,6 +105,55 @@ export function unitPrism(apex = 0.5): THREE.BufferGeometry {
   return g;
 }
 
+/**
+ * Unit hipped roof (2D facade, user 2026-11-02): base 1 × 1 at y −0.5, ridge along x at y 0.5, z 0,
+ * `ridge` × the width long (0 = pyramid, 1 = side gable). Front / back slopes are trapezoids, the
+ * hip ends triangles. Non-indexed, flat normals, empty UVs like `unitPrism`.
+ */
+export function unitHip(ridge = 0.5): THREE.BufferGeometry {
+  const r = Math.min(1, Math.max(0, ridge)) / 2;
+  const A = [-0.5, -0.5, 0.5];
+  const B = [0.5, -0.5, 0.5];
+  const C = [0.5, -0.5, -0.5];
+  const D = [-0.5, -0.5, -0.5];
+  const R1 = [-r, 0.5, 0];
+  const R2 = [r, 0.5, 0];
+  const positions = [
+    ...A,
+    ...B,
+    ...R2,
+    ...A,
+    ...R2,
+    ...R1, // front slope (+z)
+    ...C,
+    ...D,
+    ...R1,
+    ...C,
+    ...R1,
+    ...R2, // back slope (−z)
+    ...B,
+    ...C,
+    ...R2, // right hip
+    ...D,
+    ...A,
+    ...R1, // left hip
+    ...A,
+    ...D,
+    ...C,
+    ...A,
+    ...C,
+    ...B, // bottom
+  ];
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.setAttribute(
+    'uv',
+    new THREE.Float32BufferAttribute(new Float32Array((positions.length / 3) * 2), 2)
+  );
+  g.computeVertexNormals();
+  return g;
+}
+
 /** Corner segments of a rounded box: 300 triangles per box, 12 boxes stay under 5 k. */
 export const ROUNDED_SEGMENTS = 2;
 /** Below this radius (object units, ≈ 1 px in the viewer) the rounding is invisible: plain box, 12 triangles. */
@@ -183,11 +232,14 @@ function unitPart(
   shape: RecipePart['shape'],
   apex?: number,
   points?: RecipePart['points'],
-  profile?: RecipePart['profile']
+  profile?: RecipePart['profile'],
+  ridge?: number
 ): THREE.BufferGeometry {
   switch (shape) {
     case 'prism':
       return unitPrism(apex);
+    case 'hip':
+      return unitHip(ridge);
     case 'extrude':
       return unitExtrude(points ?? []);
     case 'lathe':
@@ -221,7 +273,7 @@ export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
     if (p.shape === 'box') {
       g = roundedBox(sx, sy, sz, SURFACE_LOOK[SURFACES[surface]!].radius);
     } else {
-      g = unitPart(p.shape, p.apex, p.points, p.profile);
+      g = unitPart(p.shape, p.apex, p.points, p.profile, p.ridge);
       // Round parts turn to their axis before taking the part's own x / y / z extent.
       if (p.axis === 'x') g.rotateZ(Math.PI / 2);
       else if (p.axis === 'z') g.rotateX(Math.PI / 2);

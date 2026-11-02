@@ -42,9 +42,15 @@ export async function fetchPartMasks(
   segmentImage: PerceptionClient['segmentImage'],
   cropUrl: string,
   archetype: KitArchetype,
-  { timeoutMs = PART_MASKS_TIMEOUT_MS }: { timeoutMs?: number } = {}
+  {
+    timeoutMs = PART_MASKS_TIMEOUT_MS,
+    concepts = PART_CONCEPTS[archetype] ?? [],
+  }: {
+    timeoutMs?: number;
+    /** Concepts to segment instead of the archetype's (the facade asks windows and doors only). */
+    concepts?: ReadonlyArray<string>;
+  } = {}
 ): Promise<PartMask[]> {
-  const concepts = PART_CONCEPTS[archetype] ?? [];
   if (concepts.length === 0) return [];
   const deadline = Date.now() + timeoutMs;
   const controller = new AbortController();

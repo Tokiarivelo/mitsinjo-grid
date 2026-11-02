@@ -17,6 +17,16 @@
 - Also update what loads env (`scripts/env.sh`, Makefile `env` / `claude` / `env-export`) and the README run
   section when the setup steps change.
 
+## Neon database (always migrate)
+
+- A change to anything stored in Neon (a new table or column, a new persisted field of a stored type such as
+  `ChatMessageData`, a new JSONB block) **appends a migration** to `apps/web/src/server/db/migrations.ts`
+  in the same commit: next `NNNN_snake_case` id, idempotent SQL (`IF NOT EXISTS`). Never edit, rename or
+  reorder a migration that has shipped; fix forward with a new one.
+- Migrations apply **automatically**: on the app's first database call, and with `make db-migrate`. After adding
+  one, run `make db-migrate` (applies to the Neon DB in `.env`) and report the result.
+- Engine-only Zod schemas (not stored) need no migration; say so when unsure.
+
 ## Documentation (same commit as the code, update only what changed, keep it terse)
 
 | You changed…                                                       | Update                                                                            |
@@ -29,6 +39,7 @@
 | Perf technique or budget                                           | `docs/performance.md`                                                             |
 | Code/test/commit convention                                        | `docs/conventions.md`                                                             |
 | New command or env var                                             | `Makefile`, `.env.example`, `README.md` (run section)                             |
+| Stored (Neon) shape                                                | new migration in `server/db/migrations.ts` + `docs/copilot.md` (persistence)      |
 | New user-visible feature or limit                                  | `README.md` (features / limits), `docs/tasks/Pn-*.md` (tick or add task)          |
 | New skill or rule                                                  | `CLAUDE.md` skills & rules list                                                   |
 | Any of the above at session end                                    | `HANDOFF.md` "Files touched" + "Decisions"                                        |

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { KitArchetype } from '@/lib/object-kit';
+import { FACADE_REFERENCE_LINE } from './shape';
 import {
   MAX_RECIPE_PARTS,
   ObjectRecipeSchema,
@@ -108,10 +109,12 @@ export const PARTS_SYSTEM_PROMPT = [
 export function shapePartsQuestion(
   label: string,
   archetype: KitArchetype,
-  visibility: BoxVisibility
+  visibility: BoxVisibility,
+  withFacade = false
 ): string {
   const name = label.slice(0, 40).replace(/"/g, "'");
-  return `List the solid parts of the full "${name}" (${archetype}) in the clear rectangle in the middle of this crop. ${visibilityLine(visibility)}`;
+  const facade = withFacade ? ` ${FACADE_REFERENCE_LINE}` : '';
+  return `List the solid parts of the full "${name}" (${archetype}) in the clear rectangle in the middle of this crop. ${visibilityLine(visibility)}${facade}`;
 }
 
 const number = { type: 'number' };

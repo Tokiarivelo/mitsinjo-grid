@@ -237,6 +237,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
       direction: activeLine ? 'forward' : 'idle',
       speed: Math.min(2.5, Math.max(0.5, servedKw / 5)),
       color: STATUS_HEX[statusColor],
+      cut: burning.has(sectorId),
     };
   }
 

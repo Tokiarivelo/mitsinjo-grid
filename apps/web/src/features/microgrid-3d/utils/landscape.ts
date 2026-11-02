@@ -18,6 +18,10 @@ export const TERRAIN_RADIUS = 110;
 export const POND_CENTER: [number, number] = [-11.5, 4.5];
 export const POND_RADIUS = 2.6;
 
+/** Rice paddy parcel west of the pond (visual only, M12-T1). */
+export const PADDY_CENTER: [number, number] = [-19, 4.5];
+export const PADDY_SIZE: [number, number] = [7, 5];
+
 /**
  * Sun azimuth (radians, from -z towards +x): behind the village, slightly right,
  * over the lake valley, as in the reference render.

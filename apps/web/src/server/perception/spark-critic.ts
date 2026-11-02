@@ -101,6 +101,8 @@ export async function shapeWithCritic(
       // Free recipes have no template to patch: rebuilding from a patched kit would swap the
       // imagined parts for the crude placeholder ones.
       shape.recipe.source === 'free' ||
+      // Facade recipes are measured on the elevations, not on the photo: nothing to patch.
+      shape.recipe.source === 'facade' ||
       timeoutMs - (Date.now() - started) < CRITIC_TIME_MIN_MS
     ) {
       return shape;

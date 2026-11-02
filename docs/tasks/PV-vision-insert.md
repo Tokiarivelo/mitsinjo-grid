@@ -144,8 +144,11 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
       _(Done 2026-10-31: `ui/appliance-markers.tsx` (3 instanced draw calls, ≤ 6 tags or the selected sector's),
       2D « n added », `ApplianceList` on /village + /simulation Buildings tab. Budget by construction; `make scene-audit`
       not run with 30 lines (needs a server and loads no appliances).)_
-- [ ] **PV-T14** Copilot tools `run_scenario`, `propose_change`, `get_sector_metrics` accept and report
+- [x] **PV-T14** Copilot tools `run_scenario`, `propose_change`, `get_sector_metrics` accept and report
       `appliances`. **Done when** eval case "why does the water sector run out at 19 h?" cites the pumps.
+      _(Done 2026-11-02: shared `summarizeAppliances` (engine loads + sector/overall totals); `appliances` exposed
+      in both patch schemas; sector lines + `water_applianceKwh/PeakKw/Count` evidence; run totals; proposal
+      after-list + `applianceKwhDelta`; mock cites pump names + kWh; prompt 2b hint; eval case 18.)_
 
 ## Env vars (add to `src/lib/env.ts`, `.env.example`, `docs/setup/env.md`)
 

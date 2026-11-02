@@ -13,7 +13,7 @@
 - [x] **P6-T7** Eval cases from `copilot.md` §5 against mock (CI) and Meta (manual, results noted in HANDOFF).
 - [x] **P6-T8** Error states: AI unavailable keeps all computed results visible.
 - [x] **P6-T9** `propose_change` can propose a strategy switch: optional `strategy: StrategyId` beside `patch` (≥ 1 required); `proposal` SSE carries it; ConfirmProposalDialog shows the strategy diff; `store.applyProposal` sets `activeStrategy` then runs. Tests + eval case 8. Sector priorities / caps → `PY-sector-control.md`.
-- [x] **P6-T10** Dynamic suggested prompts: `features/copilot/utils/suggest-prompts.ts` maps the engine result (warnings, `affectedSectors`, `criticalUnservedKwh`, active strategy, scenario) to ≤ 6 i18n keys with params (sector, hours, strategy); static list only as fallback when no result. Pure function + Vitest.
+- [x] **P6-T10** Dynamic suggested prompts: `features/copilot/utils/suggest-prompts.ts` maps the engine result (warnings, `affectedSectors`, `criticalUnservedKwh`, active strategy, scenario) to ≤ 6 i18n keys with params (sector, hours, strategy); no result → no chips, `RunSimulationCta` asks for a run (no static list); scenario events and scripted fires give their own chips. Pure function + Vitest.
 - [x] **P6-T11** Bilingual mock: `providers/mock.ts` matches EN + FR keywords (e.g. `centre de santé`, `solaire`, `stratégies`, `batterie`) and answers in the user's language; every suggested prompt (EN/FR) routes to the right tool. Test per suggested prompt.
 - [x] **P6-T12** Scope guardrail: system prompt rule "only this simulated microgrid; politely refuse off-topic and suggest a related question"; mock detects off-topic → same refusal, no tool call. Eval case 9.
 

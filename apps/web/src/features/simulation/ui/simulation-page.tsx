@@ -61,6 +61,7 @@ import { ApplianceList } from '@/features/vision-insert';
 import { VillageViewport } from './village-viewport';
 import { PlaybackActions } from './playback-actions';
 import { ReportFireControl } from '@/features/fire-alert';
+import { AutopilotPanel, ConstitutionCard } from '@/features/autopilot';
 import { WeatherWorkflowPanel } from './weather-workflow-panel';
 import { HardwareLinkSection } from '@/features/hardware-link';
 import { DayStrip } from './day-strip';
@@ -352,6 +353,16 @@ export function SimulationPage() {
               {/* Safety: report a fire from the deck, whatever tab is open (M2-T2) */}
               <div className="px-4 py-3 border-b border-border">
                 <ReportFireControl variant="panel" />
+              </div>
+
+              {/* Rule-based autopilot: one suggestion per simulated hour, off by default (M10-T1) */}
+              <div className="px-4 py-3 border-b border-border">
+                <AutopilotPanel />
+              </div>
+
+              {/* Village constitution: plain-word rules the autopilot is verified against (M10-T2) */}
+              <div className="px-4 py-3 border-b border-border">
+                <ConstitutionCard />
               </div>
 
               {/* TAB NAVIGATION BAR */}

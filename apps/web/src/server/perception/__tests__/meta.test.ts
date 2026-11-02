@@ -202,6 +202,36 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
     expect(prose.result.recipe).toBeNull();
   });
 
+  it('sends the validated 2D facade as a second image and tells Spark how to use it', async () => {
+    const kit = {
+      archetype: 'house',
+      proportions: { w: 1, h: 0.6, d: 0.7 },
+      colors: { main: '#e8dcc0', secondary: '#7a3b2e', accent: '#334455' },
+    };
+    const fetchMock = respond({ choices: [{ message: { content: JSON.stringify(kit) } }] });
+    await backend.describeShape('data:image/jpeg;base64,AA', {
+      label: 'House',
+      category: 'other',
+      scenery: 'building',
+      facadeUrl: 'https://r2.example/facade.png',
+    });
+    const content = JSON.parse(lastRequest(fetchMock).init.body as string).messages[1].content;
+    expect(content.map((c: { type: string }) => c.type)).toEqual([
+      'text',
+      'image_url',
+      'image_url',
+    ]);
+    expect(content[1].image_url.url).toBe('data:image/jpeg;base64,AA');
+    expect(content[2].image_url.url).toBe('https://r2.example/facade.png');
+    expect(content[0].text).toContain('second image is the validated front elevation');
+
+    const plainMock = respond({ choices: [{ message: { content: JSON.stringify(kit) } }] });
+    await backend.describeShape('data:image/jpeg;base64,AA', { label: 'House', category: 'other' });
+    const plain = JSON.parse(lastRequest(plainMock).init.body as string).messages[1].content;
+    expect(plain).toHaveLength(2);
+    expect(plain[0].text).not.toContain('second image');
+  });
+
   it('logs the full 3D request and result, images as placeholders only', async () => {
     const kit = {
       archetype: 'cabinet',

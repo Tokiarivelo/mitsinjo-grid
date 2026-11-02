@@ -6,8 +6,8 @@ import {
   Box,
   Check,
   Circle,
-  Eye,
   EyeOff,
+  Image as ImageIcon,
   Layers,
   Loader2,
   Move3d,
@@ -33,7 +33,8 @@ import { useElapsedSeconds } from '../hooks/use-elapsed-seconds';
 import type { ObjectShapeState } from '../hooks/use-object-shape';
 import { recipeMaterials } from '../utils/surface-look';
 import { ObjectDisplayControls } from './object-display-controls';
-import { ObjectViewsCarousel } from './object-views-carousel';
+import { Facade2dPanel } from './facade-2d-panel';
+import { useFacade2d, validatedFacade, type ValidatedFacade } from '../hooks/use-facade-2d';
 
 /** Placeholder while the viewer chunk loads or Spark builds the recipe. */
 function ViewerSkeleton() {
@@ -174,16 +175,16 @@ export interface ObjectShapePanelProps extends ObjectShapeState {
   /** « Regenerate the 3D model »: re-run Spark for an existing 3D model, skipping cache. */
   onRegenerate?: () => void;
   /** « Generate the 3D model »: nothing is asked to Spark before (selecting only shows a kept model). */
-  onGenerate?: () => void;
-  /** « Preview 6 angles »: cheap 2D imagination (no Spark call) shown before the 3D model. */
-  onPreviewViews?: () => void;
+  /** `facade` = the validated 2D elevation, used as a reference image by the 3D call. */
+  onGenerate?: (facade?: ValidatedFacade) => void;
+  sessionId?: string;
 }
 
-type ShapeTab = 'model' | 'views';
+type ShapeTab = 'model' | 'facade';
 
 /**
- * « 3D model » block of the selected appliance (PV-T10): first the AI imagines the object from 6 angles
- * in 2D (cheap preview, validated with « Validate & Generate 3D »), then Spark builds the recipe
+ * « 3D model » block of the selected appliance (PV-T10): first the AI imagines the 2D elevation
+ * with Meta Muse (validated with « Validate & Generate 3D »), then Spark builds the recipe
  * (« AI shape », violet = AI output) or the outline fallback (« Outline shape » + note), on a studio
  * backdrop that stays lighter than dark objects in both themes. No WebGL → a note.
  */
@@ -192,32 +193,22 @@ export function ObjectShapePanel({
   shape,
   step,
   startedAt,
-  viewsStatus,
-  views,
   detection,
   label,
   imageUrl,
   onRetry,
   onRegenerate,
   onGenerate,
-  onPreviewViews,
+  sessionId,
 }: ObjectShapePanelProps) {
   const t = useTranslations('features.visionInsert');
   const webgl = useWebGLAvailable();
+  const facade = useFacade2d(imageUrl ?? null, detection, sessionId);
   const ready = status === 'ready' && shape?.detectionId === detection.id;
   const materials = ready && shape?.recipe ? recipeMaterials(shape.recipe) : [];
   const loading = status === 'loading';
   const seconds = useElapsedSeconds(startedAt, status === 'loading');
-  // The 3D answer carries its own 6 views (rendered from the final recipe); else the preview.
-  const shownViews =
-    ready && shape?.imaginedViews?.length
-      ? shape.imaginedViews
-      : viewsStatus === 'ready'
-        ? (views ?? [])
-        : [];
-  const hasViews = shownViews.length > 0;
-  const viewsBusy = viewsStatus === 'loading';
-  const showTabs = ready || hasViews || viewsBusy;
+  const showTabs = ready && Boolean(facade.facade);
   // Tab choice is per object: a new detection restarts on the model tab.
   const [tabState, setTabState] = useState({ id: detection.id, tab: 'model' as ShapeTab });
   const setTab = (tab: ShapeTab) => setTabState({ id: detection.id, tab });
@@ -231,8 +222,7 @@ export function ObjectShapePanel({
   const shown = display.id === detection.id ? display : { id: detection.id, scale: 1, tint: null };
   const setDisplay = (patch: Partial<{ scale: number; tint: string | null }>) =>
     setDisplayState({ id: detection.id, scale: shown.scale, tint: shown.tint, ...patch });
-  // Before the 3D exists the preview is the point: validating it builds the model.
-  const activeTab: ShapeTab = !ready && (hasViews || viewsBusy) ? 'views' : userTab;
+  const activeTab: ShapeTab = ready ? userTab : 'model';
 
   return (
     <section className="flex flex-col gap-2" aria-labelledby="object-3d-title">
@@ -271,12 +261,10 @@ export function ObjectShapePanel({
           role="tablist"
           aria-label={t('model3dTitle')}
         >
-          {(
-            [
-              { id: 'model', label: t('model3dModelTab'), Icon: Box },
-              { id: 'views', label: t('model3dViewsTab'), Icon: Eye },
-            ] as const
-          ).map(({ id, label: tabLabel, Icon }) => {
+          {[
+            { id: 'model' as const, label: t('model3dModelTab'), Icon: Box },
+            { id: 'facade' as const, label: t('facade2dTab'), Icon: ImageIcon },
+          ].map(({ id, label: tabLabel, Icon }) => {
             const selected = activeTab === id;
             return (
               <button
@@ -307,46 +295,22 @@ export function ObjectShapePanel({
       ) : (
         <>
           {loading && step && <ShapeSteps step={step} seconds={seconds} />}
-          {activeTab === 'views' ? (
-            viewsBusy ? (
-              <p className="flex items-center justify-center gap-2 rounded-control border border-dashed border-border bg-canvas-sunken p-4 text-xs text-text-muted">
-                <Loader2
-                  className="h-4 w-4 animate-spin motion-reduce:animate-none"
-                  aria-hidden="true"
-                />
-                {t('model3dViewsLoading')}
-              </p>
-            ) : hasViews ? (
-              <ObjectViewsCarousel
-                views={shownViews}
-                onValidate={!ready ? onGenerate : undefined}
-                isValidating={loading}
-              />
-            ) : null
-          ) : !ready && !loading ? (
-            <div className="flex flex-col items-center gap-2 rounded-control border border-dashed border-border bg-canvas-sunken p-4 text-center">
-              <p className="text-xs text-text-secondary">{t('model3dGenerateHint')}</p>
-              {onPreviewViews && (
-                <button
-                  type="button"
-                  onClick={onPreviewViews}
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-ai-violet px-4 text-sm font-semibold text-surface hover:bg-ai-violet/90 cursor-pointer"
-                >
-                  <Eye className="h-4 w-4" aria-hidden="true" />
-                  {t('previewViews')}
-                </button>
-              )}
-              {onGenerate && (
-                <button
-                  type="button"
-                  onClick={onGenerate}
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-4 text-xs font-medium text-text-primary hover:bg-surface-hover cursor-pointer"
-                >
-                  <Sparkles className="h-4 w-4" aria-hidden="true" />
-                  {t('model3dGenerate')}
-                </button>
-              )}
-            </div>
+          {activeTab === 'facade' || (!ready && !loading) ? (
+            <Facade2dPanel
+              status={facade.status}
+              facade={facade.facade}
+              userPrompt={facade.userPrompt}
+              onUserPromptChange={facade.setUserPrompt}
+              onGenerate={() => facade.generate()}
+              onRetry={(prompt) => facade.retry(prompt)}
+              onDelete={() => facade.deleteFacade()}
+              onValidate={() => {
+                facade.validate();
+                setTab('model');
+                onGenerate?.(validatedFacade(facade.facade));
+              }}
+              isValidating3D={loading}
+            />
           ) : (
             <div
               role="img"
@@ -369,70 +333,74 @@ export function ObjectShapePanel({
         </>
       )}
 
-      {ready && webgl && activeTab === 'model' && (
-        <ObjectDisplayControls
-          scale={shown.scale}
-          tint={shown.tint}
-          onScale={(scale) => setDisplay({ scale })}
-          onTint={(tint) => setDisplay({ tint })}
-          onReset={() => setDisplay({ scale: 1, tint: null })}
-        />
-      )}
-
-      {ready && shape.mode === 'silhouette' && (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="min-w-0 flex-1 text-xs text-text-muted">
-            {t(NOTE_KEY[shape.reason ?? 'malformed'], { max: SHAPE_TIMEOUT_MS / 1000 })}
-            {shape.detail && (
-              <span className="block font-mono text-[11px] text-text-secondary">
-                {t('model3dCause', { cause: causeText(shape.detail) })}
-              </span>
-            )}
-          </p>
-          {(onRetry ?? onRegenerate) && (
-            <button
-              type="button"
-              onClick={onRetry ?? onRegenerate}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-3 text-xs font-medium text-text-primary hover:bg-surface-hover cursor-pointer"
-            >
-              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-              {t('model3dRetry')}
-            </button>
+      {ready && activeTab === 'model' && (
+        <>
+          {webgl && (
+            <ObjectDisplayControls
+              scale={shown.scale}
+              tint={shown.tint}
+              onScale={(scale) => setDisplay({ scale })}
+              onTint={(tint) => setDisplay({ tint })}
+              onReset={() => setDisplay({ scale: 1, tint: null })}
+            />
           )}
-        </div>
-      )}
-      {ready && shape.mode === 'recipe' && (onRegenerate ?? onRetry) && (
-        <div className="flex justify-end pt-1">
-          <button
-            type="button"
-            onClick={onRegenerate ?? onRetry}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-3 text-xs font-medium text-text-primary hover:bg-surface-hover cursor-pointer"
-          >
-            <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-            {t('model3dRegenerate')}
-          </button>
-        </div>
-      )}
-      {ready && shape?.fit && (
-        <p className="flex items-center gap-1.5 text-xs text-text-secondary">
-          <Target className="h-3 w-3 shrink-0" aria-hidden="true" />
-          {t('model3dFit', { pct: fmtPct(shape.fit.iou * 100, 0) })}
-        </p>
-      )}
-      {ready && materials.length > 0 && (
-        <p className="flex items-start gap-1.5 text-xs text-ai-violet">
-          <Layers className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-          {t('model3dMaterials', {
-            list: materials.map((m) => t(`model3dMaterial.${m}`)).join(' · '),
-          })}
-        </p>
-      )}
-      {ready && shape.mode === 'recipe' && shape.recipe && <DimStatusLine recipe={shape.recipe} />}
-      {ready && webgl && (
-        <p className="flex items-center gap-1.5 text-xs text-text-muted">
-          <Move3d className="h-3 w-3 shrink-0" aria-hidden="true" />
-          {t('model3dHint')}
-        </p>
+
+          {shape.mode === 'silhouette' && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="min-w-0 flex-1 text-xs text-text-muted">
+                {t(NOTE_KEY[shape.reason ?? 'malformed'], { max: SHAPE_TIMEOUT_MS / 1000 })}
+                {shape.detail && (
+                  <span className="block font-mono text-[11px] text-text-secondary">
+                    {t('model3dCause', { cause: causeText(shape.detail) })}
+                  </span>
+                )}
+              </p>
+              {(onRetry ?? onRegenerate) && (
+                <button
+                  type="button"
+                  onClick={onRetry ?? onRegenerate}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-3 text-xs font-medium text-text-primary hover:bg-surface-hover cursor-pointer"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t('model3dRetry')}
+                </button>
+              )}
+            </div>
+          )}
+          {shape.mode === 'recipe' && (onRegenerate ?? onRetry) && (
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={onRegenerate ?? onRetry}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-3 text-xs font-medium text-text-primary hover:bg-surface-hover cursor-pointer"
+              >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                {t('model3dRegenerate')}
+              </button>
+            </div>
+          )}
+          {shape?.fit && (
+            <p className="flex items-center gap-1.5 text-xs text-text-secondary">
+              <Target className="h-3 w-3 shrink-0" aria-hidden="true" />
+              {t('model3dFit', { pct: fmtPct(shape.fit.iou * 100, 0) })}
+            </p>
+          )}
+          {materials.length > 0 && (
+            <p className="flex items-start gap-1.5 text-xs text-ai-violet">
+              <Layers className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+              {t('model3dMaterials', {
+                list: materials.map((m) => t(`model3dMaterial.${m}`)).join(' · '),
+              })}
+            </p>
+          )}
+          {shape.mode === 'recipe' && shape.recipe && <DimStatusLine recipe={shape.recipe} />}
+          {webgl && (
+            <p className="flex items-center gap-1.5 text-xs text-text-muted">
+              <Move3d className="h-3 w-3 shrink-0" aria-hidden="true" />
+              {t('model3dHint')}
+            </p>
+          )}
+        </>
       )}
     </section>
   );

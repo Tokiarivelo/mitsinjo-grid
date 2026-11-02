@@ -13,10 +13,17 @@ import {
   Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useTranslations } from '@/lib/i18n';
+import { useTranslations, type Locale } from '@/lib/i18n';
 import type { ChatMessageData, ProposalDecision, ProposalDiffItem } from '../types';
+import type { InputPatch } from '@mitsinjo/engine';
+import { pickSpeechVoice } from '../utils/speech-voice';
 import type { PartialApproval } from '../utils/proposal-parts';
 import { ConfirmProposalDialog } from './confirm-proposal-dialog';
+import { DayComicBlock } from './day-comic-block';
+import { MeetingBlock } from './meeting-block';
+import { PerceptionBlock } from './perception-block';
+import { SheddingPosterBlock } from './shedding-poster-block';
+import { CouncilBubbles } from './council-bubbles';
 import { ProposalDecisionMessage } from './proposal-decision-message';
 import { MarkdownRenderer } from './markdown-renderer';
 import { ChatChart } from './chat-chart';
@@ -42,6 +49,16 @@ export interface ChatMessageItemProps {
   /** Set only on the last answer or error: shows "Retry" (same question again). */
   onRetry?: () => void;
   className?: string;
+  /** App locale for the readout voice (default 'en'). */
+  locale?: Locale;
+  /** Propose an engine patch from edited vision observations (M4-T4) or a meeting (M10-T4). */
+  onProposePerception?: (
+    messageId: string,
+    patch: InputPatch,
+    reason: string,
+    idPrefix?: string
+  ) => void;
+  onReportFire?: () => void;
 }
 
 export function ChatMessageItem({
@@ -53,6 +70,9 @@ export function ChatMessageItem({
   onUndo,
   onRetry,
   className,
+  locale = 'en',
+  onProposePerception,
+  onReportFire,
 }: ChatMessageItemProps) {
   const tCopilot = useTranslations('features.copilot');
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -74,11 +94,17 @@ export function ChatMessageItem({
 
     if (!textToRead) return;
 
+    // Voice of the message language (M3-T4); Malagasy without a voice stays text-only.
+    const synth = window.speechSynthesis;
+    const voice = pickSpeechVoice(synth.getVoices(), locale);
+    if (!voice && locale === 'mg') return;
     const utterance = new SpeechSynthesisUtterance(textToRead);
+    utterance.lang = locale;
+    if (voice) utterance.voice = voice;
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
+    synth.cancel();
+    synth.speak(utterance);
     setIsSpeaking(true);
   };
 
@@ -308,6 +334,65 @@ export function ChatMessageItem({
             </div>
           )}
 
+          {/* Shedding poster: number-free picture + engine hours overlay (M5-T3) */}
+          {message.visual?.kind === 'shedding_poster' && (
+            <SheddingPosterBlock visual={message.visual} onMediaClick={onMediaClick} />
+          )}
+
+          {/* Day comic: four panels + engine hours overlay (M12-T3) */}
+          {message.visual?.kind === 'day_comic' && (
+            <DayComicBlock visual={message.visual} onMediaClick={onMediaClick} />
+          )}
+
+          {/* Generated Visual Card (engine result illustrated, M5-T2) */}
+          {message.visual &&
+            message.visual.kind !== 'shedding_poster' &&
+            message.visual.kind !== 'day_comic' && (
+              <div
+                onClick={() =>
+                  onMediaClick?.({
+                    url: message.visual!.imageUrl,
+                    type: 'image',
+                    title: message.visual!.caption || tCopilot('generatedImageAlt'),
+                    caption: message.visual!.caption,
+                  })
+                }
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    onMediaClick?.({
+                      url: message.visual!.imageUrl,
+                      type: 'image',
+                      title: message.visual!.caption || tCopilot('generatedImageAlt'),
+                      caption: message.visual!.caption,
+                    });
+                  }
+                }}
+                className="rounded-xl overflow-hidden border border-border/80 bg-surface shadow-sm cursor-pointer hover:border-ai-violet/80 transition-all group"
+              >
+                <div className="relative aspect-video w-full bg-surface-elevated/40">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={message.visual.imageUrl}
+                    alt={message.visual.caption || tCopilot('generatedImageAlt')}
+                    className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-200"
+                    loading="lazy"
+                  />
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-ai-violet/15 text-ai-violet backdrop-blur-sm border border-ai-violet/40 shadow-xs">
+                      {tCopilot('visualGeneratedBadge')}
+                    </span>
+                  </div>
+                </div>
+                {message.visual.caption && (
+                  <p className="p-3 text-xs text-text-secondary border-t border-border/60 font-sans">
+                    {message.visual.caption}
+                  </p>
+                )}
+              </div>
+            )}
+
           {/* Generated Video Card */}
           {message.videoUrl && (
             <div
@@ -482,6 +567,30 @@ export function ChatMessageItem({
             </div>
           )}
         </div>
+
+        {/* Vision observations: editable, then proposed to the engine (M4-T4) */}
+        {message.perception?.map((p, idx) => (
+          <PerceptionBlock
+            key={`${p.model}-${idx}`}
+            perception={p}
+            onPropose={(patch, reason) => onProposePerception?.(message.id, patch, reason)}
+            onMediaClick={onMediaClick}
+            onReportFire={onReportFire}
+          />
+        ))}
+
+        {/* Sector council run: one bubble per voice + mediator verdict (M7-T1) */}
+        {message.council && <CouncilBubbles council={message.council} />}
+
+        {/* Diarized village meeting: turns + priorities, then the usual dialog (M10-T4) */}
+        {message.meeting && (
+          <MeetingBlock
+            meeting={message.meeting}
+            onPropose={(patch, reason) =>
+              onProposePerception?.(message.id, patch, reason, 'PROP-MEETING')
+            }
+          />
+        )}
 
         {/* Embedded Scenario Proposal Card */}
         {proposal && onApproveProposal && onRejectProposal && (

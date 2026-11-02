@@ -13,6 +13,7 @@ import {
   triangleCount,
   unitExtrude,
   unitLathe,
+  unitHip,
   unitPrism,
 } from '../utils/object-geometry';
 import { SURFACE_LOOK } from '../utils/surface-look';
@@ -202,6 +203,52 @@ describe('unitPrism (PF-T3)', () => {
     expect(b.max.z - b.min.z).toBeCloseTo(0.6 + 2 * ROOF_OVERHANG, 6);
     expect(b.max.y).toBeCloseTo(0.4, 6);
     expect(b.max.y - b.min.y).toBeCloseTo(0.4, 6);
+  });
+});
+
+describe('unitHip (2D facade house)', () => {
+  const topX = (g: THREE.BufferGeometry) => {
+    const pos = g.getAttribute('position');
+    return Array.from({ length: pos.count }, (_, i) => i)
+      .filter((i) => pos.getY(i) === 0.5)
+      .map((i) => pos.getX(i));
+  };
+
+  it('fills the unit box, ridge along x of the given share, every face turned outwards', () => {
+    const g = unitHip(0.6);
+    const b = bounds(g);
+    expect(b.min.toArray()).toEqual([-0.5, -0.5, -0.5]);
+    expect(b.max.toArray()).toEqual([0.5, 0.5, 0.5]);
+    const xs = topX(g);
+    expect(Math.min(...xs)).toBeCloseTo(-0.3, 6);
+    expect(Math.max(...xs)).toBeCloseTo(0.3, 6);
+    expect(triangleCount(g)).toBe(8);
+    // Each face normal points away from the centre (CCW winding seen from outside).
+    const pos = g.getAttribute('position');
+    const nrm = g.getAttribute('normal');
+    for (let t = 0; t < pos.count; t += 3) {
+      const c = new THREE.Vector3();
+      for (let k = 0; k < 3; k++) c.add(new THREE.Vector3().fromBufferAttribute(pos, t + k));
+      c.divideScalar(3);
+      expect(c.dot(new THREE.Vector3().fromBufferAttribute(nrm, t))).toBeGreaterThan(0);
+    }
+  });
+
+  it('ridge 0 is a pyramid, ridge 1 a side gable (front reads as a rectangle)', () => {
+    expect(new Set(topX(unitHip(0)))).toEqual(new Set([0]));
+    const xs = topX(unitHip(1));
+    expect(Math.min(...xs)).toBe(-0.5);
+    expect(Math.max(...xs)).toBe(0.5);
+  });
+
+  it('builds in a recipe with no overhang added (the facade measured it)', () => {
+    const roof: ObjectRecipe = {
+      proportions: { w: 1, h: 0.8, d: 0.6 },
+      parts: [{ shape: 'hip', ridge: 0.5, at: [0, 0.25, 0], size: [1, 0.5, 1], color: '#6e6a62' }],
+    };
+    const b = bounds(recipeMesh(roof));
+    expect(b.max.x - b.min.x).toBeCloseTo(1, 6);
+    expect(b.max.z - b.min.z).toBeCloseTo(0.6, 6);
   });
 });
 

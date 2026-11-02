@@ -22,7 +22,8 @@ type ScenarioId =
   | 'high_demand'
   | 'battery_constraint'
   | 'essential_stress'
-  | 'meter_anomaly';
+  | 'meter_anomaly'
+  | 'village_fire';
 ```
 
 ```ts
@@ -416,14 +417,17 @@ expected demand. `toHardwareCommand`: `duty = clamp(servedKw / feederNominalKw, 
 
 ## Copilot tools (LLM-facing; args validated with Zod server-side)
 
-| Tool                 | Args                                                                                        | Returns                                                                                     |
-| -------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `get_grid_state`     | `{ hourly?: boolean }`                                                                      | `{ scenarioId, input summary, metrics of active strategy, resultId, hourly?, highlights? }` |
-| `run_scenario`       | `{ scenarioId?, patch?: InputPatch, strategy }`                                             | `{ resultId, metrics, warnings }`                                                           |
-| `compare_strategies` | `{ strategies?: StrategyId[] }` (on current input)                                          | `{ [strategy]: { resultId, metrics } }` (evidence includes lifelineCoveragePct)             |
-| `get_sector_metrics` | `{ sector: SectorId, strategy?: StrategyId }` (default: active)                             | `SectorMetrics & { priority, hourly: {t,demandKw,servedKw}[] }`                             |
-| `propose_change`     | `{ patch?: InputPatch, strategy?: StrategyId, reason: string }` (≥ 1 of patch/strategy)     | `{ proposalId, impact: ChangeImpact }` — **not applied**; UI asks user                      |
-| `control_playback`   | `{ action: 'play'\|'pause'\|'stop'\|'restart'\|'seek', hour?: 0–23 }` (`seek` needs `hour`) | `{ status: 'applied_in_app', action, hour?, note }` + SSE `control`; view only              |
+| Tool                 | Args                                                                                        | Returns                                                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_grid_state`     | `{ hourly?: boolean }`                                                                      | `{ scenarioId, input summary, metrics of active strategy, resultId, hourly?, highlights? }`                                                               |
+| `run_scenario`       | `{ scenarioId?, patch?: InputPatch, strategy }` (patch `appliances` replaces the list)      | `{ resultId, metrics, warnings, appliances: { count, dailyKwh, peakKw, perSector } }`                                                                     |
+| `compare_strategies` | `{ strategies?: StrategyId[] }` (on current input)                                          | `{ [strategy]: { resultId, metrics } }` (evidence includes lifelineCoveragePct)                                                                           |
+| `get_sector_metrics` | `{ sector: SectorId, strategy?: StrategyId }` (default: active)                             | `SectorMetrics & { priority, hourly: {t,demandKw,servedKw}[], appliances: { count, dailyKwh, peakKw, lines[] } }`                                         |
+| `get_incidents`      | `{ hour?: 0–23, strategy?: StrategyId }` (defaults: app hour, active)                       | `{ count, incidents: [{ sector, startHour, endHour, status, unservedKwh }] }` (read-only; restore via `propose_change`)                                   |
+| `simulate_week`      | `{ days: [{ weather: sunny\|partly_cloudy\|cloudy\|rainy\|storm }]×1–7, strategy? }`        | `{ days: [{ day, weather, resultId, unservedKwh, criticalUnservedKwh, socEndPct }], totals, plan: { strategy, worstDay } }` (battery carries over; M7-T2) |
+| `get_battery_story`  | `{ hour?: 0–23, strategy? }` (default: emptiest hour, active strategy)                      | `{ hour, socPct, peak: { hour, socPct }, solar/demand/discharged/unservedKwhSincePeak, unservedBySector[] }` (M7-T3)                                      |
+| `propose_change`     | `{ patch?: InputPatch, strategy?: StrategyId, reason: string }` (≥ 1 of patch/strategy)     | `{ proposalId, impact: ChangeImpact, appliances, applianceKwhDelta? }` — **not applied**; UI asks user                                                    |
+| `control_playback`   | `{ action: 'play'\|'pause'\|'stop'\|'restart'\|'seek', hour?: 0–23 }` (`seek` needs `hour`) | `{ status: 'applied_in_app', action, hour?, note }` + SSE `control`; view only                                                                            |
 
 `control_playback` is the one tool the app runs without approval: it only moves the 24 h playback / time cursor
 (`applyPlaybackControl` → store `play/pause/stop/restart/setTimeIndex`; seek pauses first). Inputs, strategy and
@@ -440,9 +444,16 @@ on the current input + active strategy vs the patched input + proposed strategy 
 `lib/proposal-impact.ts`, shared with the dialog), rounds to 2 decimals, keeps only sectors that change, and emits the same numbers as `evidence` (`socMinPctBefore`, `<sector>_servedKwhDelta`, …).
 Unsafe patch → tool data also has `clinicGuard: ClinicGuardReason[]` (engine `clinicGuard(patch)`, schema
 `ClinicGuardReasonSchema` = `cap_zero | disconnected | floor_zero | lifeline_off`); the dialog recomputes it from the patch.
+Inserted loads (PV-T14, `summarizeAppliances` in `tools.ts`, engine `applianceSummary` + `sectorApplianceKw`):
+`run_scenario` reports the simulated input's `{ count, dailyKwh, peakKw, perSector: { count, dailyKwh, peakKw } }`;
+`get_sector_metrics` reports its sector's `{ count, dailyKwh, peakKw, lines: [{ id, name, category, quantity, watts,
+peakKw, dailyKwh }] }`; `propose_change` reports the after-list plus `applianceKwhDelta` (after − before, only when
+the patch touches `appliances`). Evidence, only when lines exist: `applianceCount`, `applianceKwh`, `appliancePeakKw`,
+`<sector>_applianceKwh`, `<sector>_appliancePeakKw`, `<sector>_applianceCount`, `applianceKwhDelta`.
 Partial approval (K3, `features/copilot/utils/proposal-parts.ts`): `proposalPartIds(proposal)` = one id per dialog line
 (`strategy`, `priorities.<s>`, `sectorCaps.<i>`, `solarDropPct`, `dropWindow`, `demandMultiplier`, `batteryCapacityKwh`,
-`initialSocPct`, `minSocPct`, `lifeline.enabled`, `lifeline.kw.<s>`, `sectorLoads.<s>`), same order as `useProposalDiff`.
+`initialSocPct`, `minSocPct`, `lifeline.enabled`, `lifeline.kw.<s>`, `sectorLoads.<s>`, `clearFires.<s>` (M2-T4)),
+same order as `useProposalDiff`.
 `pickProposal(proposal, checkedIds): { patch?, strategy? }` keeps the checked lines plus patch fields with no line.
 
 ```ts
@@ -464,6 +475,7 @@ interface InputPatch {
   lifeline?: { enabled?: boolean; kw?: Partial<Record<SectorId, number>> }; // 0–2 kW
   sectorLoads?: Partial<Record<SectorId, number>>; // 0–3 → loadMultiplier (1 removes it, 0 disconnects)
   appliances?: Appliance[]; // replaces the list; [] removes the field (hash unchanged)
+  clearFires?: SectorId[]; // non-empty → removes the fire events of these sectors (restore, M2-T4)
 }
 ```
 
@@ -475,7 +487,11 @@ Client `ChatMessageData.retried?: boolean` = answer redone by Retry (kept on scr
 `activity {tool, sector?, label}` (UI translates `tool`; `label` is English, logs only) · `delta {text}` · `evidence {resultId, fields: Record<string, number|string>}` ·
 `proposal {proposalId, patch?, strategy?, reason, impact?: ChangeImpact}` · `error {code, reason?, message}` · `done {}` ·
 `model {model, modality, reason}` (modality `chat|reasoning|vision|image`; a second `model` event announces a switch to Wonder) · `image {imageUrl, caption}` ·
-`perception {kind:'segment', concept, count, boxCoverage, instances[], imageWidth, imageHeight, source, model, fallback?}` ·
+`media {kind:'village_tonight'|'shedding_poster', imageUrl, caption, overlay: {cuts: {sector, fromHour, toHour, unservedKwh}[]}|null, resultId}` (M5-T1; `village_tonight` overlay is null) ·
+`video {videoUrl, caption}` · `chart {type:'line'|'bar'|'area', title?, series[], data[]}` ·
+`perception {kind:'segment', concept, count, boxCoverage, instances[{box, confidence?, outline?}], imageUrl, imageWidth, imageHeight, source, model, fallback?}` (M8-T1: the lightbox overlays instances as masks) ·
+`perception {kind:'analyze', summary, observations[{label, value, unit?, confidence}], model, source}` (M4-T2) ·
+`council {question, rounds, agents[{sector, reason, patch, impact: ChangeImpact, mock}], verdict: {pick, synthesis, mock}}` (M7-T1) ·
 `control {action, hour?}` (playback command from `control_playback`; client applies it, `ChatMessageData.control` shows a cyan line) ·
 `summary {text, summarizedCount}` (history folded into the summary; client sends only later messages, session stores both).
 `error.code = PROVIDER_FALLBACK` carries `reason: 'spend_cap' | 'provider_error' | 'timeout'` (UI: amber note on that answer).
@@ -521,8 +537,8 @@ kind / category / box; drawn outline kept until SAM sends one. Failure → `iden
 fallback?, detail? /*'http_429', 'timeout', 'offline'…*/, fit?: { iou: 0–1 } /*PF-T6, computed: silhouette vs SAM outline, panel « Matches the photo outline: 82% »*/, imaginedViews?: ImaginedAngleView[6] /*PR-0.7, flat renders of the final recipe at the 6 canonical angles*/, partMasks?: PartMask[] /*PR-2.5, SAM parts on the crop: { concept /*wheel, window, door, chimney, lamp*/, box /*crop fractions*/, outline? } (vehicle/house/lamp_post only, ≤ 8 per concept, meta-only, absent when skipped)*/, kit?: ObjectKit /*PR-0.6, Spark's kit behind the recipe (meta-only; the critic patches it)*/, outline?: string /*PR-0.6, SAM outline used for fit+score (fetched ones included)*/ }`; 400 (JSON) missing / invalid target. One Spark critic round below score 70 with ≥ 20 s left (PR-0.6: `shapeWithCritic`, `criticizeShape`, patch → re-fit → keep-if-rises; mock/skipped without Meta). `withViews` (route: always true) gates `imaginedViews`; without it the route returns the recipe alone.
 `POST /api/vision/views` (PR-0.7) same multipart in → JSON `{ ok: true, views: ImaginedAngleView[6], detectionId }` (no Spark call: archetype template + measured colours + box proportions); `ImaginedAngleView { angle: 'front'|'back'|'left'|'right'|'top'|'three_quarter', labelKey, angleDeg, description, imageUrl /*256² PNG data URL, studio backdrop*/, features: string[] }`.
 Client state: `{ status, shape?, step?, startedAt?, viewsStatus, views? }`; `peek(target)` on select (kept shape and preview, or idle), `requestViews` on « Preview 6 angles » (cached per `shapeKey`, a failure falls back to idle), `requestShape` on « Generate » or « Validate & Generate 3D »; only lasting answers are cached (`keepShape`), failures are asked again.
-`ObjectRecipe { proportions: {w,h,d} (largest = 1), parts: { shape: 'box'|'cylinder'|'sphere'|'cone'|'prism'|'extrude'|'lathe', at: [x,y,z] (−0.6…0.6),
-size: [x,y,z] (0.01–1), axis?: 'x'|'y'|'z', apex? /*prism ridge x, 0–1 of its width*/, points? /*extrude only (PR-2.1): closed ring in unit space, 3–64 pts, server-built, never from Spark*/, profile? /*lathe only (PR-2.3): [radius 0–0.5, y] 2–32 pts, y never decreases*/, color: '#rrggbb', material?: RECIPE_MATERIALS /*stone, brick, plaster, concrete, wood, thatch, tile, slate, metal, glass, plastic, fabric, rubber, foliage, water; AI*/, front?: true, status? /*PR-2.15: 'measured'|'estimated'|'inferred'|'unknown', computed, absent on older shapes*/ }[] (1–12, hidden-side deduced parts included /*PR-2.16: back facade, end windows, rear door; status inferred, low yaw only*/; measured house walls arrive segmented around their openings with the leaf centred in its hole /*PR-2.17, overlays only when the strips do not fit; vehicles keep overlays*/), yaw? /*radians ±π/3, measured PF-T5, + = right end farther*/, edits via `applyEdit(archetype, recipe, { node, param, value, unit?, scale? }, evidence?)` /*PR-2.18, pure: openings re-tile their wall, strips/wall-node rejected, edited nodes estimated; UI wiring out*/, swatches?: Partial<Record<RecipeMaterial, string>> /*PR-1.5, 64 px tileable data URL ≤ 8 kB per material*/, dimStatus?: { eave? /*houses*/, depth?, yaw?, scale? } /*PR-2.15, same 4 statuses, panel « Dimensions : … »*/ }`: object centred, x right, y up, z to the camera,
+`ObjectRecipe { proportions: {w,h,d} (largest = 1), parts: { shape: 'box'|'cylinder'|'sphere'|'cone'|'prism'|'extrude'|'lathe'|'hip', at: [x,y,z] (−0.6…0.6),
+size: [x,y,z] (0.01–1), axis?: 'x'|'y'|'z', apex? /*prism ridge x, 0–1 of its width*/, ridge? /*hip only: ridge along x, share of its width (0 pyramid, 1 side gable), measured on the 2D facade*/, points? /*extrude only (PR-2.1): closed ring in unit space, 3–64 pts, server-built, never from Spark*/, profile? /*lathe only (PR-2.3): [radius 0–0.5, y] 2–32 pts, y never decreases*/, color: '#rrggbb', material?: RECIPE_MATERIALS /*stone, brick, plaster, concrete, wood, thatch, tile, slate, metal, glass, plastic, fabric, rubber, foliage, water; AI*/, front?: true, status? /*PR-2.15: 'measured'|'estimated'|'inferred'|'unknown', computed, absent on older shapes*/ }[] (1–12, hidden-side deduced parts included /*PR-2.16: back facade, end windows, rear door; status inferred, low yaw only*/; measured house walls arrive segmented around their openings with the leaf centred in its hole /*PR-2.17, overlays only when the strips do not fit; vehicles keep overlays*/), source?: 'kit'|'free'|'facade' /*facade = rebuilt from the measured 2D elevations, no photo critic round*/, yaw? /*radians ±π/3, measured PF-T5, + = right end farther*/, edits via `applyEdit(archetype, recipe, { node, param, value, unit?, scale? }, evidence?)` /*PR-2.18, pure: openings re-tile their wall, strips/wall-node rejected, edited nodes estimated; UI wiring out*/, swatches?: Partial<Record<RecipeMaterial, string>> /*PR-1.5, 64 px tileable data URL ≤ 8 kB per material*/, dimStatus?: { eave? /*houses*/, depth?, yaw?, scale? } /*PR-2.15, same 4 statuses, panel « Dimensions : … »*/ }`: object centred, x right, y up, z to the camera,
 in fractions of its own size. Shared Zod + `fitRecipe(recipe, boxAspect, yaw = 0)` (with a yaw: `w·cos + d·sin = aspect·h`), `recipeIssue`, `frontPartIndex`, `silhouetteRings` in `@/lib/object-shape`; no power value.
 Spark answers `ObjectKit { archetype: KIT_ARCHETYPES (cabinet…house, building, tree…other), subtype? /*free label, lower_snake_32: picks the template branch — vehicle sedan/van/pickup/motorbike/vintage, house variants; the critic may patch it (PR-0.6)*/, proportions {w,h,d}, colors { main, secondary,
 accent: '#rrggbb' }, materials?: { main?, secondary?, accent? } /*RECIPE_MATERIALS, unknown dropped*/, details?: { windows?, doors?, wheels?, legs?, floors?, chimney?, units? /*houses in a row, 1–8*/ }, roof?: KitRoof }` (`@/lib/object-kit`;
@@ -535,12 +551,21 @@ SSE parsing for every client stream: `@/lib/sse` (`parseSseChunk`, `readSseStrea
 
 Model-switch tools (Zod in `server/copilot/model-tools.ts`, results go back to the model):
 `generate_image {scene:'current_village'|'custom', prompt? /*custom*/, caption?}` → `{ok, model, caption, shownState?:{hour, sky, battery, sectors}}` + `image` event · `segment_image {concept}` →
-`{concept, count, boxCoverage, model, source, note}` + `perception` event · `escalate_deep_reasoning {reason}` → `{ok, model}` + `model` event.
+`{concept, count, boxCoverage, model, source, note}` + `perception` event · `analyze_image {question}` (M4-T2, on the attached photo) →
+`{question, summary, observations: {label, value, unit?, confidence}[], model, source, note}` + `perception` event · `escalate_deep_reasoning {reason}` → `{ok, model}` + `model` event ·
+`generate_visual {kind:'village_tonight'|'shedding_poster', resultId}` (M5-T1) → `{ok, model, kind, resultId, caption, overlay}` + `media` event ·
+`convene_council {question, maxRounds?}` (M7-T1) → `{ok, rounds, agents[{sector, reason, unservedKwhAfter, ownServedKwhDelta, mock}], pick, synthesis}` + `council` event.
 Invalid args or failure → `{error}`.
 
 ## Perception (`server/perception`, Zod in `schemas.ts`)
 
 Observations, never energy values: any number must become an `InputPatch` proposal before the engine uses it.
+Pure converter (M4-T3, `lib/observation-to-patch.ts`, no LLM): `cloud_cover` % → `solarDropPct` (0–90, max wins);
+`shaded_panel`/`dusty_panel` % → all-day `solarDropPct` + 0/24 window (M8-T2; cloud vs panel: max wins, ties go all-day);
+`meter_reading` kW + sector → `meterReadings` (24 identical hours); anything else → `unmapped[]` with a reason.
+Cloud track → profile (M8-T4, `lib/cloud-track-to-profile.ts`, no LLM): `[{t, cloud01}]` → 24 `solarProfile`
+values (`base[h] × (1 − cloud)`, hourly frame average, carry-forward, rounded 3 dp). The frame analysis
+(video pipeline + maquette camera feed, S4) does not exist yet; the converter is the half it will feed.
 Every result carries `{ source: 'meta'|'mock', model, fallback?: 'provider_error'|'spend_cap'|'not_configured', failure? }`
 (`failure` with `provider_error`: `timeout`|`aborted`|`http_<status>`|`network`, from `failureOf`).
 
@@ -552,3 +577,103 @@ SegmentResult { concept; imageWidth; imageHeight; instances: { box:{x1,y1,x2,y2}
 DetectionResult { detections: { id /*det-n*/; label /*1–40*/; category: ApplianceCategory; confidence? /*0–1*/;
   box: { x; y; w; h } /*image fractions 0–1, top-left*/; outline? /*SVG path, 0–1*/ }[] /*≤ 20*/ }
 ```
+
+## Visuals (`server/media/generate-image.ts`, M5-T1)
+
+`buildVisualPrompt(kind, input, result, locale?)` → `{kind, prompt, overlay, caption}`. Pure, no LLM:
+the prompt holds engine states as words and never a digit (tested); exact hours ride in
+`overlay.cuts` for the HTML layer. `village_tonight` reuses the evening scene (`describeVillageScene`
+at 20 h, overlay null); `shedding_poster` merges contiguous short hours per sector
+(demand > 0.05 kW, shortfall > EPS) with `unservedKwh` rounded to 2 decimals.
+`generate_visual` resolves `resultId` through the in-process `server/copilot/result-cache.ts`
+(FIFO, 20 entries, filled by every engine tool incl. proposals); unknown id → `{error}`
+telling the model to run a scenario first. Storage reuses the R2 media store
+(`server/storage/media.ts`); the client consumes the `media` event (M5-T2/T3).
+`day_comic` (M12-T3): one 4-panel strip from fixed hours (7/12/17/21); each panel reuses
+`describeVillageScene` words (digit-free, ordinal words not numerals), the overlay carries
+`panels: [{hour, sky, cuts}]` (cuts = real shortfall at that hour), rendered by
+`DayComicBlock` with hour/state rows + PNG export.
+
+## Constitution (`lib/constitution.ts`, M10-T2)
+
+Rules stored as data, verified by pure code: `checkConstitution(rules, {patch?, strategy?,
+floors?})` → `{violations: [{ruleId, reason}], unknownKinds}`. Three kinds: `never_cut`
+(zero cap on the sector), `min_floor` (resulting floor below `kw`), `strategy_only`
+(strategy off the list). Unknown kinds are reported aside and never block. Defaults
+(`DEFAULT_CONSTITUTION`): clinic never cut, clinic floor ≥ 0.5 kW. `autopilotProposal`
+checks every R1/R2 candidate and skips violators (falls through, else silence); the
+human copilot flow keeps its double-confirmation override (M1-T2). `/simulation` deck
+shows the rules in plain words (`ConstitutionCard`, EN/FR/MG).
+
+## Autonomy envelope (`lib/envelope.ts`, M10-T3)
+
+Operator-set permissions for what the AI may apply ALONE in simulation: `{strategyChange,
+clinicFloor}`, both false by default (`ENVELOPE_OFF`). `withinEnvelope(envelope,
+suggestion)` maps autopilot R1 → `strategyChange`, R2 → `clinicFloor`. In-envelope
+suggestions auto-apply on new hours (history shows `accepted · auto`); outside-envelope
+suggestions stay pending for the operator's tap. Opening the envelope never flips an
+already-pending suggestion. Switches live on the deck autopilot card (EN/FR/MG).
+
+## AI autonomous dispatch (`schemas/autonomy.ts` + `autonomy.ts`, PA)
+
+```ts
+type DispatchMode = 'manual' | 'assisted' | 'autonomous';
+type IncidentKind = 'fire' | 'overload' | 'demand_surge' | 'reserve_low' | 'critical_forecast'
+  | 'solar_surplus' | 'meter_anomaly' | 'lifeline_shortfall';
+type IncidentSeverity = 'info' | 'warning' | 'critical'; // SEVERITY_RANK: critical 0 → info 2
+type Evidence = Record<string, number>; // engine values only, finite
+interface Incident { kind; severity; day: 0–6; hour: 0–23; sector?: SectorId; evidence: Evidence }
+type AutoActionKind = 'isolate_sector' | 'cap_sector' | 'shed_flexible' | 'switch_strategy'
+  | 'raise_clinic_floor' | 'reserve_night' | 'shift_flexible' | 'restore_sector' | 'alert_only';
+interface AutoAction { kind; sector?; patch?: InputPatch; strategy?: StrategyId; answers?: IncidentKind }
+interface DispatchSnapshot { resultId; unservedKwh ≥ 0; criticalUnservedKwh ≥ 0; socEndPct 0–100 }
+interface Narration { text: string /* 1–400 */; source: 'llm' | 'template' }
+interface DispatchLogEntry { id; day; hour; mode: DispatchMode; origin: 'ai' | 'operator';
+  incident?; action?; before?: DispatchSnapshot; after?: DispatchSnapshot; narration?; hash }
+dispatchLogHash(entry): string   // fnv1a64(canonicalJson(entry without hash))
+sortIncidents(incidents): Incident[] // severity, then day, then hour; no mutation
+```
+
+`AutoAction` refinements: `switch_strategy` needs `strategy`; `alert_only` carries neither patch nor
+strategy; every other kind needs `patch`; sector kinds (`isolate`, `cap`, `shed_flexible`,
+`shift_flexible`, `restore`) need `sector`. `DispatchLogEntry` needs an incident or an action, and a
+grid-changing action needs `before` and `after`. Not stored yet (no Neon table).
+
+## Meeting (`lib/meeting-priorities.ts`, `POST /api/meetings`, M10-T4)
+
+Village meeting recording → diarized turns → social priorities → proposed patch. The route
+takes a WAV (≤ 10 MB, ≈ 5 min), transcribes with `diarize: true`, and runs the deterministic
+extractor: EN/FR/MG sector keywords (accent-insensitive, whole-word) + protect / mention /
+deprioritize wants → `priorities` patch (`critical` / `high` / `low`), plus a 0.5 kW lifeline
+floor for never-cut wants. Strongest want wins on conflict; sector-less turns are `unmapped`;
+time notes (morning…) stay on the priorities, out of the patch. The client posts the result
+as a chat `meeting` block (`MeetingPanel` uploader lives on full `/copilot` only); the
+operator proposes from the block through the usual dialog (proposal ids `PROP-MEETING-*`).
+
+## Local Glimmer (`server/copilot/providers/glimmer.ts`, M11-T1)
+
+`GlimmerLlmProvider` speaks OpenAI-compatible `POST {GLIMMER_BASE_URL}/chat/completions` with
+tools (vLLM, Ollama); `GLIMMER_MODEL` default `muse-glimmer-30b`, auth header only when
+`GLIMMER_API_KEY` is set. Text only: attached media is dropped before sending. Fallback chain
+in `loop.ts`: cloud → Glimmer → mock; the local step exists only when `GLIMMER_BASE_URL` is
+set (else Meta → mock as before; injectable as `localProvider` for tests). A spent chat budget
+does not block Glimmer (caller's signal); only the mock step emits `PROVIDER_FALLBACK`.
+Glimmer is never billed and never spend-capped. `LLM_PROVIDER=glimmer` leads local
+(`/api/copilot/models` serves `['auto', GLIMMER_MODEL]`); `pickChatModel` keeps the Glimmer id
+when it is the only model so `setModel` never overwrites it with Spark's.
+
+## Generators (M12-T2, D1 + D2)
+
+`packages/engine/scripts/gen-scenarios.ts` (D1): Spark 1.2 writes scenario overlays on
+baseline (`GeneratedScenarioSchema` in `src/scenarios/generated-schema.ts`: events + battery
+tweaks + `{strategy, metric, op, value}` assertions); Zod-validated before writing, one retry
+per brief, never writes invalid output. JSON lands in `src/scenarios/generated/` (outside the
+`ScenarioId` enum and the registry — no contract change); the harness
+`src/__tests__/generated.test.ts` simulates each on all 3 strategies (`violations == 0`) and
+checks the assertions. Committed: `rainy_season`, `cyclone`, `village_festival`.
+`apps/web/scripts/gen-evals.ts` (D2): Contributor writes synthetic `{prompt, expectTool,
+expectEvidence}` evals (synthetic only — Contributor trains on inputs); the harness
+`eval.synthetic.test.ts` runs each through the offline loop asserting the routed tool, the
+4-section shape and `done`. Both run offline from deterministic templates by default
+(`make gen-scenarios`, `make gen-evals`); `--live` variants need `META_API_KEY`. jiti runs the
+scripts (tsx needs an IPC pipe, blocked in sandboxes).

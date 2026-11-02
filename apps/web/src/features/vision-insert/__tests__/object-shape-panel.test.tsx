@@ -6,6 +6,43 @@ import type { ApplianceDetection } from '@/lib/vision';
 
 const webgl = vi.hoisted(() => ({ on: true }));
 vi.mock('@/features/microgrid-3d', () => ({ useWebGLAvailable: () => webgl.on }));
+
+const facadeMock = vi.hoisted(() => ({
+  status: 'idle' as 'idle' | 'generating' | 'ready' | 'deleting' | 'error',
+  facade: undefined as
+    | {
+        imageUrl: string;
+        fileKey: string;
+        prompt: string;
+        archetype: string;
+        detectionId: string;
+        source: 'meta' | 'mock';
+      }
+    | undefined,
+  userPrompt: '',
+  setUserPrompt: vi.fn(),
+  generate: vi.fn(),
+  retry: vi.fn(),
+  deleteFacade: vi.fn(),
+  validate: vi.fn(),
+}));
+
+vi.mock('../hooks/use-facade-2d', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-facade-2d')>();
+  return {
+    ...actual,
+    useFacade2d: () => ({
+      status: facadeMock.status,
+      facade: facadeMock.facade,
+      userPrompt: facadeMock.userPrompt,
+      setUserPrompt: facadeMock.setUserPrompt,
+      generate: facadeMock.generate,
+      retry: facadeMock.retry,
+      deleteFacade: facadeMock.deleteFacade,
+      validate: facadeMock.validate,
+    }),
+  };
+});
 vi.mock('../ui/object-editor-3d', () => ({
   ObjectEditor3d: ({
     shape,
@@ -64,33 +101,15 @@ const renderPanel = (props: Partial<Parameters<typeof ObjectShapePanel>[0]> = {}
     </I18nProvider>
   );
 
-const LABEL_KEYS = [
-  'angleFront',
-  'angleBack',
-  'angleLeft',
-  'angleRight',
-  'angleTop',
-  'angleThreeQuarter',
-] as const;
-const previewViews = (['front', 'back', 'left', 'right', 'top', 'three_quarter'] as const).map(
-  (angle, i) => ({
-    angle,
-    labelKey: LABEL_KEYS[i]!,
-    angleDeg: i * 60,
-    description: `${angle} imagined`,
-    imageUrl: 'data:image/png;base64,AA',
-    features: ['hood', 'wheels'],
-  })
-);
-
 describe('ObjectShapePanel (PV-T10)', () => {
-  it('idle: « Not built yet » and the Generate button, no viewer', () => {
+  it('idle: « Not built yet », the 2D facade comes first, no 3D shortcut, no viewer', () => {
     const onGenerate = vi.fn();
     renderPanel({ status: 'idle', shape: undefined, onGenerate });
     expect(screen.getByText('Not built yet')).toBeTruthy();
     expect(screen.queryByRole('img')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Generate the 3D model' }));
-    expect(onGenerate).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'Imagine 2D facade' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Generate the 3D model' })).toBeNull();
+    expect(onGenerate).not.toHaveBeenCalled();
   });
 
   it('the viewer sits on the studio backdrop (lighter than dark objects in both themes)', () => {
@@ -115,7 +134,7 @@ describe('ObjectShapePanel (PV-T10)', () => {
     expect(items[1]!.getAttribute('aria-current')).toBe('step');
     expect(items[1]!.textContent).toMatch(/Muse Spark imagines the parts.*0 s/);
     expect(items[2]!.getAttribute('aria-current')).toBeNull();
-    expect(screen.getByText(/usually needs 15 to 40 s \(limit 60 s\)/)).toBeTruthy();
+    expect(screen.getByText(/usually needs 15 to 40 s \(limit 60 s\); a house rebuilt from its 2D facade, up to 90 s/)).toBeTruthy();
   });
 
   it('recipe: AI badge, labelled viewer and the orbit hint', async () => {
@@ -187,45 +206,33 @@ describe('ObjectShapePanel (PV-T10)', () => {
     expect(onRegenerate).toHaveBeenCalledTimes(1);
   });
 
-  it('idle: « Preview 6 angles » asks for the cheap 2D imagination first', () => {
-    const onPreviewViews = vi.fn();
-    renderPanel({ status: 'idle', shape: undefined, onPreviewViews, onGenerate: vi.fn() });
-    fireEvent.click(screen.getByRole('button', { name: 'Preview 6 angles of 2D imagination' }));
-    expect(onPreviewViews).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole('img')).toBeNull();
-  });
-
-  it('previewed: the 6 angles show with « Validate & Generate 3D model »', () => {
-    const onGenerate = vi.fn();
-    renderPanel({
-      status: 'idle',
-      shape: undefined,
-      viewsStatus: 'ready',
-      views: previewViews,
-      onGenerate,
-    });
-    expect(screen.getByRole('tab', { name: 'Imagined 2D views (6 angles)' })).toBeTruthy();
-    expect(screen.getByText('front imagined')).toBeTruthy();
-    fireEvent.click(screen.getByRole('tab', { name: /Back \(180°\)/ }));
-    expect(screen.getByText('back imagined')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Validate & Generate 3D model' }));
-    expect(onGenerate).toHaveBeenCalledTimes(1);
-  });
-
-  it('ready with views: tabs switch between the 3D model and the 6 angles', () => {
-    renderPanel({
-      shape: { ...shape('recipe'), imaginedViews: previewViews },
-      viewsStatus: 'ready',
-      views: previewViews,
-    });
-    // Model tab first: the viewer shows, the preview hides.
+  it('ready with facade: tabs switch between the 3D model and 2D facade', () => {
+    facadeMock.status = 'ready';
+    facadeMock.facade = {
+      imageUrl: 'data:image/png;base64,FACADE',
+      fileKey: 'facade-1',
+      prompt: 'A fridge',
+      archetype: 'appliance',
+      detectionId: 'det-1',
+      source: 'meta',
+    };
+    renderPanel({ shape: shape('recipe') });
+    // Model tab first: viewer is visible.
     expect(screen.getByText('viewer')).toBeTruthy();
-    expect(screen.queryByText('front imagined')).toBeNull();
-    fireEvent.click(screen.getByRole('tab', { name: 'Imagined 2D views (6 angles)' }));
-    expect(screen.getByText('front imagined')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: '3D model' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: '2D Facade' })).toBeTruthy();
+
+    // Click 2D Facade tab: 2D facade panel is displayed, viewer is hidden.
+    fireEvent.click(screen.getByRole('tab', { name: '2D Facade' }));
+    expect(screen.getByText('2D Facade Imagination')).toBeTruthy();
     expect(screen.queryByText('viewer')).toBeNull();
-    // Validated already: no second validate button on the views tab.
-    expect(screen.queryByRole('button', { name: 'Validate & Generate 3D model' })).toBeNull();
+
+    // Switch back to 3D model tab: viewer shows again.
+    fireEvent.click(screen.getByRole('tab', { name: '3D model' }));
+    expect(screen.getByText('viewer')).toBeTruthy();
+
+    facadeMock.status = 'idle';
+    facadeMock.facade = undefined;
   });
 
   it('statuses (PR-2.15): dims grouped by status + hidden note for inferred parts', () => {

@@ -82,6 +82,8 @@ Warnings: merge consecutive hours into ranges. `CRITICAL_UNMET` (any critical sh
 Fire (`{ type: 'fire', sector, startHour, durationH }`, F1, ENGINE_VERSION 0.4.0): each fire adds a 0 kW cap on its sector for
 its hours (`effectiveSectorCaps`). Caps combine by minimum, so the fire beats strategy, operator caps and the lifeline floor
 (the cap-aware floor drops to 0, no `LIFELINE_SHORTFALL`); the energy goes to the other sectors; mode `off`.
+Restore (M2-T4, ENGINE_VERSION 0.6.0): `InputPatch.clearFires` removes the fire events of the listed sectors
+(approved via `propose_change`, never direct); the sector is served again from its existing load.
 Change impact (`changeImpact(before, after)`): per sector `servedKwh` before/after/delta and `offHours` (steps with
 demand > ε and `mode = 'off'`; a sector without load is never off), plus `socMinPct` and `unservedKwh` before/after.
 Used by the approval dialog ("Engine calculation").
@@ -116,6 +118,7 @@ Total ≈ 128 kWh/day (factory not connected). Tune so that: `baseline` → 0 un
 | battery_constraint | capacity 60 kWh, initialSoc 30 %                              |
 | essential_stress   | solar ×0.4 for 4 h at 11 h + initialSoc 25 %                  |
 | meter_anomaly      | market meter readings 3.2 kW at 11–15 h (expected 2.0 kW)     |
+| village_fire       | fire market from 14 h, spreads to water at 15 h (to 24 h)     |
 
 ### Live sector load (`loadMultiplier`)
 
@@ -173,6 +176,26 @@ against Efficiency for Access / CLASP appliance data, the ESMAP Multi-Tier Frame
 | sewing_machine    | 100 (50–250)        | 08–12 and 14–17, duty 0.5           |
 | welder            | 3000 (1500–6000)    | 09–12 and 14–16, duty 0.3           |
 | other             | 100 (1–5000)        | 08–18, duty 0.5                     |
+
+## 6b. AI autonomous dispatch (PA, planned behaviour of the detectors and policy)
+
+Types are in `schemas/autonomy.ts` (contracts § AI autonomous dispatch). Detector thresholds the
+policy will use (PA-T1), evaluated on the result of the shown day at hour t:
+
+| Incident             | Severity | Fires when                                                   |
+| -------------------- | -------- | ------------------------------------------------------------ |
+| `fire`               | critical | a `fire` event is active at t                                |
+| `critical_forecast`  | critical | critical unserved > EPS in t+1…t+3 under the active strategy |
+| `overload`           | warning  | total demand > solar + max discharge at t (served < demand)  |
+| `lifeline_shortfall` | warning  | `LIFELINE_SHORTFALL` warning covers t                        |
+| `reserve_low`        | warning  | SoC at t ≤ minSoc + 5 points                                 |
+| `demand_surge`       | warning  | a sector's demand at t > 130 % of its profile                |
+| `meter_anomaly`      | info     | `ANOMALY_TO_VERIFY` covers t (alert only, never a cut)       |
+| `solar_surplus`      | info     | curtailment at t > EPS                                       |
+
+Policy (PA-T2) objective, compared on t…t+6: lower critical unserved, then lower unserved, then
+higher final SoC; constitution violators are dropped; a burning sector is never restored before its
+fire ends; at most 2 actions per hour and no reversal on the same sector within 2 h.
 
 ## 7. Tests (Vitest, `packages/engine/src/__tests__`)
 

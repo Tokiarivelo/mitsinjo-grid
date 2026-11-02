@@ -18,7 +18,15 @@ export { prepareVisionImage } from './utils/prepare-image';
 export { categoryHint } from './utils/labels';
 export { useObjectName, useDetectionLabel } from './hooks/use-object-name';
 export { useObjectShape, shapeKey, type ObjectShapeState } from './hooks/use-object-shape';
+export {
+  useFacade2d,
+  validatedFacade,
+  type FacadeState,
+  type FacadeData,
+  type ValidatedFacade,
+} from './hooks/use-facade-2d';
 export { ObjectShapePanel, type ObjectShapePanelProps } from './ui/object-shape-panel';
+export { Facade2dPanel, type Facade2dPanelProps } from './ui/facade-2d-panel';
 export { recipeMesh, silhouetteMesh, SILHOUETTE_DEPTH } from './utils/object-geometry';
 export { usePhotoZoom, stepZoom, photoWidth, ZOOM_STEPS } from './hooks/use-photo-zoom';
 export { ZoomControls } from './ui/zoom-controls';

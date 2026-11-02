@@ -1,6 +1,7 @@
 'use client';
 
 import { Menu, RotateCcw, Sparkles } from 'lucide-react';
+import { ScenarioIdSchema } from '@mitsinjo/engine';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { StatusBadge, type StatusBadgeVariant } from '@/components/ui/status-badge';
@@ -41,38 +42,11 @@ export function Header({
   const tHeader = useTranslations('header');
   const tScenarios = useTranslations('scenarios');
 
-  const defaultScenarios: ScenarioOption[] = [
-    {
-      id: 'baseline',
-      name: tScenarios('baseline.name'),
-      description: tScenarios('baseline.description'),
-    },
-    {
-      id: 'cloudy_afternoon',
-      name: tScenarios('cloudy_afternoon.name'),
-      description: tScenarios('cloudy_afternoon.description'),
-    },
-    {
-      id: 'high_demand',
-      name: tScenarios('high_demand.name'),
-      description: tScenarios('high_demand.description'),
-    },
-    {
-      id: 'battery_constraint',
-      name: tScenarios('battery_constraint.name'),
-      description: tScenarios('battery_constraint.description'),
-    },
-    {
-      id: 'essential_stress',
-      name: tScenarios('essential_stress.name'),
-      description: tScenarios('essential_stress.description'),
-    },
-    {
-      id: 'meter_anomaly',
-      name: tScenarios('meter_anomaly.name'),
-      description: tScenarios('meter_anomaly.description'),
-    },
-  ];
+  const defaultScenarios: ScenarioOption[] = ScenarioIdSchema.options.map((id) => ({
+    id,
+    name: tScenarios(`${id}.name`),
+    description: tScenarios(`${id}.description`),
+  }));
 
   const resolvedScenarios = scenarios || defaultScenarios;
   const isResetDisabled = status === 'ready' && !modified;

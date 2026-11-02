@@ -367,6 +367,23 @@ function intersect(p: RecipePart, o: V3, d: V3): Span | null {
         clipPlane(s, o, d, [1, H - r, 0], H - H * (H - r));
       }
       break;
+    case 'hip': {
+      // Front / back slopes from the base edges to the ridge, hip ends to the ridge tips (n·p ≤ c).
+      const k = H - Math.min(1, Math.max(0, p.ridge ?? 0.5)) / 2;
+      const unit = (n: V3): [V3, number] => {
+        const l = Math.hypot(n[0], n[1], n[2]);
+        return [[n[0] / l, n[1] / l, n[2] / l], l];
+      };
+      const plane = (n: V3, c: number) => {
+        const [u, l] = unit(n);
+        clipPlane(s, o, d, u, c / l);
+      };
+      plane([0, 1, 2], H);
+      plane([0, 1, -2], H);
+      plane([1, k, 0], H - H * k);
+      plane([-1, k, 0], H - H * k);
+      break;
+    }
     case 'cylinder':
       clipQuadric(
         s,

@@ -122,7 +122,7 @@ flowchart TD
 | **Live Simulation** (`/simulation`) | 24-hour simulation runner with interactive sliders, 3D village digital twin, hourly telemetry table, timeline scrubber, and a simulated fire alarm (« Report a fire » → sector cut at once, red banner + snackbar, fire in 3D / 2D / circuit). | [`design/stitch/live-simulation.png`](design/stitch/live-simulation.png) |
 | **Strategy Lab** (`/strategies`)    | Side-by-side comparison matrix of Proportional vs. Essential-First vs. Balanced strategies with delta highlights and decision summaries.                                                                                                       | [`design/stitch/strategy-lab.png`](design/stitch/strategy-lab.png)       |
 | **AI Copilot** (`/copilot`)         | Streaming conversational copilot with 4-part structured reasoning, verifiable simulation IDs, and interactive one-click proposal cards.                                                                                                        | [`design/stitch/copilot.png`](design/stitch/copilot.png)                 |
-| **Scenarios** (`/scenarios`)        | Scenario library featuring pre-tuned community benchmarks: Baseline, Cloudy Afternoon, High Evening Demand, Battery Constraint, and Essential Stress.                                                                                          | [`design/stitch/scenarios.png`](design/stitch/scenarios.png)             |
+| **Scenarios** (`/scenarios`)        | Scenario library featuring pre-tuned community benchmarks: Baseline, Cloudy Afternoon, High Evening Demand, Battery Constraint, Essential Stress, Meter Anomaly and Village Fire (scripted market → water pumps fire).                         | [`design/stitch/scenarios.png`](design/stitch/scenarios.png)             |
 
 ---
 
@@ -185,6 +185,9 @@ make dev
 # Run development server with deterministic offline mock LLM
 make dev-mock
 
+# Apply pending Neon migrations (also automatic on the app's first DB call; no DATABASE_URL → no-op)
+make db-migrate
+
 # Run full quality check suite (typecheck + lint + 242 tests + i18n parity)
 make check
 
@@ -193,6 +196,8 @@ make test-shape
 
 # 3D shape report: scores + contact sheet (photo | flat | ¾) → test-results/shape-report/
 make shape-report
+# Facade → 3D house on live Meta (front + side elevations, sheet.png in OUT)
+make facade-e2e FRONT=front.png OUT=test-results/facade
 
 # Real 3D viewer shots of those recipes, dark + light (dev server running, API stubbed)
 make shape-shots
@@ -257,6 +262,9 @@ make deploy        # Manual production deployment from clean origin/main
 - **Simulation Time Horizon**: Each day is a discrete 24-hour cycle at 1-hour resolution ($t \in [0, 23]$). Multi-day runs (weather workflow, max 7 days) only carry battery SoC over; weather is a fixed daily solar factor, not a forecast.
 - **Electrical Dynamics**: Single-phase aggregate real-power balance. Reactive power ($kVAR$), voltage drop along distribution lines, and frequency regulation are omitted.
 - **Hardware Acceleration**: the `High` 3D tier targets ≥ 30 fps on a discrete GPU; integrated GPUs fall back to `Low` (≥ 45 fps target) automatically. In headless Linux CI without a hardware GPU, software rasterization (SwiftShader) is used (`make scene-audit`; `make scene-audit-gpu` on a real GPU).
+- **All simulated**: every watt, incident and observation demo runs on the deterministic engine or `LLM_PROVIDER=mock` unless Meta keys are set; nothing is measured from, or controls, a live village (see §6).
+- **Malagasy voice**: transcription and readout depend on the browser / Meta Voice; MG readout stays silent when no Malagasy voice is installed, and MG speech is not yet validated live.
+- **No Meta TTS**: answer readout uses the browser SpeechSynthesis voice, not a Meta speech model.
 
 ### Stretch Features (shipped, simulated only)
 
@@ -265,7 +273,8 @@ make deploy        # Manual production deployment from clean origin/main
 - **Live Sector Load & Small Factory**: on `/simulation` (Buildings tab) a slider per sector scales its load ×0–3 and a button connects or disconnects it; each change re-runs the engine at once (3D, metrics, charts follow, even during playback). A small factory sector ships disconnected by default; adding another consumer sector follows the checklist in `docs/engine-spec.md`.
 - **PY Sector Control Proposals**: hourly `sectorCaps` and priority overrides the copilot can only _propose_; the user confirms, the engine recomputes. No real equipment control. Each decision locks the card and is posted in the chat; cutting the clinic needs a second confirmation.
 - **Village editor (`/village`, in progress)**: add a photo (or the sample room); Muse Spark finds the appliances and SAM outlines them (offline mock without a key); hover to highlight, tap or keyboard to select. Houses, cars, trees and other scenery are outlined too, marked « No load ». The live village (3D / 2D) stays visible beside the photo. Each object, scenery included, gets a 3D model (Spark recipe fitted to the photo, else its outline) and its own colour (photo box + list border). « Add to the simulation »: « AI estimate » (AI type + engine catalog power + suggested sector) or « Manual » (type, sector, watts within the catalog range, quantity); engine preview (peak kW, kWh per day), then « Insert into simulation » re-runs every strategy (« In simulation » chip, update or remove). Power never comes from the AI. Inserted appliances show in the 3D village (marker by their building, glowing while they run), as « n added » on the 2D diagram, and in « Appliances in the simulation » (on /village and the /simulation Buildings tab: remove, edit). Free placement: each object goes anywhere on the village map (minimap in the form, or drag its marker in 3D); its load stays on one feeder (nearest building by default, overridable). Also reachable from an image attached in the chat.
-- **Long chats & voice**: older turns are folded into a number-free summary (auto-compaction); the chat microphone records in any modern browser, shows a live frequency spectrum of the voice while recording, and transcribes with Meta Voice (offline mock without a key).
+- **Long chats & voice**: older turns are folded into a number-free summary (auto-compaction); the chat microphone records in any modern browser, shows a live frequency spectrum of the voice while recording, and transcribes with Meta Voice (offline mock without a key). Answers can be read aloud (summary only, browser voice of the app language) and hands-free mode auto-sends on silence; a spoken fire order opens the report dialog pre-filled.
+- **Copilot: fire, vision, visuals**: reporting a fire from the chat or `/simulation` cuts that sector at once (safety) with an alert banner, and the copilot explains the cut from engine incidents (restoring needs an approved proposal). A sky photo becomes editable observations, then an engine proposal (cloud cover → solar drop). The copilot also draws the evening village and FR/MG shedding posters: the picture is AI-generated, the hours overlaid in HTML come from the engine, exportable as PNG.
 
 ### Future Roadmap
 

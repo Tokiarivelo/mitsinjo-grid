@@ -41,4 +41,27 @@ describe('fire in the scene model and the 2D views (M2-T3)', () => {
       within(screen.getByRole('button', { name: /Local Market/ })).queryByText('On fire')
     ).toBeNull();
   });
+
+  it('marks the burning sector line cut in the model (M2-T3)', () => {
+    const before = toSceneModel({ input, result, timeIndex: 9 });
+    const during = toSceneModel({ input, result, timeIndex: 12 });
+    expect(before.lines.busToSectors.school.cut).toBe(false);
+    expect(during.lines.busToSectors.school.cut).toBe(true);
+    expect(during.lines.busToSectors.market.cut).toBe(false);
+  });
+
+  it('topology: one more cut wire while the school burns (M2-T3)', () => {
+    const cutWires = (timeIndex: number) => {
+      const model = toSceneModel({ input, result, timeIndex });
+      const { container, unmount } = render(
+        <I18nProvider>
+          <GridDiagram model={model} variant="topology" onSelectSector={() => {}} />
+        </I18nProvider>
+      );
+      const n = container.querySelectorAll('[data-wire-state="cut"]').length;
+      unmount();
+      return n;
+    };
+    expect(cutWires(12)).toBe(cutWires(9) + 1);
+  });
 });

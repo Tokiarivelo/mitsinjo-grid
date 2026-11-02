@@ -1,6 +1,7 @@
 import {
   DEFAULT_DROP_DURATION_H,
   DEFAULT_DROP_START_HOUR,
+  fireEvents,
   getSolarDrop,
   resolveLifelineKw,
   type Appliance,
@@ -149,6 +150,16 @@ export function useProposalDiff(proposal: CopilotProposal): ProposalDiffItem[] {
       label: `${tSectors(sector)} ${t('diffSectorLoad')}`,
       current: fmtLoad(current),
       proposed: fmtLoad(mult),
+    });
+  }
+  for (const sector of patch?.clearFires ?? []) {
+    const fire = fireEvents(input.events).find((f) => f.sector === sector);
+    items.push({
+      label: `${tSectors(sector)} ${t('diffFireRestore')}`,
+      current: fire
+        ? t('fireCutRange', { from: fire.startHour, to: fire.startHour + fire.durationH })
+        : t('noValue'),
+      proposed: t('fireRestored'),
     });
   }
 

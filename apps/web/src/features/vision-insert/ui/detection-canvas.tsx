@@ -160,6 +160,14 @@ export function DetectionCanvas({
   const nameOf = useDetectionLabel();
   const hint = (d: ApplianceDetection) => categoryHint(nameOf(d), objectName(d));
 
+  const [filter, setFilter] = useState<'all' | 'appliances' | 'scenery' | 'insim'>('all');
+  const filteredDetections = detections.filter((d) => {
+    if (filter === 'appliances') return isAppliance(d);
+    if (filter === 'scenery') return !isAppliance(d);
+    if (filter === 'insim') return inSimulationIds?.includes(d.id);
+    return true;
+  });
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2 text-[11px]">
@@ -201,7 +209,7 @@ export function DetectionCanvas({
           so every overlay below stays in photo fractions at any zoom. */}
       <div
         ref={viewportRef}
-        className="max-h-[60vh] w-full overflow-auto rounded-xl border border-border bg-canvas-sunken [-webkit-overflow-scrolling:touch]"
+        className="relative min-h-[440px] sm:min-h-[500px] lg:min-h-[560px] xl:min-h-[620px] max-h-[72vh] w-full overflow-auto rounded-2xl border border-border/80 bg-canvas-sunken shadow-inner flex items-center justify-center [-webkit-overflow-scrolling:touch]"
       >
         <div className="relative mx-auto" style={contentStyle}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -264,11 +272,11 @@ export function DetectionCanvas({
           )}
           {showList && active && (
             <span
-              className="pointer-events-none absolute max-w-[60%] truncate rounded-md bg-surface-elevated/95 px-2 py-0.5 text-[11px] font-medium text-text-primary shadow border border-border"
+              className="pointer-events-none absolute max-w-[70%] truncate rounded-lg bg-surface-elevated/95 backdrop-blur-md px-2.5 py-1 text-xs font-semibold text-text-primary shadow-lg border border-border/80"
               style={{
                 left: `${Math.min(active.box.x, 0.98) * 100}%`,
                 top: `${active.box.y * 100}%`,
-                transform: active.box.y > 0.08 ? 'translateY(-110%)' : 'translateY(4px)',
+                transform: active.box.y > 0.08 ? 'translateY(-115%)' : 'translateY(6px)',
               }}
             >
               {hint(active) ? `${nameOf(active)} · ${hint(active)}` : nameOf(active)}
@@ -386,34 +394,71 @@ export function DetectionCanvas({
       )}
 
       {showList && detections.length > 0 && (
-        <div>
-          <h4 className="mb-1.5 text-xs font-semibold text-text-secondary">
-            {t('listTitle', { count: detections.length })}
-          </h4>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-xs font-semibold text-text-secondary">
+              {t('listTitle', { count: detections.length })}
+            </h4>
+            <div
+              className="flex items-center gap-1 text-[11px]"
+              role="tablist"
+              aria-label={t('listTitle', { count: detections.length })}
+            >
+              {(
+                [
+                  { id: 'all' as const, label: t('filterAll') },
+                  { id: 'appliances' as const, label: t('filterAppliances') },
+                  { id: 'scenery' as const, label: t('filterScenery') },
+                  { id: 'insim' as const, label: t('filterInSim') },
+                ] as const
+              ).map(({ id, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setFilter(id)}
+                  className={cn(
+                    'rounded-md px-2 py-0.5 font-medium transition-colors cursor-pointer',
+                    filter === id
+                      ? 'bg-surface-elevated text-text-primary shadow-xs'
+                      : 'text-text-muted hover:text-text-secondary'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-            {detections.map((d, index) => {
+            {filteredDetections.map((d) => {
               const selected = d.id === selectedId;
+              const idx = colorIndex.get(d.id) ?? 0;
               return (
                 <li key={d.id} className="flex items-stretch gap-1.5">
                   <button
                     type="button"
                     aria-pressed={selected}
                     data-mark=""
-                    style={markStyle(index)}
+                    style={markStyle(idx)}
                     onClick={() => onSelect(d.id)}
                     onMouseEnter={() => setActiveId(d.id)}
                     onMouseLeave={() => setActiveId((id) => (id === d.id ? null : id))}
                     onFocus={() => setActiveId(d.id)}
                     onBlur={() => setActiveId((id) => (id === d.id ? null : id))}
                     className={cn(
-                      'flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border-2 border-(--mark) px-3 py-2 text-left text-sm text-text-primary transition-colors cursor-pointer',
+                      'flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-xl border-2 border-(--mark) px-3 py-2 text-left text-sm text-text-primary transition-all cursor-pointer',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan',
                       selected
-                        ? 'bg-(--mark)/15 ring-2 ring-(--mark)/40'
+                        ? 'bg-(--mark)/15 ring-2 ring-(--mark)/40 shadow-xs'
                         : 'bg-surface hover:bg-(--mark)/10'
                     )}
                   >
-                    <span className="min-w-0 truncate font-medium">{nameOf(d)}</span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full bg-(--mark)"
+                        aria-hidden="true"
+                      />
+                      <span className="truncate font-medium">{nameOf(d)}</span>
+                    </span>
                     <span className="flex shrink-0 items-center gap-1.5 text-xs text-text-secondary">
                       {hint(d)}
                       {identifyingIds.includes(d.id) && (

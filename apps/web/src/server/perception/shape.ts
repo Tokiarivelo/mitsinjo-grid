@@ -35,14 +35,24 @@ export const SHAPE_SYSTEM_PROMPT = [
  * User turn; the label is the detection name (from a model or typed by the operator), quoted.
  * `aspect` = width / height on the photo; `hint` = archetype the detection implies (Spark may change it).
  */
-export function shapeQuestion(label: string, aspect?: number, hint?: KitArchetype): string {
+/** Told to Spark when the validated 2D facade comes as the second image. */
+export const FACADE_REFERENCE_LINE =
+  'The second image is the validated front elevation of this same object, drawn unoccluded: use it for the windows, doors, floors, roof shape, materials and part layout; the photo crop (first image) still gives the size, pose and colours.';
+
+export function shapeQuestion(
+  label: string,
+  aspect?: number,
+  hint?: KitArchetype,
+  withFacade = false
+): string {
   const name = label.slice(0, 40).replace(/"/g, "'");
   const seen =
     aspect && aspect > 0 && Number.isFinite(aspect)
       ? ` On the photo it is ${aspect.toFixed(2)} times as wide as it is high.`
       : '';
   const guess = hint ? ` It is probably a "${hint}".` : '';
-  return `Describe the full 3D "${name}" in the clear rectangle in the middle of this crop with strong 3D imagination and interpolation, even if partially occluded.${seen}${guess}`;
+  const facade = withFacade ? ` ${FACADE_REFERENCE_LINE}` : '';
+  return `Describe the full 3D "${name}" in the clear rectangle in the middle of this crop with strong 3D imagination and interpolation, even if partially occluded.${seen}${guess}${facade}`;
 }
 
 const color = { type: 'string' };

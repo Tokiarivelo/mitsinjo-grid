@@ -1,10 +1,14 @@
 import { z } from 'zod';
 
 const envSchema = z.object({
-  LLM_PROVIDER: z.enum(['meta', 'mock']).default('mock'),
+  LLM_PROVIDER: z.enum(['meta', 'glimmer', 'mock']).default('mock'),
   META_API_KEY: z.string().optional(),
   META_MODEL: z.string().optional(),
   META_BASE_URL: z.string().optional(),
+  // Local Glimmer (OpenAI-compatible, vLLM/Ollama). Unset = no local step in the fallback chain.
+  GLIMMER_BASE_URL: z.string().optional(),
+  GLIMMER_MODEL: z.string().default('muse-glimmer-30b'),
+  GLIMMER_API_KEY: z.string().optional(),
   // Perception models (voice, vision, segmentation, image) and spend cap
   META_VOICE_MODEL: z.string().default('muse-voice-transcribe-1.0'),
   META_VISION_MODEL: z.string().default('muse-spark-1.3'),
@@ -35,6 +39,9 @@ export const env = envSchema.parse({
   META_API_KEY: process.env.META_API_KEY,
   META_MODEL: process.env.META_MODEL,
   META_BASE_URL: process.env.META_BASE_URL,
+  GLIMMER_BASE_URL: process.env.GLIMMER_BASE_URL,
+  GLIMMER_MODEL: process.env.GLIMMER_MODEL || undefined,
+  GLIMMER_API_KEY: process.env.GLIMMER_API_KEY,
   META_VOICE_MODEL: process.env.META_VOICE_MODEL || undefined,
   META_VISION_MODEL: process.env.META_VISION_MODEL || undefined,
   META_SEGMENT_MODEL: process.env.META_SEGMENT_MODEL || undefined,

@@ -218,6 +218,8 @@ interface PlacedPanel {
  * float: centres outside the face span are skipped, sizes clamp into it. ≤ 17° both sides while
  * decals fund the room (house backs mirror the front), else near only, else the fitting prefix;
  * 17–60° near only; structure never drops for panels.
+ * `frontal`: the masks come from the validated 2D facade (a straight-on elevation), so they
+ * are already front-face fractions: no un-turning by the yaw, no yaw limit, back mirrored.
  * Returns the recipe unchanged (same reference) without usable masks, past the hard yaw
  * limit, or for another archetype. Pure: same inputs → same recipe.
  */
@@ -225,12 +227,13 @@ export function withMaskPanels(
   archetype: KitArchetype,
   recipe: ObjectRecipe,
   masks: ReadonlyArray<PartMask>,
-  geom: MaskMapGeom
+  geom: MaskMapGeom,
+  { frontal = false }: { frontal?: boolean } = {}
 ): ObjectRecipe {
   if (archetype !== 'vehicle' && archetype !== 'house') return recipe;
-  if (Math.abs(recipe.yaw ?? 0) > MASK_YAW_HARD_MAX) return recipe;
+  if (!frontal && Math.abs(recipe.yaw ?? 0) > MASK_YAW_HARD_MAX) return recipe;
   // ≤ 17° the far side mirrors the near one (both archetypes); 17–60° the near side only.
-  const allowMirror = Math.abs(recipe.yaw ?? 0) <= MASK_YAW_MAX;
+  const allowMirror = frontal || Math.abs(recipe.yaw ?? 0) <= MASK_YAW_MAX;
   const main = recipe.parts[frontPartIndex(recipe)]!;
 
   // The face behind the panels + the colours they reuse.
@@ -265,7 +268,7 @@ export function withMaskPanels(
   const x1 = shell.at[0] + shell.size[0] / 2;
   const y0 = shell.at[1] - shell.size[1] / 2;
   const y1 = shell.at[1] + shell.size[1] / 2;
-  const yaw = recipe.yaw ?? 0;
+  const yaw = frontal ? 0 : (recipe.yaw ?? 0);
   const cos = Math.cos(yaw);
   const sin = Math.sin(yaw);
   const { w, d } = recipe.proportions;

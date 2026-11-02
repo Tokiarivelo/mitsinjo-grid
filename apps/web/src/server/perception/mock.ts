@@ -38,6 +38,18 @@ const MEETING_TURNS = [
 /** Image observations, picked by a keyword in the question. */
 const MOCK_OBSERVATIONS: Array<{ match: RegExp; summary: string; observations: Observation[] }> = [
   {
+    // First: a blurry photo matches nothing else, whatever the question asks (M4-T5).
+    match: /blurr|flou|manjavozavo/i,
+    summary: 'Mock: image too blurry to read.',
+    observations: [],
+  },
+  {
+    // Before panels: a dust question names the panels too (M8-T2).
+    match: /dust|poussière|poussiere|dirty/i,
+    summary: 'Mock: dust on the panels.',
+    observations: [{ label: 'dusty_panel', value: 25, unit: '%', confidence: 0.5 }],
+  },
+  {
     match: /fire|feu|smoke|fumée|fumee/i,
     summary: 'Mock: smoke visible near a building, to verify.',
     observations: [{ label: 'smoke', value: true, confidence: 0.5 }],

@@ -77,6 +77,8 @@ export interface LineFlowSceneModel {
   direction: 'forward' | 'backward' | 'idle';
   speed: number;
   color: string;
+  /** Burning sector (F1): the line is isolated — red break mark in 3D/2D (M2-T3). */
+  cut?: boolean;
 }
 
 export interface SceneModel {

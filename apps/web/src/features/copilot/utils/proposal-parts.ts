@@ -59,6 +59,9 @@ export function proposalPartIds(
   for (const [sector, mult] of Object.entries(patch?.sectorLoads ?? {})) {
     if (mult !== undefined) ids.push(`sectorLoads.${sector}`);
   }
+  for (const sector of patch?.clearFires ?? []) {
+    ids.push(`clearFires.${sector}`);
+  }
   // Appliance lines last, patch order then removals in current order (mirrored in useProposalDiff).
   const curById = new Map(currentAppliances.map((a) => [a.id, a]));
   const patchIds = new Set<string>();
@@ -115,6 +118,7 @@ export function pickProposal(
       'minSocPct',
       'lifeline',
       'sectorLoads',
+      'clearFires',
       'appliances',
     ]);
     for (const [key, value] of Object.entries(src)) {
@@ -152,6 +156,11 @@ export function pickProposal(
 
     const loads = pickMap(src.sectorLoads, 'sectorLoads', keep);
     if (loads) patch.sectorLoads = loads;
+
+    if (src.clearFires !== undefined) {
+      const kept = src.clearFires.filter((s) => keep.has(`clearFires.${s}`));
+      if (kept.length > 0) patch.clearFires = kept;
+    }
 
     if (src.appliances !== undefined) {
       const curById = new Map(currentAppliances.map((a) => [a.id, a]));

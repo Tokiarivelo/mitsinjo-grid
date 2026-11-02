@@ -33,6 +33,7 @@ export const ScenarioIdSchema = z.enum([
   'battery_constraint',
   'essential_stress',
   'meter_anomaly',
+  'village_fire',
 ]);
 export type ScenarioId = z.infer<typeof ScenarioIdSchema>;
 

@@ -21,6 +21,9 @@ const GL_ARGS =
     ? ['--use-angle=gl', '--enable-gpu', '--ignore-gpu-blocklist']
     : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
 
+/** 1 × 1 white PNG: the stubbed 2D facade. */
+const BLANK_PNG =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=';
 const sse = (events) =>
   events.map(([event, data]) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`).join('');
 const detection = (name) => ({
@@ -76,7 +79,33 @@ for (const theme of ['dark', 'light']) {
       .getByRole('button', { name: new RegExp(name, 'i') })
       .first()
       .click();
-    await page.getByRole('button', { name: /generate the 3d model/i }).click();
+    // /village asks for the 2D facade first (Muse Image): stubbed with a blank elevation.
+    await page.route('**/api/vision/facade', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          detectionId: 'det-1',
+          imageUrl: BLANK_PNG,
+          fileKey: 'stub.png',
+          prompt: 'stub',
+          archetype: 'house',
+          source: 'mock',
+        }),
+      })
+    );
+    const direct = page.getByRole('button', { name: /generate the 3d model/i });
+    const imagine = page.getByRole('button', { name: /imagine 2d facade/i });
+    await direct.or(imagine).first().waitFor();
+    if (await imagine.isVisible()) {
+      await imagine.click();
+      await page
+        .getByRole('button', { name: /validate & generate 3d/i })
+        .first()
+        .click();
+    } else {
+      await direct.click();
+    }
     const viewer = page.locator('.viewer-studio').first();
     await viewer.locator('canvas').waitFor({ timeout: 30_000 });
     await viewer.scrollIntoViewIfNeeded();

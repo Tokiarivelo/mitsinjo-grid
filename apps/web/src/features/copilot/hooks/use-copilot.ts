@@ -9,13 +9,19 @@ import type {
   ChatSessionSummary,
   CopilotActivity,
   CopilotErrorKey,
+  CopilotCouncil,
   CopilotEvidence,
+  CopilotMeeting,
+  CopilotPerception,
   CopilotProposal,
+  CopilotVisual,
   FallbackReason,
   ProposalDecision,
   ProposalDecisionStatus,
   ProposalDiffItem,
 } from '../types';
+import type { InputPatch } from '@mitsinjo/engine';
+import { proposalImpact } from '@/lib/proposal-impact';
 import { parseMessageSections } from '../utils/parse-sections';
 import { COPILOT_PAYLOAD_MAX } from '../utils/history';
 import { decisionToModelText, proposalDecisions } from '../utils/decisions';
@@ -301,11 +307,13 @@ export function useCopilot() {
 
         let streamedContent = '';
         let collectedEvidence: CopilotEvidence[] = [];
+        let collectedPerception: CopilotPerception[] = [];
         let collectedProposal: CopilotProposal | undefined;
         let collectedImageUrl: string | undefined;
         let collectedImageCaption: string | undefined;
         let collectedVideoUrl: string | undefined;
         let collectedVideoCaption: string | undefined;
+        let collectedVisual: CopilotVisual | undefined;
         let collectedChart: ChatChartData | undefined;
         let detectedModelName: string | undefined;
 
@@ -350,6 +358,48 @@ export function useCopilot() {
                     : msg
                 )
               );
+              break;
+            }
+            case 'media': {
+              const kind = dataObj.kind as string;
+              if (
+                (kind === 'village_tonight' ||
+                  kind === 'shedding_poster' ||
+                  kind === 'day_comic') &&
+                typeof dataObj.imageUrl === 'string'
+              ) {
+                collectedVisual = {
+                  kind,
+                  imageUrl: dataObj.imageUrl,
+                  caption: (dataObj.caption as string) || undefined,
+                  overlay:
+                    (dataObj.overlay as CopilotVisual['overlay']) === undefined
+                      ? null
+                      : (dataObj.overlay as CopilotVisual['overlay']),
+                  resultId: (dataObj.resultId as string) || '',
+                };
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantMsgId ? { ...msg, visual: collectedVisual } : msg
+                  )
+                );
+              }
+              break;
+            }
+            case 'council': {
+              const agents = dataObj.agents as CopilotCouncil['agents'] | undefined;
+              const verdict = dataObj.verdict as CopilotCouncil['verdict'] | undefined;
+              if (Array.isArray(agents) && agents.length > 0 && verdict?.pick) {
+                const council: CopilotCouncil = {
+                  question: (dataObj.question as string) || '',
+                  rounds: (dataObj.rounds as number) || 1,
+                  agents,
+                  verdict,
+                };
+                setMessages((prev) =>
+                  prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, council } : msg))
+                );
+              }
               break;
             }
             case 'chart': {
@@ -412,6 +462,18 @@ export function useCopilot() {
               setMessages((prev) =>
                 prev.map((msg) =>
                   msg.id === assistantMsgId ? { ...msg, proposal: collectedProposal } : msg
+                )
+              );
+              break;
+            }
+            case 'perception': {
+              collectedPerception = [
+                ...collectedPerception,
+                dataObj as unknown as CopilotPerception,
+              ];
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId ? { ...msg, perception: collectedPerception } : msg
                 )
               );
               break;
@@ -581,6 +643,38 @@ export function useCopilot() {
     [decideProposal]
   );
 
+  /**
+   * Propose from edited vision observations (M4-T4): engine impact computed client-side, then the
+   * proposal joins the message and the usual approve/reject dialog takes over. One proposal per
+   * message: proposing again replaces the undecided one.
+   */
+  const proposeFromPerception = useCallback(
+    (messageId: string, patch: InputPatch, reason: string, idPrefix = 'PROP-PERCEPTION') => {
+      const { input, activeStrategy } = useSimulationStore.getState();
+      const { impact } = proposalImpact(input, activeStrategy, patch);
+      const proposal: CopilotProposal = {
+        proposalId: `${idPrefix}-${Date.now()}`,
+        patch,
+        reason,
+        impact,
+      };
+      setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, proposal } : msg)));
+    },
+    []
+  );
+
+  /** Posts a diarized meeting to the chat; the priorities are proposed from its block (M10-T4). */
+  const postMeeting = useCallback((meeting: CopilotMeeting) => {
+    const message: ChatMessageData = {
+      id: `meeting-${Date.now()}`,
+      role: 'assistant',
+      content: '',
+      meeting,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setMessages((prev) => [...prev, message]);
+  }, []);
+
   const clearMessages = useCallback(() => {
     setMessages([]);
     setError(null);
@@ -607,6 +701,8 @@ export function useCopilot() {
     sendMessage,
     approveProposal,
     rejectProposal,
+    proposeFromPerception,
+    postMeeting,
     undoableProposalId,
     undoLastChange,
     retryableId,

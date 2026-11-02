@@ -16,7 +16,10 @@ import {
  * plain. The photo itself is never pasted on the model. Geometry and colors only: never a power value.
  */
 
-/** `prism` = triangle extruded along z (gable roof, PF-T3), apex at `apex` of its width. */
+/**
+ * `prism` = triangle extruded along z (gable roof, PF-T3), apex at `apex` of its width.
+ * `hip` = hipped roof, ridge along x of `ridge` × its width (0 = pyramid, 1 = side gable).
+ */
 export const RECIPE_SHAPES = [
   'box',
   'cylinder',
@@ -25,6 +28,7 @@ export const RECIPE_SHAPES = [
   'prism',
   'extrude',
   'lathe',
+  'hip',
 ] as const;
 /** Polygon points of an `extrude` part (PR-2.1): closed ring, simplified before storing. */
 export const EXTRUDE_POINTS_MAX = 64;
@@ -97,6 +101,8 @@ export const RecipePartSchema = z
     axis: z.enum(['x', 'y', 'z']).optional(),
     /** Prism only: x of the ridge, share of the part width from its left edge (default 0.5). */
     apex: z.number().min(0).max(1).optional(),
+    /** Hip only: ridge length, share of the part width (default 0.5). Measured on the 2D facade. */
+    ridge: z.number().min(0).max(1).optional(),
     /** Extrude only (PR-2.1): the profile ring, 3–64 points, built server-side (never from Spark). */
     points: z.array(unitPoint).min(3).max(EXTRUDE_POINTS_MAX).optional(),
     /** Lathe only (PR-2.3): radius-vs-height profile, 2–32 points, y never decreases. */
@@ -125,8 +131,12 @@ export const ObjectRecipeSchema = z.object({
   /** Real proportions of the object, largest side = 1. */
   proportions: z.object({ w: extent, h: extent, d: extent }),
   parts: z.array(RecipePartSchema).min(1).max(MAX_RECIPE_PARTS),
-  /** Where the parts came from: a kit template (`kit`, the default when absent) or the LLM-imagined part list (`free`, archetypes without a real template). */
-  source: z.enum(['kit', 'free']).optional(),
+  /**
+   * Where the parts came from: a kit template (`kit`, the default when absent), the LLM-imagined
+   * part list (`free`, archetypes without a real template) or the measured 2D elevations
+   * (`facade`: validated front + Muse Image side, SAM boxes on both).
+   */
+  source: z.enum(['kit', 'free', 'facade']).optional(),
   /** Measured turn of the front away from the camera (PF-T5), radians, + = right end farther. */
   yaw: z.number().min(-MAX_YAW).max(MAX_YAW).optional(),
   /** One tileable 64 px photo swatch per material (PR-1.5), base64 data URL (≤ 8 kB each). */
@@ -147,6 +157,9 @@ export type ObjectRecipe = z.infer<typeof ObjectRecipeSchema>;
 /** Longest SAM outline sent with a shape request (characters). */
 export const SHAPE_OUTLINE_MAX = 20_000;
 
+/** Longest facade URL accepted: an inline PNG elevation is ≈ 1–3 MB of base64. */
+export const FACADE_URL_MAX = 8_000_000;
+
 export const ShapeTargetSchema = z.object({
   id: z.string().min(1).max(64),
   label: z.string().min(1).max(40),
@@ -156,6 +169,17 @@ export const ShapeTargetSchema = z.object({
   box: NormBoxSchema,
   /** SAM outline (photo fractions path): colours are measured inside it (PF-T2). Too long → not sent. */
   outline: z.string().max(SHAPE_OUTLINE_MAX).optional(),
+  /**
+   * Validated 2D facade (Muse Image 1.0): sent to Spark as a second image beside the photo crop.
+   * Only an inline image or an https link (R2), at most `FACADE_URL_MAX` characters.
+   */
+  facadeUrl: z
+    .string()
+    .max(FACADE_URL_MAX)
+    .regex(/^(data:image\/(png|jpeg|webp);base64,|https:\/\/)/)
+    .optional(),
+  /** R2 / storage key of the validated 2D facade image. */
+  facadeKey: z.string().optional(),
 });
 export type ShapeTarget = z.infer<typeof ShapeTargetSchema>;
 

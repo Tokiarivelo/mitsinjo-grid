@@ -35,4 +35,9 @@ describe('Adaptive router: structural rules only (wording is left to Spark tool 
     expect(pickChatModel([])).toBe('muse-spark-1.3');
     expect(pickChatModel(['muse-spark-1.2'])).toBe('muse-spark-1.2');
   });
+
+  it('keeps the local Glimmer id when it is the only model (M11-T1)', () => {
+    expect(pickChatModel(['muse-glimmer-30b'])).toBe('muse-glimmer-30b');
+    expect(pickChatModel(['muse-spark-1.2', 'muse-glimmer-30b'])).toBe('muse-spark-1.2');
+  });
 });

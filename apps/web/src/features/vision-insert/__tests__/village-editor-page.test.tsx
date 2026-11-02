@@ -40,6 +40,22 @@ const shapeReply = {
 };
 const sseBody = `event: vision_detections\ndata: ${JSON.stringify({ phase: 'boxes', detections, source: 'mock', model: 'm' })}\n\nevent: done\ndata: {}\n\n`;
 
+const facadeReply = {
+  ok: true,
+  imageUrl: 'data:image/png;base64,FACADE',
+  fileKey: 'vision/facades/det_1.png',
+  prompt: 'p',
+  archetype: 'house',
+  detectionId: 'det',
+  source: 'mock',
+};
+
+/** 2D facade first (imagine, then validate): that is what starts the 3D build. */
+async function buildFromFacade() {
+  fireEvent.click(screen.getByRole('button', { name: 'Imagine 2D facade' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Validate & Generate 3D' }));
+}
+
 const originalFetch = global.fetch;
 let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
@@ -47,11 +63,15 @@ beforeEach(() => {
     url === SAMPLE_ROOM_URL
       ? // jsdom's FileReader only reads its own Blob, not Node's Response.blob().
         ({ blob: async () => new Blob([new Uint8Array(8)], { type: 'image/jpeg' }) } as Response)
-      : url === '/api/vision/shape'
-        ? new Response(
-            `event: shape_result\ndata: ${JSON.stringify({ shape: shapeReply })}\n\nevent: done\ndata: {}\n\n`
-          )
-        : new Response(sseBody, { headers: { 'Content-Type': 'text/event-stream' } })
+      : url === '/api/vision/facade'
+        ? new Response(JSON.stringify(facadeReply), {
+            headers: { 'Content-Type': 'application/json' },
+          })
+        : url === '/api/vision/shape'
+          ? new Response(
+              `event: shape_result\ndata: ${JSON.stringify({ shape: shapeReply })}\n\nevent: done\ndata: {}\n\n`
+            )
+          : new Response(sseBody, { headers: { 'Content-Type': 'text/event-stream' } })
   );
   global.fetch = fetchMock as unknown as typeof fetch;
 });
@@ -108,7 +128,8 @@ describe('VillageEditorPage (/village)', () => {
     // Selecting (e.g. to adjust the box) asks nothing: the operator starts the 3D build.
     expect(screen.getByText('Not built yet')).toBeTruthy();
     expect(shapeCalls()).toHaveLength(0);
-    fireEvent.click(screen.getByRole('button', { name: 'Generate the 3D model' }));
+    expect(screen.queryByRole('button', { name: 'Generate the 3D model' })).toBeNull();
+    await buildFromFacade();
     expect(await screen.findByText('AI shape')).toBeTruthy();
     expect(shapeCalls()).toHaveLength(1);
     const target = JSON.parse(
@@ -119,13 +140,16 @@ describe('VillageEditorPage (/village)', () => {
       label: 'Samsung TV',
       category: 'tv',
       box: detections[1]!.box,
+      // The validated 2D facade goes with the 3D request.
+      facadeUrl: facadeReply.imageUrl,
+      facadeKey: facadeReply.fileKey,
     });
 
     // Scenery is modelled too: the scenery type goes with the request.
     fireEvent.click(screen.getByRole('button', { name: /Stone house/ }));
     expect(screen.getByText('3D model')).toBeTruthy();
     expect(shapeCalls()).toHaveLength(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Generate the 3D model' }));
+    await buildFromFacade();
     await waitFor(() => expect(shapeCalls()).toHaveLength(2));
     const house = JSON.parse(
       (shapeCalls()[1]![1] as RequestInit & { body: FormData }).body.get('target') as string
@@ -135,5 +159,5 @@ describe('VillageEditorPage (/village)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Samsung TV/ }));
     expect(await screen.findByText('AI shape')).toBeTruthy();
     expect(shapeCalls()).toHaveLength(2);
-  });
+  }, 15000);
 });

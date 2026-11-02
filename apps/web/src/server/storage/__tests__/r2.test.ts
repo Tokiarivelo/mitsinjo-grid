@@ -4,6 +4,7 @@ import {
   getPresignedUploadUrl,
   getPresignedDownloadUrl,
   uploadBufferToR2,
+  deleteObjectFromR2,
 } from '../r2';
 
 describe('Cloudflare R2 Storage Service', () => {
@@ -31,5 +32,10 @@ describe('Cloudflare R2 Storage Service', () => {
     const url = await uploadBufferToR2('copilot/direct.png', buffer, 'image/png');
     expect(typeof url).toBe('string');
     expect(url.length).toBeGreaterThan(0);
+  });
+
+  it('handles deleteObjectFromR2 in mock mode', async () => {
+    const success = await deleteObjectFromR2('vision/facades/sample.png');
+    expect(success).toBe(true);
   });
 });

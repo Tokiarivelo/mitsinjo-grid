@@ -17,3 +17,4 @@ export * from './hardware';
 export * from './safety';
 export * from './fire';
 export * from './appliances';
+export * from './autonomy';

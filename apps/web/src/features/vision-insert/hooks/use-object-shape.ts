@@ -52,6 +52,13 @@ const TRANSIENT = new Set<ObjectShape['reason']>([
 export const keepShape = (shape: ObjectShape) =>
   shape.mode === 'recipe' || !TRANSIENT.has(shape.reason);
 
+/**
+ * Key of one « Generate » request: the object's key plus the validated facade, so a new facade
+ * asks Spark again instead of returning the model made without it (or with an older one).
+ */
+export const shapeRequestKey = (t: ShapeRequest) =>
+  t.facadeKey ? `${shapeKey(t)}|facade:${t.facadeKey}` : shapeKey(t);
+
 /** Object to model; `adjusted` = the operator corrected its box, so the box is part of the key. */
 export type ShapeRequest = ShapeTarget & { adjusted?: true };
 
@@ -85,6 +92,8 @@ async function shapeForm(imageDataUrl: string, target: ShapeRequest, sessionId?:
       ...(target.outline && target.outline.length <= SHAPE_OUTLINE_MAX
         ? { outline: target.outline }
         : {}),
+      ...(target.facadeUrl ? { facadeUrl: target.facadeUrl } : {}),
+      ...(target.facadeKey ? { facadeKey: target.facadeKey } : {}),
     })
   );
   if (sessionId) form.append('sessionId', sessionId);
@@ -104,6 +113,8 @@ export function useObjectShape() {
   const abortRef = useRef<AbortController | null>(null);
   const cacheRef = useRef(new Map<string, ObjectShape>());
   const viewsCacheRef = useRef(new Map<string, ImaginedAngleView[]>());
+  /** Validated facade per object: « Regenerate » / « Retry » keep using it. */
+  const facadesRef = useRef(new Map<string, Pick<ShapeRequest, 'facadeUrl' | 'facadeKey'>>());
   const lastRef = useRef<{ image: string; target: ShapeRequest; sessionId?: string } | null>(null);
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -144,10 +155,20 @@ export function useObjectShape() {
   }, []);
 
   const requestShape = useCallback(
-    async (imageDataUrl: string, target: ShapeRequest, sessionId?: string, force = false) => {
+    async (imageDataUrl: string, request: ShapeRequest, sessionId?: string, force = false) => {
       abortRef.current?.abort();
+      const objectKey = shapeKey(request);
+      if (request.facadeUrl && request.facadeKey) {
+        facadesRef.current.set(objectKey, {
+          facadeUrl: request.facadeUrl,
+          facadeKey: request.facadeKey,
+        });
+      }
+      const target = request.facadeUrl
+        ? request
+        : { ...request, ...facadesRef.current.get(objectKey) };
       lastRef.current = { image: imageDataUrl, target, ...(sessionId ? { sessionId } : {}) };
-      const key = shapeKey(target);
+      const key = shapeRequestKey(target);
       const cached = force ? undefined : cacheRef.current.get(key);
       if (cached) {
         setState((s) => ({ ...s, status: 'ready', shape: cached }));
@@ -186,7 +207,11 @@ export function useObjectShape() {
       }
       if (controller.signal.aborted) return;
       const final = got.shape ?? offlineSilhouette(target.id, detail);
-      if (keepShape(final)) cacheRef.current.set(key, final);
+      if (keepShape(final)) {
+        cacheRef.current.set(key, final);
+        // A reselect (`peek`, no facade) shows the latest model, facade-based or not.
+        cacheRef.current.set(objectKey, final);
+      }
       setState((s) => ({ ...s, status: 'ready', shape: final }));
     },
     []
@@ -229,6 +254,7 @@ export function useObjectShape() {
   const clear = useCallback(() => {
     cacheRef.current.clear();
     viewsCacheRef.current.clear();
+    facadesRef.current.clear();
     lastRef.current = null;
     abortRef.current?.abort();
     setState(IDLE);

@@ -132,6 +132,31 @@ describe('renderFlat (PR-0.1)', () => {
   });
 });
 
+describe('hip roof (2D facade house)', () => {
+  it('matches the fit silhouette head-on and turned, ridge 0 / 0.5 / 1', () => {
+    for (const ridge of [0, 0.5, 1])
+      for (const yaw of [0, 0.5]) {
+        const rec = recipe([part({ shape: 'hip', ridge })], yaw);
+        const flat = renderFlat(rec, 1, 96, 96);
+        const sil = renderRecipe(rec, 1, 96, 96);
+        expect(iou(flat.mask, sil), `ridge ${ridge} yaw ${yaw}`).toBeGreaterThan(0.95);
+      }
+  });
+
+  it('head-on it is a trapezoid: the top row as wide as the ridge', () => {
+    const n = 100;
+    const flat = renderFlat(recipe([part({ shape: 'hip', ridge: 0.5 })]), 1, n, n);
+    const width = (row: number) => {
+      let c = 0;
+      for (let x = 0; x < n; x++) c += flat.mask.data[row * n + x]!;
+      return c;
+    };
+    expect(width(n - 1)).toBeGreaterThan(0.95 * n);
+    expect(width(2)).toBeGreaterThan(0.4 * n);
+    expect(width(2)).toBeLessThan(0.6 * n);
+  });
+});
+
 describe('extrude profile (PR-2.1)', () => {
   // Non-convex L: full-width bottom bar, left column up, empty top-right notch.
   const ell: [number, number][] = [

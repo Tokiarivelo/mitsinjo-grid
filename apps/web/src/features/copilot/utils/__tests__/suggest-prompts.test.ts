@@ -1,16 +1,56 @@
 import { describe, it, expect } from 'vitest';
-import { suggestPrompts, FALLBACK_STATIC_PROMPTS } from '../suggest-prompts';
+import { suggestPrompts, MAX_PROMPTS } from '../suggest-prompts';
 import { scenarios } from '@mitsinjo/engine';
 import { simulate } from '@mitsinjo/engine';
 
 describe('suggestPrompts (P6-T10)', () => {
-  it('returns static fallback list of 6 prompts when result is null or undefined', () => {
-    const nullRes = suggestPrompts();
-    expect(nullRes).toEqual(FALLBACK_STATIC_PROMPTS);
-    expect(nullRes.length).toBe(6);
+  it('no simulation yet → no question (the UI asks for a run instead of a fixed list)', () => {
+    expect(suggestPrompts()).toEqual([]);
+    expect(suggestPrompts({ result: undefined })).toEqual([]);
+    expect(suggestPrompts({ result: null, fires: [] })).toEqual([]);
+  });
 
-    const undefRes = suggestPrompts({ result: undefined });
-    expect(undefRes).toEqual(FALLBACK_STATIC_PROMPTS);
+  it('a calm day gets what-if questions built on its own numbers', () => {
+    const result = simulate(scenarios.baseline.input, 'proportional');
+    const prompts = suggestPrompts({ result, input: scenarios.baseline.input });
+    expect(prompts[0]).toEqual({
+      key: 'promptBatteryEnd',
+      params: { pct: Math.round(result.metrics.socEndPct) },
+    });
+    expect(prompts.map((p) => p.key)).toContain('promptSolarDrop40');
+    expect(prompts.map((p) => p.key)).not.toContain('promptUnmetDemand');
+    expect(prompts.length).toBeLessThanOrEqual(MAX_PROMPTS);
+  });
+
+  it('the scenario events give their own questions (solar drop with its %, hours)', () => {
+    const { input } = scenarios.cloudy_afternoon;
+    const result = simulate(input, 'proportional');
+    const prompts = suggestPrompts({ result, input });
+    expect(prompts).toContainEqual({
+      key: 'promptSolarDropEvent',
+      params: { pct: 40, from: 13, to: 15 },
+    });
+    expect(prompts.map((p) => p.key)).not.toContain('promptBatteryEnd');
+  });
+
+  it('village_fire before 14 h: one incident question per scripted fire', () => {
+    const { input } = scenarios.village_fire;
+    const result = simulate(input, 'proportional');
+    const prompts = suggestPrompts({ result, input });
+    expect(prompts.slice(0, 2)).toEqual([
+      { key: 'promptFireScripted', params: { sector: 'market', hour: 14 }, tone: 'incident' },
+      { key: 'promptFireScripted', params: { sector: 'water', hour: 15 }, tone: 'incident' },
+    ]);
+  });
+
+  it('village_fire while the market burns: its live questions replace its scripted one', () => {
+    const { input } = scenarios.village_fire;
+    const result = simulate(input, 'proportional');
+    const prompts = suggestPrompts({ result, input, fires: ['market'] });
+    expect(prompts[0]).toMatchObject({ key: 'promptFireImpact', params: { sector: 'market' } });
+    expect(
+      prompts.find((p) => p.key === 'promptFireScripted' && p.params?.sector === 'market')
+    ).toBeUndefined();
   });
 
   it('suggests strategy switch and affected sector prompt when critical unserved load exists', () => {
@@ -99,14 +139,13 @@ describe('suggestPrompts (P6-T10)', () => {
       { key: 'promptFireRestore', params: { sector: 'water' }, tone: 'incident' },
       { key: 'promptFireImpact', params: { sector: 'school' }, tone: 'incident' },
     ]);
-    expect(prompts).toHaveLength(6);
-    expect(prompts[5]?.tone).toBeUndefined();
+    // A calm baseline adds nothing once the incident fills the list.
+    expect(prompts).toHaveLength(5);
   });
 
-  it('fire questions also show before any result; no fire → unchanged list', () => {
+  it('fire questions also show before any result, and only them', () => {
     const prompts = suggestPrompts({ fires: ['health'] });
-    expect(prompts.slice(0, 4).every((p) => p.tone === 'incident')).toBe(true);
-    expect(prompts).toHaveLength(6);
-    expect(suggestPrompts({ fires: [] })).toEqual(FALLBACK_STATIC_PROMPTS);
+    expect(prompts).toHaveLength(4);
+    expect(prompts.every((p) => p.tone === 'incident')).toBe(true);
   });
 });

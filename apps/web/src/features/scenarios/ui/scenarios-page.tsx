@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Radar } from 'lucide-react';
-import { scenarios, type ScenarioId } from '@mitsinjo/engine';
+import { scenarios, ScenarioIdSchema, type ScenarioId } from '@mitsinjo/engine';
 import {
   useSimulationStore,
   selectActiveResult,
@@ -38,14 +38,7 @@ export function ScenariosPage() {
   const [inspectedScenarioId, setInspectedScenarioId] =
     useState<ScenarioId>(currentStoreScenarioId);
 
-  const scenarioIds: ScenarioId[] = [
-    'baseline',
-    'cloudy_afternoon',
-    'high_demand',
-    'battery_constraint',
-    'essential_stress',
-    'meter_anomaly',
-  ];
+  const scenarioIds: readonly ScenarioId[] = ScenarioIdSchema.options;
 
   const handleSelectScenario = (id: ScenarioId) => {
     setInspectedScenarioId(id);

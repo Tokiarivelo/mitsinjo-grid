@@ -25,8 +25,9 @@ Meta feature and carries external-API risk; 3D is local work and easy to time-bo
 | —   | PM All Meta models: voice, vision, image, chat control, fire | `PM-meta-models.md`        | ❌ stretch (planned)     |
 | —   | PV Vision insert (photo → detection → 3D → simulation)       | `PV-vision-insert.md`      | ❌ stretch (planned)     |
 | —   | PV-P Free placement of inserted objects (position + feeder)  | `PV-free-placement.md`     | ❌ planned               |
-| —   | PV-F 3D shape fidelity (measured colours, roofline, fit)     | `PV-shape-fidelity.md`     | 🟡 PF-T1…T9 done         |
+| —   | PV-F 3D shape fidelity (measured colours, roofline, fit)     | `PV-shape-fidelity.md`     | ✅ done                  |
 | —   | PV-R 3D realism (light, soft shapes, part masks, views)      | `PV-shape-realism.md`      | ❌ planned               |
+| —   | PA AI dispatch (autonomous mode, event log, chat scenarios)  | `PA-ai-dispatch.md`        | ❌ planned               |
 
 ## Cut order if late
 

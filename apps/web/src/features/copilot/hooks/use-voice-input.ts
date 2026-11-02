@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toVoiceWav } from '../utils/wav';
+import { createSpeechEndDetector } from '../utils/voice-activity';
 
 /** Longest recording; the route refuses more (60 s of 16 kHz WAV). */
 export const VOICE_MAX_MS = 60_000;
 /** FFT size of the spectrum display: ≈ 11.7 Hz per bin at 48 kHz, fine enough for voice pitch. */
 export const VOICE_FFT_SIZE = 4096;
+/** Microphone energy sampling step for hands-free end-of-speech detection. */
+const VOICE_SAMPLE_MS = 100;
 
 export type VoiceStatus = 'idle' | 'recording' | 'transcribing';
 /** i18n keys under `features.copilot.voice`. */
@@ -15,6 +18,18 @@ export interface UseVoiceInputOptions {
   sessionId?: string;
   /** Receives the transcribed text (shown in the input, editable before sending). */
   onText: (text: string) => void;
+  /** Hands-free mode (M3-T5): called with the transcript right after onText, to send at once. */
+  onAutoSend?: (text: string) => void;
+}
+
+/** RMS energy (0–1) of a time-domain byte buffer. */
+function rmsEnergy(buffer: Uint8Array): number {
+  let sum = 0;
+  for (let i = 0; i < buffer.length; i++) {
+    const v = (buffer[i]! - 128) / 128;
+    sum += v * v;
+  }
+  return Math.sqrt(sum / buffer.length);
 }
 
 /**
@@ -22,7 +37,7 @@ export interface UseVoiceInputOptions {
  * `/api/voice` (Meta Voice or the offline mock). Works in every browser with `MediaRecorder`,
  * unlike the Web Speech API (missing in Firefox and most Linux Chromium builds).
  */
-export function useVoiceInput({ locale, sessionId, onText }: UseVoiceInputOptions) {
+export function useVoiceInput({ locale, sessionId, onText, onAutoSend }: UseVoiceInputOptions) {
   const [status, setStatus] = useState<VoiceStatus>('idle');
   const [error, setError] = useState<VoiceErrorKey | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -34,6 +49,22 @@ export function useVoiceInput({ locale, sessionId, onText }: UseVoiceInputOption
   useEffect(() => {
     onTextRef.current = onText;
   }, [onText]);
+  /** Hands-free mode (M3-T5, off by default): silence ends the turn, the transcript auto-sends. */
+  const [handsFree, setHandsFree] = useState(false);
+  const handsFreeRef = useRef(false);
+  const onAutoSendRef = useRef(onAutoSend);
+  useEffect(() => {
+    onAutoSendRef.current = onAutoSend;
+  }, [onAutoSend]);
+  const toggleHandsFree = useCallback(() => {
+    setHandsFree((v) => {
+      handsFreeRef.current = !v;
+      return !v;
+    });
+  }, []);
+  const analyserNodeRef = useRef<AnalyserNode | null>(null);
+  const speechEndRef = useRef(createSpeechEndDetector());
+  const sampleRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   const supported =
     typeof window !== 'undefined' &&
@@ -52,8 +83,10 @@ export function useVoiceInput({ locale, sessionId, onText }: UseVoiceInputOption
         if (!res.ok) throw new Error(`voice ${res.status}`);
         const data = (await res.json()) as { text?: string };
         const text = data.text?.trim();
-        if (text) onTextRef.current(text);
-        else setError('empty');
+        if (text) {
+          onTextRef.current(text);
+          if (handsFreeRef.current) onAutoSendRef.current?.(text);
+        } else setError('empty');
       } catch {
         setError('failed');
       } finally {
@@ -75,6 +108,7 @@ export function useVoiceInput({ locale, sessionId, onText }: UseVoiceInputOption
       node.maxDecibels = -20;
       ctx.createMediaStreamSource(stream).connect(node);
       audioCtxRef.current = ctx;
+      analyserNodeRef.current = node;
       setAnalyser(node);
     } catch {
       setAnalyser(null);
@@ -84,11 +118,13 @@ export function useVoiceInput({ locale, sessionId, onText }: UseVoiceInputOption
   const closeAnalyser = useCallback(() => {
     void audioCtxRef.current?.close().catch(() => undefined);
     audioCtxRef.current = null;
+    analyserNodeRef.current = null;
     setAnalyser(null);
   }, []);
 
   const stop = useCallback(() => {
     clearTimeout(timerRef.current);
+    clearInterval(sampleRef.current);
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
   }, []);
 
@@ -127,6 +163,17 @@ export function useVoiceInput({ locale, sessionId, onText }: UseVoiceInputOption
     recorder.start();
     setStatus('recording');
     timerRef.current = setTimeout(stop, VOICE_MAX_MS);
+    // Hands-free sampling: silence after speech stops the turn (needs Web Audio).
+    speechEndRef.current.reset();
+    clearInterval(sampleRef.current);
+    sampleRef.current = setInterval(() => {
+      if (!handsFreeRef.current) return;
+      const node = analyserNodeRef.current;
+      if (!node) return;
+      const buffer = new Uint8Array(node.fftSize);
+      node.getByteTimeDomainData(buffer);
+      if (speechEndRef.current.push(rmsEnergy(buffer), Date.now())) stop();
+    }, VOICE_SAMPLE_MS);
   }, [supported, transcribe, stop, openAnalyser, closeAnalyser]);
 
   const toggle = useCallback(() => {
@@ -138,6 +185,7 @@ export function useVoiceInput({ locale, sessionId, onText }: UseVoiceInputOption
   useEffect(
     () => () => {
       clearTimeout(timerRef.current);
+      clearInterval(sampleRef.current);
       const rec = recorderRef.current;
       if (rec?.state === 'recording') {
         rec.onstop = null;
@@ -149,5 +197,14 @@ export function useVoiceInput({ locale, sessionId, onText }: UseVoiceInputOption
     []
   );
 
-  return { status, error, supported, toggle, analyser, clearError: () => setError(null) };
+  return {
+    status,
+    error,
+    supported,
+    toggle,
+    analyser,
+    handsFree,
+    toggleHandsFree,
+    clearError: () => setError(null),
+  };
 }

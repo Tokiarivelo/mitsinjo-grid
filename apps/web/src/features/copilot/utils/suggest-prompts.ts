@@ -1,4 +1,10 @@
-import type { SectorId, SimulationResult, StrategyId } from '@mitsinjo/engine';
+import {
+  fireEvents,
+  type SectorId,
+  type SimulationInput,
+  type SimulationResult,
+  type StrategyId,
+} from '@mitsinjo/engine';
 
 export interface SuggestedPromptItem {
   key: string;
@@ -11,6 +17,8 @@ export interface SuggestPromptsOptions {
   result?: SimulationResult | null;
   activeStrategy?: StrategyId;
   scenarioId?: string;
+  /** Input of the run: its fires and events give scenario-specific questions. */
+  input?: Pick<SimulationInput, 'events'>;
   /** Sectors on fire at the shown hour (M2): their questions come first. */
   fires?: readonly SectorId[];
 }
@@ -41,49 +49,80 @@ function firePrompts(fires: readonly SectorId[]): SuggestedPromptItem[] {
   ];
 }
 
-export const FALLBACK_STATIC_PROMPTS: SuggestedPromptItem[] = [
-  { key: 'promptWhyClinic' },
-  { key: 'promptCompareStrategies' },
-  { key: 'promptSolarDrop40' },
-  { key: 'promptUnmetDemand' },
-  { key: 'promptBatteryState' },
-  { key: 'promptProtectEssential' },
-];
+/** Most prompts shown at once. */
+export const MAX_PROMPTS = 6;
+
+/** Below this many result-driven questions, a calm day also gets its "what if" questions. */
+const MIN_RESULT_PROMPTS = 4;
+
+/** Fires written in the scenario that do not burn at the shown hour (e.g. `village_fire` before 14 h). */
+function scriptedFirePrompts(
+  input: Pick<SimulationInput, 'events'> | undefined,
+  burning: readonly SectorId[]
+): SuggestedPromptItem[] {
+  if (!input) return [];
+  return fireEvents(input.events)
+    .filter((f) => !burning.includes(f.sector))
+    .map((f) => ({
+      key: 'promptFireScripted',
+      params: { sector: f.sector, hour: f.startHour },
+      tone: 'incident' as const,
+    }));
+}
+
+/** One question per weather or demand event of the scenario, worded with its own numbers. */
+function eventPrompts(input: Pick<SimulationInput, 'events'> | undefined): SuggestedPromptItem[] {
+  if (!input) return [];
+  const out: SuggestedPromptItem[] = [];
+  for (const e of input.events) {
+    const range = { from: e.startHour, to: e.startHour + e.durationH };
+    if (e.type === 'solar_drop') {
+      out.push({
+        key: 'promptSolarDropEvent',
+        params: { pct: Math.round((1 - e.factor) * 100), ...range },
+      });
+    } else if (e.type === 'demand_spike') {
+      out.push({
+        key: 'promptDemandSpikeEvent',
+        params: { pct: Math.round((e.factor - 1) * 100), ...range },
+      });
+    }
+  }
+  return out;
+}
 
 /**
- * Maps simulation results and active context to at most 6 contextual suggested prompts.
- * Pure function adhering to P6-T10.
+ * Questions generated from the simulation the operator ran (P6-T10): its fires, events, deficits,
+ * warnings and battery, at most 6. No result and no fire burning → empty: the UI asks to run a
+ * simulation first instead of showing a fixed list.
  */
 export function suggestPrompts(options?: SuggestPromptsOptions): SuggestedPromptItem[] {
   const result = options?.result;
   const activeStrategy = options?.activeStrategy ?? 'proportional';
   const fires = options?.fires ?? [];
 
-  if (fires.length === 0 && (!result || !result.metrics)) {
-    return [...FALLBACK_STATIC_PROMPTS];
-  }
-
   const dynamic: SuggestedPromptItem[] = [];
   const addedKeys = new Set<string>();
 
   const pushPrompt = (item: SuggestedPromptItem) => {
     const id = `${item.key}:${item.params?.sector ?? ''}`;
-    if (!addedKeys.has(id) && dynamic.length < 6) {
+    if (!addedKeys.has(id) && dynamic.length < MAX_PROMPTS) {
       addedKeys.add(id);
       dynamic.push(item);
     }
   };
 
-  // 0. A fire burns now (M2): the incident comes first.
+  // 0. A fire burns now (M2): the incident comes first, even before a run.
   firePrompts(fires).forEach(pushPrompt);
 
-  if (!result || !result.metrics) {
-    FALLBACK_STATIC_PROMPTS.forEach(pushPrompt);
-    return dynamic;
-  }
+  if (!result || !result.metrics) return dynamic;
+  const { metrics } = result;
 
-  // 1. Critical deficit handling
-  if (result.metrics.criticalUnservedKwh > 0) {
+  // 1. Fires the scenario will start later (scripted incident).
+  scriptedFirePrompts(options?.input, fires).forEach(pushPrompt);
+
+  // 2. Critical deficit handling
+  if (metrics.criticalUnservedKwh > 0) {
     if (activeStrategy !== 'essential_first') {
       pushPrompt({
         key: 'promptSwitchStrategy',
@@ -91,7 +130,7 @@ export function suggestPrompts(options?: SuggestPromptsOptions): SuggestedPrompt
       });
     }
 
-    const firstAffected = result.metrics.affectedSectors[0];
+    const firstAffected = metrics.affectedSectors[0];
     if (firstAffected) {
       pushPrompt({
         key: 'promptWhySector',
@@ -100,40 +139,50 @@ export function suggestPrompts(options?: SuggestPromptsOptions): SuggestedPrompt
     }
   }
 
-  // 2. Warnings with specific hours
-  if (result.warnings && result.warnings.length > 0) {
-    // Only shortage warnings: CURTAILMENT / RESERVE_REACHED are not a deficit.
-    const warningWithHours = result.warnings.find(
-      (w) => w.code === 'CRITICAL_UNMET' || w.code === 'SECTOR_PARTIAL'
-    );
-    if (warningWithHours) {
-      pushPrompt({
-        key: 'promptDeficitHours',
-        params: { hours: `${warningWithHours.fromHour}-${warningWithHours.toHour}` },
-      });
-    }
+  // 3. Warnings with specific hours
+  // Only shortage warnings: CURTAILMENT / RESERVE_REACHED are not a deficit.
+  const warningWithHours = result.warnings?.find(
+    (w) => w.code === 'CRITICAL_UNMET' || w.code === 'SECTOR_PARTIAL'
+  );
+  if (warningWithHours) {
+    pushPrompt({
+      key: 'promptDeficitHours',
+      params: { hours: `${warningWithHours.fromHour}-${warningWithHours.toHour}` },
+    });
   }
 
-  // 3. Proportional strategy with deficit -> recommend comparing strategies
-  if (activeStrategy === 'proportional' && result.metrics.unservedKwh > 0) {
+  // 4. The scenario's own weather / demand events
+  eventPrompts(options?.input).forEach(pushPrompt);
+
+  // 5. Proportional strategy with deficit -> recommend comparing strategies
+  if (activeStrategy === 'proportional' && metrics.unservedKwh > 0) {
     pushPrompt({ key: 'promptCompareStrategies' });
   }
 
-  // 4. Any unmet demand
-  if (result.metrics.unservedKwh > 0) {
+  // 6. Any unmet demand
+  if (metrics.unservedKwh > 0) {
     pushPrompt({ key: 'promptUnmetDemand' });
   }
 
-  // 5. Deep battery discharge
-  if (result.metrics.socMinPct < 25) {
+  // 7. Deep battery discharge
+  if (metrics.socMinPct < 25) {
     pushPrompt({ key: 'promptBatteryState' });
   }
 
-  // 6. Fill remaining slots up to 6 from fallback defaults
-  for (const fallback of FALLBACK_STATIC_PROMPTS) {
-    if (dynamic.length >= 6) break;
-    pushPrompt(fallback);
+  // 8. Calm day: what-if questions built on this run's numbers.
+  if (dynamic.length < MIN_RESULT_PROMPTS) {
+    pushPrompt({ key: 'promptBatteryEnd', params: { pct: Math.round(metrics.socEndPct) } });
+    if (metrics.curtailedKwh > 0) {
+      pushPrompt({
+        key: 'promptCurtailed',
+        params: { kwh: Math.round(metrics.curtailedKwh * 10) / 10 },
+      });
+    }
+    if (metrics.unservedKwh === 0) {
+      pushPrompt({ key: 'promptSolarDrop40' });
+      pushPrompt({ key: 'promptProtectEssential' });
+    }
   }
 
-  return dynamic.slice(0, 6);
+  return dynamic;
 }

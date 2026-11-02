@@ -11,6 +11,7 @@ import {
   isCopilotModel,
   DEFAULT_META_MODEL,
 } from '@/server/copilot/providers/meta';
+import { GlimmerLlmProvider, DEFAULT_GLIMMER_MODEL } from '@/server/copilot/providers/glimmer';
 import { saveMessage, saveSessionSummary, isNeonConfigured } from '@/server/db/neon';
 import { COPILOT_PAYLOAD_MAX } from '@/features/copilot/utils/history';
 import type {
@@ -145,12 +146,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Choose provider: Meta if configured, otherwise Mock
+  // Choose provider: Meta if configured, else local Glimmer, otherwise Mock
   const chosenModel = parsed.data.model || env.META_MODEL;
   const isMetaConfigured = env.LLM_PROVIDER === 'meta' && Boolean(env.META_API_KEY);
+  const isGlimmerPrimary = env.LLM_PROVIDER === 'glimmer' && Boolean(env.GLIMMER_BASE_URL);
   const provider = isMetaConfigured
     ? new MetaLlmProvider({ model: chosenModel })
-    : new MockLlmProvider();
+    : isGlimmerPrimary
+      ? new GlimmerLlmProvider({ model: parsed.data.model || undefined })
+      : new MockLlmProvider();
 
   console.info(
     `[copilot:chat] POST /api/copilot — provider: "${provider.name}", model: "${chosenModel || 'default'}", messages: ${parsed.data.messages.length}, strategy: "${parsed.data.strategy || 'proportional'}"`
@@ -159,6 +163,11 @@ export async function POST(req: NextRequest) {
   if (!isMetaConfigured && env.LLM_PROVIDER === 'meta') {
     console.warn(
       `[copilot:chat] LLM_PROVIDER is "meta" but META_API_KEY is missing. Using MockLlmProvider fallback.`
+    );
+  }
+  if (!isGlimmerPrimary && env.LLM_PROVIDER === 'glimmer') {
+    console.warn(
+      `[copilot:chat] LLM_PROVIDER is "glimmer" but GLIMMER_BASE_URL is missing. Using MockLlmProvider fallback.`
     );
   }
 
@@ -206,7 +215,9 @@ export async function POST(req: NextRequest) {
       try {
         const availableModels = isMetaConfigured
           ? await MetaLlmProvider.listModels().catch(() => [DEFAULT_META_MODEL])
-          : [MOCK_MODEL_ID];
+          : isGlimmerPrimary
+            ? [env.GLIMMER_MODEL || DEFAULT_GLIMMER_MODEL]
+            : [MOCK_MODEL_ID];
 
         await runCopilotLoop({
           messages: parsed.data.messages,

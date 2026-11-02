@@ -5,6 +5,7 @@ import {
   Send,
   Mic,
   MicOff,
+  AudioLines,
   Loader2,
   Paperclip,
   Edit3,
@@ -255,6 +256,23 @@ export function ChatComposer({
               ) : (
                 <Mic className="h-3.5 w-3.5" aria-hidden="true" />
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={voice.toggleHandsFree}
+              disabled={pending || isListening || isTranscribing}
+              aria-pressed={voice.handsFree}
+              aria-label={t('voice.handsFree')}
+              title={t('voice.handsFree')}
+              className={cn(
+                ICON_BUTTON,
+                voice.handsFree
+                  ? 'bg-energy-cyan/20 border-energy-cyan text-energy-cyan'
+                  : quietButton
+              )}
+            >
+              <AudioLines className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
 
             {terminal ? (

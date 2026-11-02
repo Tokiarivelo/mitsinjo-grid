@@ -9,6 +9,9 @@ Route: /scenarios. Goal: make assumptions understandable, repeatable, comparable
 - High Community Demand: higher household and community demand.
 - Battery Constraint: lower capacity or initial SoC.
 - Essential Services Under Stress: tests prioritization in shortage.
+- Synthetic Meter Anomaly: market meter diverges from its profile (verify, never fraud).
+- Village Fire: scripted fire, market at 14:00 then water pumps at 15:00. Card type badge « Incident »
+  (critical-red) and delta « Fire – {sector} from {hour} » for any scenario that holds a fire event.
 
 ## Layout
 

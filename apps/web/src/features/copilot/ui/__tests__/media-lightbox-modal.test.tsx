@@ -79,4 +79,31 @@ describe('MediaLightboxModal', () => {
     expect(video).toBeInTheDocument();
     expect(video).toHaveAttribute('src', 'https://example.com/simulation.mp4');
   });
+
+  it('overlays segmentation masks on the photo (M8-T1)', () => {
+    const { container } = render(
+      <MediaLightboxModal
+        isOpen={true}
+        media={{
+          url: 'https://example.com/roof.png',
+          type: 'image',
+          title: 'Roof',
+          masks: [
+            { outline: 'M0.1 0.1H0.5V0.4H0.1Z', imageWidth: 1000, imageHeight: 800 },
+            {
+              box: { x1: 100, y1: 80, x2: 500, y2: 400 },
+              imageWidth: 1000,
+              imageHeight: 800,
+            },
+          ],
+        }}
+        onClose={vi.fn()}
+      />
+    );
+    const paths = container.querySelectorAll('svg[data-masks] path');
+    expect(paths).toHaveLength(2);
+    // Outline used as-is; pixel box converted to 0–1 fractions.
+    expect(paths[0]).toHaveAttribute('d', 'M0.1 0.1H0.5V0.4H0.1Z');
+    expect(paths[1]).toHaveAttribute('d', 'M0.1 0.1H0.5V0.5H0.1Z');
+  });
 });

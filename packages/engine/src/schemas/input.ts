@@ -195,5 +195,7 @@ export const InputPatchSchema = z.object({
     .optional(),
   /** Replaces the whole appliance list (PV); `[]` removes every appliance. */
   appliances: AppliancesSchema.optional(),
+  /** Removes the fire events of these sectors (restore, M2-T4, approved via propose_change). */
+  clearFires: z.array(SectorIdSchema).min(1).optional(),
 });
 export type InputPatch = z.infer<typeof InputPatchSchema>;

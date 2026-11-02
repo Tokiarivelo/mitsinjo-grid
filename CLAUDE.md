@@ -49,6 +49,9 @@ shadcn/ui (restyled) · Zustand · Zod · R3F + Drei · Recharts · next-intl ·
 
 - Numbers come **only** from `@mitsinjo/engine`. UI, 3D and LLM never compute or invent energy values.
 - Engine is pure TS: no React, no DOM, no network, no `Math.random` without seed.
+- Actions need human approval (`propose_change` → Approve/Reject), **except** fire isolation and the **AI autonomous
+  dispatch mode** (PA): there the engine-chosen action applies alone and is logged. Still hard rules in that mode:
+  village constitution, never re-energise a burning sector, one-tap "take back control", every action undoable.
 - Zero static text & Multi-language (i18n): All UI surfaces must be multi-lingual via official `next-intl` (EN default, FR, MG). Zero hardcoded/static user-visible strings in JSX/TSX. All text must use `useTranslations()` with 100% key parity across `en.json`, `fr.json`, and `mg.json` (enforced in CI and PR validation via `make check-i18n`).
 - **Responsive Mobile First-Class (Always):** All UI features, layouts, cards, and viewports must be fully responsive from 320px mobile screens up to 4K desktop. Mobile bottom navigation (`MobileNav`), touch targets $\ge 44\text{px}$, single-column reflow, zero horizontal scroll, and `pb-20 md:pb-6` bottom padding are mandatory.
 - **Dual Theming (Dark & Light always):** All UI components must support both dark (default) and light themes seamlessly via Tailwind 4 `@theme` semantic tokens (`bg-canvas`, `bg-surface`, `text-text-primary`, `border-border`, etc.). Zero raw hex/hardcoded colors in JSX/TSX. WCAG AA contrast required in both modes; `ThemeSwitcher` accessible in header and sidebar.

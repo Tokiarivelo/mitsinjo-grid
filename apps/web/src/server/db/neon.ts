@@ -1,67 +1,15 @@
 import 'server-only';
-import https from 'node:https';
-
-import { neon, neonConfig } from '@neondatabase/serverless';
+import { neon } from '@neondatabase/serverless';
 import { env } from '@/lib/env';
+import { runMigrations } from './migrations';
+import { preferIpv4Fetch } from './ipv4-fetch';
 import type {
   ChatSessionSummary,
   ChatSessionDetail,
   ChatMessageData,
 } from '@/features/copilot/types';
 
-// Configure neonConfig to prioritize IPv4 over HTTPS in environments where IPv6 route may be unreachable
-if (typeof https?.request === 'function') {
-  neonConfig.fetchFunction = (url: string | URL | Request, options: RequestInit = {}) => {
-    return new Promise<Response>((resolve, reject) => {
-      const targetUrl =
-        typeof url === 'string' ? new URL(url) : url instanceof URL ? url : new URL(url.url);
-
-      const headers: Record<string, string> = {};
-      if (options.headers) {
-        if (typeof (options.headers as Headers).forEach === 'function') {
-          (options.headers as Headers).forEach((val: string, key: string) => {
-            headers[key] = val;
-          });
-        } else if (Array.isArray(options.headers)) {
-          options.headers.forEach(([k, v]: [string, string]) => {
-            headers[k] = v;
-          });
-        } else {
-          Object.assign(headers, options.headers);
-        }
-      }
-
-      const req = https.request(
-        targetUrl,
-        {
-          method: options.method || 'GET',
-          headers,
-          family: 4, // Force IPv4 family
-        },
-        (res) => {
-          const chunks: Buffer[] = [];
-          res.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-          res.on('end', () => {
-            const body = Buffer.concat(chunks).toString('utf8');
-            resolve(
-              new Response(body, {
-                status: res.statusCode || 200,
-                statusText: res.statusMessage || 'OK',
-                headers: res.headers as HeadersInit,
-              })
-            );
-          });
-        }
-      );
-
-      req.on('error', reject);
-      if (options.body) {
-        req.write(options.body);
-      }
-      req.end();
-    });
-  };
-}
+preferIpv4Fetch();
 
 // In-memory fallback stores when DATABASE_URL is not configured
 const inMemorySessions = new Map<string, ChatSessionSummary>();
@@ -80,41 +28,15 @@ export function isNeonConfigured(): boolean {
   return Boolean(env.DATABASE_URL);
 }
 
+/** Applies pending schema migrations once per server instance (see `migrations.ts`). */
 async function ensureNeonTables(sql: ReturnType<typeof neon<false, false>>) {
   if (isMigrated) return;
   try {
-    await sql`
-      CREATE TABLE IF NOT EXISTS copilot_sessions (
-        id VARCHAR(64) PRIMARY KEY,
-        title TEXT NOT NULL,
-        locale VARCHAR(8) DEFAULT 'en',
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      );
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS copilot_messages (
-        id VARCHAR(64) PRIMARY KEY,
-        session_id VARCHAR(64) REFERENCES copilot_sessions(id) ON DELETE CASCADE,
-        role VARCHAR(16) NOT NULL,
-        content TEXT NOT NULL,
-        media JSONB,
-        chart JSONB,
-        sections JSONB,
-        evidence JSONB,
-        proposal JSONB,
-        detected_model VARCHAR(64),
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      );
-    `;
-    // Later columns: operator decisions (M1) and the conversation summary (auto-compaction).
-    await sql`ALTER TABLE copilot_messages ADD COLUMN IF NOT EXISTS decision JSONB;`;
-    await sql`ALTER TABLE copilot_sessions ADD COLUMN IF NOT EXISTS summary TEXT;`;
-    await sql`ALTER TABLE copilot_sessions ADD COLUMN IF NOT EXISTS summarized_count INT DEFAULT 0;`;
+    const applied = await runMigrations((text, params) => sql.query(text, params ?? []));
     isMigrated = true;
-    console.info('[db:neon] Tables initialized successfully');
+    if (applied.length > 0) console.info(`[db:neon] Applied migrations: ${applied.join(', ')}`);
   } catch (err) {
-    console.error('[db:neon] Failed to initialize tables:', err);
+    console.error('[db:neon] Failed to apply migrations:', err);
   }
 }
 

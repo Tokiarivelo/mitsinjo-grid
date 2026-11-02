@@ -15,6 +15,16 @@ export interface ReportFireControlProps {
   /** Side the sector list opens to (HUD only). */
   align?: 'left' | 'right';
   className?: string;
+  /**
+   * Sector pre-filled by a voice urgency order (M3-T3): the list opens with it highlighted,
+   * one click confirms. Remount (key) to open again.
+   */
+  defaultOpenSector?: SectorId;
+  /**
+   * Open the sector list without a pre-filled sector (M8-T3: smoke seen on a photo — the
+   * operator picks the sector). Remount (key) to open again.
+   */
+  defaultOpen?: boolean;
 }
 
 /**
@@ -25,13 +35,15 @@ export function ReportFireControl({
   variant = 'hud',
   align = 'right',
   className,
+  defaultOpenSector,
+  defaultOpen = false,
 }: ReportFireControlProps) {
   const t = useTranslations('features.fireAlert');
   const tSectors = useTranslations('sectors');
   const sectors = useSimulationStore((s) => s.input.sectors);
   const reportFire = useSimulationStore((s) => s.reportFire);
   const burning = new Set(useActiveFires().map((f) => f.sector));
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpenSector !== undefined || defaultOpen);
   const listId = useId();
 
   const report = (sector: SectorId) => {
@@ -80,15 +92,22 @@ export function ReportFireControl({
             </button>
           </div>
           <p className="px-1 text-[11px] text-text-secondary">{t('reportHint')}</p>
+          {defaultOpenSector && (
+            <p className="px-1 text-[11px] font-medium text-critical-red">{t('voiceDetected')}</p>
+          )}
           {sectors.map((s) => {
             const onFire = burning.has(s.id);
+            const preset = s.id === defaultOpenSector;
             return (
               <button
                 key={s.id}
                 type="button"
                 disabled={onFire}
                 onClick={() => report(s.id)}
-                className="min-h-11 px-3 rounded-control-sm text-left text-xs font-medium text-text-primary bg-surface border border-border hover:border-critical-red/50 hover:bg-critical-red/10 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan flex items-center justify-between gap-2"
+                className={cn(
+                  'min-h-11 px-3 rounded-control-sm text-left text-xs font-medium text-text-primary bg-surface border border-border hover:border-critical-red/50 hover:bg-critical-red/10 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan flex items-center justify-between gap-2',
+                  preset && !onFire && 'border-critical-red ring-2 ring-critical-red/40'
+                )}
               >
                 <span>{tSectors(s.id)}</span>
                 {onFire && (

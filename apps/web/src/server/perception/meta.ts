@@ -196,12 +196,14 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     /** false = always the standard model id (latency-sensitive calls). */
     allowContributor = true,
     /** Full request + result lines for the 3D calls (images logged as placeholders only). */
-    log?: VisionCallLog
+    log?: VisionCallLog,
+    /** Reference images sent after the main one (the validated 2D facade). */
+    extraImages: ReadonlyArray<string> = []
   ): Promise<{ content: string; model: string; usage: UsageSample }> {
     if (log) {
       const schema = (jsonSchema as { name?: unknown }).name;
       console.info(
-        `[vision] 3D ${log.kind} → params ${JSON.stringify(log.params ?? {}, redactDataUrls)} image ${redactDataUrls('image', imageUrl)} schema ${typeof schema === 'string' ? schema : 'custom'}`
+        `[vision] 3D ${log.kind} → params ${JSON.stringify(log.params ?? {}, redactDataUrls)} image ${redactDataUrls('image', imageUrl)}${extraImages.map((u) => ` + reference ${redactDataUrls('image', u)}`).join('')} schema ${typeof schema === 'string' ? schema : 'custom'}`
       );
       console.info(`[vision] 3D ${log.kind} system: ${system}`);
       console.info(`[vision] 3D ${log.kind} question: ${question}`);
@@ -217,6 +219,7 @@ export class MetaPerceptionBackend implements PerceptionBackend {
           content: [
             { type: 'text', text: question },
             { type: 'image_url', image_url: { url: imageUrl } },
+            ...extraImages.map((url) => ({ type: 'image_url', image_url: { url } })),
           ],
         },
       ],
@@ -320,12 +323,13 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     // Standard id, not the contributor one: the operator waits on this answer (≈ 15 s vs ≈ 25 s measured).
     const { content, model, usage } = await this.visionJson(
       SHAPE_SYSTEM_PROMPT,
-      shapeQuestion(target.label, target.aspect, hint),
+      shapeQuestion(target.label, target.aspect, hint, Boolean(target.facadeUrl)),
       imageUrl,
       SHAPE_JSON_SCHEMA,
       signal,
       false,
-      { kind: 'describeShape', params: { ...target } }
+      { kind: 'describeShape', params: { ...target } },
+      target.facadeUrl ? [target.facadeUrl] : []
     );
     const kit = parseKit(content, hint);
     if (!kit) console.info(`[vision] ${model} gave no usable 3D kit: ${content.slice(0, 300)}`);
@@ -345,12 +349,18 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     // Standard id, not the contributor one: the operator waits on this answer (same as the kit call).
     const { content, model, usage } = await this.visionJson(
       PARTS_SYSTEM_PROMPT,
-      shapePartsQuestion(target.label, target.archetype, visibilityFromCoverage(target.coverage)),
+      shapePartsQuestion(
+        target.label,
+        target.archetype,
+        visibilityFromCoverage(target.coverage),
+        Boolean(target.facadeUrl)
+      ),
       imageUrl,
       PARTS_JSON_SCHEMA,
       signal,
       false,
-      { kind: 'describeParts', params: { ...target } }
+      { kind: 'describeParts', params: { ...target } },
+      target.facadeUrl ? [target.facadeUrl] : []
     );
     const recipe = parseFreeParts(content);
     if (!recipe)

@@ -127,3 +127,26 @@ describe('appliance lines (PV-T11b)', () => {
     expect(pickProposal({ patch: { appliances: [lamp] } }, [], current)).toEqual({});
   });
 });
+
+describe('clearFires lines (M2-T4)', () => {
+  const fireProposal: { patch: InputPatch } = { patch: { clearFires: ['school', 'market'] } };
+
+  it('ids list one restore line per sector, after sectorLoads', () => {
+    expect(
+      proposalPartIds({
+        patch: { sectorLoads: { water: 0.5 }, clearFires: ['school'] },
+        strategy: undefined,
+      })
+    ).toEqual(['sectorLoads.water', 'clearFires.school']);
+  });
+
+  it('all checked → the same patch; unchecked sectors dropped', () => {
+    expect(pickProposal(fireProposal, ['clearFires.school', 'clearFires.market'])).toEqual(
+      fireProposal
+    );
+    expect(pickProposal(fireProposal, ['clearFires.market'])).toEqual({
+      patch: { clearFires: ['market'] },
+    });
+    expect(pickProposal(fireProposal, [])).toEqual({});
+  });
+});

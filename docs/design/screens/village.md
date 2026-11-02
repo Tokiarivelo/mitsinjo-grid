@@ -6,14 +6,22 @@ the engine catalog gives power (never the AI). Sidebar + MobileNav entry « Vill
 - Intro card: scan icon, « Add appliances from a photo » + one-line purpose, `SIMULATED DATA` badge.
 - No photo: dashed drop zone (drag & drop), primary « Choose a photo » (JPEG/PNG/WebP), secondary « Use the sample room »
   (`/samples/vision-room.jpg`). Wrong type → inline red alert, no call.
-- Photo: `DetectionCanvas` (components.md) left; aside « Selected appliance » right (320 px, stacks under on < lg):
-  selected line, « 3D model » block (every object, scenery included, PV-T10), AI note (« power from the engine catalog »), « Change photo ».
-  « 3D model » is built on demand (user, 2026-11-01): selecting shows a kept model or « Not built yet » + hint + violet
-  « Generate the 3D model » (`useObjectShape().peek` / `requestShape`), so picking to adjust a box costs no Spark call.
+- Photo: `DetectionCanvas` (components.md) left; aside « Selected appliance » right (460–540 px on desktop, stacks under on < lg):
+  Studio workbench with tabbed inspector (`[Active Object]`, `[Installed Appliances (N)]`, `[Microgrid Twin]`) to eliminate vertical scroll fatigue.
+  Selected object has sub-tabs: `[3D Twin & Elevation]` (3D model + facade + 6 angles) and `[Load & Placement]` (power settings, minimap, 24h curve, CTA).
+  « 3D model » is built on demand (user, 2026-11-01): selecting shows a kept model or « Not built yet », so picking to
+  adjust a box costs no Spark call. 2D facade first (user, 2026-11-02): « Imagine 2D facade » (Muse Image) → « Validate
+  & Generate 3D » is the only way to build; there is no direct 3D button, and the 6-angle preview validates only once a
+  facade exists. The validated facade (`facadeUrl` + `facadeKey`) goes to Spark as a second image beside the crop
+  (`describeShape` / `describeParts`) to refine windows, doors, roof and parts; the crop keeps size, pose and colours.
+  Each object keeps its own facade (reset on a new photo); « Regenerate » reuses it; a new facade asks Spark again.
+  On a house, SAM also reads the facade's windows and doors: they place the model's openings (PR-2.22).
+  A house or building whose facade SAM can read is rebuilt from it (PR-2.23): walls, hip / gable roof, chimneys,
+  door and windows at the facade's places and proportions, depth from a Muse Image side view; ≈ 45–60 s.
   Viewer on `.viewer-studio` (radial backdrop `--theme-viewer-center/edge`, lighter than dark objects in dark theme), rim
   light from behind + one baked contact shadow.
   « 3D model »: title + badge (violet « AI shape » = Spark recipe; grey « Outline shape » = fallback + one-line why (Meta did not answer / AI shape unusable) + « Try the AI shape again »), viewer
-  `h-60 sm:h-72` on `bg-canvas-sunken` (orbit + zoom, no pan), « Drag to turn · pinch or scroll to zoom », display tweaks
+  `h-72 sm:h-80 xl:h-96` on `bg-canvas-sunken` (orbit + zoom, no pan), « Drag to turn · pinch or scroll to zoom », display tweaks
   (PV-T11b: size slider 50–200 %, tint picker, reset — visual only, per object). Loading: spinner line +
   live AI steps (violet box: « Extracting the object » → « Muse Spark imagines the parts » with seconds → « Fitting the parts »,
   done = green check, wait hint 15–40 s) + skeleton. Outline note per reason (Meta error + « Cause: HTTP n », timeout, spend cap,
@@ -29,8 +37,7 @@ the engine catalog gives power (never the AI). Sidebar + MobileNav entry « Vill
 - Inserted markers (live preview, /simulation too): plinth + body by the ring or at the placed spot, thin cable line to
   the feeder building, tag « name · qty × W ». Click = select (ground ring + cyan tag border); press + drag moves the marker
   on the terrain (ghost preview, orbit frozen, commit on release); the feeder follows the nearest building unless overridden.
-- Right column (lg 380 px, under on mobile): the aside, then the live village preview (`GridSchematicPreview stacked`,
-  3D / 2D toggle, store input + active result + hour), so the current village state stays visible while editing.
+- Right column (lg 460–540 px, under on mobile): tabbed Studio Inspector (`[Active Object]`, `[Installed Appliances]`, `[Microgrid Twin]`) so the current village state stays instantly accessible without infinite scrolling.
 - Every object has its own outline colour, repeated as its row border in « Objects found »; scenery (house, car, tree…) has a lighter
   fill and a « No load » chip; selected = thicker outline.
 - Missing objects (PV-T8): « Draw missing objects » under the photo → rectangle, free hand or magnetic lasso, several shapes,

@@ -37,6 +37,10 @@ describe('MockPerceptionBackend', () => {
     ]);
     const smoke = await mock.analyzeImage('https://x/y.png', 'Is there smoke?');
     expect(smoke.result.observations[0]?.label).toBe('smoke');
+    const dust = await mock.analyzeImage('https://x/y.png', 'Is there dust on the panels?');
+    expect(dust.result.observations).toEqual([
+      { label: 'dusty_panel', value: 25, unit: '%', confidence: 0.5 },
+    ]);
     const none = await mock.analyzeImage('https://x/y.png', 'Describe this');
     expect(none.result.observations).toEqual([]);
     expect(VisionResultSchema.parse({ ...sky.result, ...asMock })).toBeTruthy();

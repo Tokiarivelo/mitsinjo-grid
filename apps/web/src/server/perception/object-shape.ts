@@ -12,7 +12,7 @@ import {
   type ShapeStep,
   type ShapeTarget,
 } from '@/lib/object-shape';
-import { kitToRecipe, type ObjectKit } from '@/lib/object-kit';
+import { defaultArchetype, kitToRecipe, type ObjectKit } from '@/lib/object-kit';
 import { pathToRings } from '@/lib/vision';
 import type { PerceptionClient } from './client';
 import { measureKitColors, type ObjectPixels } from './color-measure';
@@ -36,6 +36,9 @@ import { enforcePartBudget } from './mask-geometry';
 import { cropForShape, cropRectForShape } from './shape-crop';
 import { extractSwatches } from './photo-swatches';
 import { withLatheBody } from './lathe-body';
+import { fetchFacadeMasks, type FacadeMasks } from './facade-masks';
+import { depthRatio, facadeHouseRecipe } from './facade-house';
+import { ELEVATION_ARCHETYPES, measureFacadeElevations } from './facade-views';
 import { fetchPartMasks } from './part-masks';
 import { fitPartParams, hasPartGroups, preparePartFit } from './part-fit';
 import { REGION_GRID, measureRegionColors, withRegionColors } from './region-colors';
@@ -129,6 +132,8 @@ export interface ObjectShapeOptions {
   withViews?: boolean;
   /** Observes Spark's kit answer when present (PR-0.4 capture; routes leave this unset). */
   onKit?: (kit: ObjectKit) => void;
+  /** Observes the side elevation Muse Image drew from the facade (end-to-end eval only). */
+  onSideView?: (png: Buffer) => void;
 }
 
 /**
@@ -150,7 +155,14 @@ export async function runObjectShape(
   photo: PhotoForRegions | null,
   fullImageUrl: string,
   target: ShapeTarget,
-  { signal, timeoutMs = SHAPE_TIMEOUT_MS, onStep, withViews, onKit }: ObjectShapeOptions = {}
+  {
+    signal,
+    timeoutMs = SHAPE_TIMEOUT_MS,
+    onStep,
+    withViews,
+    onKit,
+    onSideView,
+  }: ObjectShapeOptions = {}
 ): Promise<ObjectShape> {
   const base = { detectionId: target.id };
   const silhouette = (
@@ -205,9 +217,23 @@ export async function runObjectShape(
         category: target.category,
         ...(target.scenery ? { scenery: target.scenery } : {}),
         ...(aspect > 0 ? { aspect } : {}),
+        ...(target.facadeUrl ? { facadeUrl: target.facadeUrl } : {}),
       },
       signal ? AbortSignal.any([signal, timeout]) : timeout
     );
+    // 2D facade validated (user 2026-11-02): the house is rebuilt from its elevations — front
+    // measured by SAM while Muse Image draws the side, then the side measured — in parallel
+    // with Spark. Null for other archetypes, the mock, or a facade SAM cannot read.
+    const hint = defaultArchetype(target.category, target.scenery, target.label);
+    const elevations =
+      target.facadeUrl && perception.segmentImage && ELEVATION_ARCHETYPES.includes(hint)
+        ? measureFacadeElevations(
+            perception.segmentImage.bind(perception),
+            target.facadeUrl,
+            hint,
+            { ...(signal ? { signal } : {}), ...(onSideView ? { onSideView } : {}) }
+          ).catch(() => null)
+        : Promise.resolve(null);
     const fetched = await fetchedOutline;
     const shaped = fetched && !target.outline ? { ...target, outline: fetched } : target;
     if (shaped !== target) {
@@ -258,6 +284,7 @@ export async function runObjectShape(
             label: target.label,
             archetype: found.kit.archetype,
             ...(coverage ? { coverage } : {}),
+            ...(target.facadeUrl ? { facadeUrl: target.facadeUrl } : {}),
           },
           signal ? AbortSignal.any([signal, timeout]) : timeout
         );
@@ -296,6 +323,64 @@ export async function runObjectShape(
           `[vision] 3D colours measured for "${target.label}" (${px!.y.length} px${target.outline ? ', outline' : ''}): ${colors.main} ${colors.secondary} ${colors.accent}`
         );
       }
+      const elev =
+        found.kit && ELEVATION_ARCHETYPES.includes(found.kit.archetype) ? await elevations : null;
+      if (found.kit && elev) {
+        const kit = colors ? { ...found.kit, colors } : found.kit;
+        const { front, side } = elev;
+        // Yaw read below the eave, like a measured roof: the slopes point nowhere.
+        const eaveShare = (front.eave - front.top) / (front.bottom - front.top);
+        const persp = photo
+          ? measuredYaw(
+              {
+                archetype: kit.archetype,
+                roof: { eave: eaveShare, gables: [{ x0: 0, x1: 1, peak: 0.5, top: 0 }] },
+              },
+              await edges,
+              target.box,
+              photo
+            )
+          : null;
+        const yaw0 = persp ? mixNumber(persp.yaw, 0, confidence.perspective(persp.inliers)) : 0;
+        const measured = facadeHouseRecipe({
+          front,
+          side,
+          colors: kit.colors,
+          ...(kit.materials ? { materials: kit.materials } : {}),
+          sparkDepth: kit.proportions.d / kit.proportions.w,
+        });
+        let recipe: ObjectRecipe = fitRecipe({ ...measured, source: 'facade' }, 0, yaw0);
+        const template: DimStatus = 'estimated';
+        recipe = {
+          ...recipe,
+          dimStatus: {
+            eave: 'measured',
+            depth: side ? 'inferred' : template,
+            yaw: persp ? 'measured' : template,
+            scale: template,
+          },
+        };
+        if (photo) {
+          try {
+            const swatches = await extractSwatches(photo, shaped, recipe);
+            if (Object.keys(swatches).length > 0) recipe.swatches = swatches;
+          } catch (err) {
+            console.warn('[vision] swatches failed:', err instanceof Error ? err.message : err);
+          }
+        }
+        const roofPart = recipe.parts.find((p) => p.shape === 'hip' || p.shape === 'prism');
+        console.info(
+          `[vision] 3D facade house for "${target.label}": ${recipe.parts.length} parts, roof ${roofPart ? `${roofPart.shape}${roofPart.shape === 'hip' ? ` ridge ${roofPart.ridge?.toFixed(2)}` : ''}` : 'flat'}, ${front.windows.length} windows, ${front.doors.length} door(s), ${front.chimneys.length} chimney(s), side ${side ? `${side.windows.length} windows, depth ${depthRatio(front, side)?.toFixed(2)}` : 'none'} vs Spark ${(kit.proportions.d / kit.proportions.w).toFixed(2)}, w:h:d ${[recipe.proportions.w, recipe.proportions.h, recipe.proportions.d].map((v) => v.toFixed(2)).join(':')}, yaw ${Math.round((yaw0 * 180) / Math.PI)}° (${seconds} s Spark)`
+        );
+        return {
+          ...base,
+          mode: 'recipe',
+          recipe,
+          kit: found.kit,
+          ...(shaped.outline ? { outline: shaped.outline } : {}),
+          ...source,
+        };
+      }
       let roofMeasured = false;
       if (found.kit) {
         const { kit, measure } = withMeasuredRoof(
@@ -323,8 +408,30 @@ export async function runObjectShape(
       // best effort — skipped without a photo or a segmenting client.
       let partMasks: import('@/lib/object-shape').PartMask[] | undefined;
       const segmentImage = perception.segmentImage?.bind(perception);
+      // Windows and doors measured on the validated 2D facade (straight on, unoccluded),
+      // segmented while the photo masks run: they place the house's panels when present.
+      let facadeMasks: FacadeMasks | null = null;
       if (finalKit && photo && segmentImage) {
-        partMasks = await fetchPartMasks(segmentImage, imageUrl, finalKit.archetype);
+        [partMasks, facadeMasks] = await Promise.all([
+          fetchPartMasks(segmentImage, imageUrl, finalKit.archetype),
+          target.facadeUrl
+            ? fetchFacadeMasks(
+                segmentImage,
+                target.facadeUrl,
+                finalKit.archetype,
+                conceptOf(target)
+              )
+            : Promise.resolve(null),
+        ]);
+        if (facadeMasks) {
+          const counts = new Map<string, number>();
+          for (const m of facadeMasks.masks)
+            counts.set(m.concept, (counts.get(m.concept) ?? 0) + 1);
+          const b = facadeMasks.geom.box;
+          console.info(
+            `[vision] 3D facade masks for "${target.label}": ${[...counts].map(([c, n]) => `${c}×${n}`).join(', ')} (object box ${[b.x, b.y, b.w, b.h].map((v) => v.toFixed(2)).join(',')})`
+          );
+        }
         if (partMasks.length > 0) {
           const counts = new Map<string, number>();
           for (const m of partMasks) counts.set(m.concept, (counts.get(m.concept) ?? 0) + 1);
@@ -372,6 +479,7 @@ export async function runObjectShape(
       if (finalKit) {
         let reshaped: 'profile' | 'lathe' | 'wheels' | 'panels' | 'chimney' | 'fit' | null = null;
         let fitGains = '';
+        let panelsFrom: 'photo' | 'facade' = 'photo';
         // PR-2.14: coherence after every reshape; a fix also re-scores (silhouette moved).
         let constrainedFix = false;
         const constrain = (r: ObjectRecipe) => {
@@ -389,7 +497,8 @@ export async function runObjectShape(
           recipe = lathed;
           reshaped = 'lathe';
         }
-        if (partMasks && partMasks.length > 0 && photo) {
+        if (((partMasks && partMasks.length > 0) || facadeMasks) && photo) {
+          partMasks ??= [];
           const geom = {
             photoW: photo.width,
             photoH: photo.height,
@@ -402,10 +511,21 @@ export async function runObjectShape(
             reshaped = 'wheels';
           }
           recipe = constrain(recipe);
-          const panelled = withMaskPanels(finalKit.archetype, recipe, partMasks, geom);
+          // The facade's windows and doors win over the photo's (no occlusion, no perspective);
+          // the photo's masks stay the fallback when the facade gives no usable panel.
+          const fromFacade = facadeMasks
+            ? withMaskPanels(finalKit.archetype, recipe, facadeMasks.masks, facadeMasks.geom, {
+                frontal: true,
+              })
+            : recipe;
+          const panelled =
+            fromFacade !== recipe
+              ? fromFacade
+              : withMaskPanels(finalKit.archetype, recipe, partMasks, geom);
           if (panelled !== recipe) {
             recipe = panelled;
             reshaped = 'panels';
+            panelsFrom = fromFacade !== panelled ? 'photo' : 'facade';
           }
           recipe = constrain(recipe);
           const stacked = withMaskChimney(finalKit.archetype, recipe, partMasks, geom);
@@ -455,7 +575,7 @@ export async function runObjectShape(
         if (reshaped || constrainedFix) {
           if (reshaped) {
             const main = recipe.parts[frontPartIndex(recipe)]!;
-            const panelCounts = (partMasks ?? [])
+            const panelCounts = (panelsFrom === 'facade' ? facadeMasks!.masks : (partMasks ?? []))
               .filter((m) => m.concept === 'window' || m.concept === 'door')
               .reduce(
                 (acc, m) => ({ ...acc, [m.concept]: (acc[m.concept] ?? 0) + 1 }),
@@ -476,7 +596,7 @@ export async function runObjectShape(
                             Object.entries(panelCounts)
                               .map(([c, n]) => `${c}×${n}`)
                               .join(', ') || 'none'
-                          }, ${recipe.parts.length} parts`
+                          }, ${recipe.parts.length} parts (from the ${panelsFrom})`
             );
           } else {
             console.info(`[vision] 3D constraints for "${target.label}": coherence fixes applied`);

@@ -147,6 +147,11 @@ export function patchInputUnchecked(input: SimulationInput, patch: InputPatch): 
     }
   }
 
+  if (patch.clearFires !== undefined) {
+    const cleared = new Set(patch.clearFires);
+    cloned.events = cloned.events.filter((e) => !(e.type === 'fire' && cleared.has(e.sector)));
+  }
+
   const existingDrop = cloned.events.find((e) => e.type === 'solar_drop') as
     SolarDropEvent | undefined;
 

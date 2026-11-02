@@ -1,0 +1,31 @@
+{
+  "id": "rainy_season",
+  "title": "Rainy season day",
+  "description": "Thick clouds 9:00–15:00 (solar ×0.3), battery starting at 40 %.",
+  "base": "baseline",
+  "events": [
+    {
+      "type": "solar_drop",
+      "startHour": 9,
+      "durationH": 6,
+      "factor": 0.3
+    }
+  ],
+  "battery": {
+    "initialSocPct": 40
+  },
+  "assertions": [
+    {
+      "strategy": "proportional",
+      "metric": "unservedKwh",
+      "op": "gt",
+      "value": 0
+    },
+    {
+      "strategy": "balanced",
+      "metric": "criticalUnservedKwh",
+      "op": "lt",
+      "value": 8
+    }
+  ]
+}
