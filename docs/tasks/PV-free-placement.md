@@ -37,8 +37,11 @@ Split **where it is drawn** from **which feeder it loads**:
       (Done 2026-11-02: `useMarkerDrag` (select + press/drag, orbit off mid-drag) + `useMoveMarker` (store commit)
       wired in `village-canvas.tsx` via `DraggableApplianceMarkers`; selection ring + cyan tag, dragged instance hides,
       translucent `MarkerDragGhost` preview. Covers /village, /simulation and the overview preview — same store.)
-- [ ] **PP-T6 AI suggestion.** `aiDraft` keeps suggesting the sector; position default = ring around it. (Optional: map the
+- [x] **PP-T6 AI suggestion.** `aiDraft` keeps suggesting the sector; position default = ring around it. (Optional: map the
       photo box to a position when the photo is a village view — out of scope until a camera calibration exists.)
+      (Done 2026-11-02, no code change: `aiDraft` already suggests the sector with `position: null`, `toAppliance`
+      omits the field, and `applianceMarkers` rings position-less lines via `defaultPosition` — all pinned by the
+      draft, placement and markers suites, 29/29 green.)
 - [ ] **PP-T7 Copilot.** Tools report the feeder, never invent positions; `position` passes through unchanged.
 - [ ] **PP-T8 Docs + scenarios.** `docs/design/screens/village.md`, `components.md`, i18n keys ×3, `test-scenarios/06-village.md`
       (place, override feeder, drag, mobile, dark/light), README feature line.
