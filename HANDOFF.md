@@ -1,36 +1,43 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-02 (PA-T2 complete) · **By:** Antigravity · **Branch:** current
+**Updated:** 2026-11-02 (PV-G G2–G3 + PG-T19) · **By:** Claude · **Branch:** main
 
-## State
+## PA — AI autonomous dispatch (other session, unchanged)
 
-- **AI autonomous dispatch decision policy (PA-T2) complete**:
-  - `candidateActions(incident, input)` (PA-T2a): covers isolate, cap, shed flexible, switch strategy (`essential_first`, `balanced`, `proportional`), raise clinic floor, reserve night, shift flexible, restore.
-  - `simulateHorizon(input, strategy, startHour, endHour, initialStoredKwh)`: fast forward lookahead ($h..h+6$) anchored to true battery energy entering hour $h$.
-  - `checkAntiOscillation(action, hour, day, history)` (PA-T2c): max 2 actions/h, no reversal in 2h, safety fire isolation exception.
-  - `decideDispatch(input, hour, strategy, incidents, rules, history, day)` (PA-T2b): evaluates candidates, drops constitution violations, never restores burning sector, selects best outcome.
-  - Acceptance criterion met on all 7 scenarios: AI mode critical unserved $\le$ best fixed strategy (and beats it on `battery_constraint` & `essential_stress`).
-  - Average latency ~5.9 ms / hour (< 20 ms budget).
-  - Contracts in `docs/contracts.md`, tasks checked in `docs/tasks/PA-ai-dispatch.md`.
-  - Tests in `packages/engine/src/__tests__/autonomy.test.ts`: 28/28 passed. Total engine tests: 327/327 passed across 25 files.
-- **Quality & Verification**:
-  - `pnpm --filter web typecheck`: 0 errors.
-  - `make test-engine`: 25/25 files passed (327/327 tests).
-  - `make check-i18n`: 100% key parity (en, fr, mg).
+- PA-T2 done (`decideDispatch`, `candidateActions`, anti-oscillation; 327 engine tests). Next **PA-3**
+  (`docs/tasks/PA-ai-dispatch.md`): store `dispatchMode` / `dispatchLog` + Neon `dispatch_log`, hook `useAiDispatch`.
 
-## Next task
+## PV-G — 3D by script, checked against the 2D drawing (`docs/tasks/PV-shape-script.md`)
 
-- **PA-3** (`docs/tasks/PA-ai-dispatch.md`): Orchestrateur et store
-  - PA-T3a: Store `dispatchMode`, `dispatchLog`, `setDispatchMode`, `takeBackControl` (→ manual). Neon table `dispatch_log` via `server/db/migrations.ts`.
-  - PA-T3b: Hook `useAiDispatch` (remplace `useAutopilot`) : à chaque heure simulée en mode autonome → détecter → décider → appliquer → journaliser.
+- **PG-T10** assemblies: part options `leaves glazed panels sill lintel cap bulge`, `MAX_COMPONENTS = 32`;
+  viewer expands (glazed double door, transom, stile, panels, lintels, chimney caps, eave roll) and drops
+  details past 5 k triangles. Facade builder reads door glazing from SAM panes.
+- **PG-T13/T14** `lib/shape-script.ts`: typed ops → pure `compileScript` (locks, budget, constraints),
+  `recipeToScript` (facade house round-trips unchanged).
+- **PG-T15/T16** `shape-stages.ts` `runShapeStages` (monotone, ≤ 3 rounds/stage) + Spark `proposeShapeOps`
+  (prompt v1, `shape-script-prompt.ts`), wired in the facade path (`facadeStageLoop`).
+- **PG-T17/T18** SSE `shape_stage` / `shape_stages_done`; stages past the 60 s answer run in a background job
+  (`shape-jobs.ts`, ≤ 3 min), `GET|DELETE /api/vision/shape/stages` resume / cancel; hook swaps models in;
+  `ImproveChip` on the viewer (en/fr/mg, aria-live).
+- **PG-T19** tree / bush / pole / lamp post → `roundViewRecipe` (lathe of the drawn silhouette, no side);
+  panel → hull path; tree prompt.
+- Measure: goldens mean 93 unchanged; thatched elevation 89/100 (mock proposer = seed).
 
-## Parallel session (Claude) — 3D: PV-G houses, PV-H any object
+## Next
 
-- PV-G (`docs/tasks/PV-shape-script.md`): G0 + G1 + PG-T11/T12 + beams; live thatched house 87–91/100 (631fc13).
-- PV-H (`docs/tasks/PV-any-object.md`, 36d7729): non-house objects with a validated 2D view → `object-views.ts`
-  (SAM on the view + Muse Image side → `hull` body + parts) then the AI check (`views-check.ts`, `checkViews`,
-  ≤ 2 rounds in 90 s, `shape_step: check`). Live car: 67 s, 17 parts, IoU front 0.88 / side 0.79.
-- Built recipes may have 24 parts (`MAX_BUILT_PARTS`); Spark / photo path keeps 12.
-- Known: golden-shape / model-score tests time out under parallel load only; `make shape-shots` blocked by the
-  new /village login. Next: PH-T8 region colours, PG-T10, G3 background loop (PG-T13–T18).
-- Scenarios: V96–V108 in `test-scenarios/06-village.md`.
+- **PG-T22 live**: `make dev` with a Meta key on the thatched house → check logs `[vision] 3D stage n/4 …`
+  and the chip (scenarios V112–V116); keep or reword prompt v1 from real answers; add stage replay to
+  `make eval-shape` from captures.
+- **PG-T20/T21**: per-archetype stages need a per-part metric on the views (SAM part boxes vs rendered parts).
+- Known: golden / model-score timing asserts fail under parallel load only (pass with
+  `--no-file-parallelism`); /village behind login → gate-out of the chip is static (stitch-map note).
+- Jobs are in-memory (one process): a server restart ends the chip with « stopped: error ».
+
+## Files touched (this session)
+
+`lib/{object-shape,shape-script}.ts`, `server/perception/{facade-house,shape-stages,shape-stages-spark,
+shape-script-prompt,shape-jobs,object-shape,object-views,facade-specialist,meta,mock,client,backend,schemas,
+vision-request}.ts`, `app/api/vision/shape/{route,stages/route}.ts`, `features/vision-insert/{hooks/use-object-shape,
+utils/{openings,roof-trim,object-geometry},ui/{improve-chip,object-shape-panel}}`, messages ×3, docs (contracts,
+copilot, architecture, design/stitch-map, screens/village, tasks PV-shape-script / -realism), README, skill shape-3d.
+Scenarios V109–V118 (`test-scenarios/06-village.md`).
