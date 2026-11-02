@@ -18,7 +18,7 @@ Split **where it is drawn** from **which feeder it loads**:
 - [x] **PP-T1 Contract.** `ApplianceSchema.position?: { x: number, z: number }` (bounded to the terrain box), optional so
       old saves and the copilot keep working. Ignored by the load model; excluded from the result hash or included as
       metadata only. Test: parse with / without position, out-of-bounds refused. Docs: `contracts.md`, `engine-spec.md` (one line).
-- [ ] **PP-T2 Pure helpers** (`microgrid-3d/utils/placement.ts`, tested): `nearestSector(pos)` from `SECTOR_POSITIONS`;
+- [x] **PP-T2 Pure helpers** (`microgrid-3d/utils/placement.ts`, tested): `nearestSector(pos)` from `SECTOR_POSITIONS`;
       `clampToTerrain(pos)`; `snapAwayFromBuildings(pos)` (no marker inside a building footprint); `defaultPosition(sector, k)`
       = today's ring around the building (current markers keep their place).
 - [ ] **PP-T3 Markers.** `applianceMarkers` uses `position` when set, else `defaultPosition`; ground height from `terrainHeight`;
