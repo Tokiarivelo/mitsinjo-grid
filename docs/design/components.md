@@ -188,6 +188,16 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 - Panel props: input; status; isModified; onPatch; onReset; defaultOpen?. Collapsible header button (aria-expanded) with StatusBadge.
 - Row props: sector; cap?; onPriorityChange; onCapChange(cap | null). Native select + number inputs, ≥ 44 px; invalid cap → `role="alert"` message.
 
+## ApplianceCurveChart (PV-T11b)
+
+- Props: curve (24 kW values), peakKw, dailyKwh. Compact 120 px Recharts bars (cyan, hour ticks every 6 h,
+  kW tooltip), title + screen-reader summary of the same peak/daily numbers. Lives in the insert panel.
+
+## ObjectDisplayControls (PV-T11b)
+
+- Props: scale, tint (null = measured), onScale, onTint, onReset. Size slider 50–200 % with % readout, native
+  colour picker, reset button shown only once tweaked. Viewer-local state, per object; never stored.
+
 ## Free placement (PV-P)
 
 - `PlaceMinimap` (`features/vision-insert`, PP-T4): top-down village SVG (terrain disc + one dot per sector building,

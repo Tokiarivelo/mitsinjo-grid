@@ -13,7 +13,8 @@ the engine catalog gives power (never the AI). Sidebar + MobileNav entry « Vill
   Viewer on `.viewer-studio` (radial backdrop `--theme-viewer-center/edge`, lighter than dark objects in dark theme), rim
   light from behind + one baked contact shadow.
   « 3D model »: title + badge (violet « AI shape » = Spark recipe; grey « Outline shape » = fallback + one-line why (Meta did not answer / AI shape unusable) + « Try the AI shape again »), viewer
-  `h-60 sm:h-72` on `bg-canvas-sunken` (orbit + zoom, no pan), « Drag to turn · pinch or scroll to zoom ». Loading: spinner line +
+  `h-60 sm:h-72` on `bg-canvas-sunken` (orbit + zoom, no pan), « Drag to turn · pinch or scroll to zoom », display tweaks
+  (PV-T11b: size slider 50–200 %, tint picker, reset — visual only, per object). Loading: spinner line +
   live AI steps (violet box: « Extracting the object » → « Muse Spark imagines the parts » with seconds → « Fitting the parts »,
   done = green check, wait hint 15–40 s) + skeleton. Outline note per reason (Meta error + « Cause: HTTP n », timeout, spend cap,
   server unreachable, unusable). No WebGL: note, photo stays the reference. One Spark call per object per photo (kept on reselect).
@@ -21,6 +22,7 @@ the engine catalog gives power (never the AI). Sidebar + MobileNav entry « Vill
   (cyan), note, fields name · type · position · feeder line · power per unit (catalog range under it, red when out) · quantity (1 column on
   mobile and lg aside, 2 on sm / xl), engine preview line, cyan « Insert into simulation » (« Update » + « Remove » once in),
   green status « In the simulation: strategies re-computed. ». Scenery: note « no load by default ». List row chip « In simulation ».
+  Engine preview line + 24 h load-curve bars (PV-T11b, engine values, text summary for screen readers).
   Free placement (PV-P): position = « Ring around the building » by default or « Place on the map » (`PlaceMinimap`,
   components.md); feeder line = the sector select, preset to the nearest building (« Nearest: … », « Auto » to follow again) —
   the load always goes to one of the 6 feeders while the marker draws anywhere on the terrain.

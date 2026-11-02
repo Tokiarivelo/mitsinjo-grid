@@ -130,8 +130,14 @@ ApplianceSpec>` (watts and duty profiles of rural use, sources noted in `engine-
       **Done when** strategies and metrics update and the copilot can explain the change with evidence.
       _(`ApplianceInsert`: insert / update / remove, id `vision-<photoKey>-<det>`, « In simulation » chip. The copilot receives the
       input with each question; whether it explains the change with evidence is not checked yet.)_
-- [ ] **PV-T11b** Rest of PV-T11: usage-hours chart (engine curve), scale / colour (visual only), copilot tool
+- [x] **PV-T11b** Rest of PV-T11: usage-hours chart (engine curve), scale / colour (visual only), copilot tool
       `edit_appliance` proposing the same fields (confirmed via `confirm-proposal-dialog`).
+      (Done 2026-11-02 in 3 slices: (1) 24 h engine-curve bars in the insert panel (`ApplianceCurveChart`,
+      hook `curve`, sr summary, keys `insertCurveTitle/Summary`); (2) viewer size slider 50–200 % + tint picker,
+      per object, viewer-local state only, never stored (keys `model3dScale/Tint/DisplayReset`); (3) `edit_appliance`
+      tool merging one line into a full-list proposal via the shared proposal tail, dialog diff lines per changed
+      line (feeder + load, position when set, removals last) with per-line ids, partial approval restoring
+      unchecked edits/removals, mock trigger + eval case 17, keys `diffApplianceValue/Removed`.)
 - [x] **PV-T13** 3D village: appliance markers near their sector building (GLB thumbnail or stylized icon)
       with tag `name · quantity × W`; 2D diagram and settings list show the same; remove/edit from the list.
       **Done when** an appliance list of 30 stays within the scene budget (`make scene-audit`).
