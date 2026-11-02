@@ -26,6 +26,10 @@
 
 ## Parallel session (Claude) — 3D by script, plan PV-G (`docs/tasks/PV-shape-script.md`)
 
-- G0 + G1 done (6f57587, 1774910): elevation score vs the 2D drawing (`elevation-score.ts`, log `[vision] 3D elevation n/100`),
-  drawn `partMaterials`, vetted swatches, slope UVs, framed windows/doors (`vision-insert/utils/openings.ts`), brick/stone colours.
-- Thatched golden 89/100 (openings 3/3). Next: G2 (PG-T10 assemblies, PG-T11 wall cuts). Live check: V96–V98.
+- G0 + G1 + PG-T11 (cut openings) + PG-T12 (thatch eave roll) + timber beams done (499f749).
+- Live Meta run (631fc13): facade path 87–91/100, IoU 0.98, 48–68 s. Fixes: `compactDataUrl` (SAM timeouts on 2.4 MB
+  data URL), detail concepts on own 15 s limit, glazed-door panes ≠ windows, Spark `details` (plinth/timberFrame/panes)
+  → inferred base, step, beams, panes when SAM misses them on a line drawing.
+- Known: golden-shape / model-score tests time out under parallel load only (pass with `--no-file-parallelism`);
+  chimney accessory score low (roof hides its foot). Next: PG-T10 components budget, then G3 loop + stage indicator (PG-T13–T18).
+- Scenarios: V96–V103 in `test-scenarios/06-village.md`.
