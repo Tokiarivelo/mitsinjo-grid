@@ -1,12 +1,13 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-02 (S4 stopped, PR-5.1 new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-02 (PR-5 done, imagined-3D investigation new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
-- Committed through S3 (`5ad747e`). Uncommitted: PR-4.1 verdict. Standing: commit each, unsigned fallback, always continue.
+- Committed through S4 verdict (`e3396be`). Uncommitted: PR-5.1/5.2. Standing: commit each, unsigned fallback, always continue.
 - **Meta back:** SAM 1.9s, Spark 11s. Critic proven live (rescue 33→92, no-patch at 92).
-- **S4 STOPPED:** img2img 9–26.5s, 2/3 views wrong (top→front, side→front). PR-4.2…4.5 not built.
+- **S4 STOPPED:** img2img 9–26.5s, 2/3 views wrong. PR-4.2…4.5 not built.
+- **PV-shape-realism done** except PR-0.5 (needs 10 user photos) + stopped S4 boxes.
 - User ordered: do ALL planned tasks, then a full image-recognition + imagined-3D investigation.
 - **PR-2.18 done:** `graph-edits.ts` `applyEdit` — openings re-tile, chimney seats, parts move, metric via scale, edited estimated. API-only, goldens identical, suite 303 green.
 - **PR-2.17 done:** `wall-openings.ts` + house panels wire — segmented walls, centred leaves (measured), overlays fallback; panel class = on-face only. Goldens identical; cottage e2e 86→90, Viol 0.
@@ -23,8 +24,8 @@
 
 ## Next task
 
-- **Commit** S4 verdict, then **PR-5.1 docs + PR-5.2 scenarios** (contracts/copilot/06-village for graph, status, openings, edits, critic).
-- PR-0.5 needs 10 USER photos — ask user, don't block. Then imagined-3D investigation.
+- **Commit** PR-5.1/5.2, then the **full image-recognition + imagined-3D investigation** (user-ordered: box extraction, crops to Meta, 2D/3D imagined, skills/prompts).
+- PR-0.5 needs 10 USER photos — ask user alongside the investigation report.
 - Blocked on Meta (probe when reached): PR-0.4, PR-0.5, PR-0.6-live, PR-3.1, PR-3.4, PR-4.x.
 - Free placement PP-T1…T8. PV-T14 + PV-T11b.
 

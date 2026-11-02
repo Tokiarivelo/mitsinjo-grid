@@ -328,9 +328,9 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
 
 ### Close
 
-- [ ] **PR-5.1 Docs** (absorbs PF-T10): contracts (primitives, `texture`, part masks, `subtype`, views flag, graph, part status, openings, edits), copilot
+- [x] **PR-5.1 Docs** (absorbs PF-T10): contracts (primitives, `texture`, part masks, `subtype`, views flag, graph, part status, openings, edits), copilot
       (prompt v2, model choice), performance (render + math budgets).
-- [ ] **PR-5.2 Scenarios** in `test-scenarios/06-village.md` for each visible step (car, hut, tree, mock unchanged).
+- [x] **PR-5.2 Scenarios** in `test-scenarios/06-village.md` for each visible step (car, hut, tree, mock unchanged).
 
 ## Order
 
@@ -381,3 +381,4 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-02 | PR-3.1 kit eval harness + 4 captures                                   | 0.98     | 0.91    | 3.4     | —        | fridge/TV/fan/lamp captures; Spark-1.3 eval 23/26 agree, 8–19s; finding: TV-crop subtype flips tv↔tv_table                                                                                                   |
 | 2026-11-02 | PR-3.4 model choice (eval × 3) + PR-3.6 pass                           | 0.98     | 0.91    | 3.4     | —        | 1.3: 23/26, 13.8s kept; 1.2: 22/26, 5.8s fallback; wonder: 21/28, 17s dropped; S3 pass: no drops                                                                                                             |
 | 2026-11-02 | PR-4.1 S4 spike: STOP                                                  | 0.98     | 0.91    | 3.4     | —        | img2img 9–26.5s; 2/3 views wrong (top→front, side→front); hull needs every view right → PR-4.2…4.5 not built                                                                                                 |
+| 2026-11-02 | PR-5.1/5.2 docs + scenarios (V75…V77)                                  | 0.98     | 0.91    | 3.4     | —        | contracts (subtype, withViews, kit/outline), copilot (prompt v2, model choice), perf budgets; `texture` superseded by swatches/material                                                                      |

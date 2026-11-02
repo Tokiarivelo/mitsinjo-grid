@@ -44,9 +44,9 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
   `describeShape` (PV-T9, `shape.ts` + `object-shape.ts`): **Meta models only** (no photo→3D model on the Meta API, checked
   2026-10-31). One Spark call on a square crop around the selected object (`shape-crop.ts`: 1.6× its long side, upscaled to
   640–768 px so a 20 px lamp post is readable, outside lightly dimmed), told the box width / height ratio and the archetype the
-  detection implies. **Kit, not coordinates (PV-T9b):** JSON schema `ObjectKit` (`archetype` among 17, `proportions`, 3 colours (priors, mixed with the measured ones by confidence, PF-T7) + their materials (AI: stone, slate, glass…),
-  optional window / door / wheel / leg / floor / unit counts, chimney), ≈ 80 output tokens; `kitToRecipe` (`@/lib/object-kit`) builds the
-  parts from fixed templates. **Measured colours (PF-T2):** while Spark answers, `sampleObjectPixels` reads the box (≤ 96 px)
+  detection implies. **Kit, not coordinates (PV-T9b, prompt v2):** JSON schema `ObjectKit` (`archetype` among 17, `subtype?` (sedan/van/vintage…, picks the template branch), `proportions` (largest = 1, depth guessed from what the object is), 3 colours (priors, mixed with the measured ones by confidence, PF-T7) + their materials (AI: stone, slate, glass…),
+  optional window / door / wheel / leg / floor / unit counts, chimney; never watts), ≈ 80 output tokens; `kitToRecipe` (`@/lib/object-kit`) builds the
+  parts from fixed templates. The prompt tells Spark to IMAGINE the unseen sides (occluded/cropped/single-angle) rather than plan coordinates. **Measured colours (PF-T2):** while Spark answers, `sampleObjectPixels` reads the box (≤ 96 px)
   inside the SAM outline; `measureKitColors` (k-means k = 5 in CIELAB, farthest-point start, roles by vertical band per archetype)
   replaces the kit colours (log `[vision] 3D colours measured …`); < 64 pixels → Spark colours. Roofline (PF-T3) and houses / windows per row (PF-T4) are also measured, never asked. The viewer never pastes the photo on
   the model (user, 2026-11-01): shapes + measured colours only, windows / doors as coloured parts. Reason: a free 12-part recipe made Spark think > 60 s on a stone cottage (user, 2026-11-01).

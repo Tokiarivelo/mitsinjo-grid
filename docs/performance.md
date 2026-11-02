@@ -16,6 +16,10 @@ React re-renders, chart redraws, 3D, or bundle size. Fix those before optimising
 | 3D `high` tier (default, discrete GPU)                | ≥ 30 fps · draw calls < 400 · triangles ≤ 800 k |
 | Copilot first token visible                           | ≤ 2 s after send (activity shown at once)       |
 | Lighthouse performance (desktop)                      | ≥ 90                                            |
+| Shape math per object (`runObjectShape`, no API)      | ≤ 300 ms (`make test-shape`, strict)            |
+| Shape request (`/api/vision/shape`, with Meta)        | ≤ 45 s (60 s server timeout)                    |
+| Shape recipe                                          | ≤ 12 parts · ≤ 5 k triangles                    |
+| Shape score (`scoreRecipe`, critic/replay only)       | outside the math budget, ~100 ms                |
 
 ## 2. Fluid slider → result loop
 
