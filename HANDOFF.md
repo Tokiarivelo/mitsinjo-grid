@@ -1,26 +1,25 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-02 (3D call logging done, PP-T7 next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-02 (PP-T7 done, PP-T8 next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
 - Standing: commit each task, unsigned fallback (`-c commit.gpgsign=false`), always continue.
-- **3D logging done:** `describeShape`/`describeParts`/`criticizeShape` log full request (params, image
-  placeholder, schema, system + question) and result (model, usage, content); data URLs redact to
-  `[image data-url, N chars]` (`vision-log.ts`, tested; detection/SAM calls stay quiet).
-- Verify: typecheck ✓, lint 0 errors, vision-log 2/2 + meta 13/13 green.
+- **PP-T7 done:** prompt rule 2b (EN/FR/MG) — report the feeder, never invent x/z; tools forward
+  appliance patches verbatim. Prompt-locale + passthrough tests green.
+- Verify: typecheck ✓, lint 0 errors, prompt+tools 26/26. No Meta key in env — live-model check skipped.
 - Left uncommitted: `generated_images/` (only a 0-byte tooling `.lock`, no content).
 
 ## Next task
 
-- **PP-T7 Copilot** (`docs/tasks/PV-free-placement.md`): tools report the feeder, never invent positions;
-  `position` passes through unchanged.
-- Then PP-T8 (docs + scenarios), PV-T11b + PV-T14. PR-0.5 needs 10 USER photos.
+- **PP-T8 Docs + scenarios** (`docs/tasks/PV-free-placement.md`): `screens/village.md`, `components.md`,
+  i18n keys ×3, `test-scenarios/06-village.md` (place, override feeder, drag, mobile, dark/light), README line.
+- Then PV-T11b + PV-T14. PR-0.5 needs 10 USER photos.
 
 ## Decisions taken
 
-- Paid-for critic round always completes (retry has no Spark call); ≥20 s gate guards round START only.
-- Log redaction: `data:`-prefixed strings → placeholder (JSON replacer + text regex); http links log as-is.
+- No new copilot tool and no `appliances` in tool JSON schemas: the model must not author positions.
+- No eval case for non-invention: mock-provider canned text can't prove the real model won't invent.
 
 ## Open questions / blockers
 
@@ -29,7 +28,7 @@
 
 ## Files touched this session
 
-- `server/perception/{meta.ts,vision-log.ts}` + `__tests__/{vision-log.test.ts,meta.test.ts}`, `docs/copilot.md` (1 line).
+- `server/copilot/prompt.ts` + `__tests__/{prompt,tools}.test.ts`, `docs/{copilot.md,tasks/PV-free-placement.md}`.
 
 ## Gotchas
 

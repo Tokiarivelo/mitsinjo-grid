@@ -42,7 +42,10 @@ Split **where it is drawn** from **which feeder it loads**:
       (Done 2026-11-02, no code change: `aiDraft` already suggests the sector with `position: null`, `toAppliance`
       omits the field, and `applianceMarkers` rings position-less lines via `defaultPosition` — all pinned by the
       draft, placement and markers suites, 29/29 green.)
-- [ ] **PP-T7 Copilot.** Tools report the feeder, never invent positions; `position` passes through unchanged.
+- [x] **PP-T7 Copilot.** Tools report the feeder, never invent positions; `position` passes through unchanged.
+      (Done 2026-11-02: system-prompt rule 2b in EN/FR/MG — report the feeder (sector), never invent x/z, omit
+      position unless echoing the operator; tools never surface positions and forward patches verbatim. Pinned by
+      prompt-locale + propose/run passthrough tests. No eval case: the mock's canned text can't prove non-invention.)
 - [ ] **PP-T8 Docs + scenarios.** `docs/design/screens/village.md`, `components.md`, i18n keys ×3, `test-scenarios/06-village.md`
       (place, override feeder, drag, mobile, dark/light), README feature line.
 

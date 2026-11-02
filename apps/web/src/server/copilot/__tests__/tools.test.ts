@@ -228,6 +228,35 @@ describe('Copilot Tools (P6-T2)', () => {
       for (const n of shown) expect(evidenceValues.has(n)).toBe(true);
     });
 
+    it('appliance patches pass positions through unchanged, feeder (sector) intact (PP-T7)', () => {
+      const appliances = [
+        {
+          id: 'a1',
+          name: 'Pump',
+          category: 'water_pump',
+          sector: 'water',
+          watts: 750,
+          quantity: 1,
+          position: { x: 30, z: 30 },
+        },
+        { id: 'a2', name: 'Lamp', category: 'lamp', sector: 'households', watts: 10, quantity: 2 },
+      ];
+      const res = executeTool(
+        'propose_change',
+        { patch: { appliances }, reason: 'Add inserted loads' },
+        ctx
+      );
+      expect(res.error).toBeUndefined();
+      expect(res.proposal?.patch?.appliances).toEqual(appliances);
+      const run = executeTool(
+        'run_scenario',
+        { patch: { appliances }, strategy: 'proportional' },
+        ctx
+      );
+      expect(run.error).toBeUndefined();
+      expect(run.data?.metrics).toBeDefined();
+    });
+
     it('propose_change with a strategy only compares current vs proposed strategy', () => {
       const res = executeTool(
         'propose_change',
