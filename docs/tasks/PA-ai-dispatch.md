@@ -92,7 +92,7 @@ autonome » attend PA-3.
 
 ### PA-1 — Détecteurs (pur, moteur) · J2
 
-- [ ] **PA-T1** `detectIncidents(input, result, hour, lookaheadH = 3)` → `Incident[]` triés par sévérité :
+- [x] **PA-T1** `detectIncidents(input, result, hour, lookaheadH = 3)` → `Incident[]` triés par sévérité :
       `fire`, `overload` (demande > dispo), `demand_surge` (> 130 % du profil), `reserve_low`, `critical_forecast`,
       `solar_surplus`, `meter_anomaly`, `lifeline_shortfall`. **Done when** tests par scénario : `village_fire` →
       `fire` market 14 h puis water 15 h ; `high_demand` → `overload` 17–22 h ; `baseline` → `solar_surplus` midi seulement.

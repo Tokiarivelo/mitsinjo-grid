@@ -632,6 +632,7 @@ interface DispatchLogEntry { id; day; hour; mode: DispatchMode; origin: 'ai' | '
   incident?; action?; before?: DispatchSnapshot; after?: DispatchSnapshot; narration?; hash }
 dispatchLogHash(entry): string   // fnv1a64(canonicalJson(entry without hash))
 sortIncidents(incidents): Incident[] // severity, then day, then hour; no mutation
+detectIncidents(input, result, hour, lookaheadH = 3, day = 0): Incident[] // pure detectors, sorted by severity
 ```
 
 `AutoAction` refinements: `switch_strategy` needs `strategy`; `alert_only` carries neither patch nor
