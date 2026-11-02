@@ -308,10 +308,10 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
 - [x] **PR-3.2 Sub-types.** Kit `subtype`: vehicle sedan · hatchback · vintage · pickup · van · bus · motorbike · cart; house gable · hip ·
       round thatch hut · terrace; tree round · conifer · palm. One template per sub-type.
 - [x] **PR-3.3 Prompt v2.** 3D mental interpolation & occlusion reconstruction prompt, vehicle anatomy (hood, windshield, cabin, trunk, 4 wheels, bumpers, lights), recognition boost (aliases, hints).
-- [ ] **PR-3.4 Model choice.** muse-spark-1.3 vs muse-wonder-1.0 vs muse-spark-1.2 on accuracy and latency; keep the
+- [x] **PR-3.4 Model choice.** muse-spark-1.3 vs muse-wonder-1.0 vs muse-spark-1.2 on accuracy and latency; keep the
       best under 30 s median.
 - [x] **PR-3.5 Feedback round.** Moved to PR-0.6 (Spark critic).
-- [ ] **PR-3.6 Loop pass.**
+- [x] **PR-3.6 Loop pass.**
 
 ### S4 — Generated views (bet, behind `SHAPE_VIEWS=1`)
 
@@ -377,3 +377,4 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-01 | PR-0.4 live capture (Meta back: SAM 1.9s, Spark 11s)                   | 0.98     | 0.91    | 3.4     | —        | refrigerator fixture (31s live); offline replay IoU 1.0, score 92; goldens untouched                                                                                                                         |
 | 2026-11-02 | PR-0.6 Spark critic (patch API + live round + replay)                  | 0.98     | 0.91    | 3.4     | —        | goldens identical; live rescue 33 → 92 kept, 92 judged no-patch; no prompt lines to fold yet; fixed mid-PR: in-pipe IoU gate never fires (profiles nail silhouettes) → score-gated wrapper                   |
 | 2026-11-02 | PR-3.1 kit eval harness + 4 captures                                   | 0.98     | 0.91    | 3.4     | —        | fridge/TV/fan/lamp captures; Spark-1.3 eval 23/26 agree, 8–19s; finding: TV-crop subtype flips tv↔tv_table                                                                                                   |
+| 2026-11-02 | PR-3.4 model choice (eval × 3) + PR-3.6 pass                           | 0.98     | 0.91    | 3.4     | —        | 1.3: 23/26, 13.8s kept; 1.2: 22/26, 5.8s fallback; wonder: 21/28, 17s dropped; S3 pass: no drops                                                                                                             |

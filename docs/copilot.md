@@ -62,7 +62,9 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
   flat render side by side) + kit + scores; the `KitPatch` reply (partial kit: archetype, subtype, proportions,
   colours, materials, counts — never metres or watts) re-fits and is kept only when the score rises. One round live,
   ≤ 3 offline on captures (`criticReplay`); mock never patches. Proven live 2026-11-02: lamp-on-fridge 33 → cabinet
-  patch → 92, kept; a 92-score fridge judged « no patch ». Meta failure, spend cap,
+  patch → 92, kept; a 92-score fridge judged « no patch ». **Kit model choice (PR-3.4, `make eval-shape`, 4 room crops
+  vs frozen kits, 2026-11-02):** muse-spark-1.3 23/26 (13.8 s median) kept; muse-spark-1.2 22/26 (5.8 s) is the latency
+  fallback; muse-wonder-1.0 21/28 (17.0 s) dropped for kits — all under the 30 s median cap, 1.3 most accurate. Meta failure, spend cap,
   timeout, unreadable or empty recipe → `silhouette` mode (the browser extrudes the SAM outline, else the box; no extra call).
   Every object is modelled, scenery too (`scenery` sent with the target; silhouette depth per scenery type).
   Mock: fixed recipes (fridge, TV, fan, lamp; house, tree, plant, car, person, animal, water; else a box), not checked.
