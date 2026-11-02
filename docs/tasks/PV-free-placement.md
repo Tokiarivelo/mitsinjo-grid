@@ -31,9 +31,12 @@ Split **where it is drawn** from **which feeder it loads**:
       button « Place on the map » opens a top-down minimap (2D SVG of the village, same projection as the 2D diagram,
       keyboard: arrows move a cursor, Enter places) → click sets `position`, feeder = nearest (label « nearest: Water pumping »),
       editable select « Feeder » for an override. Touch targets ≥ 44 px, works at 320 px.
-- [ ] **PP-T5 Drag in 3D.** On /village and /simulation, a selected marker can be dragged on the terrain (raycast on the ground
+- [x] **PP-T5 Drag in 3D.** On /village and /simulation, a selected marker can be dragged on the terrain (raycast on the ground
       plane, `invalidate()` on move, no setState per frame: commit on pointer up). Feeder follows the nearest sector unless it was
       overridden. Undo with the existing « Remove » / edit flow.
+      (Done 2026-11-02: `useMarkerDrag` (select + press/drag, orbit off mid-drag) + `useMoveMarker` (store commit)
+      wired in `village-canvas.tsx` via `DraggableApplianceMarkers`; selection ring + cyan tag, dragged instance hides,
+      translucent `MarkerDragGhost` preview. Covers /village, /simulation and the overview preview — same store.)
 - [ ] **PP-T6 AI suggestion.** `aiDraft` keeps suggesting the sector; position default = ring around it. (Optional: map the
       photo box to a position when the photo is a village view — out of scope until a camera calibration exists.)
 - [ ] **PP-T7 Copilot.** Tools report the feeder, never invent positions; `position` passes through unchanged.

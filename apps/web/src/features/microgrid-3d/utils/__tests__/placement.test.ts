@@ -1,13 +1,17 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
+import type { Appliance } from '@mitsinjo/engine';
 import { applianceMarkers } from '../appliance-markers';
 import { KEEP_OUT_ZONES } from '../landscape';
 import { SECTOR_POSITIONS } from '../to-scene-model';
 import {
   clampToTerrain,
   defaultPosition,
+  moveAppliance,
   nearestSector,
   PLACEMENT_CLEARANCE,
   PLACEMENT_RADIUS,
+  pointerToGround,
   snapAwayFromBuildings,
 } from '../placement';
 
@@ -124,5 +128,75 @@ describe('defaultPosition (PP-T2)', () => {
       expect(m.position[1]).toBe(y);
       expect(m.position[2]).toBeCloseTo(z, 9);
     });
+  });
+});
+
+describe('moveAppliance (PP-T5)', () => {
+  const line: Appliance = {
+    id: 'a1',
+    name: 'Pump',
+    category: 'water_pump',
+    sector: 'water',
+    watts: 750,
+    quantity: 1,
+  };
+
+  it('fresh move: normalized spot, feeder follows the nearest', () => {
+    const moved = moveAppliance(line, { x: 30, z: 30 });
+    expect(moved.position).toEqual({ x: 30, z: 30 });
+    expect(moved.sector).toBe('market');
+    expect(moved.id).toBe('a1');
+  });
+
+  it('overridden feeder sticks; auto feeder follows the move', () => {
+    const overridden: Appliance = { ...line, position: { x: 30, z: 30 }, sector: 'water' };
+    expect(moveAppliance(overridden, { x: 32, z: 32 }).sector).toBe('water');
+    const auto: Appliance = { ...line, position: { x: 30, z: 30 }, sector: 'market' };
+    // (0, 40): households (−6, 8) beats market (4, 7).
+    expect(moveAppliance(auto, { x: 0, z: 40 }).sector).toBe('households');
+  });
+
+  it('off-terrain and footprint spots normalize like the insert form', () => {
+    const corner = moveAppliance(line, { x: 110, z: 110 })!;
+    expect(Math.hypot(corner.position!.x, corner.position!.z)).toBeLessThanOrEqual(106);
+    const [bx, , bz] = SECTOR_POSITIONS.water;
+    const inside = moveAppliance(line, { x: bx, z: bz })!;
+    expect(Math.hypot(inside.position!.x - bx, inside.position!.z - bz)).toBeGreaterThanOrEqual(
+      3.9 - 1e-9
+    );
+  });
+});
+
+describe('pointerToGround (PP-T5)', () => {
+  const rect = { left: 0, top: 0, width: 200, height: 200 };
+  const camera = () => {
+    const c = new THREE.PerspectiveCamera(50, 1, 0.1, 500);
+    c.position.set(0, 10, 10);
+    c.lookAt(0, 0, 0);
+    c.updateMatrixWorld();
+    return c;
+  };
+
+  it('viewport centre → the look-at ground point; right/down stay oriented', () => {
+    const c = camera();
+    const centre = pointerToGround(100, 100, rect, c)!;
+    expect(centre.x).toBeCloseTo(0, 6);
+    expect(centre.z).toBeCloseTo(0, 6);
+    const right = pointerToGround(150, 100, rect, c)!;
+    expect(right.x).toBeGreaterThan(0);
+    expect(right.z).toBeCloseTo(0, 6);
+    const down = pointerToGround(100, 150, rect, c)!;
+    expect(down.x).toBeCloseTo(0, 6);
+    expect(down.z).toBeGreaterThan(0);
+  });
+
+  it('degenerate rect or a ground-parallel ray → null', () => {
+    const c = camera();
+    expect(pointerToGround(100, 100, { ...rect, width: 0 }, c)).toBeNull();
+    const level = new THREE.PerspectiveCamera(50, 1, 0.1, 500);
+    level.position.set(0, 5, 10);
+    level.lookAt(0, 5, 0);
+    level.updateMatrixWorld();
+    expect(pointerToGround(100, 100, rect, level)).toBeNull();
   });
 });

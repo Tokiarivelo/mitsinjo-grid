@@ -1,4 +1,10 @@
-import { SECTOR_IDS, type AppliancePosition, type SectorId } from '@mitsinjo/engine';
+import * as THREE from 'three';
+import {
+  SECTOR_IDS,
+  type Appliance,
+  type AppliancePosition,
+  type SectorId,
+} from '@mitsinjo/engine';
 import { KEEP_OUT_ZONES, TERRAIN_RADIUS } from './landscape';
 import { SECTOR_POSITIONS } from './site-positions';
 
@@ -154,4 +160,40 @@ export function defaultPosition(sector: SectorId, k: number): [number, number, n
   const out = MARKER_RING + row * MARKER_ROW;
   // Perpendicular (−oz, ox) spreads a row sideways.
   return [bx + ox * out - oz * col * MARKER_GAP, 0, bz + oz * out + ox * col * MARKER_GAP];
+}
+
+/**
+ * Move an engine line to a map spot (PP-T5): normalized onto the terrain and out of footprints;
+ * the feeder follows the nearest building unless it was overridden (same rule as the insert
+ * draft: overridden ⟺ a set position whose nearest is not the line's sector).
+ */
+export function moveAppliance(line: Appliance, pos: AppliancePosition): Appliance {
+  const position = snapAwayFromBuildings(clampToTerrain(pos));
+  const overridden = !!line.position && nearestSector(line.position) !== line.sector;
+  return { ...line, position, sector: overridden ? line.sector : nearestSector(position) };
+}
+
+const dragRaycaster = new THREE.Raycaster();
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const dragNdc = new THREE.Vector2();
+const dragHit = new THREE.Vector3();
+
+/**
+ * Client pointer → map spot on the ground plane (PP-T5 drag math, pure). Null on a degenerate
+ * rect or when the ray runs parallel to the ground. The marker re-grounds on commit.
+ */
+export function pointerToGround(
+  clientX: number,
+  clientY: number,
+  rect: { left: number; top: number; width: number; height: number },
+  camera: THREE.Camera
+): AppliancePosition | null {
+  if (!(rect.width > 0 && rect.height > 0)) return null;
+  dragNdc.set(
+    ((clientX - rect.left) / rect.width) * 2 - 1,
+    -(((clientY - rect.top) / rect.height) * 2 - 1)
+  );
+  dragRaycaster.setFromCamera(dragNdc, camera);
+  if (!dragRaycaster.ray.intersectPlane(groundPlane, dragHit)) return null;
+  return { x: dragHit.x, z: dragHit.z };
 }
