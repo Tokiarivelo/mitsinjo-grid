@@ -1,5 +1,5 @@
 import { SECTOR_IDS, type SectorId } from '@mitsinjo/engine';
-import { BATTERY_POSITION, BUS_POSITION, SECTOR_POSITIONS, SOLAR_POSITION } from './to-scene-model';
+import { BATTERY_POSITION, BUS_POSITION, SECTOR_POSITIONS, SOLAR_POSITION } from './site-positions';
 import { fbm2d, smoothstep } from './noise';
 
 /**

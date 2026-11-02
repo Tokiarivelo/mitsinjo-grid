@@ -1,7 +1,12 @@
 import { SECTOR_IDS, type AppliancePosition, type SectorId } from '@mitsinjo/engine';
-import { MARKER_GAP, MARKER_RING, MARKER_ROW, MARKERS_PER_ROW } from './appliance-markers';
 import { KEEP_OUT_ZONES, TERRAIN_RADIUS } from './landscape';
-import { SECTOR_POSITIONS } from './to-scene-model';
+import { SECTOR_POSITIONS } from './site-positions';
+
+/** Distance of the first marker row from the building centre, row and column spacing (scene units). */
+export const MARKER_RING = 3.4;
+export const MARKER_ROW = 0.75;
+export const MARKER_GAP = 0.7;
+export const MARKERS_PER_ROW = 5;
 
 /**
  * Pure free-placement helpers (PP-T2): where a marker goes on the village map. The engine

@@ -5,6 +5,8 @@ import {
   type SectorId,
   type SimulationResult,
 } from '@mitsinjo/engine';
+import { terrainHeight } from './landscape';
+import { clampToTerrain, defaultPosition, snapAwayFromBuildings } from './placement';
 
 /** One inserted appliance in the 3D village (PV-T13). kW values come from the engine profile. */
 export interface ApplianceMarkerSceneModel {
@@ -18,19 +20,25 @@ export interface ApplianceMarkerSceneModel {
   kwNow: number;
   /** Line draws power now and its sector is served: the marker glows. */
   running: boolean;
+  /** Marker base on the ground (y = terrain height). */
   position: [number, number, number];
+  /** Feeder anchor: where the cable link meets the sector building (PP-T3). */
+  feeder: [number, number, number];
 }
 
-/** Distance of the first marker row from the building centre, row and column spacing (scene units). */
-export const MARKER_RING = 3.4;
-export const MARKER_ROW = 0.75;
-export const MARKER_GAP = 0.7;
-export const MARKERS_PER_ROW = 5;
+// Ring constants live in placement.ts (PP-T2); re-exported so existing importers keep working.
+export { MARKER_GAP, MARKER_RING, MARKER_ROW, MARKERS_PER_ROW } from './placement';
+
+/** Height of the feeder anchor above the ground at the sector building (mid-wall). */
+export const MARKER_FEEDER_H = 1.2;
 const RUNNING_KW = 1e-4;
 
 /**
  * Markers sit on the outer side of their building (away from the controller in the middle, where the
- * cables come in), rows of 5 facing the centre. Pure: same input → same positions.
+ * cables come in), rows of 5 facing the centre — unless the appliance has a free-placement
+ * `position` (PP-T3), clamped onto the terrain and snapped out of building footprints. `k` counts
+ * every same-sector appliance in input order, placed or not, so placing one never moves the ring.
+ * Pure: same input → same positions.
  */
 export function applianceMarkers(
   appliances: readonly Appliance[] | undefined,
@@ -45,12 +53,13 @@ export function applianceMarkers(
   return appliances.map((a) => {
     const k = (count[a.sector] = (count[a.sector] ?? 0) + 1) - 1;
     const [bx, , bz] = positions[a.sector];
-    const len = Math.hypot(bx, bz) || 1;
-    const ox = bx / len;
-    const oz = bz / len;
-    const row = Math.floor(k / MARKERS_PER_ROW);
-    const col = (k % MARKERS_PER_ROW) - (MARKERS_PER_ROW - 1) / 2;
-    const out = MARKER_RING + row * MARKER_ROW;
+    let spot: { x: number; z: number };
+    if (a.position) {
+      spot = snapAwayFromBuildings(clampToTerrain(a.position));
+    } else {
+      const [x, , z] = defaultPosition(a.sector, k);
+      spot = { x, z };
+    }
     const kwNow = applianceProfileKw(a)[t] ?? 0;
     const served = (step?.sectors[a.sector]?.servedKw ?? 0) > 0.05;
     return {
@@ -62,8 +71,8 @@ export function applianceMarkers(
       watts: a.watts,
       kwNow,
       running: served && kwNow > RUNNING_KW,
-      // Perpendicular (−oz, ox) spreads a row sideways.
-      position: [bx + ox * out - oz * col * MARKER_GAP, 0, bz + oz * out + ox * col * MARKER_GAP],
+      position: [spot.x, terrainHeight(spot.x, spot.z), spot.z],
+      feeder: [bx, terrainHeight(bx, bz) + MARKER_FEEDER_H, bz],
     };
   });
 }

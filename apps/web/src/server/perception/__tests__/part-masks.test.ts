@@ -139,9 +139,7 @@ describe('fetchPartMasks miss causes (FIX 1)', () => {
   it('a hanging concept reports a timeout; a partial batch stays silent', async () => {
     const warn = silenced();
     try {
-      const hanging = vi.fn(
-        (_url: string, _concept: string) => new Promise<SegmentResult>(() => {})
-      );
+      const hanging = vi.fn(() => new Promise<SegmentResult>(() => {}));
       await expect(
         fetchPartMasks(hanging, 'data:crop', 'lamp_post', { timeoutMs: 20 })
       ).resolves.toEqual([]);

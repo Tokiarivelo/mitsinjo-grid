@@ -21,9 +21,12 @@ Split **where it is drawn** from **which feeder it loads**:
 - [x] **PP-T2 Pure helpers** (`microgrid-3d/utils/placement.ts`, tested): `nearestSector(pos)` from `SECTOR_POSITIONS`;
       `clampToTerrain(pos)`; `snapAwayFromBuildings(pos)` (no marker inside a building footprint); `defaultPosition(sector, k)`
       = today's ring around the building (current markers keep their place).
-- [ ] **PP-T3 Markers.** `applianceMarkers` uses `position` when set, else `defaultPosition`; ground height from `terrainHeight`;
+- [x] **PP-T3 Markers.** `applianceMarkers` uses `position` when set, else `defaultPosition`; ground height from `terrainHeight`;
       a thin cable line from the marker to its sector building (shows which feeder it loads). 2D diagram: dot at the projected
       position + the same link. Budgets: still 3–4 draw calls for 30 markers.
+      (Done 2026-11-02: `feeder` anchor on the marker model, one batched LineSegments2 for all links; ring consts moved to
+      `placement.ts`, site positions to leaf `site-positions.ts` — the first wiring created an import cycle that crashed module
+      evaluation. 2D dot deferred to PP-T4: the 2D diagram is a schematic with no map projection; the minimap defines it.)
 - [ ] **PP-T4 Place by click.** In the insert form, the « Sector » select becomes « Position » + « Feeder »:
       button « Place on the map » opens a top-down minimap (2D SVG of the village, same projection as the 2D diagram,
       keyboard: arrows move a cursor, Enter places) → click sets `position`, feeder = nearest (label « nearest: Water pumping »),

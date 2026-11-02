@@ -244,7 +244,8 @@ Store `reportFire(sector)` adds `{ type: 'fire', sector, startHour: timeIndex, d
 once (safety exception: no approval, not in `changeHistory`; no-op if that sector already burns). `BuildingSceneModel.onFire`
 = burning at the shown hour; `feederTone` → `critical-red`, 2D wire `cut`.
 
-3D `SceneModel.appliances: ApplianceMarkerSceneModel[]` (PV-T13) `{ id, name, category, sector, quantity, watts, kwNow /*engine profile at t*/, running, position }`;
+3D `SceneModel.appliances: ApplianceMarkerSceneModel[]` (PV-T13) `{ id, name, category, sector, quantity, watts, kwNow /*engine profile at t*/, running, position /*ground y*/, feeder /*building anchor*/ }`;
+`position` = free placement when set (clamped + snapped, PP-T3), else the building ring; `feeder` anchors the thin cable link to the sector building.
 2D diagram sector card adds « n added » when appliances feed the sector (`appliancesPerSector`).
 3D `SceneModel.weather: WeatherId` (from `toSceneModel({ weather })`, default `sunny`): drives sky, clouds and rain only.
 

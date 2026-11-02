@@ -8,7 +8,14 @@ import {
   simulate,
   type Appliance,
 } from '@mitsinjo/engine';
-import { applianceMarkers, appliancesPerSector, MARKER_RING } from '../appliance-markers';
+import {
+  applianceMarkers,
+  appliancesPerSector,
+  MARKER_FEEDER_H,
+  MARKER_RING,
+} from '../appliance-markers';
+import { terrainHeight } from '../landscape';
+import { defaultPosition } from '../placement';
 import { SECTOR_POSITIONS, toSceneModel } from '../to-scene-model';
 
 const pump: Appliance = {
@@ -64,5 +71,53 @@ describe('applianceMarkers (PV-T13)', () => {
         expect(Math.hypot(a[0] - b[0], a[2] - b[2])).toBeGreaterThan(0.5);
       }
     expect(appliancesPerSector(list)).toMatchObject({ health: 15, water: 15, school: 0 });
+  });
+});
+
+describe('applianceMarkers free placement (PP-T3)', () => {
+  it('position when set: kept, grounded, feeder anchors the sector building', () => {
+    const [m] = applianceMarkers([{ ...pump, position: { x: 30, z: 30 } }], SECTOR_POSITIONS, 12);
+    expect(m!.position[0]).toBe(30);
+    expect(m!.position[2]).toBe(30);
+    expect(m!.position[1]).toBe(terrainHeight(30, 30));
+    const [bx, , bz] = SECTOR_POSITIONS.water;
+    expect(m!.feeder[0]).toBe(bx);
+    expect(m!.feeder[2]).toBe(bz);
+    expect(m!.feeder[1]).toBe(terrainHeight(bx, bz) + MARKER_FEEDER_H);
+  });
+
+  it('off-terrain corner clamps onto the disc; footprints snap out', () => {
+    const [corner] = applianceMarkers(
+      [{ ...pump, position: { x: 110, z: 110 } }],
+      SECTOR_POSITIONS,
+      12
+    );
+    expect(Math.hypot(corner!.position[0], corner!.position[2])).toBeLessThanOrEqual(106);
+    expect(corner!.position[0]).toBeCloseTo(corner!.position[2], 9);
+    const [bx, , bz] = SECTOR_POSITIONS.water;
+    const [inside] = applianceMarkers(
+      [{ ...pump, position: { x: bx, z: bz } }],
+      SECTOR_POSITIONS,
+      12
+    );
+    // Water clearing r 3.4 + 0.5 clearance: the snapped marker clears it.
+    expect(Math.hypot(inside!.position[0] - bx, inside!.position[2] - bz)).toBeGreaterThanOrEqual(
+      3.9 - 1e-9
+    );
+  });
+
+  it('unplaced keeps the ring slot; placing one never moves the ring', () => {
+    const placed: Appliance = { ...pump, id: 'placed', position: { x: 30, z: 30 } };
+    const ring: Appliance = { ...pump, id: 'ring' };
+    const [p, r] = applianceMarkers([placed, ring], SECTOR_POSITIONS, 12);
+    // k counts every same-sector appliance in input order, placed or not.
+    expect(p!.position[0]).toBe(30);
+    const [x, , z] = defaultPosition('water', 1);
+    expect(r!.position[0]).toBeCloseTo(x, 9);
+    expect(r!.position[2]).toBeCloseTo(z, 9);
+    const [solo] = applianceMarkers([ring], SECTOR_POSITIONS, 12);
+    const [sx, , sz] = defaultPosition('water', 0);
+    expect(solo!.position[0]).toBeCloseTo(sx, 9);
+    expect(solo!.position[2]).toBeCloseTo(sz, 9);
   });
 });

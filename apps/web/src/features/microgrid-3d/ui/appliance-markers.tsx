@@ -1,7 +1,8 @@
 'use client';
 
-import { type RefObject } from 'react';
-import { Html, Instance, Instances } from '@react-three/drei';
+import { useMemo, type RefObject } from 'react';
+import { Html, Instance, Instances, Line } from '@react-three/drei';
+import * as THREE from 'three';
 import { MAX_APPLIANCES, type SectorId } from '@mitsinjo/engine';
 import type { ApplianceMarkerSceneModel } from '../types';
 import { MARKER_PLINTH_HEX, TOKEN_HEX } from '../utils/scene-palette';
@@ -22,7 +23,8 @@ export interface ApplianceMarkersProps {
 
 /**
  * Inserted appliances (PV-T13): plinth + body next to their sector building, cyan glow while the engine
- * profile draws power and the sector is served, grey otherwise. 3 instanced draw calls for up to 30 lines.
+ * profile draws power and the sector is served, grey otherwise. 3 instanced draw calls for up to 30
+ * lines, plus one batched segment list for the feeder links (PP-T3 budget: 3–4 draw calls).
  */
 export function ApplianceMarkers({
   markers,
@@ -30,6 +32,15 @@ export function ApplianceMarkers({
   tagOf,
   htmlPortal,
 }: ApplianceMarkersProps) {
+  // One LineSegments2 for every marker→building link: a single draw call (PP-T3 budget).
+  const feederLinks = useMemo(
+    () =>
+      markers.flatMap((m) => [
+        new THREE.Vector3(m.position[0], m.position[1] + PLINTH[1] + BODY[1], m.position[2]),
+        new THREE.Vector3(m.feeder[0], m.feeder[1], m.feeder[2]),
+      ]),
+    [markers]
+  );
   if (markers.length === 0) return null;
   const running = markers.filter((m) => m.running);
   const idle = markers.filter((m) => !m.running);
@@ -40,11 +51,22 @@ export function ApplianceMarkers({
 
   return (
     <group name="appliance-markers">
+      <Line
+        segments
+        points={feederLinks}
+        color={TOKEN_HEX.idle}
+        lineWidth={1}
+        transparent
+        opacity={0.55}
+      />
       <Instances limit={MAX_APPLIANCES} name="appliance-plinths" castShadow receiveShadow>
         <boxGeometry args={PLINTH} />
         <meshStandardMaterial color={MARKER_PLINTH_HEX} roughness={0.8} />
         {markers.map((m) => (
-          <Instance key={m.id} position={[m.position[0], PLINTH[1] / 2, m.position[2]]} />
+          <Instance
+            key={m.id}
+            position={[m.position[0], m.position[1] + PLINTH[1] / 2, m.position[2]]}
+          />
         ))}
       </Instances>
       {running.length > 0 && (
@@ -60,7 +82,7 @@ export function ApplianceMarkers({
           {running.map((m) => (
             <Instance
               key={m.id}
-              position={[m.position[0], PLINTH[1] + BODY[1] / 2, m.position[2]]}
+              position={[m.position[0], m.position[1] + PLINTH[1] + BODY[1] / 2, m.position[2]]}
             />
           ))}
         </Instances>
@@ -72,7 +94,7 @@ export function ApplianceMarkers({
           {idle.map((m) => (
             <Instance
               key={m.id}
-              position={[m.position[0], PLINTH[1] + BODY[1] / 2, m.position[2]]}
+              position={[m.position[0], m.position[1] + PLINTH[1] + BODY[1] / 2, m.position[2]]}
             />
           ))}
         </Instances>
@@ -80,7 +102,7 @@ export function ApplianceMarkers({
       {tagged.map((m) => (
         <Html
           key={m.id}
-          position={[m.position[0], PLINTH[1] + BODY[1] + 0.35, m.position[2]]}
+          position={[m.position[0], m.position[1] + PLINTH[1] + BODY[1] + 0.35, m.position[2]]}
           center
           distanceFactor={18}
           portal={htmlPortal as RefObject<HTMLElement>}

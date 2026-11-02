@@ -24,18 +24,10 @@ import type {
 } from '../types';
 import { STATUS_HEX, TOKEN_HEX } from './scene-palette';
 
-export const SECTOR_POSITIONS: Record<SectorId, [number, number, number]> = {
-  health: [9, 0, -1],
-  water: [-8, 0, 2],
-  school: [2, 0, -9],
-  households: [-6, 0, 8],
-  market: [4, 0, 7],
-  industry: [11, 0, -8.5],
-};
+// Site positions live in site-positions.ts (leaf: breaks the landscape/to-scene-model cycle).
+import { BATTERY_POSITION, BUS_POSITION, SECTOR_POSITIONS, SOLAR_POSITION } from './site-positions';
 
-export const SOLAR_POSITION: [number, number, number] = [-10, 0, -8];
-export const BATTERY_POSITION: [number, number, number] = [0, 0, -2];
-export const BUS_POSITION: [number, number, number] = [0, 0, 1];
+export { BATTERY_POSITION, BUS_POSITION, SECTOR_POSITIONS, SOLAR_POSITION };
 
 /**
  * Feeder departures on the EMS controller's roof gantry (x offset from BUS_POSITION),
