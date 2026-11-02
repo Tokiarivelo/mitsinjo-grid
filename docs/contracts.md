@@ -58,6 +58,7 @@ interface Appliance {
   watts: number; // one unit, within APPLIANCE_CATALOG[category] minW–maxW
   quantity: number; // int 1–50
   hourlyDuty?: number[]; // 24 values 0–1, default = catalog profile
+  position?: { x: number; z: number }; // PP-T1: scene units, |x|,|z| ≤ 110 (terrain box); visual only, ignored by the load model and the input hash
 }
 ```
 

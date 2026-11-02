@@ -151,7 +151,8 @@ result. Contract and formulas: `contracts.md` § Physical scale model; hardware 
 
 `appliances/catalog.ts` → `APPLIANCE_CATALOG[category]`: rated power bounds (W) and a default 24 h duty profile
 (share of each hour at rated power). Inserted appliances (`input.appliances`) add to their sector's demand, see
-§ Live sector load; `watts` must stay within the category bounds.
+§ Live sector load; `watts` must stay within the category bounds. `position` (PP-T1) is visual only: where the
+marker is drawn, ignored by the load model and excluded from the input hash.
 Strategies, metrics and warnings treat that load like the rest of the sector: same priority, flexibility, lifeline
 floor and `criticalShare` (5 × 750 W pumps on `water`, cloudy day → +26.25 kWh demand, 30 % of it critical). Orders of magnitude for village use, cross-checked
 against Efficiency for Access / CLASP appliance data, the ESMAP Multi-Tier Framework load tiers and WHO PQS E003

@@ -15,6 +15,7 @@ import {
   sectorApplianceKw,
   simulate,
   StrategyIdSchema,
+  TERRAIN_BOX_HALF,
   type Appliance,
   type SimulationInput,
 } from '../index';
@@ -88,6 +89,25 @@ describe('Appliance schema bounds', () => {
       id: `a${i}`,
     }));
     expect(InputPatchSchema.safeParse({ appliances: tooMany }).success).toBe(false);
+  });
+
+  it('position (PP-T1): optional, bounded to the terrain box, ignored by the load', () => {
+    expect(ApplianceSchema.safeParse(fridge).success).toBe(true);
+    const placed = { ...fridge, position: { x: 10, z: -20 } };
+    expect(ApplianceSchema.safeParse(placed).success).toBe(true);
+    expect(
+      ApplianceSchema.safeParse({
+        ...fridge,
+        position: { x: TERRAIN_BOX_HALF, z: -TERRAIN_BOX_HALF },
+      }).success
+    ).toBe(true);
+    expect(
+      ApplianceSchema.safeParse({ ...fridge, position: { x: TERRAIN_BOX_HALF + 1, z: 0 } }).success
+    ).toBe(false);
+    expect(
+      ApplianceSchema.safeParse({ ...fridge, position: { x: 0, z: -TERRAIN_BOX_HALF - 1 } }).success
+    ).toBe(false);
+    expect(applianceProfileKw(placed)).toEqual(applianceProfileKw(fridge));
   });
 });
 

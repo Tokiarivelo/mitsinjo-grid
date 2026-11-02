@@ -61,4 +61,22 @@ describe('Deterministic Hash & IDs (P3-T6)', () => {
 
     expect(computeInputHash(inputCustom)).not.toBe(computeInputHash(inputDefault));
   });
+
+  it('excludes the visual-only appliance position from the input hash (PP-T1)', () => {
+    const base = {
+      id: 'a1',
+      name: 'Clinic fridge',
+      category: 'fridge',
+      sector: 'health',
+      watts: 120,
+      quantity: 1,
+    } as const;
+    const unplaced = { ...createBaselineInput(), appliances: [base] };
+    const placed = {
+      ...createBaselineInput(),
+      appliances: [{ ...base, position: { x: 5, z: -7 } }],
+    };
+    expect(canonicalJson(placed)).not.toContain('position');
+    expect(computeInputHash(placed)).toBe(computeInputHash(unplaced));
+  });
 });

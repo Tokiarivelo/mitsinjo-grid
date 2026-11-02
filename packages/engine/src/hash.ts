@@ -31,6 +31,8 @@ export function canonicalJson(obj: unknown): string {
   for (const k of keys) {
     const val = (obj as Record<string, unknown>)[k];
     if (val !== undefined) {
+      // PP-T1: free-placement position is visual only — same feeders, same hash.
+      if (k === 'position') continue;
       if (
         (k === 'sectorCaps' || k === 'meterReadings' || k === 'appliances') &&
         Array.isArray(val) &&

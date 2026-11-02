@@ -45,6 +45,19 @@ export type ApplianceSpec = z.infer<typeof ApplianceSpecSchema>;
 export const MAX_APPLIANCES = 30;
 
 /**
+ * Half-side of the terrain box (scene units) bounding free placement (PP-T1). Must match
+ * TERRAIN_RADIUS in apps/web `microgrid-3d/utils/landscape.ts` (the engine stays scene-agnostic).
+ */
+export const TERRAIN_BOX_HALF = 110;
+
+/** Free-placement position on the village map (scene units, inside the terrain box). Visual only. */
+export const AppliancePositionSchema = z.object({
+  x: z.number().min(-TERRAIN_BOX_HALF).max(TERRAIN_BOX_HALF),
+  z: z.number().min(-TERRAIN_BOX_HALF).max(TERRAIN_BOX_HALF),
+});
+export type AppliancePosition = z.infer<typeof AppliancePositionSchema>;
+
+/**
  * An appliance inserted into the simulation (from a photo or by hand). Load comes from the engine:
  * watts × quantity × hourly duty (default = catalog profile), added to its sector.
  */
@@ -58,6 +71,8 @@ export const ApplianceSchema = z
     watts: z.number().positive(),
     quantity: z.number().int().min(1).max(50),
     hourlyDuty: HourlyDutySchema.optional(),
+    /** Free placement (PP-T1): where it is drawn; the load still goes to `sector`. */
+    position: AppliancePositionSchema.optional(),
   })
   .superRefine((a, ctx) => {
     const { minW, maxW } = APPLIANCE_CATALOG[a.category];

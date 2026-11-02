@@ -15,7 +15,7 @@ Split **where it is drawn** from **which feeder it loads**:
 
 ## Tasks
 
-- [ ] **PP-T1 Contract.** `ApplianceSchema.position?: { x: number, z: number }` (bounded to the terrain box), optional so
+- [x] **PP-T1 Contract.** `ApplianceSchema.position?: { x: number, z: number }` (bounded to the terrain box), optional so
       old saves and the copilot keep working. Ignored by the load model; excluded from the result hash or included as
       metadata only. Test: parse with / without position, out-of-bounds refused. Docs: `contracts.md`, `engine-spec.md` (one line).
 - [ ] **PP-T2 Pure helpers** (`microgrid-3d/utils/placement.ts`, tested): `nearestSector(pos)` from `SECTOR_POSITIONS`;
