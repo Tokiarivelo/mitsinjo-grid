@@ -7,7 +7,7 @@ not faithful to the imagined 2D elevation. Example: « rural thatched house » (
 same blotchy photo texture**, three dark rectangles for windows and door. Ask: Spark writes a **generation
 script**, builds the model **piece by piece**, and an agent loop renders → compares → corrects each piece until
 the render matches; same for every kind of object.
-**Status:** 🟡 G0 + G1 + G2 done (2026-11-02); live Meta run on the thatched-house drawing: facade path, elevation 87–91/100, IoU 0.98, first model in 48–68 s (chimney accessory score 0.44–0.71: roof hides its foot). G3: PG-T13/T14 done, next PG-T15 stage prompt. **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
+**Status:** 🟡 G0 + G1 + G2 done (2026-11-02); live Meta run on the thatched-house drawing: facade path, elevation 87–91/100, IoU 0.98, first model in 48–68 s (chimney accessory score 0.44–0.71: roof hides its foot). G3: PG-T13/T14/T16 done, next PG-T15 stage prompt. **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
 writes vertices or runnable code (it writes Zod-checked ops, the engine builds); pure, seeded, tested geometry;
 never paste the photo on the model (small tileable swatches OK); ≤ 5 k triangles per object.
 **Skills:** `/shape-3d` (vocabulary, files) · `/shape-loop` (scores, log) · `/facade-2d` (target image).
@@ -121,10 +121,11 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
       the stage's scores, the locked components (read-only) and the stage's components (editable). It answers
       patch ops for this stage only. Prompt versioned (`SHAPE_SCRIPT_PROMPT_VERSION`). Eval on captures
       (`make eval-shape`), keeping the wording that raises the scores.
-- [ ] **PG-T16 Loop runner.** `runShapeStages(seed, target, budget)`: S1…S7, ≤ 3 rounds per stage, keep a patch
+- [x] **PG-T16 Loop runner.** `runShapeStages(seed, target, budget)`: S1…S7, ≤ 3 rounds per stage, keep a patch
       only if the stage score rises, stop a stage at its gate. The time budget is shared. Out of time → the rest
       keeps the seed. Deterministic given the same Spark answers (fixtures). Tests with a fake Spark: the score
       never goes down, locks hold, the timeout returns the best so far.
+      **Done:** `server/perception/shape-stages.ts` `runShapeStages({ seed, stages, score, propose, budgetMs })`, `HOUSE_STAGES` (massing → roof → openings → accessories, gates 0.95 / 0.9 / 0.9 / 0.8), `houseStageScorer` (elevation `stages` + score / 100). A patch is kept when its stage gains ≥ 0.005 and the overall score does not fall; patch ops creating other kinds are refused. **Deviation:** S4 details, S6 materials, S7 hidden sides wait for metrics that see them (the flat render scores plain components).
 - [ ] **PG-T17 Progressive build in the UI.** SSE `ShapeStepEvent` gains `stage` + partial recipe. The viewer
       shows each accepted stage (massing → roof → openings → details). The panel names the current stage and its
       score. i18n en/fr/mg, both themes, mobile. Design gate: `/design-check`.
