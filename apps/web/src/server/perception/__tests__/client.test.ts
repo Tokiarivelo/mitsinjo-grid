@@ -91,6 +91,55 @@ describe('PerceptionClient', () => {
   });
 });
 
+describe('PerceptionClient transient retry', () => {
+  const shape = {
+    model: 'muse-spark-1.3',
+    usage: { inputTokens: 10, outputTokens: 5 },
+    result: {},
+  };
+
+  it('a dropped connection (fetch failed) is retried once, then Meta answers', async () => {
+    const describeShape = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('fetch failed'))
+      .mockResolvedValueOnce(shape);
+    const client = new PerceptionClient(
+      fakeMeta({ describeShape }),
+      new MockPerceptionBackend(),
+      new SpendGuard(1),
+      's1'
+    );
+    const out = await client.describeShape(image, { label: 'House', category: 'other' });
+    expect(describeShape).toHaveBeenCalledTimes(2);
+    expect(out.source).toBe('meta');
+  });
+
+  it('two network failures in a row → mock, flagged network', async () => {
+    const describeShape = vi.fn().mockRejectedValue(new TypeError('fetch failed'));
+    const client = new PerceptionClient(
+      fakeMeta({ describeShape }),
+      new MockPerceptionBackend(),
+      new SpendGuard(1),
+      's1'
+    );
+    const out = await client.describeShape(image, { label: 'House', category: 'other' });
+    expect(describeShape).toHaveBeenCalledTimes(2);
+    expect(out).toMatchObject({ source: 'mock', fallback: 'provider_error', failure: 'network' });
+  });
+
+  it('a timeout is not retried (the time budget is already spent)', async () => {
+    const describeShape = vi.fn().mockRejectedValue(new DOMException('t', 'TimeoutError'));
+    const client = new PerceptionClient(
+      fakeMeta({ describeShape }),
+      new MockPerceptionBackend(),
+      new SpendGuard(1),
+      's1'
+    );
+    await client.describeShape(image, { label: 'House', category: 'other' });
+    expect(describeShape).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('failureOf (why Meta failed)', () => {
   it('tells a time limit, a closed browser, an HTTP error and a network error apart', () => {
     expect(failureOf(new DOMException('t', 'TimeoutError'))).toBe('timeout');

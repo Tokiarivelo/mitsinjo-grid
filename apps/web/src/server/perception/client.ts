@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { env } from '@/lib/env';
+import { errorWithCause, isTransientProviderError } from '@/server/copilot/providers/transient';
 import { spendGuard, type SpendGuard } from '@/server/spend';
 import type { PartsSubject, PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
 import { MetaPerceptionBackend } from './meta';
@@ -67,15 +68,29 @@ export class PerceptionClient {
       console.warn(`[perception] ${kind}: spend cap reached for "${this.budgetKey}", using mock`);
       return fromMock('spend_cap');
     }
-    try {
-      const out = await call(this.primary);
+    const primary = this.primary;
+    const attempt = async () => {
+      const out = await call(primary);
       this.guard.record(this.budgetKey, out.model, out.usage);
       return { ...out.result, source: 'meta', model: out.model } as T & PerceptionSource;
+    };
+    try {
+      try {
+        return await attempt();
+      } catch (firstErr) {
+        // A dropped connection or a 429/5xx often passes: one more try before the mock.
+        if (!isTransientProviderError(firstErr)) throw firstErr;
+        console.warn(
+          `[perception] ${kind}: transient Meta error, retrying once:`,
+          errorWithCause(firstErr)
+        );
+        return await attempt();
+      }
     } catch (err) {
       const failure = failureOf(err);
       console.warn(
         `[perception] ${kind} failed on Meta (${failure}), using mock:`,
-        err instanceof Error ? err.message : err
+        errorWithCause(err)
       );
       return fromMock('provider_error', failure);
     }
