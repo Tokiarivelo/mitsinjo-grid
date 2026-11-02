@@ -2,7 +2,7 @@
 
 **Why (user, 2026-11-01):** the « Sector » field is too static: it forces each object into one of the 6 existing
 buildings. The operator wants to place an object exactly where it is in the village.
-**Status:** ❌ planned. **Depends on:** PV-T11…T13 (insert, markers, list).
+**Status:** ✅ done (2026-11-02, PP-T1…PP-T8). **Depends on:** PV-T11…T13 (insert, markers, list).
 
 ## Principle
 
@@ -46,8 +46,10 @@ Split **where it is drawn** from **which feeder it loads**:
       (Done 2026-11-02: system-prompt rule 2b in EN/FR/MG — report the feeder (sector), never invent x/z, omit
       position unless echoing the operator; tools never surface positions and forward patches verbatim. Pinned by
       prompt-locale + propose/run passthrough tests. No eval case: the mock's canned text can't prove non-invention.)
-- [ ] **PP-T8 Docs + scenarios.** `docs/design/screens/village.md`, `components.md`, i18n keys ×3, `test-scenarios/06-village.md`
+- [x] **PP-T8 Docs + scenarios.** `docs/design/screens/village.md`, `components.md`, i18n keys ×3, `test-scenarios/06-village.md`
       (place, override feeder, drag, mobile, dark/light), README feature line.
+      (Done 2026-11-02: screen + components docs updated; 11 placement keys verified ×3 (added in PP-T4);
+      scenarios V79–V84 appended (gitignored); README village-editor line extended.)
 
 ## Done when
 

@@ -1,25 +1,24 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-02 (PP-T7 done, PP-T8 next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-02 (PP-T8 done, PV-free-placement complete, PV-T11b next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
 - Standing: commit each task, unsigned fallback (`-c commit.gpgsign=false`), always continue.
-- **PP-T7 done:** prompt rule 2b (EN/FR/MG) — report the feeder, never invent x/z; tools forward
-  appliance patches verbatim. Prompt-locale + passthrough tests green.
-- Verify: typecheck ✓, lint 0 errors, prompt+tools 26/26. No Meta key in env — live-model check skipped.
+- **PP-T8 done:** village.md + components.md updated, 11 placement keys verified ×3, scenarios V79–V84
+  appended (gitignored), README line extended. Whole free-placement plan ✅ done.
+- Verify: `make check-i18n` 3/3 green (docs-only turn, no code change).
 - Left uncommitted: `generated_images/` (only a 0-byte tooling `.lock`, no content).
 
 ## Next task
 
-- **PP-T8 Docs + scenarios** (`docs/tasks/PV-free-placement.md`): `screens/village.md`, `components.md`,
-  i18n keys ×3, `test-scenarios/06-village.md` (place, override feeder, drag, mobile, dark/light), README line.
-- Then PV-T11b + PV-T14. PR-0.5 needs 10 USER photos.
+- **PV-T11b + PV-T14** (`docs/tasks/PV-vision-insert.md` — read it next; free-placement plan is closed).
+- Then PR-0.5 (needs 10 USER photos). S4 stopped.
 
 ## Decisions taken
 
-- No new copilot tool and no `appliances` in tool JSON schemas: the model must not author positions.
-- No eval case for non-invention: mock-provider canned text can't prove the real model won't invent.
+- No eval case for copilot non-invention: mock canned text can't prove the real model won't invent.
+- Paid-for critic round always completes (retry has no Spark call); ≥20 s gate guards round START only.
 
 ## Open questions / blockers
 
@@ -28,7 +27,8 @@
 
 ## Files touched this session
 
-- `server/copilot/prompt.ts` + `__tests__/{prompt,tools}.test.ts`, `docs/{copilot.md,tasks/PV-free-placement.md}`.
+- `docs/{design/screens/village.md,design/components.md,tasks/PV-free-placement.md}`, `README.md`,
+  `test-scenarios/06-village.md` (V79–V84, gitignored, stays local).
 
 ## Gotchas
 

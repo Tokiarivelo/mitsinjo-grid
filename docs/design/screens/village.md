@@ -18,9 +18,15 @@ the engine catalog gives power (never the AI). Sidebar + MobileNav entry « Vill
   done = green check, wait hint 15–40 s) + skeleton. Outline note per reason (Meta error + « Cause: HTTP n », timeout, spend cap,
   server unreachable, unusable). No WebGL: note, photo stays the reference. One Spark call per object per photo (kept on reselect).
   « Add to the simulation » (PV-T11/T12, under the 3D block, `ApplianceInsertPanel`): toggle « AI estimate » (violet) / « Manual »
-  (cyan), note, fields name · type · sector · power per unit (catalog range under it, red when out) · quantity (1 column on
+  (cyan), note, fields name · type · position · feeder line · power per unit (catalog range under it, red when out) · quantity (1 column on
   mobile and lg aside, 2 on sm / xl), engine preview line, cyan « Insert into simulation » (« Update » + « Remove » once in),
   green status « In the simulation: strategies re-computed. ». Scenery: note « no load by default ». List row chip « In simulation ».
+  Free placement (PV-P): position = « Ring around the building » by default or « Place on the map » (`PlaceMinimap`,
+  components.md); feeder line = the sector select, preset to the nearest building (« Nearest: … », « Auto » to follow again) —
+  the load always goes to one of the 6 feeders while the marker draws anywhere on the terrain.
+- Inserted markers (live preview, /simulation too): plinth + body by the ring or at the placed spot, thin cable line to
+  the feeder building, tag « name · qty × W ». Click = select (ground ring + cyan tag border); press + drag moves the marker
+  on the terrain (ghost preview, orbit frozen, commit on release); the feeder follows the nearest building unless overridden.
 - Right column (lg 380 px, under on mobile): the aside, then the live village preview (`GridSchematicPreview stacked`,
   3D / 2D toggle, store input + active result + hour), so the current village state stays visible while editing.
 - Every object has its own outline colour, repeated as its row border in « Objects found »; scenery (house, car, tree…) has a lighter

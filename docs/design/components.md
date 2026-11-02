@@ -187,3 +187,14 @@ Common: every interactive element has hover, active, disabled, focus-visible (2p
 
 - Panel props: input; status; isModified; onPatch; onReset; defaultOpen?. Collapsible header button (aria-expanded) with StatusBadge.
 - Row props: sector; cap?; onPriorityChange; onCapChange(cap | null). Native select + number inputs, ≥ 44 px; invalid cap → `role="alert"` message.
+
+## Free placement (PV-P)
+
+- `PlaceMinimap` (`features/vision-insert`, PP-T4): top-down village SVG (terrain disc + one dot per sector building,
+  current feeder cyan), `role="application"`, labelled + help line (`minimapLabel`, `minimapHelp`), crosshair cursor.
+  Click / tap places; arrows move the cursor (Shift = ×5), Enter / Space places; screen-reader live readout of the
+  cursor (`cursorAt`). Rounded panel on `bg-canvas-sunken`, cyan focus ring; full width down to 320 px.
+- Marker select + drag (`features/microgrid-3d`, PP-T5): click a marker = select (flat ground ring + cyan tag
+  border, click again = deselect); press + move past 4 px = drag on the terrain (the instance hides, a translucent
+  cyan ghost follows the pointer, orbit stays off until release); release commits, pointer-cancel aborts cleanly.
+  The feeder follows the nearest building unless the operator overrode it. Touch: pointer events, no scroll trap.
