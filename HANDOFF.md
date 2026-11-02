@@ -21,7 +21,7 @@
   `ImproveChip` on the viewer (en/fr/mg, aria-live).
 - **PG-T19** tree / bush / pole / lamp post → `roundViewRecipe` (lathe of the drawn silhouette, no side);
   panel → hull path; tree prompt.
-- Measure: goldens mean 93 unchanged; thatched elevation 89/100 (mock proposer = seed).
+- Goldens mean 93 unchanged; thatched elevation 89/100 (mock proposer = seed).
 
 ## Next
 
@@ -29,9 +29,7 @@
   and the chip (scenarios V112–V116); keep or reword prompt v1 from real answers; add stage replay to
   `make eval-shape` from captures.
 - **PG-T20/T21**: per-archetype stages need a per-part metric on the views (SAM part boxes vs rendered parts).
-- Known: golden / model-score timing asserts fail under parallel load only (pass with
-  `--no-file-parallelism`); /village behind login → gate-out of the chip is static (stitch-map note).
-- Jobs are in-memory (one process): a server restart ends the chip with « stopped: error ».
+- Known: timing asserts fail under parallel load only; chip gate-out static (login); jobs in memory.
 
 ## Files touched (this session)
 
