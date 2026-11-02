@@ -14,6 +14,7 @@ import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { nearestSector } from '@/features/microgrid-3d/utils/placement';
 import type { ApplianceDraftState } from '../hooks/use-appliance-draft';
+import { ApplianceCurveChart } from './appliance-curve-chart';
 import { PlaceMinimap } from './place-minimap';
 import {
   clampQuantity,
@@ -54,7 +55,7 @@ export function ApplianceInsertPanel({
   const tSector = useTranslations('sectors');
   const id = useId();
   const [mapOpen, setMapOpen] = useState(false);
-  const { draft: d, source, range, appliance, summary } = draft;
+  const { draft: d, source, range, appliance, summary, curve } = draft;
   const wattsOk = Number.isFinite(d.watts) && d.watts >= range.minW && d.watts <= range.maxW;
   const nearest = d.position ? nearestSector(d.position) : null;
 
@@ -250,6 +251,9 @@ export function ApplianceInsertPanel({
             })
           : t('insertInvalid')}
       </p>
+      {appliance && summary && curve && (
+        <ApplianceCurveChart curve={curve} peakKw={summary.peakKw} dailyKwh={summary.dailyKwh} />
+      )}
 
       <div className="flex flex-wrap gap-2">
         <button

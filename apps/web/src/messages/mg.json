@@ -828,6 +828,8 @@
       "insertWattsRange": "Fetran'ny katalaogy: {min}–{max} W",
       "insertQuantity": "Isa",
       "insertPreview": "Motera: avo indrindra {peak} · {daily} isan'andro",
+      "insertCurveTitle": "Kiolan'ny entana 24 ora",
+      "insertCurveSummary": "Kiola isan'ora, avo indrindra {peak}, {daily} isan'andro",
       "insertInvalid": "Hamarino ny anarana sy ny fetran'ny hery.",
       "insertButton": "Ampidiro ao amin'ny simulation",
       "insertUpdate": "Havaozy ao amin'ny simulation",

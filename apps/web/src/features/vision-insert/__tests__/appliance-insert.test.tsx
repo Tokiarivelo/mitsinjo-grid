@@ -1,5 +1,5 @@
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
-import { APPLIANCE_CATALOG, applianceSummary } from '@mitsinjo/engine';
+import { APPLIANCE_CATALOG, applianceProfileKw, applianceSummary } from '@mitsinjo/engine';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@/lib/i18n';
 import type { ApplianceDetection } from '@/lib/vision';
@@ -42,6 +42,15 @@ describe('useApplianceDraft (PV-T11)', () => {
     act(() => result.current.applyAiEstimate());
     expect(result.current.source).toBe('ai');
     expect(result.current.draft.watts).toBe(APPLIANCE_CATALOG.water_pump.defaultW);
+  });
+
+  it('exposes the 24 h engine curve; null while the draft is invalid (PV-T11b)', () => {
+    const { result } = renderHook(() => useApplianceDraft('x', pump, 'Pump'));
+    expect(result.current.curve).toEqual(applianceProfileKw(result.current.appliance!));
+    expect(result.current.curve).toHaveLength(24);
+    act(() => result.current.setWatts(1e6));
+    expect(result.current.appliance).toBeNull();
+    expect(result.current.curve).toBeNull();
   });
 
   it('a new type keeps the watts inside its catalog range', () => {

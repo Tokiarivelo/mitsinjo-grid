@@ -828,6 +828,8 @@
       "insertWattsRange": "Plage du catalogue : {min}–{max} W",
       "insertQuantity": "Quantité",
       "insertPreview": "Moteur : pointe {peak} · {daily} par jour",
+      "insertCurveTitle": "Courbe de charge 24 h",
+      "insertCurveSummary": "Courbe horaire, pointe {peak}, {daily} par jour",
       "insertInvalid": "Vérifiez le nom et la plage de puissance.",
       "insertButton": "Insérer dans la simulation",
       "insertUpdate": "Mettre à jour dans la simulation",

@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import {
+  applianceProfileKw,
   applianceSummary,
   type Appliance,
   type ApplianceCategory,
@@ -108,6 +109,8 @@ export function useApplianceDraft(
 
   const appliance = useMemo(() => toAppliance(id, current.draft), [id, current.draft]);
   const summary = useMemo(() => (appliance ? applianceSummary(appliance) : null), [appliance]);
+  /** 24 h engine curve (kW) for the usage-hours chart; null while the draft is invalid. */
+  const curve = useMemo(() => (appliance ? applianceProfileKw(appliance) : null), [appliance]);
 
   return {
     draft: current.draft,
@@ -115,6 +118,7 @@ export function useApplianceDraft(
     range: wattsRange(current.draft.category),
     appliance,
     summary,
+    curve,
     setName,
     setCategory,
     setSector,

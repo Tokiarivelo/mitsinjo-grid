@@ -828,6 +828,8 @@
       "insertWattsRange": "Catalog range: {min}–{max} W",
       "insertQuantity": "Quantity",
       "insertPreview": "Engine: peak {peak} · {daily} per day",
+      "insertCurveTitle": "24 h load curve",
+      "insertCurveSummary": "Hourly curve, peak {peak}, {daily} per day",
       "insertInvalid": "Check the name and the power range.",
       "insertButton": "Insert into simulation",
       "insertUpdate": "Update in simulation",
