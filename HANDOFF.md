@@ -24,12 +24,13 @@
   - PA-T3a: Store `dispatchMode`, `dispatchLog`, `setDispatchMode`, `takeBackControl` (→ manual). Neon table `dispatch_log` via `server/db/migrations.ts`.
   - PA-T3b: Hook `useAiDispatch` (remplace `useAutopilot`) : à chaque heure simulée en mode autonome → détecter → décider → appliquer → journaliser.
 
-## Parallel session (Claude) — 3D by script, plan PV-G (`docs/tasks/PV-shape-script.md`)
+## Parallel session (Claude) — 3D: PV-G houses, PV-H any object
 
-- G0 + G1 + PG-T11 (cut openings) + PG-T12 (thatch eave roll) + timber beams done (499f749).
-- Live Meta run (631fc13): facade path 87–91/100, IoU 0.98, 48–68 s. Fixes: `compactDataUrl` (SAM timeouts on 2.4 MB
-  data URL), detail concepts on own 15 s limit, glazed-door panes ≠ windows, Spark `details` (plinth/timberFrame/panes)
-  → inferred base, step, beams, panes when SAM misses them on a line drawing.
-- Known: golden-shape / model-score tests time out under parallel load only (pass with `--no-file-parallelism`);
-  chimney accessory score low (roof hides its foot). Next: PG-T10 components budget, then G3 loop + stage indicator (PG-T13–T18).
-- Scenarios: V96–V103 in `test-scenarios/06-village.md`.
+- PV-G (`docs/tasks/PV-shape-script.md`): G0 + G1 + PG-T11/T12 + beams; live thatched house 87–91/100 (631fc13).
+- PV-H (`docs/tasks/PV-any-object.md`, 36d7729): non-house objects with a validated 2D view → `object-views.ts`
+  (SAM on the view + Muse Image side → `hull` body + parts) then the AI check (`views-check.ts`, `checkViews`,
+  ≤ 2 rounds in 90 s, `shape_step: check`). Live car: 67 s, 17 parts, IoU front 0.88 / side 0.79.
+- Built recipes may have 24 parts (`MAX_BUILT_PARTS`); Spark / photo path keeps 12.
+- Known: golden-shape / model-score tests time out under parallel load only; `make shape-shots` blocked by the
+  new /village login. Next: PH-T8 region colours, PG-T10, G3 background loop (PG-T13–T18).
+- Scenarios: V96–V108 in `test-scenarios/06-village.md`.
