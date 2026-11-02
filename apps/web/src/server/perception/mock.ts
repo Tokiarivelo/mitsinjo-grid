@@ -4,6 +4,7 @@ import { boxUnionCoverage } from './parse-sam';
 import { classifyLabel } from './detect';
 import type {
   ApplianceDetection,
+  CriticResult,
   DetectionResult,
   Observation,
   SegmentResult,
@@ -205,5 +206,13 @@ export class MockPerceptionBackend implements PerceptionBackend {
       usage: {},
       result: { detections: MOCK_DETECTIONS.map((d) => ({ ...d, box: { ...d.box } })) },
     };
+  }
+
+  async criticizeShape(
+    _imageUrl: string,
+    _question: string
+  ): Promise<PerceptionCall<CriticResult>> {
+    // The mock never patches: the critic round is a no-op without Meta.
+    return { model: MOCK_PERCEPTION_MODEL, usage: {}, result: { patch: null } };
   }
 }

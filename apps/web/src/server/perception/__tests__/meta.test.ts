@@ -91,6 +91,23 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
     expect(out.usage).toEqual({ inputTokens: 3202, outputTokens: 1314 });
   });
 
+  it('criticizes a shape with the KitPatch schema and parses the patch', async () => {
+    const fetchMock = respond({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({ subtype: 'sedan', details: { wheels: 4 } }),
+          },
+        },
+      ],
+      usage: { prompt_tokens: 100, completion_tokens: 20 },
+    });
+    const out = await backend.criticizeShape('data:image/png;base64,AA', 'Patch?');
+    const body = JSON.parse(lastRequest(fetchMock).init.body as string);
+    expect(body.response_format.json_schema.name).toBe('KitPatch');
+    expect(out.result).toEqual({ patch: { subtype: 'sedan', details: { wheels: 4 } } });
+  });
+
   it('prefers the contributor vision model and resends on the standard one when refused', async () => {
     const ok = {
       choices: [{ message: { content: JSON.stringify({ summary: 'ok', observations: [] }) } }],

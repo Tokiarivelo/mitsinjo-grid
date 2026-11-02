@@ -20,6 +20,7 @@ import { photoSize } from '../vision-request';
 import { GOLDEN_SHAPES, goldenBox, goldenOutline, goldenSvg, PHOTO } from '../__fixtures__/shape';
 import { cropForShape, cropRectForShape } from '../shape-crop';
 import {
+  criticReplay,
   remapBoxToCrop,
   remapOutlineToCrop,
   readCapture,
@@ -121,6 +122,92 @@ describe('shape capture (PR-0.4)', () => {
     expect(replay!.score.iou).toBeGreaterThan(0.6);
     expect(replay!.score.score).toBeGreaterThan(0);
   });
+});
+
+describe('criticReplay (PR-0.6)', () => {
+  /** Capture of a wrong kit (lamp over the fridge crop, low score) in a tmp dir. */
+  async function degradedCapture() {
+    const fridge = GOLDEN_SHAPES.find((g) => g.name === 'fridge')!;
+    const lampPrior = GOLDEN_SHAPES.find((g) => g.name === 'lamp post')!.prior;
+    const buffer = await sharp(Buffer.from(goldenSvg(fridge)))
+      .jpeg({ quality: 85 })
+      .toBuffer();
+    const photo = { buffer, ...PHOTO };
+    const target: ShapeTarget = {
+      id: fridge.name,
+      label: fridge.name,
+      category: 'other',
+      box: goldenBox(fridge),
+      outline: goldenOutline(fridge),
+    };
+    const spark = {
+      describeShape: vi.fn().mockResolvedValue({
+        recipe: kitToRecipe(lampPrior),
+        kit: lampPrior,
+        source: 'meta',
+        model: 'muse-spark-1.3',
+      }),
+    };
+    const shape = await runObjectShape(spark, photo, 'data:full', target);
+    if (shape.mode !== 'recipe' || !shape.recipe) throw new Error('no recipe');
+    const rect = cropRectForShape(photo.width, photo.height, target.box);
+    const jpeg = Buffer.from((await cropForShape(photo, target.box)).split(',')[1]!, 'base64');
+    const capture: ShapeCapture = {
+      version: 1,
+      id: 'wrong-fridge',
+      capturedAt: new Date().toISOString(),
+      source: 'meta',
+      model: shape.model,
+      photo: { width: photo.width, height: photo.height },
+      target,
+      kit: lampPrior,
+      recipe: shape.recipe,
+      ...(shape.fit ? { fit: shape.fit } : {}),
+      seconds: 0.1,
+      crop: rect,
+      cropTarget: {
+        box: remapBoxToCrop(target.box, photo.width, photo.height, rect),
+        outline: target.outline
+          ? remapOutlineToCrop(target.outline, photo.width, photo.height, rect)
+          : undefined,
+      },
+    };
+    const dir = mkdtempSync(join(tmpdir(), 'shape-critic-'));
+    writeCapture(dir, capture, jpeg);
+    return dir;
+  }
+
+  it('keeps a fixing patch across rounds', async () => {
+    const dir = await degradedCapture();
+    const start = (await rescoreCapture(dir, 'wrong-fridge'))!.score.score;
+    expect(start).toBeLessThan(70);
+    const critic = {
+      criticizeShape: vi.fn().mockResolvedValue({ patch: { archetype: 'cabinet' } }),
+    };
+    const out = await criticReplay(critic, dir, 'wrong-fridge', 3);
+    expect(out.roundsRun).toHaveLength(3);
+    expect(out.roundsRun[0]).toMatchObject({ kept: true });
+    expect(out.score).toBeGreaterThan(start);
+    expect(out.kit.archetype).toBe('cabinet');
+    // Later rounds re-fire (the stub always patches) but cannot beat the fix.
+    expect(out.roundsRun.slice(1).every((r) => !r.kept)).toBe(true);
+  }, 120_000);
+
+  it('drops a useless patch and stops on a null one', async () => {
+    const dir = await degradedCapture();
+    const critic = { criticizeShape: vi.fn().mockResolvedValue({ patch: { subtype: 'tall' } }) };
+    const out = await criticReplay(critic, dir, 'wrong-fridge', 3);
+    expect(out.roundsRun).toHaveLength(3);
+    expect(out.roundsRun.every((r) => !r.kept)).toBe(true);
+    const { capture } = await readCapture(dir, 'wrong-fridge');
+    expect(out.recipe).toEqual(capture.recipe);
+
+    const quiet = { criticizeShape: vi.fn().mockResolvedValue({ patch: null }) };
+    const still = await criticReplay(quiet, dir, 'wrong-fridge', 3);
+    expect(still.roundsRun).toHaveLength(0);
+    expect(still.recipe).toEqual(capture.recipe);
+    expect(quiet.criticizeShape).toHaveBeenCalledTimes(1);
+  }, 120_000);
 });
 
 const LIVE = process.env.SHAPE_CAPTURE === '1';

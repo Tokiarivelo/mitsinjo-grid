@@ -15,10 +15,19 @@ import {
 import { maskToOutline } from './mask-outline';
 import { REGION_SYSTEM_PROMPT, regionQuestion } from './region-prompt';
 import { defaultArchetype, kitToRecipe } from '@/lib/object-kit';
-import { parseKit, SHAPE_JSON_SCHEMA, SHAPE_SYSTEM_PROMPT, shapeQuestion } from './shape';
+import {
+  CRITIC_JSON_SCHEMA,
+  CRITIC_SYSTEM_PROMPT,
+  parseKit,
+  parseKitPatch,
+  SHAPE_JSON_SCHEMA,
+  SHAPE_SYSTEM_PROMPT,
+  shapeQuestion,
+} from './shape';
 import { boxUnionCoverage, parseSamOutput } from './parse-sam';
 import {
   ObservationSchema,
+  type CriticResult,
   type DetectionResult,
   type SegmentResult,
   type ShapeResult,
@@ -301,6 +310,27 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       usage,
       result: { recipe: kit ? kitToRecipe(kit) : null, ...(kit ? { kit } : {}) },
     };
+  }
+
+  async criticizeShape(
+    imageUrl: string,
+    question: string,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<CriticResult>> {
+    // Standard id, like the kit call: the operator waits on this answer.
+    const { content, model, usage } = await this.visionJson(
+      CRITIC_SYSTEM_PROMPT,
+      question,
+      imageUrl,
+      CRITIC_JSON_SCHEMA,
+      signal,
+      false
+    );
+    const patch = parseKitPatch(content);
+    console.info(
+      `[vision] 3D critic from ${model}: ${patch ? Object.keys(patch).join(',') : 'no patch'}`
+    );
+    return { model, usage, result: { patch } };
   }
 
   async segmentImage(

@@ -3,8 +3,11 @@ import { SCENERY_TYPES } from '@/lib/vision';
 import { describe, expect, it } from 'vitest';
 import { ObjectRecipeSchema, recipeIssue } from '@/lib/object-shape';
 import {
+  criticQuestion,
+  mergeKitPatch,
   mockRecipe,
   parseKit,
+  parseKitPatch,
   SHAPE_JSON_SCHEMA,
   SHAPE_SYSTEM_PROMPT,
   shapeQuestion,
@@ -118,5 +121,68 @@ describe('mockRecipe', () => {
     }
     expect(mockRecipe('other', 'building').parts.length).toBeGreaterThan(1);
     expect(mockRecipe('other', 'building')).not.toEqual(mockRecipe('other'));
+  });
+});
+
+describe('parseKitPatch + mergeKitPatch (PR-0.6)', () => {
+  const kit = {
+    archetype: 'vehicle' as const,
+    proportions: { w: 1, h: 0.4, d: 0.45 },
+    colors: { main: '#a33327', secondary: '#cfd6dd', accent: '#1c1c1e' },
+  };
+
+  it('reads a partial patch: subtype, counts, colours', () => {
+    expect(parseKitPatch(reply({ subtype: 'Sedan', details: { wheels: 4, doors: 2 } }))).toEqual({
+      subtype: 'sedan',
+      details: { wheels: 4, doors: 2 },
+    });
+    expect(parseKitPatch(reply({ colors: { accent: '#ff0000' } }))).toEqual({
+      colors: { accent: '#ff0000' },
+    });
+    expect(parseKitPatch(reply({ archetype: 'house' }))).toEqual({ archetype: 'house' });
+  });
+
+  it('clamps counts, rescales proportions, drops the unusable', () => {
+    expect(parseKitPatch(reply({ details: { wheels: 99, windows: -2 } }))).toEqual({
+      details: { wheels: 6, windows: 0 },
+    });
+    expect(parseKitPatch(reply({ proportions: { w: 200, h: 100, d: 100 } }))).toEqual({
+      proportions: { w: 1, h: 0.5, d: 0.5 },
+    });
+    // Bad colours dropped (never greyed), roof always dropped, partial triple dropped.
+    expect(parseKitPatch(reply({ colors: { main: 'red' } }))).toBeNull();
+    expect(
+      parseKitPatch(reply({ roof: { eave: 0.4, gables: [] }, details: { doors: 1 } }))
+    ).toEqual({ details: { doors: 1 } });
+    expect(parseKitPatch(reply({ proportions: { w: 1 } }))).toBeNull();
+    expect(parseKitPatch(reply({ archetype: 'spaceship' }))).toBeNull();
+  });
+
+  it('null when not JSON, empty, or an array', () => {
+    expect(parseKitPatch('the model looks fine')).toBeNull();
+    expect(parseKitPatch(reply({}))).toBeNull();
+    expect(parseKitPatch(reply([]))).toBeNull();
+  });
+
+  it('merges per key and never corrupts the kit', () => {
+    const patch = parseKitPatch(
+      reply({ subtype: 'sedan', colors: { accent: '#ff0000' }, details: { wheels: 4 } })
+    )!;
+    const out = mergeKitPatch(kit, patch);
+    expect(out).toMatchObject({
+      archetype: 'vehicle',
+      subtype: 'sedan',
+      colors: { main: '#a33327', secondary: '#cfd6dd', accent: '#ff0000' },
+      details: { wheels: 4 },
+    });
+    // A patch that would break the schema keeps the original.
+    expect(mergeKitPatch(kit, { proportions: { w: 0, h: 0, d: 0 } })).toEqual(kit);
+  });
+
+  it('criticQuestion carries the kit and the numbers', () => {
+    const q = criticQuestion(kit, { score: 62, iou: 0.7, edgeF1: 0.5, deltaE: 9 });
+    expect(q).toContain('62/100');
+    expect(q).toContain('"archetype":"vehicle"');
+    expect(q).toContain('JSON patch');
   });
 });

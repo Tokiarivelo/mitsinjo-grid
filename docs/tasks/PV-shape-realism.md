@@ -104,7 +104,7 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
       Machinery done 2026-11-01 (`shape-capture.ts`: kit hook, crop remap, write/read/offline rescore, all tested;
       fixtures in gitignored `__fixtures__/shape/real/`): no live fixture yet — Meta too slow on 2026-11-01
       (SAM aborts, Spark > 150 s, 5 attempts). Re-run the command when Meta is back, then tick this box.
-- [ ] **PR-0.6 Spark critic** (user, 2026-11-01: the Meta model must help the render match the selected box).
+- [x] **PR-0.6 Spark critic** (user, 2026-11-01: the Meta model must help the render match the selected box).
       Crop | `renderFlat` PNG side by side + kit + scores → Spark → kit JSON patch → re-fit, keep if `scoreModel`
       rises. Live: 1 round when score < 70 and ≥ 20 s left; offline on captures: ≤ 3 rounds. Mock: no patch.
       Guide: `/shape-3d` « Meta in the render loop ». Replaces PR-3.5.
@@ -375,3 +375,4 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-01 | PR-2.18 parametric edits (applyEdit: openings/chimney/parts)           | 0.98     | 0.91    | 3.4     | —        | API-only, goldens identical; window +20% re-tiles, bounds kept, Viol 0; metric via scale; fixed mid-PR: wall membership (slabs absorbed), chimney boolean                                                    |
 | 2026-11-01 | Loop pass over PR-2.14…2.18                                            | 0.98     | 0.91    | 3.4     | 4/5      | all stop criteria hold (Viol 0, ms ≤ 300); visual: cottage ends filled, car rear lensed; issues: car slab cabin (no side glass/doors, budget full), row backs wait on room, end-window sliver minimal        |
 | 2026-11-01 | PR-0.4 live capture (Meta back: SAM 1.9s, Spark 11s)                   | 0.98     | 0.91    | 3.4     | —        | refrigerator fixture (31s live); offline replay IoU 1.0, score 92; goldens untouched                                                                                                                         |
+| 2026-11-02 | PR-0.6 Spark critic (patch API + live round + replay)                  | 0.98     | 0.91    | 3.4     | —        | goldens identical; live rescue 33 → 92 kept, 92 judged no-patch; no prompt lines to fold yet; fixed mid-PR: in-pipe IoU gate never fires (profiles nail silhouettes) → score-gated wrapper                   |

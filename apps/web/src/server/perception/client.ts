@@ -6,6 +6,7 @@ import type { PerceptionBackend, PerceptionCall, ShapeSubject } from './backend'
 import { MetaPerceptionBackend } from './meta';
 import { MockPerceptionBackend } from './mock';
 import type {
+  CriticResult,
   DetectionResult,
   PerceptionSource,
   SegmentResult,
@@ -110,6 +111,10 @@ export class PerceptionClient {
     signal?: AbortSignal
   ): Promise<ShapeResult> {
     return this.run('describeShape', (b) => b.describeShape(imageUrl, target, signal));
+  }
+
+  criticizeShape(imageUrl: string, question: string, signal?: AbortSignal): Promise<CriticResult> {
+    return this.run('criticizeShape', (b) => b.criticizeShape(imageUrl, question, signal));
   }
 }
 

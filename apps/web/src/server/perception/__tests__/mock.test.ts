@@ -67,4 +67,9 @@ describe('MockPerceptionBackend', () => {
       expect(d.box.y + d.box.h).toBeLessThanOrEqual(1);
     }
   });
+
+  it('never patches: the critic round is a no-op without Meta', async () => {
+    const out = await mock.criticizeShape('data:img', 'Patch?');
+    expect(out.result).toEqual({ patch: null });
+  });
 });

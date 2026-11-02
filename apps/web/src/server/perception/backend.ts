@@ -2,6 +2,7 @@ import type { ApplianceCategory } from '@mitsinjo/engine';
 import type { SceneryType } from '@/lib/vision';
 import type { UsageSample } from '@/server/spend';
 import type {
+  CriticResult,
   DetectionResult,
   SegmentResult,
   ShapeResult,
@@ -57,6 +58,15 @@ export interface PerceptionBackend {
     target: ShapeSubject,
     signal?: AbortSignal
   ): Promise<PerceptionCall<ShapeResult>>;
+  /**
+   * Visual critic (PR-0.6): `imageUrl` is crop | flat render side by side, `question` carries the
+   * kit + scores. One vision call, partial-kit schema; null patch when the model matches.
+   */
+  criticizeShape(
+    imageUrl: string,
+    question: string,
+    signal?: AbortSignal
+  ): Promise<PerceptionCall<CriticResult>>;
 }
 
 /** What `describeShape` is told about the object. */

@@ -536,6 +536,8 @@ export async function runObjectShape(
         ...(imaginedViews ? { imaginedViews } : {}),
         ...(fitIou !== undefined ? { fit: { iou: fitIou } } : {}),
         ...(partMasks ? { partMasks } : {}),
+        ...(found.kit ? { kit: found.kit } : {}),
+        ...(shaped.outline ? { outline: shaped.outline } : {}),
         ...source,
       };
     }

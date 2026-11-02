@@ -216,7 +216,10 @@ describe('runObjectShape measured colours (PF-T2)', () => {
     expect([...colors].some((c) => near(c, '#6e5f55'))).toBe(true);
     expect([...colors].some((c) => c === '#000000' || c === '#ff8800')).toBe(false);
     expect([...colors].some((c) => near(c, '#96beef', 20))).toBe(false);
-    expect(out).not.toHaveProperty('kit');
+    // The kit stays exposed as Spark said it (PR-0.6: the critic patches it); measurements
+    // live in the recipe, never rewritten into the kit.
+    expect(out).toHaveProperty('kit', guessed);
+    expect(out.outline).toBe(cottage.outline);
   });
 
   it('no photo (crop impossible) → Spark colours kept', async () => {

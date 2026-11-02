@@ -3,13 +3,23 @@ import 'server-only';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { ObjectKitSchema } from '@/lib/object-kit';
-import { ObjectRecipeSchema, ShapeTargetSchema, type ObjectRecipe } from '@/lib/object-shape';
+import { kitToRecipe, ObjectKitSchema, type ObjectKit } from '@/lib/object-kit';
+import {
+  ObjectRecipeSchema,
+  ShapeTargetSchema,
+  type ObjectRecipe,
+  type PartMask,
+} from '@/lib/object-shape';
+import type { PerceptionClient } from './client';
 import { pathToRings } from './mask-outline';
+import { runObjectShape } from './object-shape';
+import { boxUnionCoverage } from './parse-sam';
 import type { PhotoForRegions } from './region';
 import type { NormBox } from './schemas';
 import { scoreRecipe, type RecipeScore } from './score-shape';
+import { mergeKitPatch } from './shape';
 import type { CropRect } from './shape-crop';
+import { criticImage, requestPatch } from './spark-critic';
 import { photoSize } from './vision-request';
 
 /** One live 3D run, frozen for offline replay (PR-0.4): no API cost per loop iteration. */
@@ -124,4 +134,112 @@ export async function rescoreCapture(dir: string, id: string): Promise<RecipeSco
   // No masks: captured boxes are fractions of the saved crop, but scoreRecipe would remap them
   // through a crop-of-the-crop. Replay stays 3-term until the mapping is capture-aware.
   return scoreRecipe(cropPhoto, capture.cropTarget, recipe);
+}
+
+export interface CriticReplayRound {
+  patch: Partial<ObjectKit>;
+  before: number;
+  after: number;
+  kept: boolean;
+}
+
+/**
+ * Offline critic rounds on a capture (PR-0.6): up to `rounds` patch → re-fit → re-score cycles,
+ * each kept only when the 3-term replay score rises. The re-fit replays the captured part masks
+ * (maskless when the capture has none); only the patch request may call Meta. Returns the best
+ * recipe + the round log — read the log to learn which prompt lines help, then fold them into
+ * `SHAPE_SYSTEM_PROMPT` by hand.
+ */
+export async function criticReplay(
+  perception: Pick<PerceptionClient, 'criticizeShape'>,
+  dir: string,
+  id: string,
+  rounds = 3,
+  signal?: AbortSignal
+): Promise<{
+  recipe: ObjectRecipe;
+  kit: ObjectKit;
+  score: number;
+  roundsRun: CriticReplayRound[];
+}> {
+  const { capture, cropPhoto } = await readCapture(dir, id);
+  if (!capture.recipe) throw new Error(`capture ${id}: no recipe to replay`);
+  const target = ShapeTargetSchema.parse({
+    id: capture.target.id,
+    label: capture.target.label,
+    category: capture.target.category,
+    ...(capture.target.scenery ? { scenery: capture.target.scenery } : {}),
+    box: capture.cropTarget.box,
+    ...(capture.cropTarget.outline ? { outline: capture.cropTarget.outline } : {}),
+  });
+  const start = await scoreRecipe(cropPhoto, capture.cropTarget, capture.recipe);
+  if (!start) throw new Error(`capture ${id}: no outline to score against`);
+  const aspect = (target.box.w * cropPhoto.width) / (target.box.h * cropPhoto.height);
+  const cropUrl = `data:image/jpeg;base64,${cropPhoto.buffer.toString('base64')}`;
+  const masks = (capture.partMasks ?? []) as PartMask[];
+  const segmentImage = async (_url: string, concept: string) => {
+    const { outWidth, outHeight } = capture.crop;
+    const instances = masks
+      .filter((m) => m.concept === concept)
+      .map((m) => ({
+        box: {
+          x1: m.box.x * outWidth,
+          y1: m.box.y * outHeight,
+          x2: (m.box.x + m.box.w) * outWidth - 1,
+          y2: (m.box.y + m.box.h) * outHeight - 1,
+        },
+        confidence: 0.9,
+        ...(m.outline ? { outline: m.outline } : {}),
+      }));
+    return {
+      source: 'meta' as const,
+      model: capture.model,
+      concept,
+      imageWidth: outWidth,
+      imageHeight: outHeight,
+      instances,
+      count: instances.length,
+      boxCoverage: boxUnionCoverage(
+        instances.map((i) => i.box),
+        outWidth,
+        outHeight
+      ),
+    };
+  };
+  let kit = capture.kit;
+  let recipe = capture.recipe;
+  let scored = start;
+  const roundsRun: CriticReplayRound[] = [];
+  for (let r = 0; r < Math.max(0, rounds); r++) {
+    const image = await criticImage(scored.crop, recipe, aspect);
+    const patch = await requestPatch(perception, image, kit, scored.score, signal);
+    if (!patch) break;
+    const patched = mergeKitPatch(kit, patch);
+    const retry = await runObjectShape(
+      {
+        describeShape: async () => ({
+          recipe: kitToRecipe(patched),
+          kit: patched,
+          source: 'meta' as const,
+          model: capture.model,
+        }),
+        segmentImage,
+      },
+      cropPhoto,
+      cropUrl,
+      target,
+      { signal }
+    );
+    if (retry.mode !== 'recipe' || !retry.recipe) break;
+    const rescored = await scoreRecipe(cropPhoto, capture.cropTarget, retry.recipe);
+    const after = rescored?.score.score ?? -1;
+    const kept = after > scored.score.score;
+    roundsRun.push({ patch, before: scored.score.score, after, kept });
+    if (kept && rescored) {
+      kit = patched;
+      recipe = retry.recipe;
+      scored = rescored;
+    }
+  }
+  return { recipe, kit, score: scored.score.score, roundsRun };
 }

@@ -1,11 +1,12 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-01 (PR-0.4 done, PR-0.6 new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-02 (PR-0.6 done, S3 new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
-- Committed through loop pass (`a822f10`). Uncommitted: PR-0.4 tick. Standing: commit each, unsigned fallback, always continue.
-- **Meta back:** SAM 1.9s, Spark 11s (was aborts/>150s). PR-0.4 live capture works (refrigerator, replay 92).
+- Committed through PR-0.4 (`d893541`). Uncommitted: PR-0.6. Standing: commit each, unsigned fallback, always continue.
+- **Meta back:** SAM 1.9s, Spark 11s. Critic proven live (rescue 33→92, no-patch at 92).
+- **PR-0.6 done:** `criticizeShape` backend + `shapeWithCritic` route wrapper + `criticReplay` (≤3); kit/outline on result. Goldens identical.
 - User ordered: do ALL planned tasks, then a full image-recognition + imagined-3D investigation.
 - **PR-2.18 done:** `graph-edits.ts` `applyEdit` — openings re-tile, chimney seats, parts move, metric via scale, edited estimated. API-only, goldens identical, suite 303 green.
 - **PR-2.17 done:** `wall-openings.ts` + house panels wire — segmented walls, centred leaves (measured), overlays fallback; panel class = on-face only. Goldens identical; cottage e2e 86→90, Viol 0.
@@ -22,8 +23,8 @@
 
 ## Next task
 
-- **Commit** PR-0.4 tick, then **PR-0.6 Spark critic** (check code state; live round now possible).
-- PR-0.5 needs 10 USER photos (only vision-room.jpg in repo) — ask user, don't block. Then S3/S4, PR-5.1/5.2, imagined-3D investigation.
+- **Commit** PR-0.6 (`feat(web)`), then **S3**: PR-3.1 eval harness + PR-3.4 model choice (live Spark, on-demand cost).
+- PR-0.5 needs 10 USER photos (only vision-room.jpg in repo) — ask user, don't block. Then S4, PR-5.1/5.2, imagined-3D investigation.
 - Blocked on Meta (probe when reached): PR-0.4, PR-0.5, PR-0.6-live, PR-3.1, PR-3.4, PR-4.x.
 - Free placement PP-T1…T8. PV-T14 + PV-T11b.
 

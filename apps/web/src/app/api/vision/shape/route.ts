@@ -3,7 +3,7 @@ import 'server-only';
 import { type NextRequest } from 'next/server';
 import { ShapeTargetSchema } from '@/lib/object-shape';
 import { getPerceptionClient } from '@/server/perception';
-import { runObjectShape } from '@/server/perception/object-shape';
+import { shapeWithCritic } from '@/server/perception/spark-critic';
 import {
   jsonField,
   jsonResponse,
@@ -18,6 +18,7 @@ import {
  * → `text/event-stream`: `shape_step { step: crop|model|fit }` as the work goes, then
  * `shape_result { shape: ObjectShape }` (`recipe` or `silhouette` + reason), `done`.
  * 400 (JSON) missing / invalid target. The crop is sent inline: nothing is stored.
+ * One Spark critic round when the match scores below 70 with time left (PR-0.6).
  */
 export async function POST(req: NextRequest) {
   const read = await readVisionRequest(req);
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
   const size = await photoSize(photo.buffer);
   const fullUrl = `data:${photo.contentType};base64,${photo.buffer.toString('base64')}`;
   return sseResponse(async (send) => {
-    const shape = await runObjectShape(perception, size, fullUrl, target, {
+    const shape = await shapeWithCritic(perception, size, fullUrl, target, {
       signal: req.signal,
       onStep: (step) => send('shape_step', { step }),
       withViews: true,

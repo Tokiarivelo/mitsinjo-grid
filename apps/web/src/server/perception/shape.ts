@@ -103,6 +103,162 @@ const ReplySchema = z.object({
 
 const LIMITS = { windows: 8, doors: 3, wheels: 6, legs: 4, floors: 4, units: 8 } as const;
 
+export const CRITIC_SYSTEM_PROMPT = [
+  'You are the visual critic of a 3D reconstruction loop. The image shows the PHOTO of one object (left) and OUR 3D MODEL seen from the same view (right).',
+  'List what differs (shape, sub-type, counts, proportions, colours of each part), then answer ONLY a JSON patch of the kit: the fields to change, nothing else.',
+  `Allowed fields: archetype (one of: ${KIT_ARCHETYPES.join(', ')}), subtype, proportions {w,h,d} (largest = 1), colors {main,secondary,accent} (#rrggbb each), materials, details {windows,doors,wheels,legs,floors,chimney,units}.`,
+  'Counts, sub-type, proportions and part colour roles only: never metres, watts, or geometry numbers.',
+  'Empty patch ({}) when the model already matches.',
+].join(' ');
+
+/** Partial kit: every field optional, nothing required (patches only change what they name). */
+export const CRITIC_JSON_SCHEMA = {
+  name: 'KitPatch',
+  schema: {
+    type: 'object',
+    properties: {
+      archetype: { type: 'string', enum: [...KIT_ARCHETYPES] },
+      subtype: { type: 'string' },
+      proportions: {
+        type: 'object',
+        properties: { w: { type: 'number' }, h: { type: 'number' }, d: { type: 'number' } },
+        required: ['w', 'h', 'd'],
+      },
+      colors: {
+        type: 'object',
+        properties: { main: color, secondary: color, accent: color },
+      },
+      materials: {
+        type: 'object',
+        properties: { main: material, secondary: material, accent: material },
+      },
+      details: {
+        type: 'object',
+        properties: {
+          subtype: { type: 'string' },
+          windows: int,
+          doors: int,
+          wheels: int,
+          legs: int,
+          floors: int,
+          chimney: { type: 'boolean' },
+          units: int,
+        },
+      },
+    },
+  },
+};
+
+/** User turn: current kit JSON + the score numbers the patch must raise. */
+export function criticQuestion(
+  kit: ObjectKit,
+  score: { score: number; iou: number; edgeF1: number; deltaE: number }
+): string {
+  return (
+    `Left is the photo of the selected object, right is our 3D model seen from the same view. ` +
+    `Current kit: ${JSON.stringify(kit)}. ` +
+    `Scores: ${score.score}/100 (silhouette IoU ${score.iou}, edge F1 ${score.edgeF1}, colour ΔE ${score.deltaE}). ` +
+    `What differs (shape, sub-type, counts, proportions, colours of each part)? Answer only the JSON patch of the kit.`
+  );
+}
+
+/**
+ * Critic reply → kit patch, or null when it is not JSON or names nothing usable. Lenient like
+ * `parseKit` (counts rounded and clamped, unknown values dropped), but strict where a patch must
+ * be: bad colours are dropped, never greyed (grey would overwrite measured paint); `roof` is
+ * always dropped (measured on the outline, never from the LLM); proportions need the full triple.
+ */
+export function parseKitPatch(content: string): Partial<ObjectKit> | null {
+  let json: unknown;
+  try {
+    json = JSON.parse(content);
+  } catch {
+    return null;
+  }
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return null;
+  const o = json as Record<string, unknown>;
+  const patch: Partial<ObjectKit> = {};
+  if (
+    typeof o.archetype === 'string' &&
+    (KIT_ARCHETYPES as readonly string[]).includes(o.archetype)
+  ) {
+    patch.archetype = o.archetype as KitArchetype;
+  }
+  const rawSubtype =
+    typeof o.subtype === 'string'
+      ? o.subtype
+      : (o.details as Record<string, unknown> | undefined)?.subtype;
+  if (typeof rawSubtype === 'string' && rawSubtype.trim()) {
+    patch.subtype = rawSubtype
+      .trim()
+      .toLowerCase()
+      .slice(0, 32)
+      .replace(/[\s-]+/g, '_');
+  }
+  const pr = o.proportions as Record<string, unknown> | undefined;
+  if (
+    pr &&
+    typeof pr.w === 'number' &&
+    typeof pr.h === 'number' &&
+    typeof pr.d === 'number' &&
+    pr.w > 0 &&
+    pr.h > 0 &&
+    pr.d > 0
+  ) {
+    const max = Math.max(pr.w, pr.h, pr.d);
+    patch.proportions = {
+      w: clamp(pr.w / max, 0.01, 1),
+      h: clamp(pr.h / max, 0.01, 1),
+      d: clamp(pr.d / max, 0.01, 1),
+    };
+  }
+  const co = o.colors as Record<string, unknown> | undefined;
+  if (co) {
+    const colors: Partial<ObjectKit['colors']> = {};
+    for (const k of ['main', 'secondary', 'accent'] as const) {
+      if (typeof co[k] === 'string' && HEX.test(co[k] as string)) colors[k] = co[k] as string;
+    }
+    if (Object.keys(colors).length > 0) patch.colors = colors as ObjectKit['colors'];
+  }
+  const ma = o.materials as Record<string, unknown> | undefined;
+  if (ma) {
+    const materials: NonNullable<ObjectKit['materials']> = {};
+    for (const k of ['main', 'secondary', 'accent'] as const) {
+      const m = RECIPE_MATERIALS.find((x) => x === ma[k]);
+      if (m) materials[k] = m;
+    }
+    if (Object.keys(materials).length > 0) patch.materials = materials;
+  }
+  const de = o.details as Record<string, unknown> | undefined;
+  if (de) {
+    const details: NonNullable<ObjectKit['details']> = {};
+    for (const [k, lim] of Object.entries(LIMITS) as Array<[keyof typeof LIMITS, number]>) {
+      const v = de[k];
+      if (typeof v === 'number' && Number.isFinite(v)) details[k] = clamp(Math.round(v), 0, lim);
+    }
+    if (de.chimney === true) details.chimney = true;
+    if (Object.keys(details).length > 0) patch.details = details;
+  }
+  return Object.keys(patch).length > 0 ? patch : null;
+}
+
+/**
+ * Patch over kit (per-key merge for the nested objects). Validated: a merged kit that fails the
+ * schema keeps the original (a patch never corrupts the kit).
+ */
+export function mergeKitPatch(kit: ObjectKit, patch: Partial<ObjectKit>): ObjectKit {
+  const merged = {
+    ...kit,
+    ...patch,
+    ...(patch.proportions ? { proportions: { ...kit.proportions, ...patch.proportions } } : {}),
+    ...(patch.colors ? { colors: { ...kit.colors, ...patch.colors } } : {}),
+    ...(patch.materials ? { materials: { ...kit.materials, ...patch.materials } } : {}),
+    ...(patch.details ? { details: { ...kit.details, ...patch.details } } : {}),
+  };
+  const ok = ObjectKitSchema.safeParse(merged);
+  return ok.success ? ok.data : kit;
+}
+
 /**
  * Spark reply → kit, or null when it is not JSON or misses the archetype / proportions.
  * Lenient: unknown archetype → `fallback`, proportions rescaled (largest = 1), bad colour → grey,

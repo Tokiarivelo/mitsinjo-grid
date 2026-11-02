@@ -1,5 +1,6 @@
 import { ApplianceCategorySchema } from '@mitsinjo/engine';
 import { z } from 'zod';
+import type { ObjectKit } from './object-kit';
 import {
   boxPath,
   NormBoxSchema,
@@ -217,6 +218,10 @@ export const ObjectShapeSchema = z.object({
   detail: z.string().max(40).optional(),
   /** 2D imagined views across the 6 canonical angles before or alongside full 3D generation. */
   imaginedViews: z.array(ImaginedAngleViewSchema).optional(),
+  /** Spark's kit behind `recipe` (Meta only, PR-0.6): what the critic patches. */
+  kit: z.custom<ObjectKit>().optional(),
+  /** SAM outline the recipe was fitted and scored against (PR-0.6; fetched ones included). */
+  outline: z.string().optional(),
 });
 export type ObjectShape = z.infer<typeof ObjectShapeSchema>;
 

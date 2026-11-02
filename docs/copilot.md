@@ -57,7 +57,12 @@ features/copilot/          # ChatPanel, ChatMessage, ToolActivity, ConfirmPropos
   rejecting: parts stretched to fill the object box, w/h taken from the photo box (thin poles were rejected before);
   `recipeIssue` only refuses a near-empty recipe (< 0.5 % volume). After the masks, Fit v2 (`part-fit.ts`) refines
   wheel radius, cabin box (vehicles) and eave (houses) by coordinate descent on the raw model score (multi-start
-  Nelder–Mead, kept only when the score rises). Meta failure, spend cap,
+  Nelder–Mead, kept only when the score rises). **Spark critic (PR-0.6, `spark-critic.ts` + `criticizeShape`):** the
+  route scores the recipe against the used outline and, below 70/100 with ≥ 20 s left, sends Spark one image (crop |
+  flat render side by side) + kit + scores; the `KitPatch` reply (partial kit: archetype, subtype, proportions,
+  colours, materials, counts — never metres or watts) re-fits and is kept only when the score rises. One round live,
+  ≤ 3 offline on captures (`criticReplay`); mock never patches. Proven live 2026-11-02: lamp-on-fridge 33 → cabinet
+  patch → 92, kept; a 92-score fridge judged « no patch ». Meta failure, spend cap,
   timeout, unreadable or empty recipe → `silhouette` mode (the browser extrudes the SAM outline, else the box; no extra call).
   Every object is modelled, scenery too (`scenery` sent with the target; silhouette depth per scenery type).
   Mock: fixed recipes (fridge, TV, fan, lamp; house, tree, plant, car, person, animal, water; else a box), not checked.

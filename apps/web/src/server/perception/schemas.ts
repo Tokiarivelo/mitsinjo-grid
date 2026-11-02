@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ObjectKitSchema } from '@/lib/object-kit';
+import { ObjectKitSchema, type ObjectKit } from '@/lib/object-kit';
 import { ObjectRecipeSchema } from '@/lib/object-shape';
 import { ApplianceDetectionSchema } from '@/lib/vision';
 
@@ -103,6 +103,18 @@ export const ShapeResultSchema = PerceptionSourceSchema.extend({
   kit: ObjectKitSchema.optional(),
 });
 export type ShapeResult = z.infer<typeof ShapeResultSchema>;
+
+/**
+ * The critic's kit patch (PR-0.6): the fields to change, or null when the model already matches
+ * (mock: always null — the mock never patches). Validated field by field in `parseKitPatch`;
+ * the schema only carries the record across the backend boundary.
+ */
+export const CriticResultSchema = PerceptionSourceSchema.extend({
+  patch: z.record(z.string(), z.unknown()).nullable(),
+});
+export type CriticResult = Omit<z.infer<typeof CriticResultSchema>, 'patch'> & {
+  patch: Partial<ObjectKit> | null;
+};
 
 export const DetectionResultSchema = PerceptionSourceSchema.extend({
   detections: z.array(ApplianceDetectionSchema),
