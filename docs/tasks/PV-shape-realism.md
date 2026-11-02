@@ -315,14 +315,16 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
 
 ### S4 — Generated views (bet, behind `SHAPE_VIEWS=1`)
 
-- [ ] **PR-4.1 Spike (1 h).** Muse Image `/v1/images/edits` on 5 crops: « same object, orthographic side view, white
-      background » and top view. Record latency, cost, consistency. Stop S4 if > 20 s or inconsistent.
-- [ ] **PR-4.2 View masks.** SAM on each generated view; scale views to the photo height.
-- [ ] **PR-4.3 Voxel hull.** 64³ carving from front + side + top masks. Test on synthetic cube / cylinder / car.
-- [ ] **PR-4.4 Mesh.** Marching cubes → Taubin smoothing → decimation ≤ 5 k triangles; region colours per vertex
+- [x] **PR-4.1 Spike (1 h).** Muse Image img2img via `/responses` + image input on 4 probes (fridge side/top, fan side, text baseline).
+      Latency 9–26.5 s (one over 20 s); views unreliable (top-down returned a front view, side kept the front once).
+      **Verdict 2026-11-02: S4 STOPPED** — a hull needs every view right, and 2/3 generated views were wrong.
+      PR-4.2…4.6 intentionally not built (boxes below left open as the record).
+- [ ] **PR-4.2 View masks (stopped with S4).** SAM on each generated view; scale views to the photo height.
+- [ ] **PR-4.3 Voxel hull (stopped with S4).** 64³ carving from front + side + top masks. Test on synthetic cube / cylinder / car.
+- [ ] **PR-4.4 Mesh (stopped with S4).** Marching cubes → Taubin smoothing → decimation ≤ 5 k triangles; region colours per vertex
       from the nearest view (swatches allowed).
-- [ ] **PR-4.5 Best candidate.** Template, profile body or hull: keep the best `scoreModel`; panel says which.
-- [ ] **PR-4.6 Loop pass.**
+- [ ] **PR-4.5 Best candidate (stopped with S4).** Template, profile body or hull: keep the best `scoreModel`; panel says which.
+- [x] **PR-4.6 Loop pass** (the spike verdict above is the pass).
 
 ### Close
 
@@ -378,3 +380,4 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-02 | PR-0.6 Spark critic (patch API + live round + replay)                  | 0.98     | 0.91    | 3.4     | —        | goldens identical; live rescue 33 → 92 kept, 92 judged no-patch; no prompt lines to fold yet; fixed mid-PR: in-pipe IoU gate never fires (profiles nail silhouettes) → score-gated wrapper                   |
 | 2026-11-02 | PR-3.1 kit eval harness + 4 captures                                   | 0.98     | 0.91    | 3.4     | —        | fridge/TV/fan/lamp captures; Spark-1.3 eval 23/26 agree, 8–19s; finding: TV-crop subtype flips tv↔tv_table                                                                                                   |
 | 2026-11-02 | PR-3.4 model choice (eval × 3) + PR-3.6 pass                           | 0.98     | 0.91    | 3.4     | —        | 1.3: 23/26, 13.8s kept; 1.2: 22/26, 5.8s fallback; wonder: 21/28, 17s dropped; S3 pass: no drops                                                                                                             |
+| 2026-11-02 | PR-4.1 S4 spike: STOP                                                  | 0.98     | 0.91    | 3.4     | —        | img2img 9–26.5s; 2/3 views wrong (top→front, side→front); hull needs every view right → PR-4.2…4.5 not built                                                                                                 |
