@@ -99,7 +99,7 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
       edges count on both sides, Canny-thinned photo edges), `score-shape.ts` `scoreRecipe(photo, target, recipe)`.
 - [x] **PR-0.3 Report.** `make shape-report`: golden set → `test-results/shape-report/index.md` (table) + one PNG
       contact sheet (sharp composite). Gitignored output.
-- [ ] **PR-0.4 Capture.** `make shape-capture PHOTO=… ID=…`: one live run that saves crop, SAM outline, Spark kit and
+- [x] **PR-0.4 Capture.** `make shape-capture PHOTO=… ID=…`: one live run that saves crop, SAM outline, Spark kit and
       part masks as JSON fixtures, so the loop replays offline (no API cost per iteration).
       Machinery done 2026-11-01 (`shape-capture.ts`: kit hook, crop remap, write/read/offline rescore, all tested;
       fixtures in gitignored `__fixtures__/shape/real/`): no live fixture yet — Meta too slow on 2026-11-01
@@ -374,3 +374,4 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-01 | PR-2.17 real openings (segmentWall + house wire + panel class)         | 0.98     | 0.91    | 3.4     | —        | goldens identical (no masks offline); cottage e2e 86 → 90, IoU 0.98, leaf measured, Viol 0; vehicles keep overlays (sedan cannot fund strips); fixed mid-PR: test arithmetic (union/clamp), strip re-tint ΔE |
 | 2026-11-01 | PR-2.18 parametric edits (applyEdit: openings/chimney/parts)           | 0.98     | 0.91    | 3.4     | —        | API-only, goldens identical; window +20% re-tiles, bounds kept, Viol 0; metric via scale; fixed mid-PR: wall membership (slabs absorbed), chimney boolean                                                    |
 | 2026-11-01 | Loop pass over PR-2.14…2.18                                            | 0.98     | 0.91    | 3.4     | 4/5      | all stop criteria hold (Viol 0, ms ≤ 300); visual: cottage ends filled, car rear lensed; issues: car slab cabin (no side glass/doors, budget full), row backs wait on room, end-window sliver minimal        |
+| 2026-11-01 | PR-0.4 live capture (Meta back: SAM 1.9s, Spark 11s)                   | 0.98     | 0.91    | 3.4     | —        | refrigerator fixture (31s live); offline replay IoU 1.0, score 92; goldens untouched                                                                                                                         |
