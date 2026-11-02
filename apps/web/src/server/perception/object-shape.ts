@@ -185,7 +185,7 @@ export async function runObjectShape(
     const fetchedOutline: Promise<string | undefined> =
       !target.outline && photo && perception.segmentImage
         ? fetchOutlineForBox(
-            perception.segmentImage,
+            perception.segmentImage.bind(perception),
             fullImageUrl,
             conceptOf(target),
             target.box,
@@ -197,7 +197,7 @@ export async function runObjectShape(
         : Promise.resolve(target.outline);
     onStep?.('model');
     const started = Date.now();
-    const timeout = AbortSignal.timeout(timeoutMs);
+    const timeout = AbortSignal.timeout(Math.max(0, timeoutMs));
     const shapeCall = perception.describeShape(
       imageUrl,
       {
@@ -322,7 +322,7 @@ export async function runObjectShape(
       // PR-2.5: the archetype's part concepts segmented on the crop (wheels, windows…),
       // best effort — skipped without a photo or a segmenting client.
       let partMasks: import('@/lib/object-shape').PartMask[] | undefined;
-      const segmentImage = perception.segmentImage;
+      const segmentImage = perception.segmentImage?.bind(perception);
       if (finalKit && photo && segmentImage) {
         partMasks = await fetchPartMasks(segmentImage, imageUrl, finalKit.archetype);
         if (partMasks.length > 0) {

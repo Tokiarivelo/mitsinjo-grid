@@ -123,6 +123,12 @@ export async function shapeWithCritic(
       opts.signal
     );
     if (!patch) return shape;
+    // No re-check of the budget here: the patch is paid for, and the retry below carries no
+    // LLM call (stubbed kit, same photo) — only the 5 s SAM batch plus local math — so it runs
+    // even when the patch arrived past the budget (live: 146 ms over). The expired budget used
+    // to crash the retry (AbortSignal.timeout of a negative "delay", "shape failed") and the
+    // fix died with it; the clamp in runObjectShape keeps the signal construction safe instead.
+    const remainingMs = timeoutMs - (Date.now() - started);
     const patched = mergeKitPatch(shape.kit, patch);
     const retry = await runObjectShape(
       {
@@ -142,7 +148,7 @@ export async function shapeWithCritic(
       photo,
       fullImageUrl,
       target,
-      { ...opts, timeoutMs: timeoutMs - (Date.now() - started) }
+      { ...opts, timeoutMs: remainingMs }
     );
     if (retry.mode !== 'recipe' || !retry.recipe || !retry.outline) return shape;
     const rescored = await scoreRecipe(

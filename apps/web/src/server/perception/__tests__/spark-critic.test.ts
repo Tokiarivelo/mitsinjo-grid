@@ -98,6 +98,28 @@ describe('live critic round (PR-0.6)', () => {
     );
   }, 60_000);
 
+  it('the paid-for round completes even when the patch arrives past the budget', async () => {
+    const photo = await fridgePhoto();
+    const realNow = Date.now.bind(Date);
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => realNow());
+    try {
+      // Wrong kit on purpose (lamp over a fridge, score 47): the critic fires.
+      const spark = sparkFor(lampPrior, { patch: { archetype: 'cabinet' } });
+      // Live: 60 s budget, the patch came back 146 ms over; the clock jump simulates it.
+      spark.criticizeShape.mockImplementationOnce(async () => {
+        clock.mockImplementation(() => realNow() + 120_000);
+        return { patch: { archetype: 'cabinet' } };
+      });
+      const shape = await shapeWithCritic(spark, photo, 'data:full', fridgeTarget());
+      expect(shape.mode).toBe('recipe');
+      // Before: the retry crashed on AbortSignal.timeout(negative) ("shape failed") and the
+      // patch was lost; the stub-kit retry carries no LLM call, so it always runs.
+      expect(shape.kit?.archetype).toBe('cabinet');
+    } finally {
+      clock.mockRestore();
+    }
+  }, 60_000);
+
   it('a useless patch is dropped, the original stands', async () => {
     const photo = await fridgePhoto();
     const spark = sparkFor(lampPrior, { patch: { subtype: 'tall' } });

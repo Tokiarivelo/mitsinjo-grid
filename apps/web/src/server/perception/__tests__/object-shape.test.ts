@@ -142,6 +142,15 @@ describe('runObjectShape (PV-T9)', () => {
     expect(seen?.aborted).toBe(true);
   });
 
+  it('an expired budget (timeoutMs ≤ 0) still builds the recipe — the signal just starts aborted', async () => {
+    // Before: AbortSignal.timeout(-146) threw RangeError ("shape failed"), e.g. the critic retry
+    // firing 146 ms past the 60 s budget; the clamp turns it into an instantly-aborted signal.
+    const p = client(meta(tall));
+    const out = await runObjectShape(p, await photo(), 'data:full', target, { timeoutMs: -146 });
+    expect(out).toMatchObject({ mode: 'recipe', source: 'meta' });
+    expect(p.describeShape.mock.calls[0]![2]).toBeInstanceOf(AbortSignal);
+  });
+
   it('gives Spark 60 s (it needs 15–40 s) and reports each step', async () => {
     expect(SHAPE_TIMEOUT_MS).toBe(60_000);
     const steps: string[] = [];
