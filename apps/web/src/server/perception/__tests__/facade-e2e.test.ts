@@ -11,6 +11,8 @@ import { getPerceptionClient } from '../client';
 import { buildFacadePrompt, museImage } from '../facade-specialist';
 import { renderFlat, type FlatView } from '../flat-render';
 import { runObjectShape } from '../object-shape';
+import { elevationDiff, formatElevationScore, type ScoredElevation } from '../elevation-score';
+import type { Elevation } from '../facade-house';
 import { samBoxToNorm } from '../outline';
 
 /**
@@ -80,11 +82,15 @@ describe.skipIf(!FRONT)('facade → 3D end to end (live)', () => {
       facadeUrl: frontUrl,
     };
     let side: Buffer | null = null;
+    let elevation: { front: Elevation; score: ScoredElevation } | null = null;
     const t0 = Date.now();
     const shape = await runObjectShape(client, photo, photoUrl, target, {
       timeoutMs: 120_000,
       onSideView: (png) => {
         side = png;
+      },
+      onElevation: (f, score) => {
+        elevation = { front: f, score };
       },
     });
     console.log(
@@ -123,5 +129,42 @@ describe.skipIf(!FRONT)('facade → 3D end to end (live)', () => {
       .png()
       .toBuffer();
     writeFileSync(join(OUT, 'sheet.png'), sheet);
+    // PG-T4: drawing | elevation render | diff (red missing, blue extra, amber wrong part).
+    const elev = elevation as { front: Elevation; score: ScoredElevation } | null;
+    if (elev) {
+      console.log(formatElevationScore(elev.score));
+      const { render } = elev.score;
+      const raw = (rgb: ArrayLike<number>, mask?: Uint8Array) => {
+        const b = Buffer.from(rgb as Uint8ClampedArray);
+        if (mask) for (let i = 0; i < mask.length; i++) if (!mask[i]) b.fill(255, i * 3, i * 3 + 3);
+        return sharp(b, { raw: { width: render.cols, height: render.rows, channels: 3 } })
+          .resize(render.cols * 3, render.rows * 3, { kernel: 'nearest' })
+          .png()
+          .toBuffer();
+      };
+      const diff = elevationDiff(recipe, elev.score);
+      const [built, delta, drawn] = await Promise.all([
+        raw(render.rgb, render.mask.data),
+        raw(diff.rgb),
+        sharp(front)
+          .resize(render.cols * 3, render.rows * 3)
+          .png()
+          .toBuffer(),
+      ]);
+      const w = render.cols * 3;
+      writeFileSync(
+        join(OUT, 'elevation.png'),
+        await sharp({
+          create: { width: w * 3, height: render.rows * 3, channels: 3, background: '#ffffff' },
+        })
+          .composite([drawn, built, delta].map((input, i) => ({ input, left: i * w, top: 0 })))
+          .png()
+          .toBuffer()
+      );
+      writeFileSync(
+        join(OUT, 'elevation.json'),
+        JSON.stringify({ ...elev.score, render: undefined, target: undefined }, null, 2)
+      );
+    }
   }, 300_000);
 });

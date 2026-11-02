@@ -37,7 +37,8 @@ import { cropForShape, cropRectForShape } from './shape-crop';
 import { extractSwatches } from './photo-swatches';
 import { withLatheBody } from './lathe-body';
 import { fetchFacadeMasks, type FacadeMasks } from './facade-masks';
-import { depthRatio, facadeHouseRecipe } from './facade-house';
+import { depthRatio, facadeHouseRecipe, type Elevation } from './facade-house';
+import { formatElevationScore, scoreElevation, type ScoredElevation } from './elevation-score';
 import { ELEVATION_ARCHETYPES, measureFacadeElevations } from './facade-views';
 import { fetchPartMasks } from './part-masks';
 import { fitPartParams, hasPartGroups, preparePartFit } from './part-fit';
@@ -134,6 +135,8 @@ export interface ObjectShapeOptions {
   onKit?: (kit: ObjectKit) => void;
   /** Observes the side elevation Muse Image drew from the facade (end-to-end eval only). */
   onSideView?: (png: Buffer) => void;
+  /** Gets the measured front elevation and its score against the model (end-to-end eval only). */
+  onElevation?: (front: Elevation, score: ScoredElevation) => void;
 }
 
 /**
@@ -162,6 +165,7 @@ export async function runObjectShape(
     withViews,
     onKit,
     onSideView,
+    onElevation,
   }: ObjectShapeOptions = {}
 ): Promise<ObjectShape> {
   const base = { detectionId: target.id };
@@ -368,6 +372,12 @@ export async function runObjectShape(
             console.warn('[vision] swatches failed:', err instanceof Error ? err.message : err);
           }
         }
+        // PG-T2: the model against the drawing it was built from (the staged loop's yardstick).
+        const elevScore = scoreElevation(recipe, front, {
+          ...(front.roofRings ? { roofRings: front.roofRings } : {}),
+        });
+        onElevation?.(front, elevScore);
+        console.info(`[vision] 3D ${formatElevationScore(elevScore)} for "${target.label}"`);
         const roofPart = recipe.parts.find((p) => p.shape === 'hip' || p.shape === 'prism');
         console.info(
           `[vision] 3D facade house for "${target.label}": ${recipe.parts.length} parts, roof ${roofPart ? `${roofPart.shape}${roofPart.shape === 'hip' ? ` ridge ${roofPart.ridge?.toFixed(2)}` : ''}` : 'flat'}, ${front.windows.length} windows, ${front.doors.length} door(s), ${front.chimneys.length} chimney(s), side ${side ? `${side.windows.length} windows, depth ${depthRatio(front, side)?.toFixed(2)}` : 'none'} vs Spark ${(kit.proportions.d / kit.proportions.w).toFixed(2)}, w:h:d ${[recipe.proportions.w, recipe.proportions.h, recipe.proportions.d].map((v) => v.toFixed(2)).join(':')}, yaw ${Math.round((yaw0 * 180) / Math.PI)}° (${seconds} s Spark)`

@@ -22,6 +22,10 @@ export interface ElevationMasks {
   windows: ReadonlyArray<NormBox>;
   doors: ReadonlyArray<NormBox>;
   chimneys: ReadonlyArray<NormBox>;
+  /** PG-T3, optional: stone base band, entry steps, glass panes (window / door grid). */
+  plinths?: ReadonlyArray<NormBox>;
+  steps?: ReadonlyArray<NormBox>;
+  panes?: ReadonlyArray<NormBox>;
 }
 
 /** One elevation measured in its own pixel-aspect units (u = x · aspect, v = y). */
@@ -41,6 +45,14 @@ export interface Elevation {
   windows: NormBox[];
   doors: NormBox[];
   chimneys: NormBox[];
+  /** Base band at the foot of the walls (PG-T3), null when SAM sees none. */
+  plinth: NormBox | null;
+  /** Entry steps in front of a door (PG-T3). */
+  steps: NormBox[];
+  /** Glass panes inside the windows and doors (PG-T3): their grid gives the mullions. */
+  panes: NormBox[];
+  /** Roof outline on the drawing (SAM rings), for the elevation score (PG-T2). */
+  roofRings?: Ring[];
 }
 
 /** A roof thinner than this share of the body height is a flat top (shop, block). */
@@ -132,7 +144,39 @@ export function measureElevation(m: ElevationMasks): Elevation | null {
     windows: m.windows.filter((b) => inside(b) && b.y >= eave - 0.02),
     doors: m.doors.filter((b) => inside(b) && b.y >= eave - 0.02),
     chimneys: m.chimneys.filter((b) => b.y < top + 0.5 * (eave - top) && inside(b)),
+    plinth: plinthOf(m.plinths ?? [], left, rightX, bottom, bodyH),
+    steps: (m.steps ?? []).filter((b) => inside(b) && Math.abs(bottomOf(b) - bottom) < 0.1 * bodyH),
+    panes: (m.panes ?? []).filter((p) =>
+      [...m.windows, ...m.doors].some(
+        (o) =>
+          p.x >= o.x - 0.01 &&
+          right(p) <= right(o) + 0.01 &&
+          p.y >= o.y - 0.01 &&
+          bottomOf(p) <= bottomOf(o) + 0.01
+      )
+    ),
+    ...(m.roof?.rings?.length ? { roofRings: m.roof.rings.map((r) => [...r]) } : {}),
   };
+}
+
+/** A plinth is a low band (≤ this share of the body height) across most of the walls, on the ground. */
+const PLINTH_MAX_SHARE = 0.2;
+
+/** The widest base band SAM found that sits on the ground and spans half the body, else null. */
+function plinthOf(
+  boxes: ReadonlyArray<NormBox>,
+  left: number,
+  rightX: number,
+  bottom: number,
+  bodyH: number
+): NormBox | null {
+  const ok = boxes.filter(
+    (b) =>
+      b.h <= PLINTH_MAX_SHARE * bodyH &&
+      b.w >= 0.5 * (rightX - left) &&
+      Math.abs(bottomOf(b) - bottom) < 0.05 * bodyH
+  );
+  return ok.length ? ok.reduce((a, b) => (b.w > a.w ? b : a)) : null;
 }
 
 /** Wall width over body height, in pixels. */

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import sharp from 'sharp';
+import type { ElevationScore } from './elevation-score';
 import type { FlatRender } from './flat-render';
 import type { ModelScore, RgbGrid } from './model-score';
 
@@ -11,6 +12,7 @@ import type { ModelScore, RgbGrid } from './model-score';
  */
 
 /** Stop criteria of the plan (`PV-shape-realism.md`). */
+
 export const STOP = { iou: 0.85, edgeF1: 0.6, deltaE: 8 } as const;
 
 export interface ReportRow {
@@ -167,4 +169,30 @@ export async function contactSheet(rows: SheetRow[]): Promise<Buffer> {
     .composite(composites)
     .png()
     .toBuffer();
+}
+
+/** Elevation stop criteria (PV-G): silhouette, structure lines, openings. */
+export const ELEVATION_STOP = { iou: 0.9, edgeF1: 0.75, openings: 0.9 } as const;
+
+export interface ElevationRow {
+  name: string;
+  score: ElevationScore;
+}
+
+/** « Elevation » section of the report: the model straight on against its validated drawing. */
+export function elevationMarkdown(rows: ReadonlyArray<ElevationRow>): string {
+  const lines = [
+    '## Elevation (model vs validated 2D drawing)',
+    '',
+    `Stop: IoU ≥ ${ELEVATION_STOP.iou} · edge F1 ≥ ${ELEVATION_STOP.edgeF1} · openings ≥ ${ELEVATION_STOP.openings}. Sheet: \`elevation-sheet.png\` (drawing labels | render | diff).`,
+    '',
+    '| Drawing | Score | IoU | Edge F1 | Massing | Roof | Openings | Accessories | Matched |',
+    '| ------- | ----- | --- | ------- | ------- | ---- | -------- | ----------- | ------- |',
+  ];
+  for (const { name, score: s } of rows)
+    lines.push(
+      `| ${name} | ${s.score} | ${s.iou} ${ok(s.iou >= ELEVATION_STOP.iou)} | ${s.edgeF1} ${ok(s.edgeF1 >= ELEVATION_STOP.edgeF1)} | ` +
+        `${s.stages.massing} | ${s.stages.roof} | ${s.stages.openings} ${ok(s.stages.openings >= ELEVATION_STOP.openings)} | ${s.stages.accessories} | ${s.openings.matched}/${s.openings.target} |`
+    );
+  return lines.join('\n') + '\n';
 }

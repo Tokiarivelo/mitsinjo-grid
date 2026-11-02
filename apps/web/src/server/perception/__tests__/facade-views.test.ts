@@ -96,6 +96,34 @@ describe('measureElevationImage', () => {
     expect(out?.elevation.ridge).toBeGreaterThan(0.3);
   });
 
+  it('measures plinth, steps and panes, keeps the roof outline (PG-T3)', async () => {
+    const seg = segmenter(
+      {
+        ...frontConcepts('hip'),
+        plinth: [inst([0.12, 0.85, 0.88, 0.9]), inst([0.4, 0.2, 0.6, 0.25])],
+        step: [inst([0.43, 0.88, 0.57, 0.9])],
+        'window pane': [inst([0.2, 0.5, 0.25, 0.55]), inst([0.5, 0.1, 0.55, 0.15])],
+      },
+      []
+    );
+    const e = (await measureElevationImage(seg, 'https://r2/front.png', 'house'))!.elevation;
+    expect(e.plinth?.w).toBeCloseTo(0.76, 2);
+    expect(e.steps).toHaveLength(1);
+    // The pane in the roof is not inside a window: dropped.
+    expect(e.panes).toHaveLength(1);
+    expect(e.roofRings?.[0]).toHaveLength(4);
+  });
+
+  it('a SAM miss on the details keeps the elevation (no plinth, no panes)', async () => {
+    const e = (await measureElevationImage(
+      segmenter(frontConcepts('hip'), []),
+      'https://r2/f.png',
+      'house'
+    ))!.elevation;
+    expect(e.plinth).toBeNull();
+    expect(e.panes).toEqual([]);
+  });
+
   it('null when SAM answers only the mock', async () => {
     const seg = vi.fn(async () => ({ ...answer([]), source: 'mock' as const }));
     expect(await measureElevationImage(seg, 'https://r2/front.png', 'house')).toBeNull();

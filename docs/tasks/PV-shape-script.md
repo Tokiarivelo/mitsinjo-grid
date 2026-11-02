@@ -7,7 +7,7 @@ not faithful to the imagined 2D elevation. Example: « rural thatched house » (
 same blotchy photo texture**, three dark rectangles for windows and door. Ask: Spark writes a **generation
 script**, builds the model **piece by piece**, and an agent loop renders → compares → corrects each piece until
 the render matches; same for every kind of object.
-**Status:** ❌ planned. **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
+**Status:** 🟡 G0 done (2026-11-02), G1 in progress. **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
 writes vertices or runnable code (it writes Zod-checked ops, the engine builds); pure, seeded, tested geometry;
 never paste the photo on the model (small tileable swatches OK); ≤ 5 k triangles per object.
 **Skills:** `/shape-3d` (vocabulary, files) · `/shape-loop` (scores, log) · `/facade-2d` (target image).
@@ -49,19 +49,23 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
 
 ### G0 Measure against the 2D target (first: without it the loop is guesswork)
 
-- [ ] **PG-T1 Elevation render.** `renderElevation(recipe, 'front'|'side', frame)` in `flat-render.ts`:
+- [x] **PG-T1 Elevation render.** `renderElevation(recipe, 'front'|'side', frame)` in `flat-render.ts`:
       orthographic, in the 2D image's own frame (the `Elevation` mapping of `facade-house.ts` inverted). It outputs a
       part-id map plus a line-art pass (silhouette and part edges) so it can be compared with a line drawing. Test:
       round-trip box → elevation → `measureElevation` gives back the same eave / walls / windows (± 1 px).
-- [ ] **PG-T2 Elevation score.** `scoreElevation(target, render)`: global IoU, edge F1 against the drawing's
+      **Done:** `elevation-score.ts` `renderElevation` (`renderFlat` gained `frameOf`); one scale for both axes, feet on the ground line. **Deviation:** no line-art pass; structure lines = concept borders of the label map.
+- [x] **PG-T2 Elevation score.** `scoreElevation(target, render)`: global IoU, edge F1 against the drawing's
       edges, and **per-concept IoU** (roof, wall, window, door, chimney, plinth), with Hungarian matching of
       openings (count + position + size errors). Per stage it reports the metrics of that stage only. Golden
       tests on synthetic SVG elevations (thatched cottage = the user's sheet redrawn, shop, 2-storey, hut).
-- [ ] **PG-T3 More SAM concepts on the elevation.** `FACADE_CONCEPTS.house` += roof, wall, plinth, chimney,
+      **Done:** `scoreElevation` + `elevationTarget` + `matchOpenings` (greedy minimum-cost pairing, not Hungarian: ≤ 12 openings). **Deviation:** edge F1 on concept borders, not the drawing's pixels (thatch hatching would flood the recall). Golden set `__fixtures__/elevation` (thatched house); more drawings to add.
+- [x] **PG-T3 More SAM concepts on the elevation.** `FACADE_CONCEPTS.house` += roof, wall, plinth, chimney,
       window pane, door leaf, beam, step. Same `fetchPartMasks`, parallel, with the existing timeout. Bad or
       empty answers are dropped (logged miss cause, FIX 1 style).
-- [ ] **PG-T4 Report + sheet.** `make shape-report` gains an « elevation » column (target | render | diff per
+      **Done (partial):** `measureElevationImage` also asks plinth, step, window pane (parallel); `Elevation.plinth/steps/panes/roofRings`. Beam and door leaf: on demand in G2.
+- [x] **PG-T4 Report + sheet.** `make shape-report` gains an « elevation » column (target | render | diff per
       stage). `make facade-e2e` writes `stages/` (one PNG per accepted stage) to watch the loop on live Meta.
+      **Done:** `make shape-report` → « Elevation » section + `elevation-sheet.png`; live log `[vision] 3D elevation n/100 …`; `make facade-e2e` → `elevation.png` (drawing | render | diff) + `elevation.json`. **Deviation:** no `stages/` folder until the loop exists (G3).
 
 ### G1 Fix what is visibly wrong now (no loop needed, biggest gain per hour)
 

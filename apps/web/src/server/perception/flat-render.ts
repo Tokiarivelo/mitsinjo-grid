@@ -453,17 +453,34 @@ function turned(t: PartTransform, { yaw, pitch }: FlatView): PartTransform {
   };
 }
 
+/** Model bounds in view units (x right, y up) under a `FlatView`. */
+export interface ViewBounds {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+}
+
+/** Grid window in view units: centre and full width / height. */
+export interface ViewFrame {
+  cx: number;
+  cy: number;
+  fw: number;
+  fh: number;
+}
+
 /**
  * The recipe drawn on a `cols` × `rows` grid. Default: at the photo view (`aspect` = box width / height in
  * pixels, same frame as `renderRecipe`). With `view`: turned around the model and framed on its bounds
- * (contact sheet), `aspect` unused.
+ * (contact sheet, 10 % margin), `aspect` unused; `frameOf` replaces that framing (elevation renders, PG-T1).
  */
 export function renderFlat(
   recipe: ObjectRecipe,
   aspect: number,
   cols: number,
   rows: number,
-  view?: FlatView
+  view?: FlatView,
+  frameOf?: (bounds: ViewBounds) => ViewFrame
 ): FlatRender {
   const n = cols * rows;
   const mask = emptyMask(cols, rows);
@@ -480,8 +497,11 @@ export function renderFlat(
     const pts = transforms.flatMap((t) => CORNERS.map((c) => applyTransform(t, c)));
     const [x0, x1] = [Math.min(...pts.map((q) => q[0])), Math.max(...pts.map((q) => q[0]))];
     const [y0, y1] = [Math.min(...pts.map((q) => q[1])), Math.max(...pts.map((q) => q[1]))];
-    const unit = Math.max((x1 - x0) / cols, (y1 - y0) / rows) * 1.1; // 10 % margin
-    [cx, cy, fw, fh] = [(x0 + x1) / 2, (y0 + y1) / 2, unit * cols, unit * rows];
+    if (frameOf) ({ cx, cy, fw, fh } = frameOf({ x0, x1, y0, y1 }));
+    else {
+      const unit = Math.max((x1 - x0) / cols, (y1 - y0) / rows) * 1.1; // 10 % margin
+      [cx, cy, fw, fh] = [(x0 + x1) / 2, (y0 + y1) / 2, unit * cols, unit * rows];
+    }
   }
   const toCol = (x: number) => ((x - cx + fw / 2) / fw) * cols - 0.5;
   const toRow = (y: number) => ((cy + fh / 2 - y) / fh) * rows - 0.5;
