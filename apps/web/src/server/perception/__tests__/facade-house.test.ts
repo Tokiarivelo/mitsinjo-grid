@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_COMPONENTS, ObjectRecipeSchema, fitRecipe } from '@/lib/object-shape';
+import { compileScript, recipeToScript } from '@/lib/shape-script';
 import {
   DEFAULT_DEPTH_RATIO,
   DOOR_COLOR,
@@ -628,5 +629,32 @@ describe('facade assemblies (PG-T10)', () => {
       details: { timberFrame: true },
     });
     if (r.parts[0]!.timber) expect(r.parts.some((p) => p.lintel)).toBe(false);
+  });
+});
+
+describe('ShapeScript seed (PG-T14)', () => {
+  it('the thatched house builder output round-trips through its script unchanged', () => {
+    const g = THATCHED_FRONT;
+    const built = fitRecipe(
+      {
+        ...facadeHouseRecipe({
+          front: measureElevation(g.masks)!,
+          side: null,
+          colors: g.colors,
+          ...(g.partMaterials ? { partMaterials: g.partMaterials } : {}),
+        }),
+        source: 'facade',
+      },
+      0
+    );
+    const script = recipeToScript(built);
+    const out = compileScript(script);
+    expect(out.dropped).toEqual([]);
+    expect(out.adjusted).toEqual([]);
+    expect(out.recipe).toEqual(built);
+    // Openings belong to the wall, so later stage patches keep them inside it.
+    expect(
+      out.components.filter((c) => c.part.kind === 'window').every((c) => c.parent === 'wall')
+    ).toBe(true);
   });
 });

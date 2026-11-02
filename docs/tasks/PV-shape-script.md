@@ -7,7 +7,7 @@ not faithful to the imagined 2D elevation. Example: « rural thatched house » (
 same blotchy photo texture**, three dark rectangles for windows and door. Ask: Spark writes a **generation
 script**, builds the model **piece by piece**, and an agent loop renders → compares → corrects each piece until
 the render matches; same for every kind of object.
-**Status:** 🟡 G0 + G1 + G2 done (2026-11-02); live Meta run on the thatched-house drawing: facade path, elevation 87–91/100, IoU 0.98, first model in 48–68 s (chimney accessory score 0.44–0.71: roof hides its foot). Next G3 loop (PG-T13…). **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
+**Status:** 🟡 G0 + G1 + G2 done (2026-11-02); live Meta run on the thatched-house drawing: facade path, elevation 87–91/100, IoU 0.98, first model in 48–68 s (chimney accessory score 0.44–0.71: roof hides its foot). G3: PG-T13/T14 done, next PG-T15 stage prompt. **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
 writes vertices or runnable code (it writes Zod-checked ops, the engine builds); pure, seeded, tested geometry;
 never paste the photo on the model (small tileable swatches OK); ≤ 5 k triangles per object.
 **Skills:** `/shape-3d` (vocabulary, files) · `/shape-loop` (scores, log) · `/facade-2d` (target image).
@@ -108,13 +108,15 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
 
 ### G3 ShapeScript and the staged agent loop
 
-- [ ] **PG-T13 ShapeScript schema + compiler.** `lib/shape-script.ts`: ops (`add`, `set`, `remove`, `attach`,
+- [x] **PG-T13 ShapeScript schema + compiler.** `lib/shape-script.ts`: ops (`add`, `set`, `remove`, `attach`,
       `cut`, `repeat`, `material`), named components, parent-relative anchors (`wall.front @ u,v`), units
       = elevation fractions. `compileScript(ops) → ObjectRecipe` is pure, with constraints from the object graph
       (PR-2.14: an opening lies inside its wall, a chimney stands on the roof). An invalid op is dropped and
       reported, and the others apply. Tests: every op, every constraint, fuzzed bad ops never throw.
-- [ ] **PG-T14 Seed = today's builder.** `facadeHouseRecipe` → equivalent ShapeScript (`recipeToScript`). The
+      **Done:** `lib/shape-script.ts` `ShapeOpSchema`, `compileScript` (+ `locked` / `lockedFrom` for PG-T16), `componentsOfKind`; 500 seeded fuzz scripts. **Deviation:** anchors as `attach` / `cut` face shares (u, v) rather than a `wall.front @ u,v` string.
+- [x] **PG-T14 Seed = today's builder.** `facadeHouseRecipe` → equivalent ShapeScript (`recipeToScript`). The
       loop starts from it, so the floor is the current result.
+      **Done:** `recipeToScript`; the thatched-house builder output round-trips unchanged (no op dropped, nothing moved).
 - [ ] **PG-T15 Stage prompt.** One Spark call per round: target crop for the stage | render | diff overlay,
       the stage's scores, the locked components (read-only) and the stage's components (editable). It answers
       patch ops for this stage only. Prompt versioned (`SHAPE_SCRIPT_PROMPT_VERSION`). Eval on captures
