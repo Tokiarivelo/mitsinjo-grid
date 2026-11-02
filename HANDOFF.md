@@ -29,6 +29,10 @@
 
 ## Next task
 
+- **3D plan PV-G** (`docs/tasks/PV-shape-script.md`): ShapeScript ops + staged agent loop vs the 2D elevation;
+  start G0 (PG-T1 elevation render) then G1 quick fixes (materials from 2D, safe swatches, slope UVs, recessed
+  windows). PG-T18 (time budget) needs a user decision.
+
 - Check live UI at `http://localhost:3001/village` and `http://localhost:3001/copilot`.
 - Proceed with PR review or subsequent tasks.
 
