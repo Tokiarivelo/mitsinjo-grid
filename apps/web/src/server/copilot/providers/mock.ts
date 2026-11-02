@@ -412,6 +412,21 @@ export class MockLlmProvider implements LlmProvider {
       };
     }
 
+    // Inserted appliance edit (PV-T11b demo): "set the pump to 900 watts" → edit_appliance.
+    // The id is fixed (pump-1): the demo input carries it; without it the tool answers unknown-id.
+    if ((query.includes('pump') || query.includes('pompe')) && query.includes('watt')) {
+      const watts = Number(/(\d[\d\s]*)\s*watts?/.exec(query)?.[1]?.replace(/\s/g, '')) || 900;
+      return {
+        toolCalls: [
+          {
+            id: 'call_edit_appliance',
+            name: 'edit_appliance',
+            args: { id: 'pump-1', watts, reason: `Set the pump to ${watts} W.` },
+          },
+        ],
+      };
+    }
+
     // Scope guardrail: refuse off-topic requests (P6-T12 / Eval case 9)
     if (
       query.includes('poem') ||

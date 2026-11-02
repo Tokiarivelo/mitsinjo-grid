@@ -154,6 +154,19 @@ export const ProposeChangeSchema = z
     message: 'At least one of patch or strategy must be specified.',
   });
 
+/** One inserted line, patched in place (PV-T11b): absent fields keep their current value. */
+export const EditApplianceSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(80).optional(),
+  category: z.string().min(1).optional(),
+  sector: SectorIdSchema.optional(),
+  watts: z.number().positive().optional(),
+  quantity: z.number().int().min(1).optional(),
+  /** Map spot; omit unless echoing the operator's own numbers (never invented). */
+  position: z.object({ x: z.number(), z: z.number() }).optional(),
+  reason: z.string().min(1).max(500),
+});
+
 /** Live sector load (× 0–3, 0 = not connected); shared by run_scenario and propose_change. */
 const SECTOR_LOAD_PATCH_PROPS = {
   sectorLoads: {
@@ -395,6 +408,41 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'edit_appliance',
+    description:
+      'Propose an edit to ONE inserted appliance line (name, category, feeder sector, watts, quantity). Merges onto the current list and returns a proposal the operator approves per line; never applies. Only for loads already in the simulation — adding new loads is the /village insert flow. Never invent a map position: omit position unless echoing the operator’s own numbers.',
+    parameters: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'Engine id of the inserted line.' },
+        name: { type: 'string', description: 'New load name.' },
+        category: {
+          type: 'string',
+          description:
+            'Catalog category (fridge, tv, lamp, fan, water_pump, …); watts must fit its bounds.',
+        },
+        sector: {
+          type: 'string',
+          description: 'Feeder sector carrying the load (one of the 6 sector ids).',
+        },
+        watts: {
+          type: 'number',
+          description: 'Rated power in W (catalog bounds of the category).',
+        },
+        quantity: { type: 'integer', description: 'How many (≥ 1).' },
+        position: {
+          type: 'object',
+          properties: { x: { type: 'number' }, z: { type: 'number' } },
+          required: ['x', 'z'],
+          description: 'Map spot. Omit unless echoing the operator’s own numbers — never invented.',
+        },
+        reason: { type: 'string', description: 'Why, in one line.' },
+      },
+      required: ['id', 'reason'],
+      additionalProperties: false,
+    },
+  },
 ];
 
 export interface ToolContext {
@@ -434,6 +482,59 @@ export const PROPOSE_CHANGE_HINT =
   'To cut a sector "now" or with no time given: ' +
   '{"patch":{"sectorCaps":[{"sector":"households","maxKw":0,"fromHour":<app hour>,"toHour":24}]},"reason":"..."}. ' +
   `Sectors: ${SECTOR_IDS.join(', ')}.`;
+
+/**
+ * Shared proposal tail (propose_change, edit_appliance): deterministic id, engine before/after
+ * (K1), clinic guard (K6), and the pending-approval payload the dialog confirms.
+ */
+function proposeFromPatch(
+  toolName: string,
+  ctx: ToolContext,
+  patch: InputPatch | undefined,
+  strategy: StrategyId | undefined,
+  reason: string
+): ToolResult {
+  // Generate deterministic proposal id based on patch, strategy & reason
+  const rawKey = JSON.stringify({ p: patch, s: strategy, r: reason });
+  let hash = 0;
+  for (let i = 0; i < rawKey.length; i++) {
+    hash = ((hash << 5) - hash + rawKey.charCodeAt(i)) | 0;
+  }
+  const proposalId = `PROP-${Math.abs(hash).toString(16).toUpperCase().padStart(6, '0').slice(0, 6)}`;
+
+  // Engine before/after (K1): current input + strategy vs patched input + proposed strategy.
+  const currentStrategy: StrategyId = ctx.activeStrategy ?? 'proportional';
+  let computed: ReturnType<typeof proposalImpact>;
+  try {
+    computed = proposalImpact(ctx.input, currentStrategy, patch, strategy);
+  } catch (err) {
+    return {
+      toolName,
+      error: `Failed to apply patch: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+  const { impact, afterResultId } = computed;
+  const clinicReasons = clinicGuard(patch);
+
+  const proposal = { proposalId, patch, strategy, reason, impact };
+
+  return {
+    toolName,
+    resultId: afterResultId,
+    proposal,
+    data: {
+      proposalId,
+      status: 'pending_operator_approval',
+      patch,
+      strategy,
+      reason,
+      impact,
+      // K6: coded safety rule; the UI shows a red warning and asks a second confirmation.
+      ...(clinicReasons.length > 0 && { clinicGuard: clinicReasons }),
+    },
+    evidence: impactEvidence(impact),
+  };
+}
 
 export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext): ToolResult {
   switch (toolName) {
@@ -639,61 +740,46 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
           error: invalidArgs('propose_change', parsed.error),
         };
       }
-      // Generate deterministic proposal id based on patch, strategy & reason
-      const rawKey = JSON.stringify({
-        p: parsed.data.patch,
-        s: parsed.data.strategy,
-        r: parsed.data.reason,
-      });
-      let hash = 0;
-      for (let i = 0; i < rawKey.length; i++) {
-        hash = ((hash << 5) - hash + rawKey.charCodeAt(i)) | 0;
-      }
-      const proposalId = `PROP-${Math.abs(hash).toString(16).toUpperCase().padStart(6, '0').slice(0, 6)}`;
+      return proposeFromPatch(
+        toolName,
+        ctx,
+        parsed.data.patch,
+        parsed.data.strategy,
+        parsed.data.reason
+      );
+    }
 
-      // Engine before/after (K1): current input + strategy vs patched input + proposed strategy.
-      const currentStrategy: StrategyId = ctx.activeStrategy ?? 'proportional';
-      let computed: ReturnType<typeof proposalImpact>;
-      try {
-        computed = proposalImpact(
-          ctx.input,
-          currentStrategy,
-          parsed.data.patch,
-          parsed.data.strategy
-        );
-      } catch (err) {
+    case 'edit_appliance': {
+      const parsed = EditApplianceSchema.safeParse(rawArgs);
+      if (!parsed.success) {
         return {
           toolName,
-          error: `Failed to apply patch: ${err instanceof Error ? err.message : String(err)}`,
+          error: invalidArgs('edit_appliance', parsed.error),
         };
       }
-      const { impact, afterResultId } = computed;
-      const clinicReasons = clinicGuard(parsed.data.patch);
-
-      const proposal = {
-        proposalId,
-        patch: parsed.data.patch,
-        strategy: parsed.data.strategy,
-        reason: parsed.data.reason,
-        impact,
-      };
-
-      return {
-        toolName,
-        resultId: afterResultId,
-        proposal,
-        data: {
-          proposalId,
-          status: 'pending_operator_approval',
-          patch: parsed.data.patch,
-          strategy: parsed.data.strategy,
-          reason: parsed.data.reason,
-          impact,
-          // K6: coded safety rule; the UI shows a red warning and asks a second confirmation.
-          ...(clinicReasons.length > 0 && { clinicGuard: clinicReasons }),
-        },
-        evidence: impactEvidence(impact),
-      };
+      const { id, reason, ...fields } = parsed.data;
+      const current = ctx.input.appliances ?? [];
+      const line = current.find((a) => a.id === id);
+      if (!line) {
+        return {
+          toolName,
+          error: `Unknown appliance id '${id}': only lines already in the simulation can be edited (add new loads on /village).`,
+        };
+      }
+      const merged = { ...line };
+      for (const [k, v] of Object.entries(fields)) {
+        if (v !== undefined) (merged as unknown as Record<string, unknown>)[k] = v;
+      }
+      const patchCheck = InputPatchSchema.safeParse({
+        appliances: current.map((a) => (a.id === id ? merged : a)),
+      });
+      if (!patchCheck.success) {
+        return {
+          toolName,
+          error: invalidArgs('edit_appliance', patchCheck.error),
+        };
+      }
+      return proposeFromPatch(toolName, ctx, patchCheck.data, undefined, reason);
     }
 
     default:

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scenarios, simulate } from '@mitsinjo/engine';
+import { scenarios, simulate, type Appliance } from '@mitsinjo/engine';
 import {
   executeTool,
   GetGridStateSchema,
@@ -333,6 +333,80 @@ describe('Copilot Tools (P6-T2)', () => {
     it('returns structured error for unknown tool', () => {
       const res = executeTool('hack_grid', {}, ctx);
       expect(res.error).toContain('Unknown tool: hack_grid');
+    });
+
+    describe('edit_appliance (PV-T11b)', () => {
+      const pump: Appliance = {
+        id: 'a1',
+        name: 'Pump',
+        category: 'water_pump',
+        sector: 'water',
+        watts: 750,
+        quantity: 1,
+        position: { x: 10, z: 20 },
+      };
+      const lamp: Appliance = {
+        id: 'a2',
+        name: 'Lamp',
+        category: 'lamp',
+        sector: 'households',
+        watts: 10,
+        quantity: 2,
+      };
+      const appCtx = {
+        input: { ...baseInput, appliances: [pump, lamp] },
+        activeStrategy: 'proportional' as const,
+      };
+
+      it('merges fields onto the line and proposes the full list', () => {
+        const res = executeTool(
+          'edit_appliance',
+          { id: 'a1', watts: 900, sector: 'market', reason: 'Bigger pump on market' },
+          appCtx
+        );
+        expect(res.error).toBeUndefined();
+        expect(res.proposal?.patch?.appliances).toEqual([
+          { ...pump, watts: 900, sector: 'market' },
+          lamp,
+        ]);
+        expect(res.proposal?.reason).toBe('Bigger pump on market');
+        expect(res.evidence?.unservedKwhBefore).toBeDefined();
+      });
+
+      it('omitted fields keep their values, including the position', () => {
+        const res = executeTool('edit_appliance', { id: 'a1', watts: 900, reason: 'r' }, appCtx);
+        expect(res.error).toBeUndefined();
+        expect(res.proposal?.patch?.appliances?.[0]).toEqual({ ...pump, watts: 900 });
+      });
+
+      it('echoed positions pass through; unknown ids and bad merges fail gracefully', () => {
+        const echo = executeTool(
+          'edit_appliance',
+          { id: 'a1', position: { x: 30, z: 30 }, reason: 'r' },
+          appCtx
+        );
+        expect(echo.error).toBeUndefined();
+        expect(echo.proposal?.patch?.appliances?.[0]).toEqual({
+          ...pump,
+          position: { x: 30, z: 30 },
+        });
+        const unknown = executeTool(
+          'edit_appliance',
+          { id: 'ghost', watts: 5, reason: 'r' },
+          appCtx
+        );
+        expect(unknown.error).toContain("Unknown appliance id 'ghost'");
+        expect(unknown.proposal).toBeUndefined();
+        const badMerge = executeTool(
+          'edit_appliance',
+          { id: 'a2', watts: 1000000, reason: 'r' },
+          appCtx
+        );
+        expect(badMerge.error).toContain('watts');
+        expect(badMerge.proposal).toBeUndefined();
+        const badArgs = executeTool('edit_appliance', { id: 'a1', quantity: 0 }, appCtx);
+        expect(badArgs.error).toContain('Invalid args for edit_appliance');
+      });
     });
   });
 });

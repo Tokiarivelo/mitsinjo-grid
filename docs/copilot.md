@@ -179,3 +179,5 @@ result also carries `clinicGuard` so the model can say it.
     simulation…" stays a scenario run.
 16. "Coupe le marché et l'école, garde la clinique" (app hour 14) → one `propose_change`, market + school caps
     `14 → 24`, no clinic cap. Mock: every sector named before a keep word (garde, keep, sauf, tazony).
+17. "Set the pump to 900 watts." → `edit_appliance` merges watts onto pump-1 and proposes the full list;
+    the dialog shows feeder + load per changed line (removals last), approved per line. Unknown ids fail gracefully.

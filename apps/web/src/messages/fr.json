@@ -544,6 +544,8 @@
       "dropWindowValue": "{from}:00–{to}:00 ({hours} h)",
       "loadDisconnected": "Non connecté",
       "diffSectorLoad": "Charge",
+      "diffApplianceValue": "{feeder} · {watts} W × {quantity}{position}",
+      "diffRemoved": "Supprimé",
       "voice": {
         "stop": "Arrêter l'enregistrement",
         "transcribing": "Transcription de votre voix…",

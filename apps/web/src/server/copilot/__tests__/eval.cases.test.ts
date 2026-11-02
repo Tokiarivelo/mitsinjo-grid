@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { scenarios } from '@mitsinjo/engine';
+import { scenarios, type SimulationInput } from '@mitsinjo/engine';
 import { runCopilotLoop, type SseEventName } from '../loop';
 
 describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
   const baseInput = scenarios.baseline.input;
 
-  async function runEvalPrompt(prompt: string, hour?: number) {
+  async function runEvalPrompt(prompt: string, hour?: number, input = baseInput) {
     const events: { name: SseEventName; data: Record<string, unknown> }[] = [];
     const emit = (name: SseEventName, data: Record<string, unknown>) => {
       events.push({ name, data });
@@ -13,7 +13,7 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
 
     await runCopilotLoop({
       messages: [{ role: 'user', content: prompt }],
-      input: baseInput,
+      input,
       emit,
       hour,
     });
@@ -458,5 +458,37 @@ describe('Copilot Eval Cases (P6-T7 / docs/copilot.md §5)', () => {
         true
       );
     }
+  });
+
+  it('PV-T11b Eval: "Set the pump to 900 watts." → edit_appliance proposal, merged list', async () => {
+    const input: SimulationInput = {
+      ...baseInput,
+      appliances: [
+        {
+          id: 'pump-1',
+          name: 'Pump',
+          category: 'water_pump',
+          sector: 'water',
+          watts: 750,
+          quantity: 1,
+        },
+      ],
+    };
+    const { events } = await runEvalPrompt('Set the pump to 900 watts.', undefined, input);
+    expect(events.some((e) => e.name === 'activity' && e.data.tool === 'edit_appliance')).toBe(
+      true
+    );
+    const proposal = events.find((e) => e.name === 'proposal')?.data as
+      { patch?: { appliances?: { id: string; watts: number }[] } } | undefined;
+    expect(proposal?.patch?.appliances).toEqual([
+      {
+        id: 'pump-1',
+        name: 'Pump',
+        category: 'water_pump',
+        sector: 'water',
+        watts: 900,
+        quantity: 1,
+      },
+    ]);
   });
 });

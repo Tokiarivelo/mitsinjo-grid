@@ -544,6 +544,8 @@
       "dropWindowValue": "{from}:00–{to}:00 ({hours} ora)",
       "loadDisconnected": "Tsy mifandray",
       "diffSectorLoad": "Enta-mavesatra",
+      "diffApplianceValue": "{feeder} · {watts} W × {quantity}{position}",
+      "diffRemoved": "Nesorina",
       "voice": {
         "stop": "Ajanony ny fandraketana",
         "transcribing": "Mandika ny feonao…",
