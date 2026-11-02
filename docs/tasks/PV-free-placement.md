@@ -27,7 +27,7 @@ Split **where it is drawn** from **which feeder it loads**:
       (Done 2026-11-02: `feeder` anchor on the marker model, one batched LineSegments2 for all links; ring consts moved to
       `placement.ts`, site positions to leaf `site-positions.ts` — the first wiring created an import cycle that crashed module
       evaluation. 2D dot deferred to PP-T4: the 2D diagram is a schematic with no map projection; the minimap defines it.)
-- [ ] **PP-T4 Place by click.** In the insert form, the « Sector » select becomes « Position » + « Feeder »:
+- [x] **PP-T4 Place by click.** In the insert form, the « Sector » select becomes « Position » + « Feeder »:
       button « Place on the map » opens a top-down minimap (2D SVG of the village, same projection as the 2D diagram,
       keyboard: arrows move a cursor, Enter places) → click sets `position`, feeder = nearest (label « nearest: Water pumping »),
       editable select « Feeder » for an override. Touch targets ≥ 44 px, works at 320 px.

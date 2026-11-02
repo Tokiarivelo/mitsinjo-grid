@@ -1,7 +1,7 @@
 'use client';
 
-import { useId } from 'react';
-import { CheckCircle2, PencilLine, Plus, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
+import { useId, useState } from 'react';
+import { CheckCircle2, MapPin, PencilLine, Plus, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
 import {
   APPLIANCE_CATEGORIES,
   SECTOR_IDS,
@@ -12,7 +12,9 @@ import { FIELD_CLASS } from '@/components/ui/field';
 import { fmtKw, fmtKwh } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { nearestSector } from '@/features/microgrid-3d/utils/placement';
 import type { ApplianceDraftState } from '../hooks/use-appliance-draft';
+import { PlaceMinimap } from './place-minimap';
 import {
   clampQuantity,
   clampWatts,
@@ -51,8 +53,10 @@ export function ApplianceInsertPanel({
   const t = useTranslations('features.visionInsert');
   const tSector = useTranslations('sectors');
   const id = useId();
+  const [mapOpen, setMapOpen] = useState(false);
   const { draft: d, source, range, appliance, summary } = draft;
   const wattsOk = Number.isFinite(d.watts) && d.watts >= range.minW && d.watts <= range.maxW;
+  const nearest = d.position ? nearestSector(d.position) : null;
 
   return (
     <section
@@ -127,8 +131,45 @@ export function ApplianceInsertPanel({
             ))}
           </select>
         </label>
+        <div className="flex flex-col gap-1 sm:col-span-2 lg:col-span-1 xl:col-span-2">
+          <span className="text-xs text-text-secondary">{t('insertPosition')}</span>
+          <p aria-live="polite" className="text-sm text-text-primary">
+            {d.position
+              ? t('placedAt', { x: d.position.x.toFixed(1), z: d.position.z.toFixed(1) })
+              : t('ringDefault')}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              aria-expanded={mapOpen}
+              onClick={() => setMapOpen((open) => !open)}
+              className={cn(
+                BUTTON,
+                'border border-border bg-surface-elevated text-text-primary hover:bg-surface-hover'
+              )}
+            >
+              <MapPin className="h-4 w-4" aria-hidden="true" />
+              {t('placeOnMap')}
+            </button>
+            {d.position && (
+              <button
+                type="button"
+                onClick={() => draft.setPosition(null)}
+                className={cn(
+                  BUTTON,
+                  'border border-border bg-surface-elevated text-text-primary hover:bg-surface-hover'
+                )}
+              >
+                {t('useRing')}
+              </button>
+            )}
+          </div>
+          {mapOpen && (
+            <PlaceMinimap value={d.position} sector={d.sector} onPlace={draft.setPosition} />
+          )}
+        </div>
         <label className="flex flex-col gap-1 text-xs text-text-secondary">
-          {t('insertSector')}
+          {t('insertFeeder')}
           <select
             value={d.sector}
             onChange={(e) => draft.setSector(e.target.value as SectorId)}
@@ -141,6 +182,20 @@ export function ApplianceInsertPanel({
             ))}
           </select>
         </label>
+        {nearest && (
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-text-muted">
+            {t('nearestIs', { name: tSector(nearest) })}
+            {!d.feederAuto && d.sector !== nearest && (
+              <button
+                type="button"
+                onClick={draft.useNearestFeeder}
+                className="inline-flex min-h-11 items-center rounded-md border border-border bg-surface-elevated px-3 text-xs font-medium text-text-primary hover:bg-surface-hover cursor-pointer"
+              >
+                {t('feederAuto')}
+              </button>
+            )}
+          </p>
+        )}
         <div className="flex flex-col gap-1">
           <label className="flex flex-col gap-1 text-xs text-text-secondary">
             {t('insertWatts')}

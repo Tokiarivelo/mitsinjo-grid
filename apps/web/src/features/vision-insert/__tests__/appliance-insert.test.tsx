@@ -1,6 +1,6 @@
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { APPLIANCE_CATALOG, applianceSummary } from '@mitsinjo/engine';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@/lib/i18n';
 import type { ApplianceDetection } from '@/lib/vision';
 import { resetSimulationStore, selectActiveResult, useSimulationStore } from '@/stores';
@@ -64,6 +64,30 @@ describe('useApplianceDraft (PV-T11)', () => {
     expect(result.current.source).toBe('manual');
     expect(result.current.draft).toMatchObject({ name: 'Big pump', quantity: 2 });
   });
+
+  it('free placement (PP-T4): normalized spot, feeder follows unless overridden', () => {
+    const { result } = renderHook(() => useApplianceDraft('x', pump, 'Pump'));
+    expect(result.current.draft.position).toBeNull();
+    act(() => result.current.setPosition({ x: 30, z: 30 }));
+    expect(result.current.draft.position).toEqual({ x: 30, z: 30 });
+    expect(result.current.draft.sector).toBe('market');
+    expect(result.current.draft.feederAuto).toBe(true);
+    // A building centre snaps out of its footprint.
+    act(() => result.current.setPosition({ x: -8, z: 2 }));
+    const snapped = result.current.draft.position!;
+    expect(Math.hypot(snapped.x + 8, snapped.z - 2)).toBeGreaterThanOrEqual(3.9 - 1e-9);
+    expect(result.current.draft.sector).toBe('water');
+    // An explicit feeder sticks when the spot moves; Auto restores the nearest.
+    act(() => result.current.setSector('water'));
+    act(() => result.current.setPosition({ x: 32, z: 32 }));
+    expect(result.current.draft.sector).toBe('water');
+    expect(result.current.draft.feederAuto).toBe(false);
+    act(() => result.current.useNearestFeeder());
+    expect(result.current.draft.sector).toBe('market');
+    expect(result.current.draft.feederAuto).toBe(true);
+    act(() => result.current.setPosition(null));
+    expect(result.current.draft.position).toBeNull();
+  });
 });
 
 const renderInsert = (detection: ApplianceDetection, name: string) =>
@@ -122,5 +146,32 @@ describe('ApplianceInsert (PV-T12)', () => {
     expect(useSimulationStore.getState().input.appliances).toEqual([
       expect.objectContaining({ category: 'other', sector: 'households', watts: 400 }),
     ]);
+  });
+
+  it('free placement (PP-T4): place on the map, feeder follows, back to ring', () => {
+    renderInsert(pump, 'Water pump');
+    expect(screen.getByText('Ring around the building')).toBeTruthy();
+    expect(screen.getByLabelText('Feeder line')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Place on the map' }));
+    const map = screen.getByRole('application', { name: 'Village map' });
+    vi.spyOn(map, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 230,
+      height: 230,
+      right: 230,
+      bottom: 230,
+    } as DOMRect);
+    // Top-left (−95, −95) clamps onto the disc near the school; the feeder follows.
+    fireEvent.click(map, { clientX: 20, clientY: 20 });
+    expect(screen.getByText('Placed: -75.0, -75.0')).toBeTruthy();
+    expect(screen.getByLabelText('Feeder line')).toHaveValue('school');
+    expect(screen.getByText('Nearest: Primary School')).toBeTruthy();
+    // Override the feeder, then Auto restores the nearest.
+    fireEvent.change(screen.getByLabelText('Feeder line'), { target: { value: 'water' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Auto' }));
+    expect(screen.getByLabelText('Feeder line')).toHaveValue('school');
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the ring' }));
+    expect(screen.getByText('Ring around the building')).toBeTruthy();
   });
 });

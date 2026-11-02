@@ -5,9 +5,15 @@ import {
   applianceSummary,
   type Appliance,
   type ApplianceCategory,
+  type AppliancePosition,
   type SectorId,
 } from '@mitsinjo/engine';
 import type { ApplianceDetection } from '@/lib/vision';
+import {
+  clampToTerrain,
+  nearestSector,
+  snapAwayFromBuildings,
+} from '@/features/microgrid-3d/utils/placement';
 import {
   aiDraft,
   clampWatts,
@@ -63,7 +69,31 @@ export function useApplianceDraft(
   );
 
   const setName = useCallback((v: string) => edit((d) => ({ ...d, name: v })), [edit]);
-  const setSector = useCallback((v: SectorId) => edit((d) => ({ ...d, sector: v })), [edit]);
+  /** Feeder override (PP-T4): an explicit choice sticks, even when the position moves. */
+  const setSector = useCallback(
+    (v: SectorId) => edit((d) => ({ ...d, sector: v, feederAuto: false })),
+    [edit]
+  );
+  /** Free placement (PP-T4): normalized onto the terrain, feeder follows unless overridden. */
+  const setPosition = useCallback(
+    (v: AppliancePosition | null) =>
+      edit((d) => {
+        if (!v) return { ...d, position: null };
+        const position = snapAwayFromBuildings(clampToTerrain(v));
+        return { ...d, position, sector: d.feederAuto ? nearestSector(position) : d.sector };
+      }),
+    [edit]
+  );
+  /** Back to the automatic feeder (nearest to the placed position, when set). */
+  const useNearestFeeder = useCallback(
+    () =>
+      edit((d) => ({
+        ...d,
+        feederAuto: true,
+        ...(d.position ? { sector: nearestSector(d.position) } : {}),
+      })),
+    [edit]
+  );
   const setWatts = useCallback((v: number) => edit((d) => ({ ...d, watts: v })), [edit]);
   const setQuantity = useCallback((v: number) => edit((d) => ({ ...d, quantity: v })), [edit]);
   const setCategory = useCallback(
@@ -88,6 +118,8 @@ export function useApplianceDraft(
     setName,
     setCategory,
     setSector,
+    setPosition,
+    useNearestFeeder,
     setWatts,
     setQuantity,
     applyAiEstimate,

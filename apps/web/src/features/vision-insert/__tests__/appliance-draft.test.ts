@@ -5,6 +5,7 @@ import {
   applianceIdFor,
   clampQuantity,
   clampWatts,
+  fromAppliance,
   photoKey,
   sameDraft,
   suggestSector,
@@ -20,6 +21,8 @@ describe('appliance draft (PV-T11)', () => {
       sector: 'health',
       watts: APPLIANCE_CATALOG.fridge_vaccine.defaultW,
       quantity: 1,
+      position: null,
+      feederAuto: true,
     });
     expect(aiDraft({ category: 'water_pump' }, 'Pump').sector).toBe('water');
     expect(aiDraft({ category: 'tv' }, 'TV').sector).toBe('households');
@@ -48,6 +51,24 @@ describe('appliance draft (PV-T11)', () => {
     expect(toAppliance('x', { ...d, watts: 1e6 })).toBeNull();
     expect(sameDraft(d, { ...d })).toBe(true);
     expect(sameDraft(d, { ...d, quantity: 2 })).toBe(false);
+  });
+
+  it('position round-trips the engine line; sameDraft sees moves (PP-T4)', () => {
+    const d = aiDraft({ category: 'lamp' }, 'Lamp post');
+    const placed = { ...d, sector: 'market' as const, position: { x: 30, z: 30 } };
+    expect(toAppliance('x', placed)).toMatchObject({ position: { x: 30, z: 30 } });
+    // Null position = ring default: no engine field (null would fail the schema).
+    expect(toAppliance('x', d)).not.toHaveProperty('position');
+    expect(sameDraft(d, placed)).toBe(false);
+    expect(sameDraft(placed, { ...placed })).toBe(true);
+    // Reopening keeps the spot; the auto flag follows the feeder (override preserved).
+    expect(fromAppliance(toAppliance('x', placed)!)).toMatchObject({
+      position: { x: 30, z: 30 },
+      feederAuto: true,
+    });
+    const overridden = toAppliance('x', { ...placed, sector: 'water', feederAuto: false })!;
+    expect(fromAppliance(overridden).feederAuto).toBe(false);
+    expect(fromAppliance(toAppliance('x', d)!)).toMatchObject({ position: null, feederAuto: true });
   });
 
   it('photo key is stable and differs between photos; ids are ≤ 64 chars', () => {

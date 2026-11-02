@@ -4,13 +4,17 @@ import {
   MAX_APPLIANCES,
   type Appliance,
   type ApplianceCategory,
+  type AppliancePosition,
   type SectorId,
 } from '@mitsinjo/engine';
 import { isAppliance, type ApplianceDetection } from '@/lib/vision';
+import { nearestSector } from '@/features/microgrid-3d/utils/placement';
 
 /**
  * Line the operator is about to insert (PV-T11). Power comes from the engine catalog (AI estimate) or
  * from the operator (manual), always inside the catalog bounds of the category. Never from a model.
+ * `position` (PP-T4) = free placement on the village map, null = the ring around the building;
+ * `feederAuto` = the feeder (sector) follows the nearest building to the position.
  */
 export interface ApplianceDraft {
   name: string;
@@ -18,6 +22,8 @@ export interface ApplianceDraft {
   sector: SectorId;
   watts: number;
   quantity: number;
+  position: AppliancePosition | null;
+  feederAuto: boolean;
 }
 
 export const MAX_QUANTITY = 50;
@@ -73,6 +79,8 @@ export function aiDraft(
     sector: suggestSector(d),
     watts: wattsRange(category).defaultW,
     quantity: 1,
+    position: null,
+    feederAuto: true,
   };
 }
 
@@ -82,21 +90,41 @@ export const sameDraft = (a: ApplianceDraft, b: ApplianceDraft) =>
   a.category === b.category &&
   a.sector === b.sector &&
   a.watts === b.watts &&
-  a.quantity === b.quantity;
+  a.quantity === b.quantity &&
+  a.feederAuto === b.feederAuto &&
+  a.position?.x === b.position?.x &&
+  a.position?.z === b.position?.z;
 
 /** Draft → engine line, or null when the engine schema refuses it (empty name, bounds). */
 export function toAppliance(id: string, draft: ApplianceDraft): Appliance | null {
-  const parsed = ApplianceSchema.safeParse({ id, ...draft, name: draft.name.trim() });
+  const parsed = ApplianceSchema.safeParse({
+    id,
+    name: draft.name.trim(),
+    category: draft.category,
+    sector: draft.sector,
+    watts: draft.watts,
+    quantity: draft.quantity,
+    ...(draft.position ? { position: draft.position } : {}),
+  });
   return parsed.success ? parsed.data : null;
 }
 
 /** Engine line → draft (reopening an object already in the simulation). */
-export const fromAppliance = ({ name, category, sector, watts, quantity }: Appliance) => ({
+export const fromAppliance = ({
   name,
   category,
   sector,
   watts,
   quantity,
+  position,
+}: Appliance): ApplianceDraft => ({
+  name,
+  category,
+  sector,
+  watts,
+  quantity,
+  position: position ?? null,
+  feederAuto: !position || nearestSector(position) === sector,
 });
 
 /**
