@@ -700,6 +700,7 @@
       "emptyHint": "Try a closer, well-lit photo.",
       "error": "Appliance detection failed.",
       "retry": "Try again",
+      "retryDetection": "Run detection again",
       "close": "Close",
       "listTitle": "Objects found ({count})",
       "selected": "Selected: {label} ({category})",

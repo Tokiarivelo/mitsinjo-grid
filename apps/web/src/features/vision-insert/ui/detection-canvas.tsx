@@ -174,7 +174,18 @@ export function DetectionCanvas({
             {t('refining')}
           </span>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1">
+          {onRetry && !busy && !editing && (
+            <button
+              type="button"
+              onClick={onRetry}
+              aria-label={t('retryDetection')}
+              title={t('retryDetection')}
+              className="flex h-11 min-w-11 items-center justify-center rounded-lg border border-border bg-surface-elevated px-2 text-text-primary hover:bg-surface-hover cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy-cyan"
+            >
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
           <ZoomControls
             zoom={zoom}
             pan={

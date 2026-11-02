@@ -103,6 +103,25 @@ describe('DetectionCanvas (PV-T7)', () => {
     expect(onRetry).toHaveBeenCalled();
   });
 
+  it('ready state: header retry button re-runs detection; hidden while loading', () => {
+    const { onRetry, rerender } = setup();
+    fireEvent.click(screen.getByRole('button', { name: 'Run detection again' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    rerender(
+      <I18nProvider>
+        <DetectionCanvas
+          imageUrl="data:image/jpeg;base64,AA"
+          status="loading"
+          detections={[]}
+          selectedId={null}
+          onSelect={() => {}}
+          onRetry={() => {}}
+        />
+      </I18nProvider>
+    );
+    expect(screen.queryByRole('button', { name: 'Run detection again' })).toBeNull();
+  });
+
   it('loading shows a status and no outlines; refining keeps outlines with a note; demo note', () => {
     const { rerender, container } = setup({ status: 'loading', detections: [] });
     expect(screen.getByRole('status').textContent).toContain('Looking for appliances…');

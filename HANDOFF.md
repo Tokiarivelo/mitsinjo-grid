@@ -1,44 +1,25 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-02 (PR-5 done, imagined-3D investigation new next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-02 (FIX 1–3 + retry button done, investigation closed) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
-- Committed through S4 verdict (`e3396be`). Uncommitted: PR-5.1/5.2. Standing: commit each, unsigned fallback, always continue.
-- **Meta back:** SAM 1.9s, Spark 11s. Critic proven live (rescue 33→92, no-patch at 92).
-- **S4 STOPPED:** img2img 9–26.5s, 2/3 views wrong. PR-4.2…4.5 not built.
-- **PV-shape-realism done** except PR-0.5 (needs 10 user photos) + stopped S4 boxes.
-- User ordered: do ALL planned tasks, then a full image-recognition + imagined-3D investigation.
-- **PR-2.18 done:** `graph-edits.ts` `applyEdit` — openings re-tile, chimney seats, parts move, metric via scale, edited estimated. API-only, goldens identical, suite 303 green.
-- **PR-2.17 done:** `wall-openings.ts` + house panels wire — segmented walls, centred leaves (measured), overlays fallback; panel class = on-face only. Goldens identical; cottage e2e 86→90, Viol 0.
-- **PR-2.16 done:** `hidden-sides.ts` — back facade/end windows/rear door as inferred, low-yaw gate, set-atomic room. Cottage 9→11, scores identical, Viol 0.
-- **PR-2.15 done:** DimStatus on parts + recipe (pipeline stamping), panel Dim/Parts lines (fr/en/mg), report Status col. Goldens identical + Status (car M1 I11).
-- **PR-2.14 done:** `object-graph.ts` — graph (parents + 4 statuses), constraint pass after wheels/panels/chimney/fit (rescore on fix), Viol column in report (0 everywhere). Goldens identical.
-- **PR-0.8 done:** landmark term (0.35/0.3/0.2/0.15); live-car e2e 0.95, 90 → 91; goldens identical.
-- **PR-2.12/2.13 done:** shared yaw gates (0.3/1.05), house backs mirror ≤ 17°; loop pass clean (mean 93).
-- **PR-2.19/2.20/2.21 done:** box-only colour cap 0.3, on-demand outline, SAM noun table. Goldens identical.
-- **PR-2.11 done:** red taillights + rear bumper/trunk per subtype; goldens identical.
-- **PR-2.10 done:** chimney stacks from masks; cottage e2e IoU 0.98 → 0.96; goldens identical.
-- Loop lessons: global band cut −3 %; shrink-then-expose buries glass; world-unit squeeze; pixel-count confidence perverse without outline.
-- **Meta still out:** PR-0.4 live fixture, PR-0.5, PR-0.6-live blocked.
+- Committed through PR-5.1/5.2 (`262e50c`). Uncommitted: FIX 1–3 + retry button + this handoff. Standing: commit each, unsigned fallback, always continue.
+- **Toy-Mini investigation CLOSED** (docs/tasks/PV-shape-realism.md § Toy-Mini): live SAM probed on screenshot pixels — answers swing with pixels (tight 0.73 / merged 0.54 / empty); no-outline miss cascades fit→profile→colours→parts; imagined 6 views faithful (toy recipe in → toy views out); prompts OK, no prompt change proven.
+- **FIX 1:** miss-cause warns (`outline missed…` / `part masks missed…`, per-concept). **FIX 2:** crop fallback for outline + `remapOutlineToPhoto` (full hit skips crop). **FIX 3:** wheels filter-then-cap. 10 new tests; shape-report identical (mean 93, IoU 0.98, edge 0.91, ΔE 3.4).
+- **Retry button:** header ↻ in DetectionCanvas (« Relancer la détection », fr/en/mg, V78) — re-runs AI detection, keeps manual drawings, hidden while loading/editing. Gate-out by tokens (live screenshots blocked: sandbox kills Next dev + host unreachable).
+- **Meta reachability:** user's dev logs show ETIMEDOUT → mock fallback; FIX 1 logs now expose that path.
+- **NOT MINE:** `server/storage/media.ts` + test changed concurrently (upload timeout/inlineUrl) — leave for its author, do not commit.
+- PR-0.5 still needs 10 USER photos. S4 stopped. Free placement PP-T1…T8, PV-T14 + PV-T11b open.
 
 ## Next task
 
-- **Commit** PR-5.1/5.2, then the **full image-recognition + imagined-3D investigation** (user-ordered: box extraction, crops to Meta, 2D/3D imagined, skills/prompts).
-- PR-0.5 needs 10 USER photos — ask user alongside the investigation report.
-- Blocked on Meta (probe when reached): PR-0.4, PR-0.5, PR-0.6-live, PR-3.1, PR-3.4, PR-4.x.
-- Free placement PP-T1…T8. PV-T14 + PV-T11b.
-
-## Decisions taken
-
-- Slab yields to plates (notch to old box top when straddling) and wheels (wells up to wheel tops); yaw gate 0.26 rad + feasibility bail.
-- fit.iou re-scored after profiling (shipped silhouette ≠ fitted template); silhouetteRings largest-first reused, no duplication.
-- Plan refined from archi workflow (2026-11-01): target pipeline + skills map in PV-shape-realism.md; new PR-0.8, PR-2.14–2.16; Blender/GLB/VGGT out.
-- Scene/status/parametric rules adopted: unified 4 statuses, PR-2.17 real openings, PR-2.18 `applyEdit`; LLM = params only, engine builds all geometry.
-- Green-Mini chain: no outline → box-only sampling → c=1.0 → hedge wins. Fixed by 2.19 (cap) + 2.20 (fetch) + 2.21 (nouns).
+- **Commit** FIX 1–3 + retry button (my files only, unsigned fallback), then continue to next planned task.
+- Ask user for 10 photos (PR-0.5) alongside the investigation report.
+- Known limits: merged-box outlines still adopted when full passes ≥0.3 (no full-vs-crop compare); topiary→vehicle prompt line latent (needs topiary fixture).
 
 ## Files touched this session
 
-- New `object-graph.ts` + `__tests__/object-graph.test.ts`; `mask-geometry.ts` (roofTopAbove).
-- `mask-chimney.ts` (shared helper), `object-shape.ts` (4 constraint sites + rescore), `shape-report.ts` + test (Viol).
-- `__tests__/object-shape.test.ts` (lint fix), `docs/tasks/PV-shape-realism.md` (tick + log).
+- `server/perception/outline.ts` (FIX 1+2), `part-masks.ts` (FIX 1), `mask-outline.ts` (remap), `mask-wheels.ts` (FIX 3), `object-shape.ts` (crop wire).
+- `__tests__/outline|part-masks|mask-outline|mask-wheels.test.ts` (+10 tests).
+- `features/vision-insert/ui/detection-canvas.tsx` + test, `messages/{fr,en,mg}.json` (retryDetection), `docs/tasks/PV-shape-realism.md`, `test-scenarios/06-village.md` V78 (ignored).

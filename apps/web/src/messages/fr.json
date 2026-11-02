@@ -700,6 +700,7 @@
       "emptyHint": "Essayez une photo plus proche et bien éclairée.",
       "error": "La détection des appareils a échoué.",
       "retry": "Réessayer",
+      "retryDetection": "Relancer la détection",
       "close": "Fermer",
       "listTitle": "Objets trouvés ({count})",
       "selected": "Choisi : {label} ({category})",

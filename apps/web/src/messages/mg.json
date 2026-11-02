@@ -700,6 +700,7 @@
       "emptyHint": "Andramo sary akaiky kokoa sy mazava tsara.",
       "error": "Tsy nahomby ny fitadiavana fitaovana.",
       "retry": "Andramo indray",
+      "retryDetection": "Avereno ny fitadiavana",
       "close": "Hidio",
       "listTitle": "Zavatra hita ({count})",
       "selected": "Voafidy: {label} ({category})",
