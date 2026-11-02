@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils';
 import { useElapsedSeconds } from '../hooks/use-elapsed-seconds';
 import type { ObjectShapeState } from '../hooks/use-object-shape';
 import { recipeMaterials } from '../utils/surface-look';
+import { ObjectDisplayControls } from './object-display-controls';
 import { ObjectViewsCarousel } from './object-views-carousel';
 
 /** Placeholder while the viewer chunk loads or Spark builds the recipe. */
@@ -221,6 +222,15 @@ export function ObjectShapePanel({
   const [tabState, setTabState] = useState({ id: detection.id, tab: 'model' as ShapeTab });
   const setTab = (tab: ShapeTab) => setTabState({ id: detection.id, tab });
   const userTab = tabState.id === detection.id ? tabState.tab : 'model';
+  // Display tweaks are per object too (PV-T11b, visual only, never stored).
+  const [display, setDisplayState] = useState({
+    id: detection.id,
+    scale: 1,
+    tint: null as string | null,
+  });
+  const shown = display.id === detection.id ? display : { id: detection.id, scale: 1, tint: null };
+  const setDisplay = (patch: Partial<{ scale: number; tint: string | null }>) =>
+    setDisplayState({ id: detection.id, scale: shown.scale, tint: shown.tint, ...patch });
   // Before the 3D exists the preview is the point: validating it builds the model.
   const activeTab: ShapeTab = !ready && (hasViews || viewsBusy) ? 'views' : userTab;
 
@@ -344,13 +354,29 @@ export function ObjectShapePanel({
               className="viewer-studio h-60 w-full overflow-hidden rounded-control border border-border sm:h-72"
             >
               {ready ? (
-                <LazyObjectEditor3d shape={shape} detection={detection} imageUrl={imageUrl} />
+                <LazyObjectEditor3d
+                  shape={shape}
+                  detection={detection}
+                  imageUrl={imageUrl}
+                  scale={shown.scale}
+                  tint={shown.tint}
+                />
               ) : (
                 <ViewerSkeleton />
               )}
             </div>
           )}
         </>
+      )}
+
+      {ready && webgl && activeTab === 'model' && (
+        <ObjectDisplayControls
+          scale={shown.scale}
+          tint={shown.tint}
+          onScale={(scale) => setDisplay({ scale })}
+          onTint={(tint) => setDisplay({ tint })}
+          onReset={() => setDisplay({ scale: 1, tint: null })}
+        />
       )}
 
       {ready && shape.mode === 'silhouette' && (

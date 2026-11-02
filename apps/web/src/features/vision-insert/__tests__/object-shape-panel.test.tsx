@@ -7,7 +7,19 @@ import type { ApplianceDetection } from '@/lib/vision';
 const webgl = vi.hoisted(() => ({ on: true }));
 vi.mock('@/features/microgrid-3d', () => ({ useWebGLAvailable: () => webgl.on }));
 vi.mock('../ui/object-editor-3d', () => ({
-  ObjectEditor3d: ({ shape }: { shape: ObjectShape }) => <div data-mode={shape.mode}>viewer</div>,
+  ObjectEditor3d: ({
+    shape,
+    scale,
+    tint,
+  }: {
+    shape: ObjectShape;
+    scale?: number;
+    tint?: string | null;
+  }) => (
+    <div data-mode={shape.mode} data-scale={scale ?? 1} data-tint={tint ?? ''}>
+      viewer
+    </div>
+  ),
 }));
 
 import { ObjectShapePanel } from '../ui/object-shape-panel';
@@ -260,5 +272,40 @@ describe('ObjectShapePanel (PV-T10)', () => {
     renderPanel({ shape: shape('recipe') });
     expect(screen.queryByText(/Dimensions:/)).toBeNull();
     expect(screen.queryByText(/hidden in the photo/)).toBeNull();
+  });
+
+  it('display tweaks reach the viewer, reset restores, new object restarts (PV-T11b)', () => {
+    const { container, rerender } = renderPanel();
+    const viewer = () => container.querySelector('[data-mode="recipe"]')!;
+    expect(viewer().getAttribute('data-scale')).toBe('1');
+    expect(screen.queryByRole('button', { name: 'Reset view' })).toBeNull();
+    fireEvent.change(screen.getByRole('slider', { name: 'Model size' }), {
+      target: { value: '1.5' },
+    });
+    expect(viewer().getAttribute('data-scale')).toBe('1.5');
+    fireEvent.change(screen.getByLabelText('Tint'), { target: { value: '#ff0000' } });
+    expect(viewer().getAttribute('data-tint')).toBe('#ff0000');
+    fireEvent.click(screen.getByRole('button', { name: 'Reset view' }));
+    expect(viewer().getAttribute('data-scale')).toBe('1');
+    expect(viewer().getAttribute('data-tint')).toBe('');
+    // A tweak followed by another object: the new object starts untweaked.
+    fireEvent.change(screen.getByRole('slider', { name: 'Model size' }), {
+      target: { value: '2' },
+    });
+    const det2 = { ...fridge, id: 'det-2' };
+    rerender(
+      <I18nProvider>
+        <ObjectShapePanel
+          status="ready"
+          shape={shape('recipe', 'det-2')}
+          viewsStatus="idle"
+          detection={det2}
+          label="TV"
+          imageUrl="data:image/png;base64,AA"
+        />
+      </I18nProvider>
+    );
+    expect(viewer().getAttribute('data-scale')).toBe('1');
+    expect(screen.queryByRole('button', { name: 'Reset view' })).toBeNull();
   });
 });

@@ -26,6 +26,10 @@ export interface ObjectEditor3dProps {
   };
   /** The photo the object was found on: only its size is read (the photo is never pasted on the model). */
   imageUrl: string;
+  /** Display size multiplier (PV-T11b, visual only, 0.5–2). */
+  scale?: number;
+  /** Tint multiplied over the measured colours (PV-T11b, visual only); null = as measured. */
+  tint?: string | null;
 }
 
 /** Strength of the studio reflections and fill (image-based light). */
@@ -59,7 +63,7 @@ function StudioEnvironment() {
 /** Camera on a ¾ view, far enough for a 1 × 1 × 1 object. */
 const CAMERA_POSITION: [number, number, number] = [1.3, 0.85, 2.35];
 
-function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
+function ObjectModel({ shape, detection, imageUrl, scale = 1, tint = null }: ObjectEditor3dProps) {
   // Photo size only (silhouette proportions); cached image, no GPU upload.
   const image = useLoader(THREE.ImageLoader, imageUrl);
   const photoAspect = image.width && image.height ? image.width / image.height : 1;
@@ -111,36 +115,42 @@ function ObjectModel({ shape, detection, imageUrl }: ObjectEditor3dProps) {
         vertexColors: true,
         roughness,
         metalness,
-        color: new THREE.Color(gain, gain, gain),
+        color: new THREE.Color(tint ?? '#ffffff').multiplyScalar(gain),
         ...(maps ? { normalMap: maps.normalMap, roughnessMap: maps.roughnessMap } : {}),
         ...(map ? { map } : {}),
       });
     });
-  }, [mesh, vertexColors, swatches, invalidate]);
+  }, [mesh, vertexColors, swatches, tint, invalidate]);
   useEffect(() => () => surfaces.forEach((m) => m.dispose()), [surfaces]);
   // Ground under the object (shadow sits on it), from the real geometry.
   const floorY = useMemo(() => {
     mesh.computeBoundingBox();
     return (mesh.boundingBox?.min.y ?? -0.5) - 0.002;
   }, [mesh]);
+  // frameloop="demand": a display tweak must request its frame.
+  useEffect(() => {
+    invalidate();
+  }, [scale, tint, invalidate]);
 
   return (
     <group>
       <ContactShadows
-        position={[0, floorY, 0]}
-        scale={2.4}
+        position={[0, floorY * scale, 0]}
+        scale={2.4 * scale}
         blur={2.2}
         far={1.2}
         opacity={0.45}
         frames={1}
       />
-      {vertexColors ? (
-        <mesh geometry={mesh} material={surfaces} />
-      ) : (
-        <mesh geometry={mesh}>
-          <meshStandardMaterial color={TOKEN_HEX.idle} roughness={0.6} metalness={0.05} />
-        </mesh>
-      )}
+      <group scale={scale}>
+        {vertexColors ? (
+          <mesh geometry={mesh} material={surfaces} />
+        ) : (
+          <mesh geometry={mesh}>
+            <meshStandardMaterial color={tint ?? TOKEN_HEX.idle} roughness={0.6} metalness={0.05} />
+          </mesh>
+        )}
+      </group>
     </group>
   );
 }
