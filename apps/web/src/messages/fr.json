@@ -1029,7 +1029,25 @@
         "yaw": "orientation",
         "scale": "échelle"
       },
-      "model3dHiddenNote": "Des parties sont cachées sur la photo : elles sont inférées, pas mesurées."
+      "model3dHiddenNote": "Des parties sont cachées sur la photo : elles sont inférées, pas mesurées.",
+      "model3dImprove": {
+        "label": "Progression de l'amélioration du modèle",
+        "running": "Amélioration : étape {index}/{total} — {stage}",
+        "done": "Modèle finalisé",
+        "stopped": "Amélioration arrêtée : {cause}",
+        "score": "Score de l'étape {before} → {after}",
+        "stage": {
+          "massing": "Volumes",
+          "roof": "Toit",
+          "openings": "Ouvertures",
+          "accessories": "Accessoires"
+        },
+        "cause": {
+          "timeout": "temps écoulé",
+          "error": "une erreur est survenue",
+          "aborted": "annulée"
+        }
+      }
     }
   },
   "copilot": {

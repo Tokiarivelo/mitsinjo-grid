@@ -23,6 +23,7 @@ the engine catalog gives power (never the AI). Sidebar + MobileNav entry « Vill
   « 3D model »: title + badge (violet « AI shape » = Spark recipe; grey « Outline shape » = fallback + one-line why (Meta did not answer / AI shape unusable) + « Try the AI shape again »), viewer
   `h-72 sm:h-80 xl:h-96` on `bg-canvas-sunken` (orbit + zoom, no pan), « Drag to turn · pinch or scroll to zoom », display tweaks
   (PV-T11b: size slider 50–200 %, tint picker, reset — visual only, per object). Loading: spinner line +
+  Improvement chip (PG-T18) over the viewer while background stages run: « Improving: stage n/4 — Roof » + progress bar + stage score before → after, then « Model finalised » / « Improvement stopped: <cause> », fades after 4 s (`aria-live=polite`); the model swaps in each improved stage.
   live AI steps (violet box: « Extracting the object » → « Muse Spark imagines the parts » with seconds → « Fitting the parts »,
   done = green check, wait hint 15–40 s) + skeleton. Outline note per reason (Meta error + « Cause: HTTP n », timeout, spend cap,
   server unreachable, unusable). No WebGL: note, photo stays the reference. One Spark call per object per photo (kept on reselect).

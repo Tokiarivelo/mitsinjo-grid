@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils';
 import { useElapsedSeconds } from '../hooks/use-elapsed-seconds';
 import type { ObjectShapeState } from '../hooks/use-object-shape';
 import { recipeMaterials } from '../utils/surface-look';
+import { ImproveChip } from './improve-chip';
 import { ObjectDisplayControls } from './object-display-controls';
 import { Facade2dPanel } from './facade-2d-panel';
 import { useFacade2d, validatedFacade, type ValidatedFacade } from '../hooks/use-facade-2d';
@@ -197,6 +198,7 @@ export function ObjectShapePanel({
   shape,
   step,
   startedAt,
+  improve,
   detection,
   label,
   imageUrl,
@@ -316,22 +318,26 @@ export function ObjectShapePanel({
               isValidating3D={loading}
             />
           ) : (
-            <div
-              role="img"
-              aria-label={t('model3dCanvas', { label })}
-              className="viewer-studio h-60 w-full overflow-hidden rounded-control border border-border sm:h-72"
-            >
-              {ready ? (
-                <LazyObjectEditor3d
-                  shape={shape}
-                  detection={detection}
-                  imageUrl={imageUrl}
-                  scale={shown.scale}
-                  tint={shown.tint}
-                />
-              ) : (
-                <ViewerSkeleton />
-              )}
+            <div className="relative">
+              <div
+                role="img"
+                aria-label={t('model3dCanvas', { label })}
+                className="viewer-studio h-60 w-full overflow-hidden rounded-control border border-border sm:h-72"
+              >
+                {ready ? (
+                  <LazyObjectEditor3d
+                    shape={shape}
+                    detection={detection}
+                    imageUrl={imageUrl}
+                    scale={shown.scale}
+                    tint={shown.tint}
+                  />
+                ) : (
+                  <ViewerSkeleton />
+                )}
+              </div>
+              {/* Staged improvement (PG-T18): the model keeps getting better after it shows. */}
+              {ready && <ImproveChip improve={improve} />}
             </div>
           )}
         </>

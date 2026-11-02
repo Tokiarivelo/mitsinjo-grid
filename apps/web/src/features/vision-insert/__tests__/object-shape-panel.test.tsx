@@ -329,3 +329,18 @@ describe('ObjectShapePanel (PV-T10)', () => {
     expect(screen.queryByRole('button', { name: 'Reset view' })).toBeNull();
   });
 });
+
+describe('ObjectShapePanel staged improvement (PG-T18)', () => {
+  it('shows the chip over the ready model, outside the image role, and never while loading', () => {
+    renderPanel({ improve: { status: 'running', index: 2, total: 4, stage: 'roof' } });
+    const text = screen.getByText('Improving: stage 2/4 — Roof');
+    expect(screen.getByRole('img').contains(text)).toBe(false);
+    renderPanel({
+      status: 'loading',
+      shape: undefined,
+      step: 'model',
+      improve: { status: 'running', index: 1, total: 4, stage: 'massing' },
+    });
+    expect(screen.queryByText('Improving: stage 1/4 — Massing')).toBeNull();
+  });
+});

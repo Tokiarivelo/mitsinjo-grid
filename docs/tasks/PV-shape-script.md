@@ -7,7 +7,7 @@ not faithful to the imagined 2D elevation. Example: « rural thatched house » (
 same blotchy photo texture**, three dark rectangles for windows and door. Ask: Spark writes a **generation
 script**, builds the model **piece by piece**, and an agent loop renders → compares → corrects each piece until
 the render matches; same for every kind of object.
-**Status:** 🟡 G0 + G1 + G2 done (2026-11-02); live Meta run on the thatched-house drawing: facade path, elevation 87–91/100, IoU 0.98, first model in 48–68 s (chimney accessory score 0.44–0.71: roof hides its foot). G3: PG-T13–T16 done (loop live in the facade path), next PG-T17/T18 progressive UI + background stages. **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
+**Status:** 🟡 G0 + G1 + G2 done (2026-11-02); live Meta run on the thatched-house drawing: facade path, elevation 87–91/100, IoU 0.98, first model in 48–68 s (chimney accessory score 0.44–0.71: roof hides its foot). G3 done (PG-T13–T18: ShapeScript, loop, Spark stage prompt, background stages + chip). Next G4 (PG-T19 2D target for every archetype). **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
 writes vertices or runnable code (it writes Zod-checked ops, the engine builds); pure, seeded, tested geometry;
 never paste the photo on the model (small tileable swatches OK); ≤ 5 k triangles per object.
 **Skills:** `/shape-3d` (vocabulary, files) · `/shape-loop` (scores, log) · `/facade-2d` (target image).
@@ -127,10 +127,11 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
       keeps the seed. Deterministic given the same Spark answers (fixtures). Tests with a fake Spark: the score
       never goes down, locks hold, the timeout returns the best so far.
       **Done:** `server/perception/shape-stages.ts` `runShapeStages({ seed, stages, score, propose, budgetMs })`, `HOUSE_STAGES` (massing → roof → openings → accessories, gates 0.95 / 0.9 / 0.9 / 0.8), `houseStageScorer` (elevation `stages` + score / 100). A patch is kept when its stage gains ≥ 0.005 and the overall score does not fall; patch ops creating other kinds are refused. **Deviation:** S4 details, S6 materials, S7 hidden sides wait for metrics that see them (the flat render scores plain components).
-- [ ] **PG-T17 Progressive build in the UI.** SSE `ShapeStepEvent` gains `stage` + partial recipe. The viewer
+- [x] **PG-T17 Progressive build in the UI.** SSE `ShapeStepEvent` gains `stage` + partial recipe. The viewer
       shows each accepted stage (massing → roof → openings → details). The panel names the current stage and its
       score. i18n en/fr/mg, both themes, mobile. Design gate: `/design-check`.
-- [ ] **PG-T18 Background loop (decided, user 2026-11-02: option b).** The first answer keeps the 60 s budget
+      **Done:** SSE `shape_stage {phase, index, total, stage, state, before?, after?, stop?, recipe?}` (a new event, not a `ShapeStepEvent` field); the hook swaps in each kept background model; the chip (PG-T18) names the stage and its score. **Deviation:** first-answer stages are not drawn one by one (the first model already includes them).
+- [x] **PG-T18 Background loop (decided, user 2026-11-02: option b).** The first answer keeps the 60 s budget
       (`SHAPE_TIMEOUT_MS`): seed + every stage done in time. The remaining stages continue on the server in the
       background (job id, same SSE stream, or poll on reconnect), and the viewer swaps in each accepted stage. The
       user can rotate, edit or place the object meanwhile, and a manual edit cancels the stages that would overwrite it.
@@ -140,6 +141,7 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
       out. It is announced to screen readers (`aria-live="polite"`), uses i18n en/fr/mg, theme tokens, and fits at 320 px.
       Tests: the hook follows the stage events, a dropped stream resumes from the last stage, and the chip
       reaches its final state on success and on error.
+      **Done:** `shape-jobs.ts` (in-memory job, ordered events with `seq`, 10 min TTL), route streams the job after `shape_result { jobId }`, `GET /api/vision/shape/stages?job&from` resumes, `DELETE` cancels (new request, reselect, new photo); `facadeStageLoop` splits first / background (≤ 3 min); `ImproveChip`. **Deviation:** no manual recipe edit exists in the UI yet, so « an edit cancels the stages » = a new request or reselect cancels the job; jobs live in one server process (lost on restart → chip « stopped: error »).
 
 ### G4 Every kind of object
 
