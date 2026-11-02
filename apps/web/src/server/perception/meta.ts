@@ -32,6 +32,7 @@ import {
   shapeQuestion,
 } from './shape';
 import { boxUnionCoverage, parseSamOutput } from './parse-sam';
+import { redactDataUrls, redactDataUrlsInText, type VisionCallLog } from './vision-log';
 import {
   ObservationSchema,
   type CriticResult,
@@ -193,8 +194,18 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     jsonSchema: object,
     signal?: AbortSignal,
     /** false = always the standard model id (latency-sensitive calls). */
-    allowContributor = true
+    allowContributor = true,
+    /** Full request + result lines for the 3D calls (images logged as placeholders only). */
+    log?: VisionCallLog
   ): Promise<{ content: string; model: string; usage: UsageSample }> {
+    if (log) {
+      const schema = (jsonSchema as { name?: unknown }).name;
+      console.info(
+        `[vision] 3D ${log.kind} → params ${JSON.stringify(log.params ?? {}, redactDataUrls)} image ${redactDataUrls('image', imageUrl)} schema ${typeof schema === 'string' ? schema : 'custom'}`
+      );
+      console.info(`[vision] 3D ${log.kind} system: ${system}`);
+      console.info(`[vision] 3D ${log.kind} question: ${question}`);
+    }
     const body = (model: string) => ({
       model,
       // High reasoning on detection + 3D kits: better perception for the operator.
@@ -223,7 +234,7 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       choices?: Array<{ message?: { content?: string | null } }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
-    return {
+    const out = {
       content: data.choices?.[0]?.message?.content ?? '',
       model: sent.model,
       usage: {
@@ -231,6 +242,12 @@ export class MetaPerceptionBackend implements PerceptionBackend {
         outputTokens: data.usage?.completion_tokens ?? 0,
       },
     };
+    if (log) {
+      console.info(
+        `[vision] 3D ${log.kind} ← ${out.model} (in ${out.usage.inputTokens}, out ${out.usage.outputTokens}): ${redactDataUrlsInText(out.content)}`
+      );
+    }
+    return out;
   }
 
   async analyzeImage(
@@ -307,7 +324,8 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       imageUrl,
       SHAPE_JSON_SCHEMA,
       signal,
-      false
+      false,
+      { kind: 'describeShape', params: { ...target } }
     );
     const kit = parseKit(content, hint);
     if (!kit) console.info(`[vision] ${model} gave no usable 3D kit: ${content.slice(0, 300)}`);
@@ -331,7 +349,8 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       imageUrl,
       PARTS_JSON_SCHEMA,
       signal,
-      false
+      false,
+      { kind: 'describeParts', params: { ...target } }
     );
     const recipe = parseFreeParts(content);
     if (!recipe)
@@ -349,13 +368,15 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     signal?: AbortSignal
   ): Promise<PerceptionCall<CriticResult>> {
     // Standard id, like the kit call: the operator waits on this answer.
+    // No separate params: the question already carries the kit and the scores.
     const { content, model, usage } = await this.visionJson(
       CRITIC_SYSTEM_PROMPT,
       question,
       imageUrl,
       CRITIC_JSON_SCHEMA,
       signal,
-      false
+      false,
+      { kind: 'criticizeShape' }
     );
     const patch = parseKitPatch(content);
     console.info(

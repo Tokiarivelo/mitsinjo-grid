@@ -202,6 +202,46 @@ describe('MetaPerceptionBackend (shapes recorded from real calls, 2026-10-30)', 
     expect(prose.result.recipe).toBeNull();
   });
 
+  it('logs the full 3D request and result, images as placeholders only', async () => {
+    const kit = {
+      archetype: 'cabinet',
+      proportions: { w: 0.5, h: 1, d: 0.5 },
+      colors: { main: '#eeeeee', secondary: '#bbbbbb', accent: '#888888' },
+    };
+    respond({
+      choices: [{ message: { content: JSON.stringify(kit) } }],
+      usage: { prompt_tokens: 900, completion_tokens: 80 },
+    });
+    const seen: string[] = [];
+    const info = vi.spyOn(console, 'info').mockImplementation((...a: unknown[]) => {
+      seen.push(a.map(String).join(' '));
+    });
+    try {
+      await backend.describeShape(`data:image/jpeg;base64,${'A'.repeat(200)}`, {
+        label: 'Fridge',
+        category: 'fridge',
+        aspect: 0.75,
+      });
+    } finally {
+      info.mockRestore();
+    }
+    const lines = seen.filter((l) => l.includes('3D describeShape'));
+    expect(lines).toHaveLength(4);
+    const all = lines.join('\n');
+    // Params, both prompts and the full result are logged…
+    expect(all).toContain('"label":"Fridge"');
+    expect(all).toContain('"aspect":0.75');
+    expect(all).toContain('schema ObjectKit');
+    expect(all).toContain('system: ');
+    expect(all).toContain('question: ');
+    expect(all).toContain('"archetype":"cabinet"');
+    expect(all).toContain('in 900, out 80');
+    // …but the pixels never leave as base64.
+    expect(all).not.toContain('base64,');
+    expect(all).not.toContain('A'.repeat(200));
+    expect(all).toContain('[image data-url, 223 chars]');
+  });
+
   it('asks Spark for an imagined part list with the cut edges, stamped free (PV-T9c)', async () => {
     const parts = {
       proportions: { w: 0.4, h: 0.8, d: 0.3 },

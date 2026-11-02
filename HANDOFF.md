@@ -1,13 +1,14 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-02 (PP-T6 done, PP-T7 next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
+**Updated:** 2026-11-02 (3D call logging done, PP-T7 next) · **By:** Muse Code · **Branch:** `claude/object-detection-3d-editor-gxfzw1` · **PR:** none yet
 
 ## State
 
 - Standing: commit each task, unsigned fallback (`-c commit.gpgsign=false`), always continue.
-- **PP-T6 done (no code change):** `aiDraft` already suggests the sector with `position: null` → ring;
-  draft+placement+markers suites 29/29 green. Photo-box → position stays out of scope.
-- Previous: critic-retry crash fixed (`eca9f2b`), R2 upload timeout (`e56ce2a`), setup docs (`eed3c21`).
+- **3D logging done:** `describeShape`/`describeParts`/`criticizeShape` log full request (params, image
+  placeholder, schema, system + question) and result (model, usage, content); data URLs redact to
+  `[image data-url, N chars]` (`vision-log.ts`, tested; detection/SAM calls stay quiet).
+- Verify: typecheck ✓, lint 0 errors, vision-log 2/2 + meta 13/13 green.
 - Left uncommitted: `generated_images/` (only a 0-byte tooling `.lock`, no content).
 
 ## Next task
@@ -19,7 +20,7 @@
 ## Decisions taken
 
 - Paid-for critic round always completes (retry has no Spark call); ≥20 s gate guards round START only.
-- `Math.max(0, timeoutMs)` clamp stays as the construction guard; `remainingMs` may be ≤ 0 by design now.
+- Log redaction: `data:`-prefixed strings → placeholder (JSON replacer + text regex); http links log as-is.
 
 ## Open questions / blockers
 
@@ -28,8 +29,7 @@
 
 ## Files touched this session
 
-- `docs/tasks/PV-free-placement.md` (PP-T6 ticked, no code change).
-- Earlier: `server/perception/{object-shape.ts,spark-critic.ts}` + 2 test files; peer media + setup docs committed.
+- `server/perception/{meta.ts,vision-log.ts}` + `__tests__/{vision-log.test.ts,meta.test.ts}`, `docs/copilot.md` (1 line).
 
 ## Gotchas
 
