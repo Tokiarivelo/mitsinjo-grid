@@ -303,7 +303,7 @@ chimney on roof) · designer score ≥ 4/5 · shape math ≤ 300 ms · request �
 
 ### S3 — Smarter Spark (model optimisation)
 
-- [ ] **PR-3.1 Eval harness.** `make eval-shape`: replays the captured crops on live Spark, scores archetype /
+- [x] **PR-3.1 Eval harness.** `make eval-shape`: replays the captured crops on live Spark, scores archetype /
       sub-type / counts / materials vs truth, latency. Costs API calls: run on demand.
 - [x] **PR-3.2 Sub-types.** Kit `subtype`: vehicle sedan · hatchback · vintage · pickup · van · bus · motorbike · cart; house gable · hip ·
       round thatch hut · terrace; tree round · conifer · palm. One template per sub-type.
@@ -376,3 +376,4 @@ Expect the car to stop looking like a brick after PR-1.1…1.3 + PR-2.2 + PR-2.6
 | 2026-11-01 | Loop pass over PR-2.14…2.18                                            | 0.98     | 0.91    | 3.4     | 4/5      | all stop criteria hold (Viol 0, ms ≤ 300); visual: cottage ends filled, car rear lensed; issues: car slab cabin (no side glass/doors, budget full), row backs wait on room, end-window sliver minimal        |
 | 2026-11-01 | PR-0.4 live capture (Meta back: SAM 1.9s, Spark 11s)                   | 0.98     | 0.91    | 3.4     | —        | refrigerator fixture (31s live); offline replay IoU 1.0, score 92; goldens untouched                                                                                                                         |
 | 2026-11-02 | PR-0.6 Spark critic (patch API + live round + replay)                  | 0.98     | 0.91    | 3.4     | —        | goldens identical; live rescue 33 → 92 kept, 92 judged no-patch; no prompt lines to fold yet; fixed mid-PR: in-pipe IoU gate never fires (profiles nail silhouettes) → score-gated wrapper                   |
+| 2026-11-02 | PR-3.1 kit eval harness + 4 captures                                   | 0.98     | 0.91    | 3.4     | —        | fridge/TV/fan/lamp captures; Spark-1.3 eval 23/26 agree, 8–19s; finding: TV-crop subtype flips tv↔tv_table                                                                                                   |
