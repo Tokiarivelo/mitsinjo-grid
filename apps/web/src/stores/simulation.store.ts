@@ -22,6 +22,7 @@ import {
   generateChaosWorkflow,
   MAX_WORKFLOW_DAYS,
 } from '@mitsinjo/engine';
+import { type ScenarioDraft, draftToWorkflow } from '@/lib/scenario-draft';
 
 export type SimStatus = 'ready' | 'running' | 'complete' | 'modified' | 'error';
 export type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'stopped';
@@ -106,6 +107,8 @@ export interface SimulationState {
   setDayIndex: (day: number) => void;
   /** Replaces the workflow with a seeded chaos sequence of weather and incidents (PA-T6c). */
   loadChaosWorkflow: (seed?: number, days?: number) => void;
+  /** Replaces simulation and workflow with a chat-drafted multi-day scenario (PA-T8f). */
+  loadDraft: (draft: ScenarioDraft, mode?: DispatchMode) => void;
   /** Next playback hour; rolls over to the next workflow day, then loops to day 1. */
   advancePlayback: () => void;
 
@@ -515,6 +518,41 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     const chaosWorkflow = generateChaosWorkflow({ seed: chaosSeed, days: days ?? 3 });
     commitWorkflow(set, get, {
       workflow: chaosWorkflow,
+      dayIndex: 0,
+    });
+  },
+
+  loadDraft: (draft: ScenarioDraft, mode?: DispatchMode) => {
+    const { workflow, startSocPct, strategy, dispatchMode } = draftToWorkflow(draft);
+    const targetMode = mode ?? draft.dispatchMode ?? dispatchMode ?? 'manual';
+    const currentInput = get().input;
+    const patchedInput: SimulationInput = {
+      ...cloneInput(currentInput),
+      scenarioId: 'custom',
+      battery: {
+        ...currentInput.battery,
+        initialSocPct: startSocPct,
+      },
+    };
+
+    set({
+      scenarioId: 'baseline',
+      source: 'scenario',
+      input: patchedInput,
+      activeStrategy: strategy,
+      dispatchMode: targetMode,
+      dispatchLog: [],
+      changeHistory: [],
+      dayIndex: 0,
+      timeIndex: 0,
+      isPlaying: false,
+      playbackStatus: 'idle',
+      status: 'ready',
+      error: null,
+    });
+
+    commitWorkflow(set, get, {
+      workflow,
       dayIndex: 0,
     });
   },

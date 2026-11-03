@@ -9,6 +9,7 @@ import type {
   ChatMessageData,
 } from '@/features/copilot/types';
 import type { DispatchLogEntry } from '@mitsinjo/engine';
+import type { ScenarioDraft } from '@/lib/scenario-draft';
 
 preferIpv4Fetch();
 
@@ -17,6 +18,16 @@ const inMemorySessions = new Map<string, ChatSessionSummary>();
 const inMemoryMessages = new Map<string, ChatMessageData[]>();
 const inMemorySummaries = new Map<string, SessionSummaryNote>();
 const inMemoryDispatchLog: DispatchLogEntry[] = [];
+const inMemoryScenarioDrafts = new Map<string, SavedScenarioDraft>();
+
+export interface SavedScenarioDraft {
+  id: string;
+  title: string;
+  draft: ScenarioDraft;
+  summary?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
 
 /** Conversation summary of a session: text + how many payload messages it covers. */
 export interface SessionSummaryNote {
@@ -327,4 +338,95 @@ export async function clearDispatchLog(): Promise<void> {
   const sql = neon(env.DATABASE_URL!);
   await ensureNeonTables(sql);
   await sql`DELETE FROM dispatch_log;`;
+}
+
+export async function saveScenarioDraft(
+  draft: ScenarioDraft,
+  title?: string,
+  summary?: Record<string, unknown>
+): Promise<string> {
+  const id = draft.id || `draft-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const draftTitle = title || draft.title || `Scenario (${draft.days.length} days)`;
+  const now = new Date().toISOString();
+
+  if (!isNeonConfigured()) {
+    inMemoryScenarioDrafts.set(id, {
+      id,
+      title: draftTitle,
+      draft: { ...draft, id, title: draftTitle },
+      summary,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return id;
+  }
+
+  const sql = neon(env.DATABASE_URL!);
+  await ensureNeonTables(sql);
+
+  await sql`
+    INSERT INTO scenario_drafts (id, title, draft, summary, created_at, updated_at)
+    VALUES (
+      ${id},
+      ${draftTitle},
+      ${JSON.stringify({ ...draft, id, title: draftTitle })},
+      ${summary ? JSON.stringify(summary) : null},
+      ${now},
+      ${now}
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      title = EXCLUDED.title,
+      draft = EXCLUDED.draft,
+      summary = EXCLUDED.summary,
+      updated_at = EXCLUDED.updated_at;
+  `;
+
+  return id;
+}
+
+export async function listScenarioDrafts(): Promise<SavedScenarioDraft[]> {
+  if (!isNeonConfigured()) {
+    return Array.from(inMemoryScenarioDrafts.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  const sql = neon(env.DATABASE_URL!);
+  await ensureNeonTables(sql);
+
+  const rows = await sql`
+    SELECT id, title, draft, summary, created_at as "createdAt", updated_at as "updatedAt"
+    FROM scenario_drafts
+    ORDER BY created_at DESC
+    LIMIT 50;
+  `;
+
+  return rows as unknown as SavedScenarioDraft[];
+}
+
+export async function deleteScenarioDraft(id: string): Promise<boolean> {
+  if (!isNeonConfigured()) {
+    return inMemoryScenarioDrafts.delete(id);
+  }
+
+  const sql = neon(env.DATABASE_URL!);
+  await ensureNeonTables(sql);
+  await sql`DELETE FROM scenario_drafts WHERE id = ${id};`;
+  return true;
+}
+
+export async function getScenarioDraft(id: string): Promise<ScenarioDraft | null> {
+  if (!isNeonConfigured()) {
+    return inMemoryScenarioDrafts.get(id)?.draft ?? null;
+  }
+
+  const sql = neon(env.DATABASE_URL!);
+  await ensureNeonTables(sql);
+
+  const rows = await sql`
+    SELECT draft FROM scenario_drafts WHERE id = ${id} LIMIT 1;
+  `;
+
+  if (!rows || rows.length === 0) return null;
+  return (rows[0] as { draft: ScenarioDraft }).draft;
 }

@@ -21,6 +21,7 @@ import type { PartialApproval } from '../utils/proposal-parts';
 import { ConfirmProposalDialog } from './confirm-proposal-dialog';
 import { DayComicBlock } from './day-comic-block';
 import { MeetingBlock } from './meeting-block';
+import { ScenarioDraftCard } from './scenario-draft-card';
 import { PerceptionBlock } from './perception-block';
 import { SheddingPosterBlock } from './shedding-poster-block';
 import { CouncilBubbles } from './council-bubbles';
@@ -591,6 +592,9 @@ export function ChatMessageItem({
             }
           />
         )}
+
+        {/* Multi-day scenario draft card (PA-T8e) */}
+        {message.scenarioDraft && <ScenarioDraftCard payload={message.scenarioDraft} />}
 
         {/* Embedded Scenario Proposal Card */}
         {proposal && onApproveProposal && onRejectProposal && (

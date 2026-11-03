@@ -969,6 +969,22 @@ Review the pending proposal card, or ask for a different change.`,
             : `Simulated proposal: restore ${sector} after the fire (approval needed, never direct).`,
         },
       };
+    } else if (
+      (/\b(jour\s*[1-7]|day\s*[1-7]|andro\s*[1-7]|sc[eé]nario\s*(?:sur|de|multi|par)?\s*(?:plusieurs\s*jours|[1-7]\s*jours)?|draft\s*scenario)\b/i.test(
+        query
+      ) ||
+        /\b(nuageux|pluvieux|ensoleill[eé]|orage|cloudy|rainy|sunny|storm|mandrahona|manorana)\b/i.test(
+          query
+        )) &&
+      tools?.some((t) => t.name === 'draft_scenario')
+    ) {
+      toolCall = {
+        id: 'call_draft_scenario',
+        name: 'draft_scenario',
+        args: {
+          text: userMsg?.content ?? '',
+        },
+      };
     } else if (MOCK_FIRE_WORDS.test(query) && MOCK_SECTOR_WORDS.some((s) => s.match.test(query))) {
       // Fire question (M2-T4): explain the automatic cut with its engine impact.
       toolCall = {
@@ -1468,6 +1484,109 @@ Critical energy saved: ${savedKwh.toFixed(2)} kWh
 
 ### Why it matters
 Autonomous dispatch enforces the village constitution immediately, ensuring critical health and water loads remain energized.`,
+      };
+    }
+
+    if (toolName === 'draft_scenario') {
+      const isComplete = Boolean(data.isComplete);
+      const daysCount = Number(data.daysCount ?? 1);
+      const slots = (Array.isArray(data.missingSlots) ? data.missingSlots : []) as Array<{
+        kind: string;
+        day: number;
+        suggestedResponses?: string[];
+      }>;
+      const preview = data.preview as
+        | {
+            worstDay?: number;
+            totalDeficitKwh?: number;
+            criticalUnservedKwh?: number;
+          }
+        | undefined;
+
+      if (!isComplete && slots.length > 0) {
+        const firstSlot = slots[0]!;
+        const suggestions = firstSlot.suggestedResponses?.join(' · ') || '';
+
+        if (fr) {
+          let question = `À quelle heure commence l'événement le jour ${firstSlot.day} ?`;
+          if (firstSlot.kind === 'missing_weather') {
+            question = `Quelle météo prévoyez-vous pour le jour ${firstSlot.day} ?`;
+          } else if (firstSlot.kind === 'missing_fire_hour') {
+            question = `À quelle heure commence l'incendie le jour ${firstSlot.day} ?`;
+          } else if (firstSlot.kind === 'missing_fire_sector') {
+            question = `Quel secteur est touché par l'incendie le jour ${firstSlot.day} ?`;
+          }
+
+          return {
+            content: `### Brouillon de scénario (${daysCount} jour${daysCount > 1 ? 's' : ''})
+J'ai structuré votre scénario. Il manque encore une précision :
+
+**${question}**
+${suggestions ? `Suggestions : ${suggestions}` : ''}
+
+Vous pouvez répondre directement dans le chat ou cliquer sur une puce.`,
+          };
+        }
+
+        let question = `At what hour does the event start on Day ${firstSlot.day}?`;
+        if (firstSlot.kind === 'missing_weather') {
+          question = `What weather do you expect on Day ${firstSlot.day}?`;
+        } else if (firstSlot.kind === 'missing_fire_hour') {
+          question = `At what hour does the fire start on Day ${firstSlot.day}?`;
+        } else if (firstSlot.kind === 'missing_fire_sector') {
+          question = `Which sector is affected by the fire on Day ${firstSlot.day}?`;
+        }
+
+        return {
+          content: `### Scenario Draft (${daysCount} day${daysCount > 1 ? 's' : ''})
+I have structured your scenario. There is one detail missing:
+
+**${question}**
+${suggestions ? `Suggestions: ${suggestions}` : ''}
+
+You can reply in chat or click an option pill below.`,
+        };
+      }
+
+      // Complete scenario
+      const totalDeficit = preview?.totalDeficitKwh ?? 0;
+      const criticalDeficit = preview?.criticalUnservedKwh ?? 0;
+      const worstDay = preview?.worstDay ?? 1;
+
+      if (fr) {
+        return {
+          content: `### Ce qui s'est passé (Scénario validé)
+Votre scénario sur ${daysCount} jours est complet et a été simulé par le moteur. Le pire jour simulé est le jour ${worstDay}.
+
+### Preuves calculées
+Jours simulés : ${daysCount}
+Déficit total sur la période : ${totalDeficit} kWh
+Énergie critique non servie : ${criticalDeficit} kWh
+Pire jour : Jour ${worstDay}
+
+### Pourquoi c'est important
+Ce scénario permet d'évaluer la résilience du micro-réseau sous différentes météos et incidents.
+
+### Et ensuite
+Lancez la simulation d'un clic ci-dessous en mode manuel ou laissez l'IA autonome piloter le réseau !`,
+        };
+      }
+
+      return {
+        content: `### What happened (Scenario Validated)
+Your ${daysCount}-day scenario draft is complete and validated by the engine. The worst simulated day is Day ${worstDay}.
+
+### Computed evidence
+Simulated days: ${daysCount}
+Total deficit over period: ${totalDeficit} kWh
+Critical unserved energy: ${criticalDeficit} kWh
+Worst day: Day ${worstDay}
+
+### Why it matters
+This scenario tests grid resilience across consecutive weather conditions and incidents.
+
+### Explore next
+Launch the simulation below in manual mode or in autonomous AI dispatch mode!`,
       };
     }
 

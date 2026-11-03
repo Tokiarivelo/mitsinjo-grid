@@ -36,7 +36,8 @@ export type SseEventName =
   | 'model'
   | 'perception'
   | 'summary'
-  | 'control';
+  | 'control'
+  | 'scenario_draft';
 
 export type SseEmitter = (event: SseEventName, data: Record<string, unknown>) => void;
 
@@ -487,6 +488,11 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
           // Playback / time cursor: the client runs it at once (no scenario change).
           if (toolResult.control) {
             emit('control', toolResult.control);
+          }
+
+          // Multi-day scenario draft (PA-T8d)
+          if (toolResult.scenarioDraft) {
+            emit('scenario_draft', toolResult.scenarioDraft as unknown as Record<string, unknown>);
           }
 
           // Return tool result to history

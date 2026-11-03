@@ -9,6 +9,7 @@ import type {
   StrategyId,
   DispatchLogEntry,
 } from '@mitsinjo/engine';
+import type { ScenarioDraftPayload } from '../types';
 import { useTranslations } from '@/lib/i18n';
 import { useSimulationStore } from '@/stores';
 import { cn } from '@/lib/utils';
@@ -28,6 +29,8 @@ export interface SuggestedPromptsProps {
   fires?: readonly SectorId[];
   /** Dispatch event log entries (PA-T5b). */
   dispatchLog?: readonly DispatchLogEntry[];
+  /** Active multi-day scenario draft (PA-T8g). */
+  scenarioDraft?: ScenarioDraftPayload;
   /** `compact`: one horizontally scrollable line (under a running chat). */
   variant?: 'full' | 'compact';
 }
@@ -42,6 +45,7 @@ export function SuggestedPrompts({
   input,
   fires,
   dispatchLog: explicitDispatchLog,
+  scenarioDraft,
   variant = 'full',
 }: SuggestedPromptsProps) {
   const storeDispatchLog = useSimulationStore((s) => s.dispatchLog);
@@ -51,8 +55,17 @@ export function SuggestedPrompts({
   const tStrategies = useTranslations('strategies');
 
   const promptItems = useMemo(
-    () => suggestPrompts({ result, activeStrategy, scenarioId, input, fires, dispatchLog }),
-    [result, activeStrategy, scenarioId, input, fires, dispatchLog]
+    () =>
+      suggestPrompts({
+        result,
+        activeStrategy,
+        scenarioId,
+        input,
+        fires,
+        dispatchLog,
+        scenarioDraft,
+      }),
+    [result, activeStrategy, scenarioId, input, fires, dispatchLog, scenarioDraft]
   );
   const incident = promptItems.some((p) => p.tone === 'incident');
   const header = incident

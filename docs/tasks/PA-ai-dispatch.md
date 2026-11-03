@@ -151,31 +151,31 @@ Exemple cible : « jour 1 : nuageux, jour 2 : pluvieux, jour 3 : beau temps + é
 - [x] **PA-T8a** (moteur) `WorkflowDay.events?: ScenarioEvent[]` : événements propres à un jour, ajoutés à ceux de
       l'input ce jour-là seulement ; la batterie continue de passer d'un jour à l'autre. Contrat + engine-spec.
       **Done when** un feu à l'école le jour 3 coupe l'école le jour 3 seulement ; workflows existants inchangés ; tests.
-- [ ] **PA-T8b** Schéma `ScenarioDraft` (web, Zod) : `title?`, `days[]` (1–7) de `{ weather?, events[] }`, événements
+- [x] **PA-T8b** Schéma `ScenarioDraft` (web, Zod) : `title?`, `days[]` (1–7) de `{ weather?, events[] }`, événements
       partiels autorisés (`fire { sector?, startHour?, durationH? }`, `solar_drop`, `demand_spike { sector?, factor? }`),
       `startSocPct?`, `strategy?`, `dispatchMode?`. Fonction pure `missingSlots(draft)` → trous ordonnés : météo absente
       d'un jour, secteur ou heure du feu, facteur d'un pic, jour cité hors limite (> 7), contradiction (deux météos le
       même jour). `defaults(draft)` propose les valeurs par défaut (feu jusqu'à minuit, SoC 60 %, proportionnelle).
       **Done when** tests : l'exemple cible → 1 trou (heure du feu) ; brouillon complet → 0 trou.
-- [ ] **PA-T8c** Extracteur déterministe FR/EN/MG (repli sans clé, comme l'extracteur de réunion M10-T4) :
+- [x] **PA-T8c** Extracteur déterministe FR/EN/MG (repli sans clé, comme l'extracteur de réunion M10-T4) :
       « jour N / day N / andro N », mots météo (nuageux, pluvieux, orage, beau temps, ensoleillé / cloudy… / rahona,
       orana…), secteurs (école, dispensaire, marché, pompe, ménages, atelier), « en feu / incendie / afo ».
       **Done when** 15 phrases d'éval → brouillons attendus.
-- [ ] **PA-T8d** Outil copilote `draft_scenario` : le LLM remplit le brouillon depuis le message (et le brouillon
+- [x] **PA-T8d** Outil copilote `draft_scenario` : le LLM remplit le brouillon depuis le message (et le brouillon
       précédent de la session) ; le serveur valide (Zod), calcule `missingSlots`, renvoie brouillon + trous. Le LLM ne
       pose que les questions des trous (une ou deux à la fois), jamais de chiffres moteur. Nouvel événement SSE
       `scenario_draft`. Évals : incomplet → question ; complet → proposition de lancement.
-- [ ] **PA-T8e** Carte « Brouillon de scénario » dans le chat : une ligne par jour (icône météo, événements), cases
+- [x] **PA-T8e** Carte « Brouillon de scénario » dans le chat : une ligne par jour (icône météo, événements), cases
       manquantes en ambre, édition directe (météo, secteur, heure), puces de réponse générées par le code depuis le
       type du trou (« À quelle heure commence le feu ? » → 8 h · 12 h · 16 h). Aperçu moteur une fois complet
       (déficit par jour, pire jour, critique non servi). i18n, clair/sombre, 320 px, design gate.
-- [ ] **PA-T8f** Lancement : « Lancer cette simulation » et « Lancer en mode IA autonome » → store
+- [x] **PA-T8f** Lancement : « Lancer cette simulation » et « Lancer en mode IA autonome » → store
       `loadDraft(draft)` (input `custom` + workflow avec événements par jour) → run → `/simulation`, lecture au jour 1.
       « Enregistrer » → « Mes scénarios » (page Scénarios ; table Neon `scenario_drafts` via nouvelle migration,
       repli mémoire sans `DATABASE_URL`) + export/import JSON.
       **Done when** l'exemple cible se joue sur 3 jours, l'école brûle le jour 3 et, en mode IA, le journal montre
       détection + isolation sans clic.
-- [ ] **PA-T8g** Questions suggérées dans le chat vide : « Décris un scénario sur plusieurs jours… » et exemples
+- [x] **PA-T8g** Questions suggérées dans le chat vide : « Décris un scénario sur plusieurs jours… » et exemples
       (puces) ; questions générées depuis le brouillon en cours.
 
 ### PA-7 — Qualité · J10

@@ -17,6 +17,7 @@ import { useTranslations } from '@/lib/i18n';
 import { ScenarioCard } from './scenario-card';
 import { AssumptionsInspector } from './assumptions-inspector';
 import { ReproducibilitySummary } from './reproducibility-summary';
+import { CustomScenariosPanel } from './custom-scenarios-panel';
 
 export function ScenariosPage() {
   const tCommon = useTranslations('common');
@@ -143,6 +144,9 @@ export function ScenariosPage() {
           />
         </div>
       </div>
+
+      {/* Mes scénarios (Custom Drafts & Workflows, PA-T8f) */}
+      <CustomScenariosPanel />
 
       {/* 3. Bottom Compact Strip: Latest Run Reproducibility Summary */}
       <ReproducibilitySummary
