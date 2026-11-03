@@ -484,4 +484,79 @@ describe('useObjectShape staged improvement (PG-T17/T18)', () => {
       fetchMock.mock.calls.some((c) => c[1]?.method === 'DELETE' && String(c[0]).includes(JOB))
     ).toBe(true);
   });
+
+  it('a request cut by the time limit posts its checkpoint back and the loop goes on (before: Vercel « Task timed out after 300 seconds »)', async () => {
+    const JOB2 = '22222222-2222-3333-4444-555555555555';
+    const checkpoint = { v: 1, stages: ['details'], round: 2 };
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          ev('shape_result', { shape: recipeShape, jobId: JOB }) +
+            ev('shape_stage', { ...stage({}), seq: 0 }) +
+            ev('shape_stages_checkpoint', { jobId: JOB, checkpoint, seq: 1 })
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          ev('shape_stages_resumed', { jobId: JOB2, seq: 0 }) +
+            ev('shape_stage', {
+              ...stage({
+                jobId: JOB2,
+                stage: 'roof',
+                index: 3,
+                state: 'done',
+                before: 0.4,
+                after: 0.9,
+                stop: 'gate',
+                recipe: better,
+              }),
+              seq: 1,
+            }) +
+            ev('shape_stages_done', { jobId: JOB2, status: 'done', seq: 2 })
+        )
+      );
+    const { result } = renderHook(() => useObjectShape());
+    act(() => {
+      void result.current.requestShape('data:image/png;base64,AA', target, 'sess-1');
+    });
+    await waitFor(() => expect(result.current.improve?.status).toBe('done'));
+    const post = fetchMock.mock.calls[1]!;
+    expect(String(post[0])).toBe('/api/vision/shape/stages');
+    expect(post[1].method).toBe('POST');
+    expect(JSON.parse(post[1].body)).toEqual({ checkpoint, sessionId: 'sess-1' });
+    expect(result.current.shape!.recipe!.parts[0]!.color).toBe('#cc8844');
+  });
+
+  it('« Cancel » during a resumed slice closes it and posts no more checkpoints', async () => {
+    let signal: AbortSignal | undefined;
+    // DELETE of the job on cancel.
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          ev('shape_result', { shape: recipeShape, jobId: JOB }) +
+            ev('shape_stage', { ...stage({}), seq: 0 }) +
+            ev('shape_stages_checkpoint', { jobId: JOB, checkpoint: { v: 1 }, seq: 1 })
+        )
+      )
+      .mockImplementationOnce(async (_url: string, init: RequestInit) => {
+        signal = init.signal ?? undefined;
+        return new Response(
+          new ReadableStream({
+            start(c) {
+              c.enqueue(new TextEncoder().encode(ev('shape_stages_resumed', { jobId: JOB })));
+            },
+          })
+        );
+      });
+    const { result } = renderHook(() => useObjectShape());
+    act(() => {
+      void result.current.requestShape('data:image/png;base64,AA', target);
+    });
+    await waitFor(() => expect(signal).toBeDefined());
+    act(() => result.current.cancelImprove());
+    expect(signal!.aborted).toBe(true);
+    expect(result.current.improve).toMatchObject({ status: 'stopped', cause: 'aborted' });
+    expect(fetchMock.mock.calls.filter((c) => c[1]?.method === 'POST')).toHaveLength(2);
+  });
 });

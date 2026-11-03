@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { elevationForCheckpoint, type StageLoopContext } from './stage-checkpoint';
+
 import {
   MAX_RECIPE_PARTS,
   SHAPE_TIMEOUT_MS,
@@ -214,7 +216,9 @@ export async function runObjectShape(
    */
   const followStages = async (
     start: () => Promise<{ recipe: ObjectRecipe; rest: StagesContinuation | null }> | null,
-    seed: ObjectRecipe
+    seed: ObjectRecipe,
+    /** What the loop is built from: lets a later request resume it (Vercel limit). */
+    context: StageLoopContext
   ): Promise<ObjectRecipe> => {
     try {
       const loop = await start();
@@ -226,6 +230,7 @@ export async function runObjectShape(
         const rest = loop.rest;
         onStagesLeft?.({
           ...rest,
+          context,
           run: (o) =>
             rest.run({
               ...o,
@@ -489,7 +494,15 @@ export async function runObjectShape(
                 ...(signal ? { signal } : {}),
                 onProgress: stageProgress,
               }),
-            recipe
+            recipe,
+            {
+              label: target.label,
+              loop: {
+                kind: 'facade',
+                front: elevationForCheckpoint(front),
+                ...(target.facadeUrl ? { facadeUrl: target.facadeUrl } : {}),
+              },
+            }
           );
         }
         // PG-T2: the model against the drawing it was built from (the staged loop's yardstick).
@@ -554,7 +567,18 @@ export async function runObjectShape(
                 ...(signal ? { signal } : {}),
                 onProgress: stageProgress,
               }),
-            seed
+            seed,
+            {
+              label: target.label,
+              loop: {
+                kind: 'views',
+                archetype: kit.archetype,
+                front: seen.front,
+                side: seen.side,
+                frontUrl: seen.frontUrl,
+                sidePng: seen.sidePng ? seen.sidePng.toString('base64') : null,
+              },
+            }
           );
         }
         const iou = {

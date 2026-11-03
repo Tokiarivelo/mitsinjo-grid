@@ -390,11 +390,17 @@ export const SHAPE_STAGE_IDS = [
 ] as const;
 export type ShapeStageId = (typeof SHAPE_STAGE_IDS)[number];
 /**
- * Background stages have no time limit: they always wait for Meta, however long it takes, and
- * stop only when the operator cancels (« Cancel » on the improvement chip, `DELETE` on the job)
- * (user 2026-11-03; before: 3 min, a slow Spark answer was aborted and replaced by the mock).
+ * Background stages have no overall time limit: they wait for Meta however long it takes and stop
+ * only when the operator cancels (user 2026-11-03). A serverless request is cut at
+ * `SHAPE_FUNCTION_MS` (Vercel: « Task timed out after 300 seconds », live 2026-11-03), so the loop
+ * runs in slices: a round starts only with `STAGE_ROUND_RESERVE_MS` left, a slice ends
+ * `STAGE_SLICE_MARGIN_MS` before the cut, and a checkpoint lets the next request go on
+ * (`shape_stages_checkpoint`, POST `/api/vision/shape/stages`).
  */
-export const SHAPE_STAGES_BACKGROUND_MS = Number.POSITIVE_INFINITY;
+export const SHAPE_FUNCTION_MS = 300_000;
+export const STAGE_SLICE_MARGIN_MS = 20_000;
+/** Longest Spark stage round seen live (≈ 110 s) plus the sheet render. */
+export const STAGE_ROUND_RESERVE_MS = 125_000;
 export const SHAPE_STAGE_STOPS = [
   'gate',
   'no_gain',
@@ -429,6 +435,18 @@ export const ShapeStagesDoneSchema = z.object({
   cause: z.enum(['timeout', 'error', 'aborted']).optional(),
 });
 export type ShapeStagesDone = z.infer<typeof ShapeStagesDoneSchema>;
+
+/**
+ * `shape_stages_checkpoint`: the request ran out of time (`SHAPE_FUNCTION_MS`), the loop is not
+ * done. The browser posts `checkpoint` back as is (`POST /api/vision/shape/stages`), the server
+ * validates it; opaque here.
+ */
+export const ShapeStagesCheckpointEventSchema = z.object({
+  jobId: z.string().max(64).optional(),
+  checkpoint: z.record(z.string(), z.unknown()),
+});
+/** `shape_stages_resumed`: first event of a resumed slice, with its job (to cancel it). */
+export const ShapeStagesResumedSchema = z.object({ jobId: z.string().max(64) });
 
 const volume = (p: RecipePart) => p.size[0] * p.size[1] * p.size[2];
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));

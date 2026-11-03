@@ -6,7 +6,9 @@ import {
   ImaginedViewsResponseSchema,
   ObjectShapeSchema,
   ShapeStageEventSchema,
+  ShapeStagesCheckpointEventSchema,
   ShapeStagesDoneSchema,
+  ShapeStagesResumedSchema,
   ShapeStepEventSchema,
   type ImaginedAngleView,
   type ObjectShape,
@@ -226,6 +228,8 @@ export function useObjectShape() {
         improve: undefined,
       }));
       const job: { id?: string; seq: number; done: boolean } = { seq: -1, done: false };
+      /** Checkpoint of a loop cut by the request limit: posted back to go on (Vercel, 300 s). */
+      let pending: Record<string, unknown> | null = null;
       let finalized = false;
       /** The first answer: shown at once (the stream may go on with background stages). */
       const finalize = (shape: ObjectShape) => {
@@ -279,6 +283,17 @@ export function useObjectShape() {
             }
             return { ...s, improve };
           });
+        } else if (event === 'shape_stages_resumed') {
+          const r = ShapeStagesResumedSchema.safeParse(data);
+          if (!r.success) return;
+          job.id = r.data.jobId;
+          jobRef.current = r.data.jobId;
+        } else if (event === 'shape_stages_checkpoint') {
+          const c = ShapeStagesCheckpointEventSchema.safeParse(data);
+          if (!c.success) return;
+          job.done = true;
+          jobRef.current = null;
+          pending = c.data.checkpoint;
         } else if (event === 'shape_stages_done') {
           const d = ShapeStagesDoneSchema.safeParse(data);
           if (!d.success) return;
@@ -317,31 +332,76 @@ export function useObjectShape() {
       }
       if (controller.signal.aborted) return;
       if (!finalized) finalize(offlineSilhouette(target.id, detail));
-      // Background stages: a dropped stream resumes from the last event seen.
-      let lost = false;
-      for (let tries = 0; job.id && !job.done && tries < STAGE_RESUME_TRIES; tries++) {
-        try {
-          const res = await fetch(
-            `/api/vision/shape/stages?job=${encodeURIComponent(job.id)}&from=${job.seq + 1}`,
-            { signal: controller.signal }
-          );
-          // 404: the job is gone (server restarted or job expired), nothing to resume.
-          lost = res.status === 404;
-          if (!res.ok || !res.body) break;
-          await readSseStream(res.body, onEvent);
-        } catch (err) {
-          if (controller.signal.aborted) return;
-          console.warn('[vision] 3D stages stream dropped:', err);
+      /**
+       * Background stages: a dropped stream resumes from the last event seen; a job that ends
+       * neither done nor checkpointed shows « stopped » (`lost` when the server forgot it).
+       * `expectJob`: a resumed slice always has a job, the first answer only when stages are left.
+       */
+      const followDropped = async (expectJob: boolean): Promise<'ok' | 'aborted'> => {
+        let lost = false;
+        for (let tries = 0; job.id && !job.done && tries < STAGE_RESUME_TRIES; tries++) {
+          try {
+            const res = await fetch(
+              `/api/vision/shape/stages?job=${encodeURIComponent(job.id)}&from=${job.seq + 1}`,
+              { signal: controller.signal }
+            );
+            // 404: the job is gone (server restarted or job expired), nothing to resume.
+            lost = res.status === 404;
+            if (!res.ok || !res.body) break;
+            await readSseStream(res.body, onEvent);
+          } catch (err) {
+            if (controller.signal.aborted) return 'aborted';
+            console.warn('[vision] 3D stages stream dropped:', err);
+          }
+          if (controller.signal.aborted) return 'aborted';
         }
-        if (controller.signal.aborted) return;
-      }
-      if (job.id && !job.done) {
-        jobRef.current = null;
-        setState((s) =>
-          s.improve
-            ? { ...s, improve: { ...s.improve, status: 'stopped', cause: lost ? 'lost' : 'error' } }
-            : s
-        );
+        if (!job.done && (job.id || expectJob)) {
+          jobRef.current = null;
+          setState((s) =>
+            s.improve
+              ? {
+                  ...s,
+                  improve: { ...s.improve, status: 'stopped', cause: lost ? 'lost' : 'error' },
+                }
+              : s
+          );
+        }
+        return 'ok';
+      };
+      if ((await followDropped(false)) === 'aborted') return;
+      // Cut by the request limit: each checkpoint is posted back and a new request goes on, until
+      // the loop is done or « Cancel » (which aborts this controller).
+      while (pending) {
+        const checkpoint: Record<string, unknown> = pending;
+        pending = null;
+        Object.assign(job, { id: undefined, seq: -1, done: false });
+        let started = false;
+        for (let tries = 0; !started && tries < STAGE_RESUME_TRIES; tries++) {
+          try {
+            const res = await fetch('/api/vision/shape/stages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ checkpoint, ...(sessionId ? { sessionId } : {}) }),
+              signal: controller.signal,
+            });
+            // A refused checkpoint will not pass on a retry either.
+            if (res.status === 400 || res.status === 413) break;
+            if (!res.ok || !res.body) continue;
+            started = true;
+            await readSseStream(res.body, onEvent);
+          } catch (err) {
+            if (controller.signal.aborted) return;
+            console.warn('[vision] 3D stages resume failed:', err);
+          }
+          if (controller.signal.aborted) return;
+        }
+        if (!started) {
+          setState((s) =>
+            s.improve ? { ...s, improve: { ...s.improve, status: 'stopped', cause: 'error' } } : s
+          );
+          return;
+        }
+        if ((await followDropped(true)) === 'aborted') return;
       }
     },
     [cancelJob]
@@ -381,10 +441,12 @@ export function useObjectShape() {
 
   /**
    * « Cancel » on the improvement chip: stops the background stages on the server (the stages
-   * otherwise wait for Meta with no time limit); the last model shown is kept.
+   * otherwise wait for Meta with no time limit, request after request); the last model is kept.
    */
   const cancelImprove = useCallback(() => {
     cancelJob();
+    // Also stops a resumed slice (the server cancels it when its request closes).
+    abortRef.current?.abort();
     setState((s) =>
       s.improve?.status === 'running'
         ? { ...s, improve: { ...s.improve, status: 'stopped', cause: 'aborted' } }
