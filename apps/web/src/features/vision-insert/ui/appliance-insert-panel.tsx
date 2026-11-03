@@ -179,6 +179,7 @@ export function ApplianceInsertPanel({
             <PlaceMinimap
               value={d.position}
               sector={d.sector}
+              connectionMode={d.connectionMode}
               onPlace={draft.setPosition}
               zones={zones}
               excludeId={draft.id}

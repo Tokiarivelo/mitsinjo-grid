@@ -15,6 +15,7 @@ import {
   DIAGRAM_H,
   DIAGRAM_SECTORS,
   DIAGRAM_W,
+  applianceBranchRoute,
   diagramLayout,
   type Box,
   type DiagramLayout,
@@ -22,7 +23,7 @@ import {
   type Pt,
 } from '../utils/diagram-layout';
 import { toSvgPath } from '../utils/flow-path';
-import { STATUS_BG_CLASS, STATUS_TEXT_CLASS } from '../utils/scene-palette';
+import { STATUS_BG_CLASS, STATUS_HEX, STATUS_TEXT_CLASS, TOKEN_HEX } from '../utils/scene-palette';
 import { NO_LOAD_KW } from '../utils/feeder-tone';
 import { useFeederLabels } from '../hooks/use-feeder-labels';
 import { appliancesPerSector } from '../utils/appliance-markers';
@@ -203,6 +204,83 @@ export function GridDiagram({
                     animate={animate}
                     glow={glow}
                   />
+                );
+              })}
+
+              {/* Inserted appliance branch lines & nodes (PI-T9) */}
+              {model.appliances?.map((appliance, idx) => {
+                const mode = appliance.connectionMode ?? 'branch';
+                const route = applianceBranchRoute(appliance.sector, mode, variant, layout, idx);
+                const b = buildings[appliance.sector];
+                const isCut = Boolean(b?.onFire);
+                const lineState: WireState = isCut
+                  ? 'cut'
+                  : appliance.running && b?.connected
+                    ? b.mode === 'lifeline'
+                      ? 'lifeline'
+                      : 'flow'
+                    : 'idle';
+                const lineFlow = {
+                  from: [route.points[0][0], 0, route.points[0][1]] as [number, number, number],
+                  to: [route.node[0], 0, route.node[1]] as [number, number, number],
+                  active: appliance.running && !isCut,
+                  flowKw: appliance.kwNow,
+                  direction: (appliance.running ? 'forward' : 'idle') as 'forward' | 'idle',
+                  speed: Math.min(2.5, Math.max(0.5, appliance.kwNow / 2)),
+                  color: isCut
+                    ? STATUS_HEX['critical-red']
+                    : appliance.running
+                      ? STATUS_HEX['battery-green']
+                      : TOKEN_HEX.idle,
+                  cut: isCut,
+                };
+
+                return (
+                  <g key={`appliance-branch-${appliance.id}`} data-appliance-branch={appliance.id}>
+                    <FlowWire
+                      points={route.points}
+                      line={lineFlow}
+                      state={lineState}
+                      intensity={appliance.running ? 1 : 0}
+                      colorClass={
+                        STATUS_TEXT_CLASS[
+                          isCut ? 'critical-red' : appliance.running ? 'battery-green' : 'idle'
+                        ]
+                      }
+                      animate={animate}
+                      glow={glow}
+                    />
+                    <g
+                      data-testid={`diagram-appliance-${appliance.id}`}
+                      data-connection-mode={mode}
+                      data-sector={appliance.sector}
+                      className="cursor-pointer"
+                    >
+                      <circle
+                        cx={route.node[0]}
+                        cy={route.node[1]}
+                        r={2.8}
+                        className={cn(
+                          'transition-colors',
+                          isCut
+                            ? 'fill-critical-red stroke-critical-red'
+                            : appliance.running
+                              ? 'fill-energy-cyan stroke-slate-950'
+                              : 'fill-surface-elevated stroke-border'
+                        )}
+                        strokeWidth={1}
+                      />
+                      <circle
+                        cx={route.node[0]}
+                        cy={route.node[1]}
+                        r={1.2}
+                        className={appliance.running ? 'fill-slate-950' : 'fill-text-muted'}
+                      />
+                      <title>
+                        {`${appliance.name} (${appliance.watts} W) · ${mode === 'ems' ? 'EMS' : tSectors(appliance.sector)}`}
+                      </title>
+                    </g>
+                  </g>
                 );
               })}
 

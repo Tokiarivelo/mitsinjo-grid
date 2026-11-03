@@ -24,6 +24,8 @@ export interface ApplianceMarkerSceneModel {
   position: [number, number, number];
   /** Feeder anchor: where the cable link meets the sector building (PP-T3). */
   feeder: [number, number, number];
+  /** Grid connection mode (PI-T8/PI-T9): 'branch' (default) or 'ems'. */
+  connectionMode?: 'branch' | 'ems';
 }
 
 // Ring constants live in placement.ts (PP-T2); re-exported so existing importers keep working.

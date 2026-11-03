@@ -97,8 +97,9 @@ proportions)` (une maison ≈ une maison du village, un frigo ≈ 1 m) ; `footpr
 
 ### I3 Fin
 
-- [ ] **PI-T9 Schéma 2D et mini-carte.** L'objet placé et sa dérivation apparaissent sur la mini-carte (PP-T4) et le schéma 2D
+- [x] **PI-T9 Schéma 2D et mini-carte.** L'objet placé et sa dérivation apparaissent sur la mini-carte (PP-T4) et le schéma 2D
       (une branche sur la ligne du départ, ou depuis l'EMS en mode `ems`).
+      **Done:** `applianceBranchRoute` in `diagram-layout.ts` renders 2D derivation branches and terminal nodes in `GridDiagram` (`topology` and `circuit` views) with electron flow matching appliance active status or cut markers on fire. `PlaceMinimap` renders the Dispatch EMS shelter at `[0, 0, 1]` and draws derivation paths, tap dots, intermediate utility poles, and obstacle-avoidance corner waypoints matching 3D geometry. 27/27 tests green in `grid-diagram.test.tsx` and `place-minimap.test.tsx`.
 - [ ] **PI-T10 Passe qualité.** `/designer-3d` sur des captures (maison, voiture, frigo, panneau, à côté des bâtiments et sur
       une pente) : l'objet doit se lire « du village » (échelle, palette, ombres, cour, poteaux). `/perf-audit` (fps, draw calls),
       `make shots`, scénarios manuels (`06-village.md`, `02-simulation.md`), README (fonctionnalités), `contracts.md`,
