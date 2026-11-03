@@ -109,7 +109,7 @@ proportions)` (une maison ≈ une maison du village, un frigo ≈ 1 m) ; `footpr
 | Poteau dans un bâtiment ou câble à travers un toit              | `tapPoint` évite `siteZones`, poteau d'angle (PI-T6)                   |
 | Cycle d'import (vu en PP-T3)                                    | Nouveaux helpers en modules feuilles, pas d'import de `to-scene-model` |
 | Conflit avec PA-4 (zones en alerte dans la même scène)          | Commencer après la fusion de PA (Depends on)                           |
-| L'utilisateur croit que l'EMS direct change la simulation       | D1-a : étiquette « charge comptée sur : <départ> »                     |
+| L'utilisateur croit que l'EMS direct change la simulation       | D1 : étiquette « charge comptée sur : <départ> »                       |
 
 ## Exit criteria
 
