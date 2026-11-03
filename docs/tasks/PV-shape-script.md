@@ -141,7 +141,7 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
       out. It is announced to screen readers (`aria-live="polite"`), uses i18n en/fr/mg, theme tokens, and fits at 320 px.
       Tests: the hook follows the stage events, a dropped stream resumes from the last stage, and the chip
       reaches its final state on success and on error.
-      **Done:** `shape-jobs.ts` (in-memory job, ordered events with `seq`, 10 min TTL), route streams the job after `shape_result { jobId }`, `GET /api/vision/shape/stages?job&from` resumes, `DELETE` cancels (new request, reselect, new photo); `facadeStageLoop` splits first / background (≤ 3 min); `ImproveChip`. **Deviation:** no manual recipe edit exists in the UI yet, so « an edit cancels the stages » = a new request or reselect cancels the job; jobs live in one server process: after a restart the resume gets 404 and the chip reads « stopped: the server restarted, this model is kept » (cause `lost`, client-side), the last swapped-in model stays.
+      **Done:** `shape-jobs.ts` (in-memory job, ordered events with `seq`, 10 min TTL), route streams the job after `shape_result { jobId }`, `GET /api/vision/shape/stages?job&from` resumes, `DELETE` cancels (new request, reselect, new photo); `facadeStageLoop` splits first / background; `ImproveChip`. **Update 2026-11-03:** no background time limit (user: always wait, « Cancel » on the chip); Vercel cuts a request at 300 s, so the background runs in slices that end with a `shape_stages_checkpoint` the browser posts back (`stage-checkpoint.ts`, `stage-slices.ts`). **Deviation:** no manual recipe edit exists in the UI yet, so « an edit cancels the stages » = a new request or reselect cancels the job; jobs live in one server process: after a restart the resume gets 404 and the chip reads « stopped: the server restarted, this model is kept » (cause `lost`, client-side), the last swapped-in model stays.
 
 ### G4 Every kind of object
 
@@ -190,7 +190,7 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
 
 Global IoU ≥ 0.9 · edge F1 ≥ 0.75 · every opening matched (count exact, centre error ≤ 3 % of width) · ΔE(roof,
 wall) ≥ 10 when the 2D names different materials · frame vs wall ΔE ≥ 15 · designer ≥ 4/5 · ≤ 5 k triangles ·
-first answer ≤ 60 s, background stages finish ≤ 3 min (PG-T18).
+first answer ≤ 60 s, background stages run until done or cancelled, in ≤ 300 s request slices (PG-T18).
 Thatched house acceptance: thatch roof with a rounded eave, clearly different from plastered walls. Two windows
 with a 2 × 4 pane grid and sills, a double door with a glazed top, a stone plinth and two brick chimneys.
 

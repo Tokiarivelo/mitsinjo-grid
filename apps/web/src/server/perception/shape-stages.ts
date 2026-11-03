@@ -69,6 +69,8 @@ export interface StagesResult<S extends string = string> {
   recipe: ObjectRecipe;
   stages: StageResult<S>[];
   overall: { before: number; after: number };
+  /** Where the time ran out: the stage and round to run next (a later call resumes there). */
+  resume?: { stage: S; round: number };
 }
 
 export interface RunStagesOptions<S extends string = string> {
@@ -88,6 +90,10 @@ export interface RunStagesOptions<S extends string = string> {
   onStage?: (result: StageResult<S>, recipe: ObjectRecipe, index: number) => void;
   /** Components the stage may edit beyond its kinds (default all): what the score cannot see stays locked. */
   canEdit?: (c: Component) => boolean;
+  /** Round the first stage starts at (a resumed loop, default 1). */
+  startRound?: number;
+  /** A round starts only with this much of the budget left (else the loop stops to be resumed). */
+  roundReserveMs?: number;
 }
 
 /** Most rounds per stage. */
@@ -200,6 +206,8 @@ export async function runShapeStages<S extends string>({
   onStageStart,
   onStage,
   canEdit = () => true,
+  startRound = 1,
+  roundReserveMs = 0,
 }: RunStagesOptions<S>): Promise<StagesResult<S>> {
   const deadline = now() + budgetMs;
   const first = compileScript(seed);
@@ -213,6 +221,7 @@ export async function runShapeStages<S extends string>({
   const onParentAbort = () => ctrl.abort();
   signal?.addEventListener('abort', onParentAbort, { once: true });
   let outOfTime = false;
+  let resume: StagesResult<S>['resume'];
 
   try {
     for (const [index, stage] of stages.entries()) {
@@ -228,15 +237,17 @@ export async function runShapeStages<S extends string>({
       };
       if (outOfTime || signal?.aborted) {
         result.stop = outOfTime ? 'timeout' : 'skipped';
+        if (outOfTime) resume ??= { stage: stage.id, round: 1 };
       } else if (current.stage >= stage.gate) {
         result.stop = 'gate';
       } else {
         onStageStart?.(stage, index);
-        for (let round = 1; round <= maxRounds; round++) {
+        for (let round = index === 0 ? startRound : 1; round <= maxRounds; round++) {
           const left = deadline - now();
-          if (left <= 0) {
+          if (left <= Math.max(0, roundReserveMs)) {
             outOfTime = true;
             result.stop = 'timeout';
+            resume ??= { stage: stage.id, round };
             break;
           }
           const editable = components
@@ -262,7 +273,11 @@ export async function runShapeStages<S extends string>({
             );
           } catch (err) {
             const timeout = err instanceof Error && err.message === 'timeout';
-            if (timeout) outOfTime = true;
+            if (timeout) {
+              outOfTime = true;
+              // The cut round never answered: a resumed loop asks it again.
+              resume ??= { stage: stage.id, round };
+            }
             result.stop = timeout ? 'timeout' : signal?.aborted ? 'skipped' : 'error';
             break;
           }
@@ -308,6 +323,7 @@ export async function runShapeStages<S extends string>({
     recipe,
     stages: results,
     overall: { before: overallBefore, after: score(recipe, stages[0]?.id as S).overall },
+    ...(resume ? { resume } : {}),
   };
 }
 

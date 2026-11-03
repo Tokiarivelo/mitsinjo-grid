@@ -54,7 +54,7 @@ import { ShapeStageEventSchema, ShapeStagesDoneSchema } from '@/lib/object-shape
 import { parseSseChunk } from '@/lib/sse';
 import { resetJobs } from '@/server/perception/shape-jobs';
 import { POST } from '../route';
-import { DELETE, GET } from '../stages/route';
+import { DELETE, GET, POST as RESUME } from '../stages/route';
 
 const form = () => {
   const f = new FormData();
@@ -150,5 +150,18 @@ describe('GET / DELETE /api/vision/shape/stages (PG-T18)', () => {
     expect((await GET(getReq('job=../etc'))).status).toBe(400);
     expect((await GET(getReq(`job=${'0'.repeat(36)}`))).status).toBe(404);
     expect((await DELETE(getReq(`job=${'0'.repeat(36)}`, 'DELETE'))).status).toBe(404);
+  });
+
+  it('POST resume refuses a bad or oversized checkpoint before any work', async () => {
+    const post = (body: string) =>
+      RESUME(
+        new Request('http://localhost/api/vision/shape/stages', {
+          method: 'POST',
+          body,
+        }) as unknown as NextRequest
+      );
+    expect((await post('not json')).status).toBe(400);
+    expect((await post(JSON.stringify({ checkpoint: { v: 2 } }))).status).toBe(400);
+    expect((await post('x'.repeat(4_100_000))).status).toBe(413);
   });
 });

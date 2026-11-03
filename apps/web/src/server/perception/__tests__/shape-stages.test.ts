@@ -179,6 +179,50 @@ describe('runShapeStages (PG-T16)', () => {
     expect((await cancelled).stages.map((s) => s.stop)).toEqual(['skipped', 'skipped']);
   });
 
+  it('cut by the time: reports the stage and round to resume; a resumed run starts there', async () => {
+    let t = 0;
+    const res = await runShapeStages({
+      seed,
+      stages: STAGES,
+      score,
+      budgetMs: 100,
+      roundReserveMs: 50,
+      now: () => t,
+      propose: async ({ stage }) => {
+        t += 60; // the first round uses the time a second one would need
+        return stage.id === 'massing' ? [{ op: 'set', id: 'wall', size: [0.7, 0.6, 0.6] }] : [];
+      },
+    });
+    expect(res.stages[0]!.kept).toBe(1);
+    expect(res.resume).toEqual({ stage: 'massing', round: 2 });
+    const rounds: number[] = [];
+    const again = await runShapeStages({
+      seed: recipeToScript(res.recipe),
+      stages: STAGES,
+      score,
+      budgetMs: 5_000,
+      startRound: res.resume!.round,
+      propose: async ({ stage, round }) => {
+        if (stage.id === 'massing') rounds.push(round);
+        return stage.id === 'massing' ? [{ op: 'set', id: 'wall', size: [0.8, 0.6, 0.6] }] : [];
+      },
+    });
+    expect(rounds[0]).toBe(2);
+    expect(again.resume).toBeUndefined();
+    expect(find(again.recipe, 'wall').size[0]).toBeCloseTo(0.8, 9);
+  });
+
+  it('a round cut at the deadline is asked again on resume', async () => {
+    const res = await runShapeStages({
+      seed,
+      stages: STAGES,
+      score,
+      budgetMs: 30,
+      propose: () => new Promise(() => {}),
+    });
+    expect(res.resume).toEqual({ stage: 'massing', round: 1 });
+  });
+
   it('a failing proposer ends its stage; the next stage still runs', async () => {
     const res = await runShapeStages({
       seed,

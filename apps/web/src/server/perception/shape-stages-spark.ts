@@ -1,3 +1,4 @@
+import type { StageLoopContext } from './stage-checkpoint';
 import sharp from 'sharp';
 import type { ObjectRecipe, ShapeStageEvent, ShapeStageId } from '@/lib/object-shape';
 import { recipeToScript } from '@/lib/shape-script';
@@ -157,16 +158,37 @@ export function sparkStageProposer(input: SparkStageInput): Proposer<ElevationSt
 /** One stage event of a staged loop, as streamed (`shape_stage`, without the job id). */
 export type StageProgress = Omit<ShapeStageEvent, 'jobId'>;
 
+/** Where a background run stopped for time: the stages still to run, from `round` of the first. */
+export interface StagesResume {
+  stages: ShapeStageId[];
+  round: number;
+  /** The model so far (patches kept before the cut). */
+  recipe: ObjectRecipe;
+}
+
 /** The stages left after the first answer, to run in the background (PG-T18). */
 export interface StagesContinuation {
   total: number;
   /** Stage ids still to run. */
   stages: ShapeStageId[];
+  /** Every stage id of the loop, in order (progress positions, a resumed loop's stage list). */
+  all: ShapeStageId[];
+  /** What the loop is built from, to resume it in another request (set by the pipeline). */
+  context?: StageLoopContext;
   run(opts: {
     budgetMs: number;
     signal?: AbortSignal;
     onProgress: (e: StageProgress) => void;
-  }): Promise<{ recipe: ObjectRecipe; cause?: 'timeout' | 'error' | 'aborted' }>;
+    /** Round the first stage starts at (a resumed loop). */
+    startRound?: number;
+    /** A round starts only with this much budget left; else the run stops with `resume`. */
+    roundReserveMs?: number;
+  }): Promise<{
+    recipe: ObjectRecipe;
+    cause?: 'timeout' | 'error' | 'aborted';
+    /** Set when the budget ran out: run these later (`resumeStages`) instead of stopping. */
+    resume?: StagesResume;
+  }>;
 }
 
 interface LoopTiming {
@@ -174,6 +196,22 @@ interface LoopTiming {
   firstBudgetMs: number;
   signal?: AbortSignal;
   onProgress?: (e: StageProgress) => void;
+  /** Full stage order (a resumed loop runs a tail of it): progress positions and `total`. */
+  order?: ReadonlyArray<ShapeStageId>;
+  /** A resumed loop (checkpoint): the full stage list it was built with and the stages left. */
+  resumeAt?: { all: ReadonlyArray<ShapeStageId>; stages: ReadonlyArray<ShapeStageId> };
+}
+
+/** The loop's stages, restricted to the ones left when it resumes from a checkpoint. */
+function resumedStages<S extends ShapeStageId>(
+  looped: { stages: ReadonlyArray<StageSpec<S>> },
+  resumeAt: LoopTiming['resumeAt']
+): Pick<StagedLoopInput<S>, 'stages' | 'order'> {
+  if (!resumeAt) return { stages: looped.stages };
+  return {
+    stages: looped.stages.filter((st) => resumeAt.stages.includes(st.id)),
+    order: resumeAt.all,
+  };
 }
 
 export interface StagedLoopInput<S extends ShapeStageId> extends LoopTiming {
@@ -192,13 +230,14 @@ export interface StagedLoopInput<S extends ShapeStageId> extends LoopTiming {
 export async function stagedLoop<S extends ShapeStageId>(
   input: StagedLoopInput<S>
 ): Promise<{ recipe: ObjectRecipe; rest: StagesContinuation | null }> {
-  const total = input.stages.length;
+  const order: ReadonlyArray<ShapeStageId> = input.order ?? input.stages.map((st) => st.id);
+  const total = order.length;
   const keep = (r: ObjectRecipe): ObjectRecipe => ({
     ...r,
     ...(input.recipe.swatches ? { swatches: input.recipe.swatches } : {}),
     ...(input.recipe.dimStatus ? { dimStatus: input.recipe.dimStatus } : {}),
   });
-  const position = (id: S) => input.stages.findIndex((st) => st.id === id) + 1;
+  const position = (id: S) => order.indexOf(id) + 1;
   const stream = (phase: StageProgress['phase'], emit?: (e: StageProgress) => void) => ({
     onStageStart: (st: { id: S }) =>
       emit?.({ phase, index: position(st.id), total, stage: st.id, state: 'running' }),
@@ -252,7 +291,8 @@ export async function stagedLoop<S extends ShapeStageId>(
     rest: {
       total,
       stages: remaining.map((st) => st.id),
-      run: async ({ budgetMs, signal, onProgress }) => {
+      all: [...order],
+      run: async ({ budgetMs, signal, onProgress, startRound, roundReserveMs }) => {
         try {
           const res = await runShapeStages({
             ...common,
@@ -260,14 +300,28 @@ export async function stagedLoop<S extends ShapeStageId>(
             stages: remaining,
             budgetMs,
             ...(signal ? { signal } : {}),
+            ...(startRound ? { startRound } : {}),
+            ...(roundReserveMs ? { roundReserveMs } : {}),
             ...stream('background', onProgress),
           });
-          const cause = signal?.aborted
-            ? ('aborted' as const)
-            : res.stages.some((st) => st.stop === 'timeout')
-              ? ('timeout' as const)
-              : undefined;
-          return { recipe: keep(res.recipe), ...(cause ? { cause } : {}) };
+          const recipe = keep(res.recipe);
+          if (signal?.aborted) return { recipe, cause: 'aborted' as const };
+          // Out of time: hand back where to go on, nothing is lost (the request limit, not a failure).
+          if (res.resume) {
+            const from = remaining.findIndex((st) => st.id === res.resume!.stage);
+            return {
+              recipe,
+              resume: {
+                stages: remaining.slice(Math.max(0, from)).map((st) => st.id),
+                round: res.resume.round,
+                recipe,
+              },
+            };
+          }
+          const cause = res.stages.some((st) => st.stop === 'timeout')
+            ? ('timeout' as const)
+            : undefined;
+          return { recipe, ...(cause ? { cause } : {}) };
         } catch (err) {
           console.warn(
             '[vision] 3D background stages failed:',
@@ -297,9 +351,11 @@ export function facadeStageLoop(input: FacadeLoopInput) {
   const drawing = lazyDrawing(input.drawing);
   const propose: Proposer<ElevationStage | FinalStage> = async (ctx) =>
     sparkStageProposer({ ...input, drawing: await drawing() })(ctx);
+  const looped = withFinalStage(HOUSE_STAGES, houseStageScorer(input.front, input.roofRings));
   return stagedLoop({
     ...input,
-    ...withFinalStage(HOUSE_STAGES, houseStageScorer(input.front, input.roofRings)),
+    ...looped,
+    ...resumedStages(looped, input.resumeAt),
     propose,
     canEdit: houseCanEdit,
   });
@@ -330,8 +386,10 @@ export function viewStageLoop(input: ViewLoopInput) {
   if (!stages?.length) return null;
   const views = { front: input.views.front, side: input.views.side };
   const first = scoreViews(input.recipe, views, stages);
-  // Only the body and the stages with drawn parts can be judged.
-  const judged = stages.filter((st) => st.id === 'body' || first.measured.includes(st.id));
+  // Only the body and the stages with drawn parts can be judged (a resumed loop keeps its list).
+  const judged = input.resumeAt
+    ? stages.filter((st) => input.resumeAt!.all.includes(st.id))
+    : stages.filter((st) => st.id === 'body' || first.measured.includes(st.id));
   if (!judged.length) return null;
   const looped = withFinalStage(judged, viewStageScorer(views, judged));
   const propose: Proposer<ViewStage | FinalStage> = async (ctx) => {
@@ -355,7 +413,7 @@ export function viewStageLoop(input: ViewLoopInput) {
     );
     return result.ops ?? [];
   };
-  return stagedLoop({ ...input, ...looped, propose });
+  return stagedLoop({ ...input, ...looped, ...resumedStages(looped, input.resumeAt), propose });
 }
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, Number.isFinite(v) ? v : 0));
