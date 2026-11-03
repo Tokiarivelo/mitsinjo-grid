@@ -16,6 +16,7 @@ import { nearestSector } from '@/features/microgrid-3d/utils/placement';
 import type { ApplianceDraftState } from '../hooks/use-appliance-draft';
 import { ApplianceCurveChart } from './appliance-curve-chart';
 import { PlaceMinimap } from './place-minimap';
+import { useSiteZones } from '@/features/microgrid-3d/hooks/use-site-zones';
 import {
   clampQuantity,
   clampWatts,
@@ -56,6 +57,7 @@ export function ApplianceInsertPanel({
   const id = useId();
   const [mapOpen, setMapOpen] = useState(false);
   const { draft: d, source, range, appliance, summary, curve } = draft;
+  const zones = useSiteZones();
   const wattsOk = Number.isFinite(d.watts) && d.watts >= range.minW && d.watts <= range.maxW;
   const nearest = d.position ? nearestSector(d.position) : null;
 
@@ -166,7 +168,13 @@ export function ApplianceInsertPanel({
             )}
           </div>
           {mapOpen && (
-            <PlaceMinimap value={d.position} sector={d.sector} onPlace={draft.setPosition} />
+            <PlaceMinimap
+              value={d.position}
+              sector={d.sector}
+              onPlace={draft.setPosition}
+              zones={zones}
+              excludeId={draft.id}
+            />
           )}
         </div>
         <label className="flex flex-col gap-1 text-xs text-text-secondary">

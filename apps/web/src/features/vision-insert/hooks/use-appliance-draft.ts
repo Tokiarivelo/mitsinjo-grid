@@ -13,8 +13,10 @@ import type { ApplianceDetection } from '@/lib/vision';
 import {
   clampToTerrain,
   nearestSector,
+  PLACEMENT_CLEARANCE,
   snapAwayFromBuildings,
 } from '@/features/microgrid-3d/utils/placement';
+import { readSiteZones } from '@/features/microgrid-3d/hooks/use-site-zones';
 import {
   aiDraft,
   clampWatts,
@@ -75,15 +77,21 @@ export function useApplianceDraft(
     (v: SectorId) => edit((d) => ({ ...d, sector: v, feederAuto: false })),
     [edit]
   );
-  /** Free placement (PP-T4): normalized onto the terrain, feeder follows unless overridden. */
+  /**
+   * Free placement (PP-T4, PI-T3): normalized onto the terrain and out of buildings, paths, pond and
+   * other placed objects (this line's own zone excluded); feeder follows unless overridden.
+   */
   const setPosition = useCallback(
     (v: AppliancePosition | null) =>
       edit((d) => {
         if (!v) return { ...d, position: null };
-        const position = snapAwayFromBuildings(clampToTerrain(v));
+        const position = snapAwayFromBuildings(clampToTerrain(v), PLACEMENT_CLEARANCE, {
+          zones: readSiteZones(),
+          excludeId: id,
+        });
         return { ...d, position, sector: d.feederAuto ? nearestSector(position) : d.sector };
       }),
-    [edit]
+    [edit, id]
   );
   /** Back to the automatic feeder (nearest to the placed position, when set). */
   const useNearestFeeder = useCallback(
@@ -113,6 +121,8 @@ export function useApplianceDraft(
   const curve = useMemo(() => (appliance ? applianceProfileKw(appliance) : null), [appliance]);
 
   return {
+    /** Engine line id of this draft (its own site zone is excluded while placing). */
+    id,
     draft: current.draft,
     source: current.source,
     range: wattsRange(current.draft.category),

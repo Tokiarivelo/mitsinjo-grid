@@ -1021,6 +1021,7 @@
       "feederAuto": "Auto",
       "minimapLabel": "Sarintany",
       "minimapHelp": "Zana-tsipika hamindra, Enter hametrahana.",
+      "minimapBlocked": "Toerana efa misy (trano, lalana, dobo na zavatra): hafindra any amin'ny sisiny malalaka akaiky indrindra izy.",
       "insertWatts": "Hery isaky ny iray (W)",
       "insertWattsRange": "Fetran'ny katalaogy: {min}–{max} W",
       "insertQuantity": "Isa",

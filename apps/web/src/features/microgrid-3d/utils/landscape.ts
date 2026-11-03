@@ -114,33 +114,67 @@ export const VILLAGE_PATHS: [number, number][][] = [
 
 export const PATH_HALF_WIDTH = 0.8;
 
-function distToSegment(px: number, pz: number, a: [number, number], b: [number, number]): number {
+/** Closest point to (px, pz) on segment a→b. */
+function projectOnSegment(
+  px: number,
+  pz: number,
+  a: [number, number],
+  b: [number, number]
+): [number, number] {
   const dx = b[0] - a[0];
   const dz = b[1] - a[1];
   const len2 = dx * dx + dz * dz;
   const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - a[0]) * dx + (pz - a[1]) * dz) / len2));
-  return Math.hypot(px - (a[0] + t * dx), pz - (a[1] + t * dz));
+  return [a[0] + t * dx, a[1] + t * dz];
 }
 
-/** Distance from (x, z) to the nearest path centre line. */
-export function pathDistance(x: number, z: number, paths = VILLAGE_PATHS): number {
+export interface ClosestPathSegment {
+  distance: number;
+  closestPoint: [number, number];
+  segment: [[number, number], [number, number]];
+}
+
+/** Finds the nearest point and segment among village paths. */
+export function closestPathSegment(
+  x: number,
+  z: number,
+  paths = VILLAGE_PATHS
+): ClosestPathSegment | null {
   let best = Infinity;
+  let bestPoint: [number, number] = [0, 0];
+  let bestSeg: [[number, number], [number, number]] = [
+    [0, 0],
+    [0, 0],
+  ];
   for (const line of paths) {
     for (let i = 0; i < line.length - 1; i++) {
       const a = line[i];
       const b = line[i + 1];
       if (!a || !b) continue;
-      const d = distToSegment(x, z, a, b);
-      if (d < best) best = d;
+      const [cx, cz] = projectOnSegment(x, z, a, b);
+      const d = Math.hypot(x - cx, z - cz);
+      if (d < best) {
+        best = d;
+        bestPoint = [cx, cz];
+        bestSeg = [a, b];
+      }
     }
   }
-  return best;
+  if (!Number.isFinite(best)) return null;
+  return { distance: best, closestPoint: bestPoint, segment: bestSeg };
+}
+
+/** Distance from (x, z) to the nearest path centre line. */
+export function pathDistance(x: number, z: number, paths = VILLAGE_PATHS): number {
+  const hit = closestPathSegment(x, z, paths);
+  return hit ? hit.distance : Infinity;
 }
 
 export interface KeepOutZone {
   x: number;
   z: number;
   r: number;
+  id?: string;
 }
 
 /** Clearing radius around each sector building (no trees inside). */
@@ -159,20 +193,28 @@ export const KEEP_OUT_ZONES: KeepOutZone[] = [
     x: SECTOR_POSITIONS[id][0],
     z: SECTOR_POSITIONS[id][2],
     r: SECTOR_KEEP_OUT_R[id],
+    id: `sector:${id}`,
   })),
-  { x: SOLAR_POSITION[0], z: SOLAR_POSITION[2], r: 6.6 },
-  { x: BATTERY_POSITION[0], z: BATTERY_POSITION[2], r: 3.4 },
-  { x: BUS_POSITION[0], z: BUS_POSITION[2], r: 3.2 },
-  { x: POND_CENTER[0], z: POND_CENTER[1], r: POND_RADIUS + 0.8 },
+  { x: SOLAR_POSITION[0], z: SOLAR_POSITION[2], r: 6.6, id: 'solar' },
+  { x: BATTERY_POSITION[0], z: BATTERY_POSITION[2], r: 3.4, id: 'battery' },
+  { x: BUS_POSITION[0], z: BUS_POSITION[2], r: 3.2, id: 'bus' },
+  { x: POND_CENTER[0], z: POND_CENTER[1], r: POND_RADIUS + 0.8, id: 'pond' },
 ];
 
 /** True when nothing may be placed at (x, z): keep-out zone, path, lake or off-map. */
-export function isBlocked(x: number, z: number, margin = 0): boolean {
+export function isBlocked(
+  x: number,
+  z: number,
+  margin = 0,
+  zones: readonly KeepOutZone[] = KEEP_OUT_ZONES,
+  excludeId?: string
+): boolean {
   if (Math.hypot(x, z) > TERRAIN_RADIUS - 4) return true;
-  for (const k of KEEP_OUT_ZONES) {
-    if (Math.hypot(x - k.x, z - k.z) < k.r + margin) return true;
+  for (const k of zones) {
+    if (excludeId && k.id === excludeId) continue;
+    if (Math.hypot(x - k.x, z - k.z) < k.r + margin - 1e-9) return true;
   }
-  if (pathDistance(x, z) < PATH_HALF_WIDTH + 0.5 + margin) return true;
+  if (pathDistance(x, z) < PATH_HALF_WIDTH + 0.5 + margin - 1e-9) return true;
   if (Math.hypot(x - LAKE_CENTER[0], z - LAKE_CENTER[1]) < LAKE_RADIUS * 0.95) return true;
   return false;
 }

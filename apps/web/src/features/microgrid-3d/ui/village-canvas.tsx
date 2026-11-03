@@ -29,8 +29,10 @@ import { applyOvercast, skyPalette } from '../utils/sky-palette';
 import { WEATHER_ATMOSPHERE } from '../utils/weather-atmosphere';
 import { SUN_AZIMUTH_RAD } from '../utils/landscape';
 import type { SectorStateOverride } from '../utils/placed-models-geometry';
+import { usePlacedClearings } from '../hooks/use-site-zones';
 import { SceneStatsProbe } from './scene-stats-probe';
 import { VillageTerrain } from './terrain';
+import { PlacedYards } from './placed-yards';
 import { SolarArray } from './solar-array';
 import { BatteryUnit } from './battery-unit';
 import { DispatchControllerUnit } from './dispatch-controller-unit';
@@ -148,6 +150,8 @@ export function VillageCanvas({
     }
     return map;
   }, [model.buildings]);
+
+  const clearings = usePlacedClearings(model.appliances);
 
   const sectorNames = Object.fromEntries(SECTOR_IDS.map((id) => [id, tSectors(id)])) as Record<
     SectorId,
@@ -299,8 +303,9 @@ export function VillageCanvas({
         </Suspense>
 
         <VillageTerrain quality={quality} />
+        <PlacedYards clearings={clearings} />
         <Suspense fallback={null}>
-          <Vegetation quality={quality} />
+          <Vegetation quality={quality} clearings={clearings} />
           <Vehicles />
           {/* Inside the casters' Suspense so the first bake includes the loaded trees. */}
           {high && <ShadowBake bakeKey={shadowBakeKey} />}
