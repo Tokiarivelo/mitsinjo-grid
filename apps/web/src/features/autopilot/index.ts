@@ -13,3 +13,4 @@ export {
   type AutopilotDecision,
   type AutopilotEntry,
 } from './use-ai-dispatch';
+export { useAutonomousDispatch } from './use-autonomous-dispatch';

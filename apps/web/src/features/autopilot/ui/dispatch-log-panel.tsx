@@ -19,6 +19,8 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { SectorIcon } from '@/components/ui/sector-icon';
 import { useTranslations } from '@/lib/i18n';
 import { fmtHour, fmtKwh, fmtPct } from '@/lib/format';
+import { dispatchLogToCsv, entrySavedKwh, entrySector } from '@/lib/dispatch-log';
+import { downloadJsonFile, downloadTextFile } from '@/lib/export';
 import { cn } from '@/lib/utils';
 import { useSimulationStore } from '@/stores';
 
@@ -30,6 +32,31 @@ export interface DispatchLogPanelProps {
 
 type SeverityFilter = 'all' | IncidentSeverity;
 type TypeFilter = 'all' | 'incident' | 'action';
+
+const TYPE_FILTERS = [
+  { id: 'all', labelKey: 'filterAll' },
+  { id: 'incident', labelKey: 'filterIncidents' },
+  { id: 'action', labelKey: 'filterActions' },
+] as const satisfies readonly { id: TypeFilter; labelKey: string }[];
+
+const SEVERITY_LABEL_KEY = {
+  critical: 'filterCritical',
+  warning: 'filterWarning',
+  info: 'filterInfo',
+} as const satisfies Record<IncidentSeverity, string>;
+
+const SEVERITY_FILTERS = [
+  { id: 'all', labelKey: 'filterAll' },
+  ...(['critical', 'warning', 'info'] as const).map((id) => ({
+    id,
+    labelKey: SEVERITY_LABEL_KEY[id],
+  })),
+] as const satisfies readonly { id: SeverityFilter; labelKey: string }[];
+
+const FILTER_BTN =
+  'px-2 min-h-[32px] rounded-xs text-[11px] font-sans font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-energy-cyan';
+const FILTER_BTN_ON = 'bg-surface-elevated text-text-primary font-semibold shadow-xs';
+const FILTER_BTN_OFF = 'text-text-muted hover:text-text-primary';
 
 export function DispatchLogPanel({
   compact = false,
@@ -62,10 +89,7 @@ export function DispatchLogPanel({
       if (typeFilter === 'action' && !entry.action) return false;
 
       // Sector filter
-      if (sectorFilter !== 'all') {
-        const sector = entry.incident?.sector ?? entry.action?.sector;
-        if (sector !== sectorFilter) return false;
-      }
+      if (sectorFilter !== 'all' && entrySector(entry) !== sectorFilter) return false;
 
       return true;
     });
@@ -74,82 +98,17 @@ export function DispatchLogPanel({
   const handleEntryClick = (entry: DispatchLogEntry) => {
     setTimeIndex(entry.hour);
     setDayIndex(entry.day);
-    const targetSector = entry.incident?.sector ?? entry.action?.sector;
+    const targetSector = entrySector(entry);
     if (targetSector) {
       selectSector(targetSector);
     }
     onSelectEntry?.(entry);
   };
 
-  const handleExportJson = () => {
-    const dataStr =
-      'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(dispatchLog, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `mitsinjo-dispatch-log-${Date.now()}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
-
-  const handleExportCsv = () => {
-    const headers = [
-      'id',
-      'day',
-      'hour',
-      'mode',
-      'origin',
-      'type',
-      'severity',
-      'kind',
-      'sector',
-      'unserved_before_kwh',
-      'unserved_after_kwh',
-      'critical_unserved_before_kwh',
-      'critical_unserved_after_kwh',
-      'soc_before_pct',
-      'soc_after_pct',
-      'narration',
-      'hash',
-    ];
-
-    const rows = dispatchLog.map((e) => {
-      const type = e.action ? 'action' : 'incident';
-      const severity = e.incident?.severity ?? '';
-      const kind = e.action ? e.action.kind : e.incident ? e.incident.kind : '';
-      const sector = e.action?.sector ?? e.incident?.sector ?? '';
-      const narration = (e.narration?.text ?? '').replace(/"/g, '""');
-
-      return [
-        e.id,
-        e.day,
-        e.hour,
-        e.mode,
-        e.origin,
-        type,
-        severity,
-        kind,
-        sector,
-        e.before?.unservedKwh ?? '',
-        e.after?.unservedKwh ?? '',
-        e.before?.criticalUnservedKwh ?? '',
-        e.after?.criticalUnservedKwh ?? '',
-        e.before?.socEndPct ?? '',
-        e.after?.socEndPct ?? '',
-        `"${narration}"`,
-        e.hash,
-      ].join(',');
-    });
-
-    const csvContent =
-      'data:text/csv;charset=utf-8,' + encodeURIComponent([headers.join(','), ...rows].join('\n'));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', csvContent);
-    downloadAnchor.setAttribute('download', `mitsinjo-dispatch-log-${Date.now()}.csv`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
+  const fileStem = () => `mitsinjo-dispatch-log-${Date.now()}`;
+  const handleExportJson = () => downloadJsonFile(`${fileStem()}.json`, dispatchLog);
+  const handleExportCsv = () =>
+    downloadTextFile(`${fileStem()}.csv`, dispatchLogToCsv(dispatchLog), 'text/csv');
 
   return (
     <div
@@ -209,49 +168,39 @@ export function DispatchLogPanel({
           </span>
 
           {/* Type filter */}
-          <div className="flex items-center gap-0.5 rounded-control-sm bg-surface border border-border p-0.5">
-            {(['all', 'incident', 'action'] as const).map((type) => (
+          <div
+            role="group"
+            aria-label={t('filterType')}
+            className="flex items-center gap-0.5 rounded-control-sm bg-surface border border-border p-0.5"
+          >
+            {TYPE_FILTERS.map((f) => (
               <button
-                key={type}
+                key={f.id}
                 type="button"
-                onClick={() => setTypeFilter(type)}
-                className={cn(
-                  'px-2 py-0.5 rounded-xs text-[11px] font-sans font-medium transition-colors cursor-pointer',
-                  typeFilter === type
-                    ? 'bg-surface-elevated text-text-primary font-semibold shadow-xs'
-                    : 'text-text-muted hover:text-text-primary'
-                )}
+                aria-pressed={typeFilter === f.id}
+                onClick={() => setTypeFilter(f.id)}
+                className={cn(FILTER_BTN, typeFilter === f.id ? FILTER_BTN_ON : FILTER_BTN_OFF)}
               >
-                {type === 'all'
-                  ? t('filterAll')
-                  : type === 'incident'
-                    ? t('filterIncidents')
-                    : t('filterActions')}
+                {t(f.labelKey)}
               </button>
             ))}
           </div>
 
           {/* Severity filter */}
-          <div className="flex items-center gap-0.5 rounded-control-sm bg-surface border border-border p-0.5">
-            {(['all', 'critical', 'warning', 'info'] as const).map((sev) => (
+          <div
+            role="group"
+            aria-label={t('filterSeverity')}
+            className="flex items-center gap-0.5 rounded-control-sm bg-surface border border-border p-0.5"
+          >
+            {SEVERITY_FILTERS.map((f) => (
               <button
-                key={sev}
+                key={f.id}
                 type="button"
-                onClick={() => setSeverityFilter(sev)}
-                className={cn(
-                  'px-2 py-0.5 rounded-xs text-[11px] font-sans font-medium transition-colors cursor-pointer',
-                  severityFilter === sev
-                    ? 'bg-surface-elevated text-text-primary font-semibold shadow-xs'
-                    : 'text-text-muted hover:text-text-primary'
-                )}
+                aria-pressed={severityFilter === f.id}
+                onClick={() => setSeverityFilter(f.id)}
+                className={cn(FILTER_BTN, severityFilter === f.id ? FILTER_BTN_ON : FILTER_BTN_OFF)}
               >
-                {sev === 'all'
-                  ? t('filterAll')
-                  : sev === 'critical'
-                    ? t('filterCritical')
-                    : sev === 'warning'
-                      ? t('filterWarning')
-                      : t('filterInfo')}
+                {t(f.labelKey)}
               </button>
             ))}
           </div>
@@ -260,10 +209,10 @@ export function DispatchLogPanel({
           <select
             value={sectorFilter}
             onChange={(e) => setSectorFilter(e.target.value)}
-            aria-label={t('filterAll')}
-            className="h-6 px-1.5 rounded-xs bg-surface border border-border text-[11px] font-sans text-text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-energy-cyan cursor-pointer"
+            aria-label={t('filterSector')}
+            className="min-h-[32px] px-1.5 rounded-xs bg-surface border border-border text-[11px] font-sans text-text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-energy-cyan cursor-pointer"
           >
-            <option value="all">{t('filterAll')} (secteurs)</option>
+            <option value="all">{t('allSectors')}</option>
             {SECTOR_IDS.map((sId) => (
               <option key={sId} value={sId}>
                 {tSectors(sId)}
@@ -285,13 +234,9 @@ export function DispatchLogPanel({
           filteredEntries.map((entry) => {
             const isIncident = Boolean(entry.incident);
             const isAction = Boolean(entry.action);
-            const sector = entry.incident?.sector ?? entry.action?.sector;
-            const severity = entry.incident?.severity ?? (isAction ? 'info' : 'info');
-
-            const savedKwh =
-              entry.before && entry.after
-                ? Math.max(0, entry.before.unservedKwh - entry.after.unservedKwh)
-                : 0;
+            const sector = entrySector(entry);
+            const severity = entry.incident?.severity ?? 'info';
+            const savedKwh = entrySavedKwh(entry);
 
             return (
               <div
@@ -356,11 +301,7 @@ export function DispatchLogPanel({
                         ) : (
                           <Info className="h-2.5 w-2.5" aria-hidden="true" />
                         )}
-                        <span>
-                          {t(
-                            `filter${severity.charAt(0).toUpperCase() + severity.slice(1)}` as never
-                          )}
-                        </span>
+                        <span>{t(SEVERITY_LABEL_KEY[severity])}</span>
                       </span>
                     )}
 
@@ -437,12 +378,16 @@ export function DispatchLogPanel({
                     {entry.before && entry.after ? (
                       <div className="grid grid-cols-2 gap-2 text-text-secondary">
                         <div className="flex flex-col">
-                          <span className="text-[10px] text-text-muted">Before:</span>
-                          <span>Unserved: {fmtKwh(entry.before.unservedKwh)}</span>
-                          <span>SoC: {fmtPct(entry.before.socEndPct, 0)}</span>
+                          <span className="text-[10px] text-text-muted">{t('before')}</span>
+                          <span>
+                            {t('unserved')}: {fmtKwh(entry.before.unservedKwh)}
+                          </span>
+                          <span>
+                            {t('soc')}: {fmtPct(entry.before.socEndPct, 0)}
+                          </span>
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-[10px] text-text-muted">After:</span>
+                          <span className="text-[10px] text-text-muted">{t('after')}</span>
                           <span
                             className={
                               entry.after.unservedKwh < entry.before.unservedKwh
@@ -450,9 +395,11 @@ export function DispatchLogPanel({
                                 : ''
                             }
                           >
-                            Unserved: {fmtKwh(entry.after.unservedKwh)}
+                            {t('unserved')}: {fmtKwh(entry.after.unservedKwh)}
                           </span>
-                          <span>SoC: {fmtPct(entry.after.socEndPct, 0)}</span>
+                          <span>
+                            {t('soc')}: {fmtPct(entry.after.socEndPct, 0)}
+                          </span>
                         </div>
                       </div>
                     ) : entry.incident?.evidence ? (

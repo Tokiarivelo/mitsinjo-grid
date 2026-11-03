@@ -2,11 +2,13 @@ import {
   AutoActionSchema,
   DEFAULT_CONSTITUTION,
   checkConstitution,
+  detectIncidents,
   dispatchLogHash,
   type AutoAction,
   type ConstitutionRule,
   type DispatchLogEntry,
   type DispatchSnapshot,
+  type Incident,
   type InputPatch,
   type SectorId,
   type SimulationInput,
@@ -104,4 +106,84 @@ export function operatorLogEntry(args: {
     after: resultSnapshot(args.after),
     ...(reason ? { narration: { text: reason, source: 'llm' as const } } : {}),
   });
+}
+
+/** Sector a log line is about (its incident's, else its action's). */
+export function entrySector(entry: DispatchLogEntry): SectorId | undefined {
+  return entry.incident?.sector ?? entry.action?.sector;
+}
+
+/** Unserved energy the action avoided, from its engine before/after figures (0 when none). */
+export function entrySavedKwh(entry: DispatchLogEntry): number {
+  if (!entry.before || !entry.after) return 0;
+  return Math.max(0, entry.before.unservedKwh - entry.after.unservedKwh);
+}
+
+const CSV_HEADERS = [
+  'id',
+  'day',
+  'hour',
+  'mode',
+  'origin',
+  'type',
+  'severity',
+  'kind',
+  'sector',
+  'unserved_before_kwh',
+  'unserved_after_kwh',
+  'critical_unserved_before_kwh',
+  'critical_unserved_after_kwh',
+  'soc_before_pct',
+  'soc_after_pct',
+  'narration',
+  'hash',
+] as const;
+
+/** RFC 4180 cell: quoted when it holds a comma, quote or line break. */
+function csvCell(value: string | number | undefined): string {
+  const s = value === undefined ? '' : String(value);
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** Event log as CSV (one row per line, engine figures as raw numbers). */
+export function dispatchLogToCsv(entries: readonly DispatchLogEntry[]): string {
+  const rows = entries.map((e) =>
+    [
+      e.id,
+      e.day,
+      e.hour,
+      e.mode,
+      e.origin,
+      e.action ? 'action' : 'incident',
+      e.incident?.severity,
+      e.action?.kind ?? e.incident?.kind,
+      entrySector(e),
+      e.before?.unservedKwh,
+      e.after?.unservedKwh,
+      e.before?.criticalUnservedKwh,
+      e.after?.criticalUnservedKwh,
+      e.before?.socEndPct,
+      e.after?.socEndPct,
+      e.narration?.text,
+      e.hash,
+    ]
+      .map(csvCell)
+      .join(',')
+  );
+  return [CSV_HEADERS.join(','), ...rows].join('\n');
+}
+
+/** Default look-ahead (h) of the critical-alert detectors shown in banners and 3D. */
+export const ALERT_LOOKAHEAD_H = 3;
+
+/** Engine `critical` incidents tied to a sector at this hour (banner, toasts, 3D ring: PA-T4c). */
+export function criticalSectorIncidents(
+  input: SimulationInput,
+  result: SimulationResult,
+  hour: number,
+  day = 0
+): (Incident & { sector: SectorId })[] {
+  return detectIncidents(input, result, hour, ALERT_LOOKAHEAD_H, day).filter(
+    (i): i is Incident & { sector: SectorId } => i.severity === 'critical' && Boolean(i.sector)
+  );
 }

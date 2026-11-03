@@ -1118,7 +1118,14 @@
         "solar_surplus": "Surplus solaire",
         "meter_anomaly": "Anomalie compteur",
         "lifeline_shortfall": "Déficit survie"
-      }
+      },
+      "before": "Avant",
+      "after": "Après",
+      "allSectors": "Tous les secteurs",
+      "filterSector": "Filtrer par secteur",
+      "filterType": "Filtrer par type",
+      "filterSeverity": "Filtrer par gravité",
+      "aiBadge": "IA"
     }
   },
   "copilot": {

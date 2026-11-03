@@ -5,6 +5,7 @@ import { Canvas } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
 import { SECTOR_IDS, type Priority, type SectorId } from '@mitsinjo/engine';
 import { useTranslations } from '@/lib/i18n';
+import { useSimulationStore } from '@/stores';
 import { fmtKw } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type {
@@ -117,6 +118,8 @@ export function VillageCanvas({
   const tPriorities = useTranslations('priorities');
   const tSim = useTranslations('features.simulation');
   const tDiagram = useTranslations('features.gridDiagram');
+  const tDispatch = useTranslations('features.dispatch');
+  const aiInControl = useSimulationStore((s) => s.dispatchMode === 'autonomous');
   const feeders = useFeederLabels(model);
 
   const reducedMotion = useReducedMotion();
@@ -341,6 +344,7 @@ export function VillageCanvas({
           sectorNames={sectorNames}
           priorityLabels={priorityLabels}
           disconnectedLabel={tDiagram('status.disconnected')}
+          aiBadgeLabel={aiInControl ? tDispatch('aiBadge') : undefined}
           htmlPortal={htmlPortal}
           lampGlow={palette.lampGlow}
         />

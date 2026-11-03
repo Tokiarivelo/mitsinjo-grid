@@ -143,6 +143,10 @@ describe('DispatchLogPanel (PA-T4b)', () => {
 
   it('export buttons trigger downloads without errors', () => {
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    // jsdom has no object URLs: the shared download helper builds a Blob URL.
+    const createUrl = vi.fn(() => 'blob:log');
+    const revokeUrl = vi.fn();
+    Object.assign(URL, { createObjectURL: createUrl, revokeObjectURL: revokeUrl });
     useSimulationStore.setState({ dispatchLog: SAMPLE_ENTRIES });
     render(<DispatchLogPanel />);
 
@@ -157,6 +161,8 @@ describe('DispatchLogPanel (PA-T4b)', () => {
 
     fireEvent.click(csvBtn);
     expect(clickSpy).toHaveBeenCalledTimes(2);
+    expect(createUrl).toHaveBeenCalledTimes(2);
+    expect(revokeUrl).toHaveBeenCalledTimes(2);
 
     clickSpy.mockRestore();
   });

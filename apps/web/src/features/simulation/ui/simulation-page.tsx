@@ -66,7 +66,7 @@ import {
   AutopilotPanel,
   ConstitutionCard,
   DispatchLogPanel,
-  useAiDispatch,
+  useAutonomousDispatch,
 } from '@/features/autopilot';
 import { WeatherWorkflowPanel } from './weather-workflow-panel';
 import { HardwareLinkSection } from '@/features/hardware-link';
@@ -110,8 +110,8 @@ export function SimulationPage() {
   const dayIndex = useSimulationStore(selectDayIndex);
   const workflowResult = useSimulationStore(selectActiveWorkflowResult);
 
-  // Mount autonomous dispatch loop (PA-T3b / PA-T4b)
-  useAiDispatch();
+  // Autonomous dispatch loop, mounted once here so it runs even when the deck is hidden (PA-T3b)
+  useAutonomousDispatch();
 
   const patchInput = useSimulationStore((s) => s.patchInput);
   const resetScenario = useSimulationStore((s) => s.reset);

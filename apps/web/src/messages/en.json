@@ -1118,7 +1118,14 @@
         "solar_surplus": "Solar surplus",
         "meter_anomaly": "Meter anomaly",
         "lifeline_shortfall": "Lifeline shortfall"
-      }
+      },
+      "before": "Before",
+      "after": "After",
+      "allSectors": "All sectors",
+      "filterSector": "Filter by sector",
+      "filterType": "Filter by type",
+      "filterSeverity": "Filter by severity",
+      "aiBadge": "AI"
     }
   },
   "copilot": {

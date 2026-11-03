@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { activeFires, detectIncidents, type SectorId } from '@mitsinjo/engine';
+import { activeFires, type SectorId } from '@mitsinjo/engine';
+import { criticalSectorIncidents } from '@/lib/dispatch-log';
 import { useSimulationStore } from '@/stores';
 
 /** How long a fire snackbar stays before it hides itself (the banner stays while the fire lasts). */
@@ -42,9 +43,8 @@ export function useActiveFires(): FireAlert[] {
     // 2. Critical forecast / other critical incidents (PA-T4c)
     const result = results[activeStrategy];
     if (result) {
-      const incidents = detectIncidents(input, result, timeIndex, 3, dayIndex);
-      for (const inc of incidents) {
-        if (inc.severity === 'critical' && inc.sector && !seen.has(inc.sector)) {
+      for (const inc of criticalSectorIncidents(input, result, timeIndex, dayIndex)) {
+        if (!seen.has(inc.sector)) {
           seen.add(inc.sector);
           out.push({
             key: `${inc.kind}:${inc.sector}:${inc.hour}`,

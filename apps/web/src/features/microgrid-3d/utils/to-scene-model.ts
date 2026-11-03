@@ -3,7 +3,6 @@ import {
   activeFires,
   breakerFromMode,
   controllerModeAt,
-  detectIncidents,
   SECTOR_IDS,
   type SectorId,
   type SimulationInput,
@@ -11,6 +10,7 @@ import {
   type StrategyId,
   type WeatherId,
 } from '@mitsinjo/engine';
+import { criticalSectorIncidents } from '@/lib/dispatch-log';
 import type {
   BuildingSceneModel,
   BuildingStatus,
@@ -162,14 +162,9 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
   const burning = new Set(activeFires(input.events, validTime).map((f) => f.sector));
 
   // Critical alerts at this hour (PA-T4c): active fires and critical forecasted deficits
-  const criticalIncidents = result
-    ? detectIncidents(input, result, validTime, 3).filter(
-        (i) => i.severity === 'critical' && i.sector
-      )
-    : [];
   const inAlertSectors = new Set<SectorId>([
     ...burning,
-    ...criticalIncidents.map((i) => i.sector!),
+    ...(result ? criticalSectorIncidents(input, result, validTime) : []).map((i) => i.sector),
   ]);
 
   for (const sectorId of SECTOR_IDS) {

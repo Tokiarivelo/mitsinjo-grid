@@ -1118,7 +1118,14 @@
         "solar_surplus": "Ambiny masoandro",
         "meter_anomaly": "Tsy fetezana kaontera",
         "lifeline_shortfall": "Tsy ampy ny herin'aina"
-      }
+      },
+      "before": "Aloha",
+      "after": "Aorian'ny",
+      "allSectors": "Faritra rehetra",
+      "filterSector": "Sivano araka ny faritra",
+      "filterType": "Sivano araka ny karazany",
+      "filterSeverity": "Sivano araka ny hamafiny",
+      "aiBadge": "AI"
     }
   },
   "copilot": {

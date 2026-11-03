@@ -5,7 +5,6 @@ import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { SECTOR_IDS, type Priority, type SectorId } from '@mitsinjo/engine';
 import { SectorIcon } from '@/components/ui/sector-icon';
-import { useSimulationStore } from '@/stores';
 import { cn } from '@/lib/utils';
 import { fmtPct } from '@/lib/format';
 import type { BuildingSceneModel } from '../types';
@@ -20,6 +19,8 @@ export interface VillageBuildingsProps {
   priorityLabels: Record<Priority, string>;
   /** Badge text for a sector at load 0 ("Not connected"). */
   disconnectedLabel: string;
+  /** Small "AI" tag on every label while the AI dispatches alone (PA-T4c); hidden when unset. */
+  aiBadgeLabel?: string;
   /** Stable DOM parent for labels (see VillageCanvas). */
   htmlPortal?: RefObject<HTMLElement | null>;
   /** Time-of-day lamp factor from the sky palette (dusk/night → 1, afternoon → low). */
@@ -40,6 +41,7 @@ interface BuildingFrameProps extends FrameLayout {
   priorityLabel: string;
   /** Shown instead of the coverage when the sector's load is 0. */
   disconnectedLabel: string;
+  aiBadgeLabel?: string;
   htmlPortal?: RefObject<HTMLElement | null>;
   children: ReactNode;
 }
@@ -65,13 +67,13 @@ function BuildingFrame({
   sectorName,
   priorityLabel,
   disconnectedLabel,
+  aiBadgeLabel,
   ringInner,
   ledY,
   htmlPortal,
   children,
 }: BuildingFrameProps) {
   const [hovered, setHovered] = useState(false);
-  const dispatchMode = useSimulationStore((s) => s.dispatchMode);
   const { position, statusColor, coveragePct, priority } = model;
   // Brighter than 1 so the bloom pass gives the status beacon a halo.
   const beaconColor = useMemo(
@@ -151,9 +153,9 @@ function BuildingFrame({
           <div className="flex flex-col text-left leading-tight">
             <div className="flex items-center gap-1.5">
               <span className="font-semibold text-text-primary text-[11px]">{sectorName}</span>
-              {dispatchMode === 'autonomous' && (
-                <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-ai-violet/20 text-ai-violet border border-ai-violet/40">
-                  IA
+              {aiBadgeLabel && (
+                <span className="px-1 py-px rounded text-[9px] font-mono font-bold bg-ai-violet/20 text-ai-violet border border-ai-violet/40">
+                  {aiBadgeLabel}
                 </span>
               )}
             </div>
@@ -187,6 +189,7 @@ export function VillageBuildings({
   sectorNames,
   priorityLabels,
   disconnectedLabel,
+  aiBadgeLabel,
   htmlPortal,
   lampGlow = 1,
 }: VillageBuildingsProps) {
@@ -205,6 +208,7 @@ export function VillageBuildings({
             sectorName={sectorNames[id]}
             priorityLabel={priorityLabels[model.priority]}
             disconnectedLabel={disconnectedLabel}
+            aiBadgeLabel={aiBadgeLabel}
             htmlPortal={htmlPortal}
             {...BODY_LAYOUT[id]}
           >

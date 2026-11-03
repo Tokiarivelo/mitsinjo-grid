@@ -116,6 +116,8 @@ autonome » attend PA-3.
 - [x] **PA-T3b** Hook `useAiDispatch` (remplace `useAutopilot`) : sur chaque nouvelle heure de lecture en mode
       autonome → détecter → décider → appliquer → journaliser. Mode assisté = comportement M10 actuel (propositions).
       **Done when** lecture de `village_fire` en mode IA : 2 incidents, 2 isolations, alerte, journal de ≥ 4 lignes.
+      La boucle autonome vit dans `useAutonomousDispatch`, montée **une seule fois** par `SimulationPage`
+      (`useAiDispatch` garde l'état du mode assisté) : deux montages appliqueraient chaque action deux fois.
 - [x] **PA-T3c** En mode IA, `propose_change` du copilote s'applique seul après constitution, journalisé « demandé
       par l'opérateur ». En mode manuel, rien ne change.
 
