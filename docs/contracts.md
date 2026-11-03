@@ -271,6 +271,7 @@ Helpers:
 `sceneScale(archetype, proportions)` → target scene scale (house ≈ 3.8, vehicle ≈ 2.4, cabinet/fridge ≈ 1.0, machine/pump ≈ 0.9).
 `footprint(recipe, scale, yaw)` → `{ radius: number, box: FootprintBox }`.
 Rendering (PI-T2): `buildPlacedModelsGeometry` merges all placed models into a single `BufferGeometry` (≤ +2 draw calls budget for up to 30 objects), sits on `terrainHeight` at the footprint's lowest point; on a slope (> 0.04) it stands on a plinth (one instanced batch) reaching the highest point; reflects departure states (dimmed if unserved or not drawing power, fiery red alert if sector on fire); rebuilt only when `placedGeometryKey` changes. Un-modeled appliances fall back to standard instanced markers.
+Dynamic site zones (PI-T3): `siteZones(placed)` (pure, tested, single source of truth for keep-out zones) = `KEEP_OUT_ZONES` (static 6 sector buildings, solar, battery, bus, pond) + one circle per placed object (`radius = emprise + marge par archétype`, via `ARCHETYPE_CLEARING_MARGIN`). `isBlocked`, `snapAwayFromBuildings` and `PlaceMinimap` read `siteZones`: objects cannot be placed on a building footprint, pond, path corridor or another placed object (pushed towards nearest free edge). The 6 sector building positions and radii never move.
 2D diagram sector card adds « n added » when appliances feed the sector (`appliancesPerSector`).
 3D `SceneModel.weather: WeatherId` (from `toSceneModel({ weather })`, default `sunny`): drives sky, clouds and rain only.
 

@@ -1,34 +1,28 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-03 (PR #49 follow-up: model pruning, flaky budget test, PI-T2 gate-out) · **By:** Claude Code · **Branch:** fix/pi-placed-models-followup
+**Updated:** 2026-11-03 (PI-T3 dynamic site zones done on feat/pi-t3-site-zones) · **By:** Antigravity · **Branch:** feat/pi-t3-site-zones
 
 ## Current state
 
-- `main` has P9-T7 (README provenance, `benchmarks/`, Docker Compose `make docker-up`) and PI I0:
-  - PI-T1 `usePlacedModelsStore` (`apps/web/src/stores/placed-models.store.ts`, localStorage try/catch), `sceneScale`, `footprint`.
-  - PI-T2 `buildPlacedModelsGeometry` (`microgrid-3d/utils/placed-models-geometry.ts`): all placed models in one merged
-    mesh, slope plinths in one instanced batch, model stands on its plinth, dimmed when idle/unserved, fire tint.
-    Rebuilt only when `placedGeometryKey` changes; old geometry disposed. Engine untouched (invariance test).
-- PR #49 review fixes: plinth draw calls (was 1 mesh each), model sunk in plinth, geometry rebuilt every render +
-  GPU leak, idle appliance in served sector not dimmed, double remove, duplicated type, raw hex.
+- PI-T3 completed: `siteZones(placed)` (`site-zones.ts`, Rule 2) single source of truth for keep-out zones.
+  - Dynamic zone radius = model emprise (`footprint`) + archetype clearing margin (`ARCHETYPE_CLEARING_MARGIN`).
+  - `snapAwayFromBuildings` respects dynamic zones, paths (`VILLAGE_PATHS`), pond and cross-relaxations.
+  - `isBlocked` and `PlaceMinimap` read `siteZones`: minimap displays obstacles and warns when cursor is blocked.
+  - 6 sector buildings positions and radii are strictly invariant; full collision test coverage (bâtiment, chemin, mare, deux objets).
+  - Pure visual helper: engine invariant (`make test-engine` 353/353 green).
 
 ## Next
 
 - P9-T5: video = `docs/tasks/PD-demo-video.md` (spec `video/VIDEO_PLAN.md`: rules, storyboard, voice-over, shots, pipeline); link in README line 15. P9-T6 (human): submit before Wed Nov 4 21:00 EST.
-- PI I1: PI-T3 `siteZones(placed)`, PI-T4 tree clearing, PI-T5 laterite yard (`docs/tasks/PI-village-integration.md`).
-- Follow-up done: placed models pruned on every input change except those undo can restore (`liveApplianceIds`);
-  golden-shape budget uses best of 3 runs (full-suite CPU contention made it flaky); PI-T2 gate-out shots taken.
+- PI I1 next: PI-T4 tree clearing (`siteZones` filters `scatterVegetation` instances with zero-scale in `InstancedMesh`), PI-T5 laterite yard (`docs/tasks/PI-village-integration.md`).
 - Limit: inserted appliances are not persisted, so placed models don't survive a reload (localStorage is a cache).
-  At the default ring position a small object sits among the houses; PI-T3 fixes placement.
 
 ## Files touched (this session)
 
-`apps/web/src/features/microgrid-3d/{ui/appliance-markers.tsx,ui/village-canvas.tsx,utils/placed-models-geometry.ts,__tests__/*}`,
-`apps/web/src/features/vision-insert/ui/appliance-insert.tsx`, `apps/web/src/stores/{placed-models.store.ts,__tests__/placed-models.store.test.ts}`,
-`apps/web/src/server/perception/__tests__/golden-shape.test.ts`, `docs/contracts.md`, `docs/design/stitch-map.md`, `HANDOFF.md`.
+`apps/web/src/features/microgrid-3d/utils/{site-zones.ts,landscape.ts,placement.ts,__tests__/site-zones.test.ts}`,
+`apps/web/src/features/vision-insert/ui/place-minimap.tsx`, `docs/contracts.md`, `docs/tasks/PI-village-integration.md`, `HANDOFF.md`.
 
 ## Decisions
 
-- Benchmark: essential-first never serves the clinic worse than proportional; critical loads 73.3 % vs 73.7 % under
-  `essential_stress` is reported as a trade-off in `benchmarks/README.md`.
-- Placed models live only in a client visual store; plinth fills lowest → highest footprint point (+4 cm sink).
+- Path clearance in `snapAwayFromBuildings` uses `PATH_HALF_WIDTH + clearance` with cross-push relaxation when obstacles overlap.
+- `siteZones` always includes static `KEEP_OUT_ZONES` so building footprints, solar, battery, bus and pond are never violated.

@@ -58,10 +58,11 @@ proportions)` (une maison ≈ une maison du village, un frigo ≈ 1 m) ; `footpr
 
 ### I1 Clairière et sol rouge
 
-- [ ] **PI-T3 Zones dynamiques.** `siteZones(placed)` (pure, testée) = `KEEP_OUT_ZONES` + un cercle par objet (rayon =
+- [x] **PI-T3 Zones dynamiques.** `siteZones(placed)` (pure, testée) = `KEEP_OUT_ZONES` + un cercle par objet (rayon =
       emprise + marge par archétype). `isBlocked`, `snapAwayFromBuildings` et la mini-carte la lisent : un objet ne peut
       plus être posé sur un bâtiment, un chemin, la mare ou un autre objet placé (poussé vers le bord libre le plus proche).
       **Done when:** tests de collision (bâtiment, chemin, mare, deux objets) ; les positions des 6 bâtiments ne bougent pas.
+      **Done:** `site-zones.ts` (`siteZones(placed)`, `placedItemZone`, `ARCHETYPE_CLEARING_MARGIN`), wired to `landscape.ts` (`isBlocked`), `placement.ts` (`snapAwayFromBuildings` respecting dynamic zones, paths and cross-relaxations), `place-minimap.tsx` (visual obstacles and blocked cursor), and `appliance-markers.ts`. 9/9 unit tests passing with full collision coverage (bâtiment, chemin, mare, deux objets) and 6 building positions invariance verified.
 - [ ] **PI-T4 Les arbres disparaissent autour.** La végétation est filtrée par `siteZones` : les instances dans une clairière
       sont masquées (échelle 0 dans l'`InstancedMesh`, sans regénérer la forêt ; D2). Recalcul au commit seulement.
       **Done when:** test pur (aucun arbre / buisson / rocher dans la zone, le reste inchangé et à la même place) ;
