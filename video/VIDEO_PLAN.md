@@ -8,15 +8,15 @@ scenarios, assets, folder layout and the render pipeline. Supersedes the narrati
 
 ## 0. Hackathon rules that bind the video (organizer answers, 2026-11-03)
 
-| Rule                                                                             | How this plan meets it                                                                                              |
-| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **≤ 3:00**, understandable in English                                            | 2:58 target, English voice + English captions                                                                       |
-| **Opens with one line**: what existed before the event, what was built this week | Segment 00 voice + splash text (§ 5): no code before Oct 26, 2026; everything shown was built during the event      |
-| Show the **working product**, not slides; **most of it real screen footage**     | ≥ 90 % live capture; canvas only for the 5 s splash and the 6 s outro; titles are overlays on footage               |
-| **Live Meta model calls visible**                                                | `LLM_PROVIDER=meta`; model picker on screen; server-log inset with `[copilot:meta]` / `[vision]` lines (§ 6, L1–L3) |
-| A video **made and presented by a person** is preferred (AI voice allowed)       | The author's own voice (default); optional 3 s webcam bubble in 00 and 10                                           |
-| Rights to **every** asset; music source **credited in the README**               | Music credit in `README.md` + outro; SFX generated with ffmpeg; fonts from the app; reference clip never used       |
-| Deadline **Wed Nov 4, 9:00 PM ET**, no edits after                               | Render + upload + README link before 6:00 PM ET (3 h buffer)                                                        |
+| Rule                                                                             | How this plan meets it                                                                                                           |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **≤ 3:00**, understandable in English                                            | 2:58 target, English voice + English captions                                                                                    |
+| **Opens with one line**: what existed before the event, what was built this week | Segment 00 voice + splash text (§ 5): the event started Oct 26, 2026 = first commit (confirmed by the author); no pre-event code |
+| Show the **working product**, not slides; **most of it real screen footage**     | ≥ 90 % live capture; canvas only for the 5 s splash and the 6 s outro; titles are overlays on footage                            |
+| **Live Meta model calls visible**                                                | `LLM_PROVIDER=meta`; model picker on screen; server-log inset with `[copilot:meta]` / `[vision]` lines (§ 6, L1–L3)              |
+| A video **made and presented by a person** is preferred (AI voice allowed)       | The author's own voice (default); optional 3 s webcam bubble in 00 and 10                                                        |
+| Rights to **every** asset; music source **credited in the README**               | Music credit in `README.md` + outro; SFX generated with ffmpeg; fonts from the app; reference clip never used                    |
+| Deadline **Wed Nov 4, 9:00 PM ET**, no edits after                               | Render + upload + README link before 6:00 PM ET (3 h buffer)                                                                     |
 
 Repo-side rules (not video, tracked in the task file): event-only code in the public repo (README provenance
 line), judges run it from the README setup, own Meta key via `.env.example` or keyless mock mode with
@@ -27,16 +27,15 @@ submission, counted through Nov 8 EOD.
 
 ## 1. Deliverable
 
-| Item         | Value                                                                                         |
-| ------------ | --------------------------------------------------------------------------------------------- |
-| Length       | **≤ 3:00** (target 2:58), 11 segments, timecodes in § 4                                       |
-| Format       | **1280 × 720, 30 fps**, H.264 High `yuv420p`, AAC 192 kb/s 48 kHz stereo, `.mp4` faststart    |
-| Language     | **English** voice-over + English burned-in captions (`subtitles/en.srt`, also muxed soft)     |
-| Music        | "Passion" — Luke Bergs & AgusAlvarez, publisher Free To Use Music (2025), 2:43. Local file    |
-|              | `video/audio/music/adventure-theme.mp3`, **not committed** (redistribution rights unverified) |
-| Output       | `video/output/mitsinjo-grid-demo-720p.mp4` (+ `-backup.mp4` = second full take, P9-T5)        |
-| Two features | **A.** a 7-day village scenario, every setting, then **Autonomous AI** dispatch               |
-|              | **B.** photo → 2D facade → **3D generation (advanced)** → import into the village             |
+| Item         | Value                                                                                                                                                                                                                         |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Length       | **≤ 3:00** (target 2:58), 11 segments, timecodes in § 4                                                                                                                                                                       |
+| Format       | **1280 × 720, 30 fps**, H.264 High `yuv420p`, AAC 192 kb/s 48 kHz stereo, `.mp4` faststart                                                                                                                                    |
+| Language     | **English** voice-over + English burned-in captions (`subtitles/en.srt`, also muxed soft)                                                                                                                                     |
+| Music        | "Passion" — Luke Bergs & AgusAlvarez, publisher Free To Use Music (2025), 2:43. Free to use, no license or rights required (author, 2026-11-03); committed at `video/audio/music/adventure-theme.mp3`, credited in the README |
+| Output       | `video/output/mitsinjo-grid-demo-720p.mp4` (+ `-backup.mp4` = second full take, P9-T5)                                                                                                                                        |
+| Two features | **A.** a 7-day village scenario, every setting, then **Autonomous AI** dispatch                                                                                                                                               |
+|              | **B.** photo → 2D facade → **3D generation (advanced)** → import into the village                                                                                                                                             |
 
 Project non-negotiables (`CLAUDE.md`): the `SIMULATED DATA` label stays visible in every app shot; every
 number shown (captures **and** overlays) is engine output read from the app or `benchmarks/`, never typed by
@@ -70,9 +69,9 @@ never cut into our video). What we keep, adapted to 16:9 and to "real footage fi
 ```text
 video/
 ├── VIDEO_PLAN.md            this file
-├── .gitignore               music, raw captures, frames, renders, reference stay local
+├── .gitignore               raw captures, frames, renders, reference stay local
 ├── audio/
-│   ├── music/adventure-theme.mp3      local only — copy it here (§ 1)
+│   ├── music/adventure-theme.mp3      background track (committed, § 1)
 │   ├── voice/vo-00-provenance.wav … vo-10-outro.wav   one take per segment (48 kHz mono)
 │   ├── voice/vo-full.wav              assembled + cleaned voice track
 │   └── sfx/click.wav, whoosh.wav, rise.wav      generated with ffmpeg (§ 8)

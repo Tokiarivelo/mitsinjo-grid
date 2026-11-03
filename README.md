@@ -338,3 +338,4 @@ make deploy        # Manual production deployment from clean origin/main
 - **Hackathon**: Meta AI Hackathon (Solo Project)
 - **Tag**: `v1.0.0`
 - **License**: [MIT](LICENSE) © 2026 Tokiarivelo
+- **Video credits**: background music « Passion » by Luke Bergs & AgusAlvarez (publisher: Free To Use Music, 2025), free to use with no license or rights required; file in [`video/audio/music/`](video/audio/music/). Sound effects are generated with ffmpeg; all footage is the running app. Plan: [`video/VIDEO_PLAN.md`](video/VIDEO_PLAN.md).
