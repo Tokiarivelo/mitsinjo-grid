@@ -14,6 +14,7 @@ import {
   Download,
   Factory,
   Flame,
+  Layers,
   PanelRightClose,
   PanelRightOpen,
   ScrollText,
@@ -365,42 +366,59 @@ export function SimulationPage() {
                       setDeckFocus('top');
                     }
                   }}
-                  className="flex items-center justify-between px-3.5 py-2 border-b border-border bg-surface-elevated/40 hover:bg-surface-elevated/80 transition-colors cursor-pointer select-none group shrink-0"
+                  className="flex items-center justify-between px-3 py-2 border-b border-border bg-surface-elevated/50 hover:bg-surface-elevated/80 transition-colors cursor-pointer select-none group shrink-0"
                   title={tSim('expandTopControls')}
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="h-2 w-2 rounded-full bg-energy-cyan animate-pulse shrink-0" />
+                    <div className="p-1 rounded-md bg-energy-cyan/10 text-energy-cyan shrink-0">
+                      <Sliders className="h-3.5 w-3.5" aria-hidden="true" />
+                    </div>
                     <span className="text-xs font-display font-semibold uppercase tracking-wider text-text-primary group-hover:text-energy-cyan transition-colors truncate">
                       {tSim('controlsOverview')}
                     </span>
-                    <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface border border-border text-text-muted shrink-0">
+                    {/* Status Badge */}
+                    <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono bg-surface border border-border text-text-muted shrink-0">
                       {dispatchMode === 'autonomous' ? (
                         <>
-                          <span className="h-1.5 w-1.5 rounded-full bg-ai-violet animate-pulse" />
+                          <Bot
+                            className="h-3 w-3 text-ai-violet animate-pulse"
+                            aria-hidden="true"
+                          />
                           <span className="text-ai-violet font-semibold">
                             {tDispatch('modeAutonomous')}
                           </span>
                         </>
                       ) : dispatchMode === 'assisted' ? (
-                        <span className="text-energy-cyan font-semibold">
-                          {tDispatch('modeAssisted')}
-                        </span>
+                        <>
+                          <Sliders className="h-3 w-3 text-energy-cyan" aria-hidden="true" />
+                          <span className="text-energy-cyan font-semibold">
+                            {tDispatch('modeAssisted')}
+                          </span>
+                        </>
                       ) : (
-                        <span>{tDispatch('modeManual')}</span>
+                        <>
+                          <span
+                            className="h-1.5 w-1.5 rounded-full bg-slate-400"
+                            aria-hidden="true"
+                          />
+                          <span>{tDispatch('modeManual')}</span>
+                        </>
                       )}
                     </span>
                     {activeFires.length > 0 && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-critical-red/10 border border-critical-red/40 text-critical-red shrink-0">
-                        <Flame className="h-3 w-3" />
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-critical-red/10 border border-critical-red/40 text-critical-red shrink-0">
+                        <Flame className="h-3 w-3 animate-bounce" aria-hidden="true" />
                         <span>{activeFires.length}</span>
                       </span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="inline-flex items-center gap-1 text-[11px] font-sans text-text-muted group-hover:text-text-primary transition-colors">
-                      <ChevronDown className="h-3.5 w-3.5 text-text-muted group-hover:text-text-primary" />
-                      <span className="hidden sm:inline">{tSim('expandTopControls')}</span>
+                    {/* HIGHLIGHTED EXPAND BUTTON WITH INDICATIVE ICONS */}
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-energy-cyan/15 text-energy-cyan border border-energy-cyan/40 shadow-xs group-hover:bg-energy-cyan/25 group-hover:border-energy-cyan transition-all">
+                      <Sliders className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span>{tSim('expandTopControls')}</span>
+                      <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     </span>
                     <button
                       type="button"
@@ -430,19 +448,21 @@ export function SimulationPage() {
                         setDeckFocus('tabs');
                       }
                     }}
-                    className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-surface-elevated/40 hover:bg-surface-elevated/70 transition-colors cursor-pointer select-none group"
+                    className="flex items-center justify-between px-3.5 py-2.5 border-b border-border bg-surface-elevated/40 hover:bg-surface-elevated/70 transition-colors cursor-pointer select-none group"
                     title={tSim('collapseTopControls')}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-energy-cyan animate-pulse" />
+                      <div className="p-1 rounded-md bg-energy-cyan/10 text-energy-cyan shrink-0">
+                        <Sliders className="h-3.5 w-3.5" aria-hidden="true" />
+                      </div>
                       <h2 className="text-xs font-display font-semibold uppercase tracking-wider text-text-primary group-hover:text-energy-cyan transition-colors">
                         {tSim('deckTitle')}
                       </h2>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 text-[11px] font-sans text-text-muted group-hover:text-text-primary transition-colors">
-                        <ChevronUp className="h-3.5 w-3.5 text-text-muted group-hover:text-text-primary" />
-                        <span className="hidden sm:inline">{tSim('collapseTopControls')}</span>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-surface border border-border group-hover:border-energy-cyan/50 text-text-secondary group-hover:text-text-primary transition-all">
+                        <span>{tSim('collapseTopControls')}</span>
+                        <ChevronUp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                       </span>
                       <button
                         type="button"
@@ -794,10 +814,17 @@ export function SimulationPage() {
                 <button
                   type="button"
                   onClick={() => setDeckFocus('tabs')}
-                  className="p-3 text-xs text-text-muted hover:text-text-primary bg-surface/30 hover:bg-surface-elevated/40 border-t border-border flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                  className="p-3 text-xs font-semibold text-energy-cyan bg-energy-cyan/5 hover:bg-energy-cyan/10 border-t border-energy-cyan/20 flex items-center justify-center gap-2 cursor-pointer transition-colors group"
                 >
+                  <Layers
+                    className="h-4 w-4 text-energy-cyan group-hover:scale-110 transition-transform shrink-0"
+                    aria-hidden="true"
+                  />
                   <span>{tSim('expandTabs')}</span>
-                  <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                  <ChevronDown
+                    className="h-3.5 w-3.5 text-energy-cyan shrink-0"
+                    aria-hidden="true"
+                  />
                 </button>
               )}
             </aside>
