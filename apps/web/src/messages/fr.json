@@ -121,6 +121,10 @@
     "village_fire": {
       "name": "Incendie au village (marché → eau)",
       "description": "Le marché prend feu à 14h, puis la station de pompage à 15h — tous deux coupés jusqu'à minuit"
+    },
+    "overload_evening": {
+      "name": "Surcharge du soir & panne de ligne",
+      "description": "Surconsommation ménages, atelier branché et coupure de ligne école de 14 h à minuit"
     }
   },
   "features": {
@@ -259,6 +263,8 @@
         "description": "Enchaînez plusieurs jours simulés, chacun avec sa météo. La batterie est conservée : chaque jour démarre à la charge finale de la veille.",
         "dayCount": "{count}/{max} jours",
         "addDay": "Ajouter un jour",
+        "chaosMode": "Mode chaos",
+        "incidentCount": "{count} incident(s)",
         "removeDay": "Supprimer {day}",
         "dayLabel": "Jour {n}",
         "weatherFor": "Météo du {day}",

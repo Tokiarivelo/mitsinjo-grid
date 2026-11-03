@@ -113,6 +113,45 @@ describe('WeatherWorkflowPanel', () => {
     expect(screen.getByText(`${wf.totals.unservedKwh.toFixed(1)} kWh`)).toBeInTheDocument();
     expect(screen.getByText('Unserved (all days)')).toBeInTheDocument();
   });
+
+  it('renders chaos mode button and calls onLoadChaos (PA-T6c)', () => {
+    const onLoadChaos = vi.fn();
+    render(
+      <WeatherWorkflowPanel
+        workflow={[{ weather: 'sunny' }]}
+        dayIndex={0}
+        onAddDay={noop}
+        onRemoveDay={noop}
+        onSetWeather={noop}
+        onSelectDay={noop}
+        onLoadChaos={onLoadChaos}
+      />
+    );
+    const chaosBtn = screen.getByRole('button', { name: 'Chaos mode' });
+    expect(chaosBtn).toBeInTheDocument();
+    fireEvent.click(chaosBtn);
+    expect(onLoadChaos).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders incident count badge on days with scripted events (PA-T8a)', () => {
+    render(
+      <WeatherWorkflowPanel
+        workflow={[
+          { weather: 'sunny' },
+          {
+            weather: 'storm',
+            events: [{ type: 'fire', sector: 'market', startHour: 10, durationH: 4 }],
+          },
+        ]}
+        dayIndex={0}
+        onAddDay={noop}
+        onRemoveDay={noop}
+        onSetWeather={noop}
+        onSelectDay={noop}
+      />
+    );
+    expect(screen.getByText('1 incident(s)')).toBeInTheDocument();
+  });
 });
 
 describe('DayStrip', () => {

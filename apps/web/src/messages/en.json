@@ -121,6 +121,10 @@
     "village_fire": {
       "name": "Village Fire (market → water)",
       "description": "The market catches fire at 14:00, then the water pumping station at 15:00 — both cut until midnight"
+    },
+    "overload_evening": {
+      "name": "Evening Overload & Feeder Outage",
+      "description": "Evening household surge with connected carpentry workshop and school line outage from 14:00 to midnight"
     }
   },
   "features": {
@@ -259,6 +263,8 @@
         "description": "Chain several simulated days, each with its own weather. The battery carries over: each day starts at the previous day's final charge.",
         "dayCount": "{count}/{max} days",
         "addDay": "Add day",
+        "chaosMode": "Chaos mode",
+        "incidentCount": "{count} incident(s)",
         "removeDay": "Remove {day}",
         "dayLabel": "Day {n}",
         "weatherFor": "Weather for {day}",

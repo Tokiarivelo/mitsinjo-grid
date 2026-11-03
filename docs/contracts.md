@@ -23,7 +23,8 @@ type ScenarioId =
   | 'battery_constraint'
   | 'essential_stress'
   | 'meter_anomaly'
-  | 'village_fire';
+  | 'village_fire'
+  | 'overload_evening';
 ```
 
 ```ts
@@ -207,11 +208,12 @@ interface SimulationResult {
 type Comparison = Record<StrategyId, SimulationResult>; // only strategies requested
 ```
 
-### Weather workflow (multi-day)
+### Weather workflow & Chaos mode (multi-day, PA-T6c, PA-T8a)
 
 ```ts
 type WeatherId = 'sunny' | 'partly_cloudy' | 'cloudy' | 'rainy' | 'storm';
-type Workflow = { weather: WeatherId }[]; // 1..MAX_WORKFLOW_DAYS (7)
+type WorkflowDay = { weather: WeatherId; events?: ScenarioEvent[] };
+type Workflow = WorkflowDay[]; // 1..MAX_WORKFLOW_DAYS (7)
 type WorkflowTotals = {
   demandKwh;
   servedKwh;
@@ -224,12 +226,26 @@ type WorkflowTotals = {
   socMinPct;
   violations;
 }; // sums; SoC start=day 1, end=last day, min=over all days
+type WorkflowDayResult = {
+  day: number;
+  weather: WeatherId;
+  events?: ScenarioEvent[];
+  result: SimulationResult;
+};
 type WorkflowResult = {
   strategy: StrategyId;
-  days: { day: number; weather: WeatherId; result: SimulationResult }[];
+  days: WorkflowDayResult[];
   totals: WorkflowTotals;
 };
 type WorkflowComparison = Record<StrategyId, WorkflowResult>; // only strategies requested
+
+// Chaos mode generator (PA-T6c): pure deterministic Mulberry32 PRNG
+function generateChaosWorkflow(options: {
+  seed: number;
+  days?: number;
+  weathers?: readonly WeatherId[];
+  maxIncidentsPerDay?: number;
+}): Workflow;
 ```
 
 Store (`useSimulationStore`): `workflow` (default `[{ weather: 'sunny' }]` = plain 24 h run), `workflowResults`,

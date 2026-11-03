@@ -13,11 +13,13 @@ import {
   type DispatchMode,
   type DispatchLogEntry,
   type Narration,
+  type ScenarioEvent,
   dispatchLogHash,
   scenarios,
   compareWorkflow,
   applyPatch,
   activeFires,
+  generateChaosWorkflow,
   MAX_WORKFLOW_DAYS,
 } from '@mitsinjo/engine';
 
@@ -98,10 +100,12 @@ export interface SimulationState {
   updateDispatchLogNarration: (id: string, narration: Narration) => void;
 
   // Weather workflow actions
-  addWorkflowDay: (weather?: WeatherId) => void;
+  addWorkflowDay: (weather?: WeatherId, events?: ScenarioEvent[]) => void;
   removeWorkflowDay: (day: number) => void;
   setDayWeather: (day: number, weather: WeatherId) => void;
   setDayIndex: (day: number) => void;
+  /** Replaces the workflow with a seeded chaos sequence of weather and incidents (PA-T6c). */
+  loadChaosWorkflow: (seed?: number, days?: number) => void;
   /** Next playback hour; rolls over to the next workflow day, then loops to day 1. */
   advancePlayback: () => void;
 
@@ -491,11 +495,28 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     set({ timeIndex: 0, isPlaying: true, playbackStatus: 'playing' });
   },
 
-  addWorkflowDay: (weather?: WeatherId) => {
+  addWorkflowDay: (weather?: WeatherId, events?: ScenarioEvent[]) => {
     const { workflow } = get();
     if (workflow.length >= MAX_WORKFLOW_DAYS) return;
     const next = weather ?? workflow[workflow.length - 1]?.weather ?? 'sunny';
-    commitWorkflow(set, get, { workflow: [...workflow, { weather: next }] });
+    commitWorkflow(set, get, {
+      workflow: [
+        ...workflow,
+        {
+          weather: next,
+          ...(events && events.length > 0 ? { events } : {}),
+        },
+      ],
+    });
+  },
+
+  loadChaosWorkflow: (seed?: number, days?: number) => {
+    const chaosSeed = seed ?? Math.floor(Date.now() % 100000);
+    const chaosWorkflow = generateChaosWorkflow({ seed: chaosSeed, days: days ?? 3 });
+    commitWorkflow(set, get, {
+      workflow: chaosWorkflow,
+      dayIndex: 0,
+    });
   },
 
   removeWorkflowDay: (day: number) => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarRange, Plus, X } from 'lucide-react';
+import { CalendarRange, Plus, Sparkles, X } from 'lucide-react';
 import {
   MAX_WORKFLOW_DAYS,
   WEATHER_IDS,
@@ -24,6 +24,8 @@ export interface WeatherWorkflowPanelProps {
   onRemoveDay: (day: number) => void;
   onSetWeather: (day: number, weather: WeatherId) => void;
   onSelectDay: (day: number) => void;
+  /** Replaces workflow with a seeded chaos sequence (PA-T6c). */
+  onLoadChaos?: () => void;
   className?: string;
 }
 
@@ -36,6 +38,7 @@ export function WeatherWorkflowPanel({
   onRemoveDay,
   onSetWeather,
   onSelectDay,
+  onLoadChaos,
   className,
 }: WeatherWorkflowPanelProps) {
   const t = useTranslations('features.simulation.workflow');
@@ -63,16 +66,29 @@ export function WeatherWorkflowPanel({
             {t('dayCount', { count: workflow.length, max: MAX_WORKFLOW_DAYS })}
           </span>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={onAddDay}
-          disabled={!canAdd}
-          icon={<Plus className="h-3.5 w-3.5" aria-hidden="true" />}
-          className="min-h-11 shrink-0 whitespace-nowrap"
-        >
-          {t('addDay')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {onLoadChaos && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onLoadChaos}
+              icon={<Sparkles className="h-3.5 w-3.5 text-energy-cyan" aria-hidden="true" />}
+              className="min-h-11 shrink-0 whitespace-nowrap"
+            >
+              {t('chaosMode')}
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onAddDay}
+            disabled={!canAdd}
+            icon={<Plus className="h-3.5 w-3.5" aria-hidden="true" />}
+            className="min-h-11 shrink-0 whitespace-nowrap"
+          >
+            {t('addDay')}
+          </Button>
+        </div>
       </div>
 
       <p className="text-xs text-text-secondary">{t('description')}</p>
@@ -82,6 +98,7 @@ export function WeatherWorkflowPanel({
           const dayLabel = t('dayLabel', { n: i + 1 });
           const m = workflowResult?.days[i]?.result.metrics;
           const isCurrent = i === dayIndex;
+          const eventCount = d.events?.length ?? 0;
           return (
             <li
               key={i}
@@ -91,14 +108,21 @@ export function WeatherWorkflowPanel({
               )}
             >
               <div className="flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => onSelectDay(i)}
-                  aria-current={isCurrent ? 'step' : undefined}
-                  className="min-h-11 text-left text-xs font-semibold text-text-primary hover:text-energy-cyan cursor-pointer"
-                >
-                  {dayLabel}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onSelectDay(i)}
+                    aria-current={isCurrent ? 'step' : undefined}
+                    className="min-h-11 text-left text-xs font-semibold text-text-primary hover:text-energy-cyan cursor-pointer"
+                  >
+                    {dayLabel}
+                  </button>
+                  {eventCount > 0 && (
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-critical-red/15 text-critical-red border border-critical-red/40 font-semibold">
+                      {t('incidentCount', { count: eventCount })}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   {m && (
                     <span

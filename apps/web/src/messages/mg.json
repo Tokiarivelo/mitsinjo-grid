@@ -121,6 +121,10 @@
     "village_fire": {
       "name": "Afo ao an-tanàna (tsena → rano)",
       "description": "Mirehitra ny tsena amin'ny 14 ora, avy eo ny tobim-panondrahana amin'ny 15 ora — samy tapaka hatramin'ny misasakalina"
+    },
+    "overload_evening": {
+      "name": "Fisondrotana takariva & fahatapahan-tariby",
+      "description": "Fisondrotan'ny filan'ny tokatrano, fampifandraisana ny trano asa, ary fahatapahan-taribin'ny sekoly amin'ny 14 ora ka hatramin'ny misasakalina"
     }
   },
   "features": {
@@ -259,6 +263,8 @@
         "description": "Ampifandimby andro maromaro voatahaka, samy manana ny toetrandrony. Mitohy ny bateria: manomboka amin'ny sisa tamin'ny omaly ny andro tsirairay.",
         "dayCount": "Andro {count}/{max}",
         "addDay": "Hanampy andro",
+        "chaosMode": "Fomba mikorontana",
+        "incidentCount": "{count} tranga",
         "removeDay": "Hamafa {day}",
         "dayLabel": "Andro {n}",
         "weatherFor": "Toetrandro {day}",

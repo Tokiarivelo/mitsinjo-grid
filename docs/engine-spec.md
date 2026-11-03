@@ -110,15 +110,16 @@ Total ≈ 128 kWh/day (factory not connected). Tune so that: `baseline` → 0 un
 
 ## 6. Scenarios
 
-| id                 | Change vs baseline                                            |
-| ------------------ | ------------------------------------------------------------- |
-| baseline           | none                                                          |
-| cloudy_afternoon   | solar_drop factor 0.6, 13 h, 2 h; initialSoc 35 % (demo hero) |
-| high_demand        | demand_spike all ×1.3, 17 h, 5 h                              |
-| battery_constraint | capacity 60 kWh, initialSoc 30 %                              |
-| essential_stress   | solar ×0.4 for 4 h at 11 h + initialSoc 25 %                  |
-| meter_anomaly      | market meter readings 3.2 kW at 11–15 h (expected 2.0 kW)     |
-| village_fire       | fire market from 14 h, spreads to water at 15 h (to 24 h)     |
+| id                 | Change vs baseline                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------------------ |
+| baseline           | none                                                                                                   |
+| cloudy_afternoon   | solar_drop factor 0.6, 13 h, 2 h; initialSoc 35 % (demo hero)                                          |
+| high_demand        | demand_spike all ×1.3, 17 h, 5 h                                                                       |
+| battery_constraint | capacity 60 kWh, initialSoc 30 %                                                                       |
+| essential_stress   | solar ×0.4 for 4 h at 11 h + initialSoc 25 %                                                           |
+| meter_anomaly      | market meter readings 3.2 kW at 11–15 h (expected 2.0 kW)                                              |
+| village_fire       | fire market from 14 h, spreads to water at 15 h (to 24 h)                                              |
+| overload_evening   | households demand_spike ×1.4 18–23 h, industry loadMultiplier: 0.2, school feeder cut 14–24 h (PA-T6b) |
 
 ### Live sector load (`loadMultiplier`)
 
@@ -136,12 +137,15 @@ coverage lists (`connectedSectors`). Set via `InputPatch.sectorLoads` (UI slider
    box/wire, body layout) fails until filled. Add the 3D body in `ui/building-bodies.tsx`.
 4. i18n `sectors.<id>` in en/fr/mg (`make check-i18n`).
 
-### Weather workflow (multi-day)
+### Weather workflow (multi-day) & Chaos mode (PA-T6c, PA-T8a)
 
 A workflow is 1–7 days, each a full 24 h `simulate()` of the same input under a weather preset that multiplies the
 whole solar profile (`WEATHER_SOLAR_FACTOR`): sunny 1 · partly_cloudy 0.75 · cloudy 0.5 · rainy 0.3 · storm 0.15.
-Scenario events still apply every day on top. Battery carries over: day N+1 `initialSocPct` = day N `socEndPct`.
-One sunny day is identical to `simulate(input)`.
+Scenario events on the input apply every day; in addition, per-day events (`WorkflowDay.events?: ScenarioEvent[]`, PA-T8a)
+apply on top of that specific day only. Battery carries over: day N+1 `initialSocPct` = day N `socEndPct`.
+In Chaos mode (`generateChaosWorkflow`, PA-T6c), seeded random incidents (fires, surges, drops) and weather transitions
+are generated deterministically via pure Mulberry32 PRNG.
+One sunny day without per-day events is identical to `simulate(input)`.
 
 ### Physical scale model (PH)
 
