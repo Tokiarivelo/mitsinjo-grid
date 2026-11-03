@@ -5,12 +5,13 @@ Demo path that must always work: **solar drop → strategy comparison → AI exp
 
 ## Start here (token budget rule)
 
-1. Read `HANDOFF.md` (current state, next task). Always.
-2. Read the task file it points to: `docs/tasks/Pn-*.md`. Only that one.
-3. Load other docs **only** when the task's "Read first" list names them.
-4. Never load `Mitsinjo_Grid_*.md` at repo root — long human sources, already distilled into `docs/`.
-5. Find code with `rg`/`glob`; read package `index.ts` barrels before internals.
-6. Before ending a session: update `HANDOFF.md` (overwrite, ≤40 lines) and tick task boxes.
+1. **Branch first, always:** create a new branch from latest `main` before starting any task (`git fetch origin main && git checkout -b feat/<task-id>-<slug> origin/main`). Never commit directly on `main` or a stale branch.
+2. Read `HANDOFF.md` (current state, next task). Always.
+3. Read the task file it points to: `docs/tasks/Pn-*.md`. Only that one.
+4. Load other docs **only** when the task's "Read first" list names them.
+5. Never load `Mitsinjo_Grid_*.md` at repo root — long human sources, already distilled into `docs/`.
+6. Find code with `rg`/`glob`; read package `index.ts` barrels before internals.
+7. Before ending a session: update `HANDOFF.md` (overwrite, ≤40 lines) and tick task boxes.
 
 ## Skills & rules (auto, cheap)
 

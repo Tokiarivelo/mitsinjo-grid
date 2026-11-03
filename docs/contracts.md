@@ -644,7 +644,15 @@ decideDispatch(input, hour, strategy, incidents, rules?, history?, day?): Dispat
 `AutoAction` refinements: `switch_strategy` needs `strategy`; `alert_only` carries neither patch nor
 strategy; every other kind needs `patch`; sector kinds (`isolate`, `cap`, `shed_flexible`,
 `shift_flexible`, `restore`) need `sector`. `DispatchLogEntry` needs an incident or an action, and a
-grid-changing action needs `before` and `after`. Not stored yet (no Neon table).
+grid-changing action needs `before` and `after`. Stored in Neon: table `dispatch_log` (migration
+`0004_dispatch_log`), client syncs via `POST /api/dispatch/log` (`GET ?limit=1..500`, default 100,
+returns the latest lines oldest first).
+
+Copilot in autonomous mode (`lib/dispatch-log.ts`, PA-T3c): `operatorAutoAction(input, proposal)` returns the
+action a `propose_change` performs alone (`switch_strategy`, `cap_sector`, `raise_clinic_floor`), or `null` → the
+usual Approve card: constitution violation (incl. lifeline floors), any `clearFires`, or no fitting kind.
+The line has `origin: 'operator'`, full-day `before`/`after` (`resultSnapshot`) and the proposal reason as
+`narration` (`source: 'llm'`, ≤ 400 chars); the UI labels operator origin via i18n.
 
 ## Meeting (`lib/meeting-priorities.ts`, `POST /api/meetings`, M10-T4)
 

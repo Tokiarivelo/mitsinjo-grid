@@ -38,6 +38,7 @@
 
 ## Git
 
+- Always create a new branch from latest `main` (`git fetch origin main && git checkout -b <type>/<task-slug> origin/main`) when beginning a task. Never start work directly on `main` or an un-rebased stale branch.
 - Conventional commits, scope = `engine|web|sim|3d|lab|copilot|design|docs|ci`.
 - One task id per commit when possible: `feat(engine): essential_first strategy [P3-T4]`.
 - Never commit `.env*` except `.env.example`.

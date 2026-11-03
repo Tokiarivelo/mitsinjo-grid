@@ -55,6 +55,27 @@ export const MIGRATIONS: readonly Migration[] = [
       'ALTER TABLE copilot_sessions ADD COLUMN IF NOT EXISTS summarized_count INT DEFAULT 0',
     ],
   },
+  {
+    id: '0004_dispatch_log',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS dispatch_log (
+        id VARCHAR(64) PRIMARY KEY,
+        day INT NOT NULL,
+        hour INT NOT NULL,
+        mode VARCHAR(16) NOT NULL,
+        origin VARCHAR(16) NOT NULL,
+        incident JSONB,
+        action JSONB,
+        "before" JSONB,
+        "after" JSONB,
+        narration JSONB,
+        hash VARCHAR(64) NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )`,
+      'CREATE INDEX IF NOT EXISTS idx_dispatch_log_created_at ON dispatch_log (created_at DESC)',
+      'CREATE INDEX IF NOT EXISTS idx_dispatch_log_day_hour ON dispatch_log (day, hour)',
+    ],
+  },
 ];
 
 const ID_PATTERN = /^\d{4}_[a-z0-9_]+$/;

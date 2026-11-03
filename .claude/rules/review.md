@@ -1,5 +1,7 @@
 # Review rules (always on): reviewing or merging a PR or branch
 
+- **Branch first, always.** When beginning any task, always pull and create a new branch from latest `main`:
+  `git fetch origin main && git checkout -b <type>/<task-slug> origin/main`. Never start work directly on `main` or an un-rebased stale branch.
 - **Rebase first, always.** Before reviewing, fixing or merging, bring the branch onto the latest `main`:
   `make rebase-main` (fetches `origin/main`, rebases the current branch). Skip only if `git merge-base --is-ancestor origin/main HEAD` already passes.
   Resolve conflicts keeping both sides' intent, rerun `make check`, then `git push --force-with-lease` (never plain `--force`).

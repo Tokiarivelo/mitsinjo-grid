@@ -18,6 +18,8 @@ import {
   selectStatus,
   selectStepAtTime,
   selectTimeIndex,
+  selectDispatchMode,
+  selectDispatchLog,
 } from '../selectors';
 
 describe('useSimulationStore & selectors (P4-T1)', () => {
@@ -266,5 +268,73 @@ describe('useSimulationStore & selectors (P4-T1)', () => {
     useSimulationStore.getState().restart();
     state = useSimulationStore.getState();
     expect(selectIsPlaying(state)).toBe(false);
+  });
+
+  describe('dispatch mode & log (PA-T3a)', () => {
+    it('initializes with manual dispatchMode and empty dispatchLog', () => {
+      const state = useSimulationStore.getState();
+      expect(selectDispatchMode(state)).toBe('manual');
+      expect(selectDispatchLog(state)).toEqual([]);
+    });
+
+    it('sets dispatch mode to assisted or autonomous', () => {
+      const store = useSimulationStore.getState();
+      store.setDispatchMode('assisted');
+      expect(selectDispatchMode(useSimulationStore.getState())).toBe('assisted');
+
+      store.setDispatchMode('autonomous');
+      expect(selectDispatchMode(useSimulationStore.getState())).toBe('autonomous');
+    });
+
+    it('takeBackControl immediately restores manual mode', () => {
+      const store = useSimulationStore.getState();
+      store.setDispatchMode('autonomous');
+      expect(selectDispatchMode(useSimulationStore.getState())).toBe('autonomous');
+
+      store.takeBackControl();
+      expect(selectDispatchMode(useSimulationStore.getState())).toBe('manual');
+    });
+
+    it('appends entries to dispatchLog and clearDispatchLog clears them', () => {
+      const store = useSimulationStore.getState();
+      const entry = {
+        id: 'test-1',
+        day: 0,
+        hour: 14,
+        mode: 'autonomous' as const,
+        origin: 'ai' as const,
+        action: { kind: 'alert_only' as const },
+        hash: 'abc1234567890def',
+      };
+      store.appendDispatchLog(entry);
+      expect(selectDispatchLog(useSimulationStore.getState())).toHaveLength(1);
+      expect(selectDispatchLog(useSimulationStore.getState())[0]?.id).toBe('test-1');
+
+      store.clearDispatchLog();
+      expect(selectDispatchLog(useSimulationStore.getState())).toHaveLength(0);
+    });
+
+    it('loadScenario and reset restore dispatchMode to manual and clear dispatchLog', () => {
+      const store = useSimulationStore.getState();
+      store.setDispatchMode('autonomous');
+      store.appendDispatchLog({
+        id: 'test-1',
+        day: 0,
+        hour: 14,
+        mode: 'autonomous' as const,
+        origin: 'ai' as const,
+        action: { kind: 'alert_only' as const },
+        hash: 'hash1',
+      });
+
+      store.loadScenario('village_fire');
+      expect(selectDispatchMode(useSimulationStore.getState())).toBe('manual');
+      expect(selectDispatchLog(useSimulationStore.getState())).toHaveLength(0);
+
+      store.setDispatchMode('autonomous');
+      store.reset();
+      expect(selectDispatchMode(useSimulationStore.getState())).toBe('manual');
+      expect(selectDispatchLog(useSimulationStore.getState())).toHaveLength(0);
+    });
   });
 });

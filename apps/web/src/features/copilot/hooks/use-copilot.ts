@@ -20,7 +20,8 @@ import type {
   ProposalDecisionStatus,
   ProposalDiffItem,
 } from '../types';
-import type { InputPatch } from '@mitsinjo/engine';
+import { simulate, type InputPatch } from '@mitsinjo/engine';
+import { operatorAutoAction, operatorLogEntry } from '@/lib/dispatch-log';
 import { proposalImpact } from '@/lib/proposal-impact';
 import { parseMessageSections } from '../utils/parse-sections';
 import { COPILOT_PAYLOAD_MAX } from '../utils/history';
@@ -194,6 +195,26 @@ export function useCopilot() {
         setSelectedModel('auto');
       });
   }, []);
+
+  /** Posts an operator decision in the chat and saves it with the session (keeps the card locked on reopen). */
+  const postDecision = useCallback(
+    (decision: ProposalDecision) => {
+      const decisionMessage: ChatMessageData = {
+        id: `decision-${decision.proposalId}-${decision.status}-${Date.now()}`,
+        role: 'decision',
+        content: '',
+        decision,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, decisionMessage]);
+      void fetch(`/api/copilot/sessions/${sessionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(decisionMessage),
+      }).catch(() => {});
+    },
+    [sessionId]
+  );
 
   const sendMessage = useCallback(
     async (prompt: string, media?: ChatMediaItem[], options?: { retryOf?: string }) => {
@@ -464,6 +485,43 @@ export function useCopilot() {
                   msg.id === assistantMsgId ? { ...msg, proposal: collectedProposal } : msg
                 )
               );
+
+              // PA-T3c: in autonomous mode a compliant proposal applies alone and is logged.
+              const sim = useSimulationStore.getState();
+              const action =
+                sim.dispatchMode === 'autonomous' && collectedProposal
+                  ? operatorAutoAction(sim.input, collectedProposal)
+                  : null;
+              if (action && collectedProposal) {
+                const before =
+                  sim.results[sim.activeStrategy] ?? simulate(sim.input, sim.activeStrategy);
+                sim.approveChange(
+                  collectedProposal.proposalId,
+                  collectedProposal.patch,
+                  collectedProposal.strategy
+                );
+                const next = useSimulationStore.getState();
+                const after =
+                  next.results[next.activeStrategy] ?? simulate(next.input, next.activeStrategy);
+                next.appendDispatchLog(
+                  operatorLogEntry({
+                    id: `op-${collectedProposal.proposalId}-${Date.now()}`,
+                    day: sim.dayIndex,
+                    hour: sim.timeIndex,
+                    action,
+                    before,
+                    after,
+                    reason: collectedProposal.reason,
+                  })
+                );
+                postDecision({
+                  proposalId: collectedProposal.proposalId,
+                  status: 'approved',
+                  items: [],
+                  patch: collectedProposal.patch,
+                  strategy: collectedProposal.strategy,
+                });
+              }
               break;
             }
             case 'perception': {
@@ -544,7 +602,17 @@ export function useCopilot() {
         setToolActivity(null);
       }
     },
-    [messages, pending, selectedModel, sessionId, locale, fetchSessions, summary, summarizedCount]
+    [
+      messages,
+      pending,
+      selectedModel,
+      sessionId,
+      locale,
+      fetchSessions,
+      summary,
+      summarizedCount,
+      postDecision,
+    ]
   );
 
   const decisions = useMemo(() => proposalDecisions(messages), [messages]);
@@ -567,26 +635,6 @@ export function useCopilot() {
     if (!question) return;
     void sendMessage(question.content, question.media, { retryOf: retryableId });
   }, [messages, retryableId, sendMessage]);
-
-  /** Posts an operator decision in the chat and saves it with the session (keeps the card locked on reopen). */
-  const postDecision = useCallback(
-    (decision: ProposalDecision) => {
-      const decisionMessage: ChatMessageData = {
-        id: `decision-${decision.proposalId}-${decision.status}-${Date.now()}`,
-        role: 'decision',
-        content: '',
-        decision,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages((prev) => [...prev, decisionMessage]);
-      void fetch(`/api/copilot/sessions/${sessionId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(decisionMessage),
-      }).catch(() => {});
-    },
-    [sessionId]
-  );
 
   /** Applies (or not) this message's own proposal, once, and posts the decision in the chat. */
   const decideProposal = useCallback(

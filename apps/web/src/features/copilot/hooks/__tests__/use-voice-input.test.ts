@@ -147,7 +147,8 @@ describe('useVoiceInput (M3-T2)', () => {
         timeout: 5000,
       });
       expect(onAutoSend).toHaveBeenCalledWith('Allume la lumière');
-      expect(result.current.status).toBe('idle');
+      // `idle` is set in the `finally` after the text callbacks: wait for it (CI flake).
+      await waitFor(() => expect(result.current.status).toBe('idle'));
     }, 10000);
 
     it('without hands-free nothing auto-sends (manual stop as before)', async () => {
