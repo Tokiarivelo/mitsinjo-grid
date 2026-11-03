@@ -25,7 +25,9 @@ import {
   toAppliance,
   wattsRange,
   type ApplianceDraft,
+  type ConnectionMode,
 } from '../utils/appliance-draft';
+import { usePlacedModelsStore } from '@/stores/placed-models.store';
 
 /** `ai` = AI category + engine catalog power · `manual` = the operator's values (still catalog-bounded). */
 export type DraftSource = 'ai' | 'manual';
@@ -40,11 +42,18 @@ function initial(
   key: string,
   detection: ApplianceDetection,
   name: string,
-  existing?: Appliance
+  existing?: Appliance,
+  id?: string
 ): DraftState {
   const ai = aiDraft(detection, name);
-  if (!existing) return { key, draft: ai, source: 'ai' };
-  const draft = fromAppliance(existing);
+  const connMode = id ? usePlacedModelsStore.getState().models[id]?.connectionMode : undefined;
+  if (!existing)
+    return {
+      key,
+      draft: { ...ai, ...(connMode ? { connectionMode: connMode } : {}) },
+      source: 'ai',
+    };
+  const draft = fromAppliance(existing, connMode ?? 'branch');
   return { key, draft, source: sameDraft(draft, ai) ? 'ai' : 'manual' };
 }
 
@@ -60,9 +69,9 @@ export function useApplianceDraft(
   existing?: Appliance
 ) {
   const key = `${id}|${existing ? 'in' : 'out'}`;
-  const [state, setState] = useState<DraftState>(() => initial(key, detection, name, existing));
+  const [state, setState] = useState<DraftState>(() => initial(key, detection, name, existing, id));
   // New object (or inserted / removed elsewhere): start again, without an effect round-trip.
-  const current = state.key === key ? state : initial(key, detection, name, existing);
+  const current = state.key === key ? state : initial(key, detection, name, existing, id);
   if (current !== state) setState(current);
 
   const edit = useCallback(
@@ -103,6 +112,10 @@ export function useApplianceDraft(
       })),
     [edit]
   );
+  const setConnectionMode = useCallback(
+    (v: ConnectionMode) => edit((d) => ({ ...d, connectionMode: v })),
+    [edit]
+  );
   const setWatts = useCallback((v: number) => edit((d) => ({ ...d, watts: v })), [edit]);
   const setQuantity = useCallback((v: number) => edit((d) => ({ ...d, quantity: v })), [edit]);
   const setCategory = useCallback(
@@ -132,6 +145,7 @@ export function useApplianceDraft(
     setName,
     setCategory,
     setSector,
+    setConnectionMode,
     setPosition,
     useNearestFeeder,
     setWatts,

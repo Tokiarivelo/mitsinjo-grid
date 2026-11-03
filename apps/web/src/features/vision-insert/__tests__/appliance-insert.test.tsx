@@ -209,4 +209,41 @@ describe('ApplianceInsert (PV-T12)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove from simulation' }));
     expect(usePlacedModelsStore.getState().getModel(id)).toBeUndefined();
   });
+
+  it('chooses grid connection mode: branch (recommended) or direct EMS (PI-T8)', () => {
+    const recipe: ObjectRecipe = {
+      proportions: { w: 1, h: 0.6, d: 0.5 },
+      parts: [{ shape: 'box', at: [0, 0, 0], size: [1, 1, 1], color: '#336699' }],
+    };
+    renderInsert(pump, 'Water pump', recipe);
+
+    // Initial state: branch is recommended and pressed
+    const branchBtn = screen.getByRole('button', { name: 'On feeder branch (recommended)' });
+    const emsBtn = screen.getByRole('button', { name: 'Direct to Dispatch EMS' });
+    expect(branchBtn.getAttribute('aria-pressed')).toBe('true');
+    expect(emsBtn.getAttribute('aria-pressed')).toBe('false');
+
+    // Reminder of the sector that bears the load (D1)
+    expect(screen.getByText(/Powered by:.*Water/i)).toBeTruthy();
+
+    // Click direct to EMS
+    fireEvent.click(emsBtn);
+    expect(branchBtn.getAttribute('aria-pressed')).toBe('false');
+    expect(emsBtn.getAttribute('aria-pressed')).toBe('true');
+
+    // Insert into simulation
+    fireEvent.click(screen.getByRole('button', { name: 'Insert into simulation' }));
+
+    const id = 'vision-p1-det-1';
+    const placed = usePlacedModelsStore.getState().getModel(id);
+    expect(placed).toBeDefined();
+    expect(placed?.connectionMode).toBe('ems');
+  });
+
+  it('without a 3D model: no connection selector and no placed model stored (PR #56 review)', () => {
+    renderInsert(pump, 'Water pump');
+    expect(screen.queryByRole('group', { name: 'Grid connection' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Insert into simulation' }));
+    expect(usePlacedModelsStore.getState().getModel('vision-p1-det-1')).toBeUndefined();
+  });
 });

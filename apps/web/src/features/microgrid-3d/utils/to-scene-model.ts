@@ -1,4 +1,5 @@
 import { applianceMarkers } from './appliance-markers';
+import { buildApplianceDerivations, type TapMode } from './tap-point';
 import {
   activeFires,
   breakerFromMode,
@@ -26,30 +27,25 @@ import type {
 import { STATUS_HEX, TOKEN_HEX } from './scene-palette';
 
 // Site positions live in site-positions.ts (leaf: breaks the landscape/to-scene-model cycle).
-import { BATTERY_POSITION, BUS_POSITION, SECTOR_POSITIONS, SOLAR_POSITION } from './site-positions';
+import {
+  BATTERY_POSITION,
+  BUS_POSITION,
+  FEEDER_EXIT_X,
+  FEEDER_EXIT_Z,
+  SECTOR_POSITIONS,
+  SOLAR_POSITION,
+  feederExitPosition,
+} from './site-positions';
 
-export { BATTERY_POSITION, BUS_POSITION, SECTOR_POSITIONS, SOLAR_POSITION };
-
-/**
- * Feeder departures on the EMS controller's roof gantry (x offset from BUS_POSITION),
- * ordered by where each sector lies (west → east) so outgoing cables never cross.
- * The breaker LEDs on the cabinet use the same order.
- */
-export const FEEDER_EXIT_X: Record<SectorId, number> = {
-  water: -0.6,
-  households: -0.36,
-  school: -0.12,
-  market: 0.12,
-  health: 0.36,
-  industry: 0.6,
+export {
+  BATTERY_POSITION,
+  BUS_POSITION,
+  FEEDER_EXIT_X,
+  FEEDER_EXIT_Z,
+  SECTOR_POSITIONS,
+  SOLAR_POSITION,
+  feederExitPosition,
 };
-/** Gantry depth (z offset from BUS_POSITION), above the cabinet. */
-export const FEEDER_EXIT_Z = -0.2;
-
-/** World point where a sector's cable leaves the controller. */
-export function feederExitPosition(id: SectorId): [number, number, number] {
-  return [BUS_POSITION[0] + FEEDER_EXIT_X[id], 0, BUS_POSITION[2] + FEEDER_EXIT_Z];
-}
 
 /** Incoming terminal on the controller's back wall (cable from the battery hub). */
 export const BUS_INLET_POSITION: [number, number, number] = [
@@ -69,6 +65,7 @@ export interface ToSceneModelOptions {
   strategy?: StrategyId;
   /** Weather of the day shown. Default sunny (plain 24 h run). */
   weather?: WeatherId;
+  placedModels?: Readonly<Record<string, { connectionMode?: TapMode }>>;
 }
 
 /**
@@ -284,6 +281,11 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     color: TOKEN_HEX.energyCyan,
   };
 
+  const appliances = applianceMarkers(input.appliances, SECTOR_POSITIONS, validTime, result);
+  const derivations = buildApplianceDerivations(appliances, buildings, {
+    placedModels: options.placedModels,
+  });
+
   return {
     timeIndex: validTime,
     timeLabel,
@@ -298,11 +300,13 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     battery,
     controller,
     buildings,
-    appliances: applianceMarkers(input.appliances, SECTOR_POSITIONS, validTime, result),
+    appliances,
     lines: {
       solarToBattery,
       batteryToBus,
       busToSectors,
+      applianceDerivations: derivations.lines,
+      appliancePoles: derivations.poles,
     },
   };
 }

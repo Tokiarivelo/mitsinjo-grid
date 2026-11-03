@@ -27,20 +27,24 @@ export function ApplianceInsert({ detection, name, photo, recipe }: ApplianceIns
   const existing = list.find((a) => a.id === id);
   const draft = useApplianceDraft(id, detection, name, existing);
 
+  // A placed model needs a 3D recipe: the new one, or the one already stored for this object.
+  const storedModel = usePlacedModelsStore((s) => s.models[id]);
+  const modelRecipe = recipe ?? storedModel?.recipe;
+
   const handleInsert = () => {
     if (!draft.appliance) return;
     const ok = upsert(draft.appliance);
-    if (ok && recipe) {
-      const archetype = defaultArchetype(detection.category, detection.scenery, detection.label);
-      const scale = sceneScale(archetype, recipe.proportions);
-      usePlacedModelsStore.getState().upsert({
-        applianceId: id,
-        recipe,
-        yaw: recipe.yaw,
-        scale,
-        archetype,
-      });
-    }
+    if (!ok || !modelRecipe) return;
+    const fresh = defaultArchetype(detection.category, detection.scenery, detection.label);
+    const archetype = recipe ? fresh : (storedModel?.archetype ?? fresh);
+    usePlacedModelsStore.getState().upsert({
+      applianceId: id,
+      recipe: modelRecipe,
+      yaw: recipe ? recipe.yaw : storedModel?.yaw,
+      scale: recipe ? sceneScale(archetype, recipe.proportions) : storedModel?.scale,
+      archetype,
+      connectionMode: draft.draft.connectionMode ?? 'branch',
+    });
   };
 
   return (
@@ -49,6 +53,7 @@ export function ApplianceInsert({ detection, name, photo, recipe }: ApplianceIns
       scenery={!isAppliance(detection)}
       inSimulation={Boolean(existing)}
       full={!existing && list.length >= MAX_APPLIANCES}
+      canConnect={Boolean(modelRecipe)}
       onInsert={handleInsert}
       onRemove={() => remove(id)}
     />

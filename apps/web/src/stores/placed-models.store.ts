@@ -5,9 +5,13 @@ import { ObjectRecipeSchema, type ObjectRecipe } from '@/lib/object-shape';
 import { KIT_ARCHETYPES, type KitArchetype, defaultArchetype } from '@/lib/object-kit';
 import { useSimulationStore, type SimulationState } from './simulation.store';
 
+export const ConnectionModeSchema = z.enum(['branch', 'ems']);
+export type ConnectionMode = z.infer<typeof ConnectionModeSchema>;
+
 /**
  * 3D placed model contract (PI-T1, visual store only, zero engine change):
- * links an inserted appliance to its 3D recipe, orientation yaw and scene scale.
+ * links an inserted appliance to its 3D recipe, orientation yaw, scene scale,
+ * and electrical grid connection mode (PI-T6/PI-T7).
  */
 export const PlacedModelSchema = z.object({
   applianceId: z.string().min(1),
@@ -15,6 +19,7 @@ export const PlacedModelSchema = z.object({
   yaw: z.number().optional(),
   scale: z.number().positive().optional(),
   archetype: z.enum(KIT_ARCHETYPES).optional(),
+  connectionMode: ConnectionModeSchema.optional(),
 });
 export type PlacedModel = z.infer<typeof PlacedModelSchema>;
 

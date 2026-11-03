@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { Instance, Instances, Line } from '@react-three/drei';
 import * as THREE from 'three';
-import type { FeederSceneModel, LineFlowSceneModel } from '../types';
+import type { FeederSceneModel, LineFlowSceneModel, SectorPole } from '../types';
 import type { SectorId } from '@mitsinjo/engine';
 import { POLE_HEIGHT, mapPolesToSectors, routeCable } from '../utils/cable-route';
 import { STREET_LAMP_HEX, TOKEN_HEX, glowFromIntensity } from '../utils/scene-palette';
@@ -14,6 +14,10 @@ export interface DistributionLinesProps {
     solarToBattery: LineFlowSceneModel;
     batteryToBus: LineFlowSceneModel;
     busToSectors: Record<string, LineFlowSceneModel>;
+    /** Appliance derivations from tap points (PI-T7). */
+    applianceDerivations?: LineFlowSceneModel[];
+    /** Derivation utility poles mapped to their sector feeder (PI-T7). */
+    appliancePoles?: SectorPole[];
   };
   /** Sector dispatch feeders to modulate street lamps per sector line (PL-T10). */
   feeders?: Record<SectorId, FeederSceneModel>;
@@ -98,6 +102,7 @@ export function DistributionLines({
       lines.solarToBattery,
       lines.batteryToBus,
       ...Object.values(lines.busToSectors),
+      ...(lines.applianceDerivations ?? []),
     ];
     return list;
   }, [lines]);

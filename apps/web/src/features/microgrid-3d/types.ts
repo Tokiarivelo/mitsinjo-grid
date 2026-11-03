@@ -1,4 +1,5 @@
 import type { ApplianceMarkerSceneModel } from './utils/appliance-markers';
+import type { SectorPole } from './utils/cable-route';
 import type { SectorId, Priority, StrategyId, WeatherId, SectorMode } from '@mitsinjo/engine';
 
 /** `unknown` = no simulation result for this step yet. */
@@ -104,9 +105,13 @@ export interface SceneModel {
     solarToBattery: LineFlowSceneModel;
     batteryToBus: LineFlowSceneModel;
     busToSectors: Record<SectorId, LineFlowSceneModel>;
+    /** Appliance derivations from tap points (PI-T7). */
+    applianceDerivations?: LineFlowSceneModel[];
+    /** Derivation utility poles mapped to their sector feeder (PI-T7). */
+    appliancePoles?: SectorPole[];
   };
 }
 
-export type { ApplianceMarkerSceneModel };
+export type { ApplianceMarkerSceneModel, SectorPole };
 
 export type CameraPreset = 'village' | 'solar' | 'battery' | 'essential' | 'controller';

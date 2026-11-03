@@ -77,20 +77,23 @@ proportions)` (une maison ≈ une maison du village, un frigo ≈ 1 m) ; `footpr
 
 ### I2 Poteaux vers sa ramification ou le Dispatch EMS
 
-- [ ] **PI-T6 Point de raccordement (pur, testé).** `tapPoint(position, sector, mode)` : mode `branch` (par défaut) = le
+- [x] **PI-T6 Point de raccordement (pur, testé).** `tapPoint(position, sector, mode)` : mode `branch` (par défaut) = le
       **poteau le plus proche de la ligne de son départ** (`routeCable` du départ, via `mapPolesToSectors`) ou le bâtiment du
       secteur s'il est plus près ; mode `ems` (D1) = le Dispatch EMS (`BUS_POSITION`). Jamais à travers un bâtiment, la mare ou
       un autre objet : la ligne contourne (un poteau d'angle) ou change de point de raccordement.
       **Done when:** tests (branche la plus proche, EMS, contournement, objet collé au bâtiment = pas de poteau).
-- [ ] **PI-T7 Poteaux et câbles.** La dérivation réutilise `routeCable` (mêmes poteaux, même flèche, même hauteur) depuis le
+      **Done:** `tapPoint(position, sector, mode, options)` in `tap-point.ts`, handling branch (nearest pole or building), EMS (`BUS_POSITION`), obstacle detection via `segmentIntersectsObstacle` and contouring with corner pole waypoints (`contourWaypoint`), and zero intermediate poles when object is collé au bâtiment (distance ≤ 4.5). 10/10 unit tests passing in `tap-point.test.ts`.
+- [x] **PI-T7 Poteaux et câbles.** La dérivation réutilise `routeCable` (mêmes poteaux, même flèche, même hauteur) depuis le
       point de PI-T6 jusqu'à l'objet ; poteaux instanciés avec ceux du réseau, ajoutés à `mapPolesToSectors` avec le `sector`
       de l'objet (éclairage public et couleur de départ suivent : délesté = éteint, feu = coupé). Le fil droit actuel disparaît.
       Les électrons (`electron-flow`) suivent la dérivation quand l'objet consomme.
       **Done when:** test (poteaux tous les ≤ 4,5, rattachés au bon départ) ; budgets tenus ; capture jour / nuit.
-- [ ] **PI-T8 Choix du raccordement dans l'interface.** Dans le formulaire d'insertion : « Raccordement : sur sa ramification
+      **Done:** `buildApplianceDerivations` in `tap-point.ts`, integrated into `toSceneModel`, `DistributionLines`, `ElectronFlow`, and `mapPolesToSectors`. Catenary cables with sag, intermediate poles spaced ≤ 4.5 attributed to the appliance sector with street lamp lighting following feeder status, straight wire removed (`showStraightFeederLinks: false`), and electrons traveling along active derivations. 17/17 tests passing across `appliance-derivations.test.ts` and `appliance-markers-ui.test.tsx`.
+- [x] **PI-T8 Choix du raccordement dans l'interface.** Dans le formulaire d'insertion : « Raccordement : sur sa ramification
       (recommandé) · direct au Dispatch EMS » + rappel du départ qui porte la charge (D1). i18n en / fr / mg, thème clair /
       sombre, ≥ 44 px, 320 px. Le glisser 3D (PP-T5) recalcule clairière, sol et poteaux au relâchement.
       **Done when:** tests composant ; `/design-check` ; le copilote ne décrit que le départ, jamais des coordonnées (PP-T7).
+      **Done:** `connectionMode: 'branch' | 'ems'` added to `PlacedModelSchema`, `ApplianceDraft`, and `useApplianceDraft`. Connection selector wired to `ApplianceInsertPanel` with accessible toggle buttons (`role="group"`, `aria-pressed`, `min-h-11`), D1 sector attribution reminder, 100% key parity across `en.json`, `fr.json`, `mg.json`. 17/17 tests passing in `appliance-insert.test.tsx` and `appliance-draft.test.ts`.
 
 ### I3 Fin
 

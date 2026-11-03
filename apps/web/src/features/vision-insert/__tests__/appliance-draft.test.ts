@@ -23,6 +23,7 @@ describe('appliance draft (PV-T11)', () => {
       quantity: 1,
       position: null,
       feederAuto: true,
+      connectionMode: 'branch',
     });
     expect(aiDraft({ category: 'water_pump' }, 'Pump').sector).toBe('water');
     expect(aiDraft({ category: 'tv' }, 'TV').sector).toBe('households');

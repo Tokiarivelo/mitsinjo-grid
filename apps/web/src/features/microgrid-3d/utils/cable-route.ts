@@ -24,14 +24,17 @@ export interface SectorPole {
 }
 
 /**
- * Maps each distribution pole in the scene to the sector feeder powering it (PL-T10).
+ * Maps each distribution pole in the scene to the sector feeder powering it (PL-T10, PI-T7).
  * Poles along sector lines inherit that sector ID.
  * Trunk lines (solar array to battery hub, battery to controller) have no sector feeder (null).
+ * Derivation poles to placed appliances inherit the appliance's sector ID (PI-T7).
  */
 export function mapPolesToSectors(lines: {
   solarToBattery: LineFlowSceneModel;
   batteryToBus: LineFlowSceneModel;
   busToSectors: Record<string, LineFlowSceneModel>;
+  applianceDerivations?: LineFlowSceneModel[];
+  appliancePoles?: SectorPole[];
 }): SectorPole[] {
   const result: SectorPole[] = [];
   // Trunk line poles (solarToBattery, batteryToBus)
@@ -47,6 +50,8 @@ export function mapPolesToSectors(lines: {
       result.push({ x, z, sectorId: sectorId as SectorId });
     }
   }
+  // Appliance derivation poles (PI-T7)
+  if (lines.appliancePoles) result.push(...lines.appliancePoles);
   return result;
 }
 
@@ -58,7 +63,7 @@ export function routeCable(
   const dx = to[0] - from[0];
   const dz = to[2] - from[2];
   const length = Math.hypot(dx, dz);
-  const spans = Math.max(1, Math.round(length / spacing));
+  const spans = Math.max(1, Math.ceil(length / spacing));
 
   const anchors: [number, number, number][] = [];
   const poles: [number, number][] = [];
