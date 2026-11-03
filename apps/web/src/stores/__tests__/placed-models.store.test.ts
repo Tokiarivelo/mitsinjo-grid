@@ -7,8 +7,10 @@ import {
   type SimulationInput,
 } from '@mitsinjo/engine';
 import type { ObjectRecipe } from '@/lib/object-shape';
+import { resetSimulationStore, useSimulationStore } from '../simulation.store';
 import {
   footprint,
+  liveApplianceIds,
   sceneScale,
   usePlacedModelsStore,
   PLACED_MODELS_STORAGE_KEY,
@@ -185,6 +187,63 @@ describe('placed-models.store (PI-T1)', () => {
       expect(compareAfter.essential_first?.inputHash).toBe(
         compareBefore.essential_first?.inputHash
       );
+    });
+  });
+
+  describe('pruning with the simulation (syncWithAppliances wiring)', () => {
+    const pump: Appliance = {
+      id: 'vision-p1-pump',
+      name: 'Pump',
+      category: 'water_pump',
+      sector: 'water',
+      watts: 750,
+      quantity: 1,
+    };
+    const insertPumpWithModel = () => {
+      useSimulationStore.getState().applyProposal({ appliances: [pump] });
+      usePlacedModelsStore.getState().upsert({ applianceId: pump.id, recipe: SAMPLE_RECIPE });
+    };
+
+    beforeEach(() => resetSimulationStore());
+
+    it('liveApplianceIds = current appliances + those an undo can restore', () => {
+      const s = useSimulationStore.getState();
+      expect(
+        liveApplianceIds({ input: { ...s.input, appliances: [pump] }, changeHistory: [] })
+      ).toEqual([pump.id]);
+      expect(
+        liveApplianceIds({
+          input: { ...s.input, appliances: [] },
+          changeHistory: [
+            {
+              id: 'c1',
+              before: { input: { ...s.input, appliances: [pump] }, strategy: 'proportional' },
+            },
+          ],
+        })
+      ).toEqual([pump.id]);
+    });
+
+    const settle = () => new Promise<void>((r) => queueMicrotask(r));
+
+    it('loading a scenario drops models of appliances that are gone', async () => {
+      insertPumpWithModel();
+      await settle();
+      expect(usePlacedModelsStore.getState().getModel(pump.id)).toBeDefined();
+      useSimulationStore.getState().loadScenario('baseline');
+      await settle();
+      expect(usePlacedModelsStore.getState().getModel(pump.id)).toBeUndefined();
+    });
+
+    it('keeps the model while an undo can bring the appliance back', async () => {
+      insertPumpWithModel();
+      useSimulationStore.getState().approveChange('rm', { appliances: [] });
+      await settle();
+      expect(usePlacedModelsStore.getState().getModel(pump.id)).toBeDefined();
+      useSimulationStore.getState().undoLastChange();
+      await settle();
+      expect(useSimulationStore.getState().input.appliances?.map((a) => a.id)).toEqual([pump.id]);
+      expect(usePlacedModelsStore.getState().getModel(pump.id)).toBeDefined();
     });
   });
 });
