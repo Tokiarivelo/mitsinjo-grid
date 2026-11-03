@@ -1,33 +1,36 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-03 (PA-3 closed) · **By:** Antigravity · **Branch:** feat/pa-ai-dispatch
+**Updated:** 2026-11-03 (PA-4 closed) · **By:** Antigravity · **Branch:** feat/pa-4-ui-dispatch
 
 ## Current state
 
-- Branch `feat/pa-ai-dispatch` created from latest `main`.
-- Rule encoded: branch from latest `main` when beginning task (`CLAUDE.md`, `conventions.md`, `review.md`).
-- PA-T3 closed (PA-T3a, PA-T3b, PA-T3c):
-  - Store: `dispatchMode` ('manual'|'assisted'|'autonomous'), `dispatchLog`, `setDispatchMode`, `takeBackControl`.
-  - Neon migration: `0004_dispatch_log` applied to Neon (`make db-migrate`).
-  - API: `GET|POST|DELETE /api/dispatch/log` route + `neon.ts` helpers.
-  - Hook: `useAiDispatch` detects, decides, applies and logs in autonomous mode (`village_fire` test green).
-  - Copilot: `propose_change` applies alone after constitution check in autonomous mode, logged with operator origin.
+- Branch `feat/pa-4-ui-dispatch` branched from latest `main`.
+- PA-4 closed (PA-T4a, PA-T4b, PA-T4c):
+  - PA-T4a: 3-tier dispatch mode toggle (`DispatchModeToggle`) in header, sidebar, mobile nav, and autopilot panel. Permanent « IA AUX COMMANDES » pulsing badge + « Reprendre la main » button (≥ 44px).
+  - PA-T4b: Event log panel (`DispatchLogPanel`) in simulation (tab 5) and copilot workspace: timestamps, severity badges, origin (AI vs Operator), multi-filters, CSV/JSON exports, row click syncs timeline/sector.
+  - PA-T4c: Critical alerts banner & snackbars generalised for all critical incidents; 3D red alert pulse halo on building sectors.
+  - 100% i18n parity EN/FR/MG (`make check-i18n`), unit tests green, typecheck green.
 
 ## Next
 
-- **PA-4** (`docs/tasks/PA-ai-dispatch.md`): UI toggle 3-tier, dispatch log panel, critical alerts banner.
+- **PA-5** (`docs/tasks/PA-ai-dispatch.md`): AI narration & copilot integration:
+  - PA-T5a: `/api/dispatch/narrate` route (Muse Spark / template fallback).
+  - PA-T5b: Copilot tool `get_dispatch_log` + "Pourquoi ?" button per row.
+  - PA-T5c: Shift summary report (end-of-day).
 
 ## Files touched (this session)
 
-`CLAUDE.md`, `.claude/rules/review.md`, `docs/conventions.md`, `docs/contracts.md`, `docs/tasks/PA-ai-dispatch.md`,
-`packages/engine/src/autonomy.ts`, `apps/web/src/server/db/{migrations,neon}.ts`,
-`apps/web/src/stores/{simulation.store,selectors}.ts`, `apps/web/src/features/autopilot/{use-ai-dispatch,use-autopilot,index}.ts`,
-`apps/web/src/features/copilot/hooks/use-copilot.ts`, `apps/web/src/app/api/dispatch/log/route.ts`, `apps/web/src/lib/dispatch-log.ts`,
-tests (store, migrations, route, ai-dispatch, copilot). Scenario S90.
+`apps/web/src/features/autopilot/ui/{dispatch-mode-toggle,dispatch-log-panel}.tsx`,
+`apps/web/src/features/autopilot/__tests__/{dispatch-mode-toggle,dispatch-log-panel}.test.tsx`,
+`apps/web/src/components/layout/{header,sidebar,mobile-nav}.tsx`,
+`apps/web/src/features/simulation/ui/simulation-page.tsx`,
+`apps/web/src/features/copilot/ui/copilot-workspace.tsx`,
+`apps/web/src/features/fire-alert/{hooks/use-fire-alerts,ui/fire-alert-banner,ui/fire-snackbars}.tsx`,
+`apps/web/src/features/microgrid-3d/{types,ui/buildings,utils/to-scene-model}.ts`,
+`apps/web/src/messages/{en,fr,mg}.json`, `test-scenarios/02-simulation.md`.
 
 ## Decisions
 
-- Fire isolation in engine ignores already-isolated sectors so secondary fires (e.g. water at 15h) are not starved.
-- Copilot operator proposals in autonomous mode auto-apply only via `operatorAutoAction` (`lib/dispatch-log.ts`):
-  constitution incl. lifeline floors, never `clearFires`, no invented sector; otherwise the Approve card stays.
-- Log narration stores the proposal reason only; "asked by the operator" comes from `origin` + i18n (PA-4).
+- Action patch uses typed `sectorCaps` array for input patches.
+- Dispatch log panel distinguishes AI narrative vs engine numbers (font-mono, energy saved).
+- Critical forecast alerts reuse the high-visibility alert banner/snackbars without muting active fires.

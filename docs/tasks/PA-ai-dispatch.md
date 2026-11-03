@@ -121,11 +121,11 @@ autonome » attend PA-3.
 
 ### PA-4 — UI · J6
 
-- [ ] **PA-T4a** Bascule 3 niveaux (en-tête, barre latérale, `MobileNav`) ; badge permanent « IA AUX COMMANDES »
+- [x] **PA-T4a** Bascule 3 niveaux (en-tête, barre latérale, `MobileNav`) ; badge permanent « IA AUX COMMANDES »
       (ai-violet) + bouton « Reprendre la main » ≥ 44 px.
-- [ ] **PA-T4b** Panneau « Journal des événements » (simulation + colonne copilote) : sévérité, heure, texte IA
+- [x] **PA-T4b** Panneau « Journal des événements » (simulation + colonne copilote) : sévérité, heure, texte IA
       distinct des chiffres, filtre, export JSON/CSV, clic → heure + secteur.
-- [ ] **PA-T4c** Alertes : réutiliser bannière/toasts incendie pour tout incident `critical` ; 3D : zone qui clignote.
+- [x] **PA-T4c** Alertes : réutiliser bannière/toasts incendie pour tout incident `critical` ; 3D : zone qui clignote.
       i18n EN/FR/MG, clair/sombre, 320 px. Captures `make shots` (design gate).
 
 ### PA-5 — Narration IA et copilote · J7

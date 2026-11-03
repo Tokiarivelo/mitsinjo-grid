@@ -3,6 +3,7 @@ import {
   activeFires,
   breakerFromMode,
   controllerModeAt,
+  detectIncidents,
   SECTOR_IDS,
   type SectorId,
   type SimulationInput,
@@ -160,6 +161,17 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
   // Sectors burning at this hour (F1): engine fire events, shown as fire in 3D / 2D / circuit.
   const burning = new Set(activeFires(input.events, validTime).map((f) => f.sector));
 
+  // Critical alerts at this hour (PA-T4c): active fires and critical forecasted deficits
+  const criticalIncidents = result
+    ? detectIncidents(input, result, validTime, 3).filter(
+        (i) => i.severity === 'critical' && i.sector
+      )
+    : [];
+  const inAlertSectors = new Set<SectorId>([
+    ...burning,
+    ...criticalIncidents.map((i) => i.sector!),
+  ]);
+
   for (const sectorId of SECTOR_IDS) {
     const sectorConfig = input.sectors.find((s) => s.id === sectorId);
     const priority = sectorConfig?.priority ?? 'medium';
@@ -217,6 +229,7 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
       intensity,
       mode,
       onFire: burning.has(sectorId),
+      inAlert: inAlertSectors.has(sectorId),
     };
 
     feeders[sectorId] = {

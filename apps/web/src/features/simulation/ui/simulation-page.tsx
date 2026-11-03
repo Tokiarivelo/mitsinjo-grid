@@ -13,6 +13,7 @@ import {
   Factory,
   PanelRightClose,
   PanelRightOpen,
+  ScrollText,
   Sliders,
   Sun,
 } from 'lucide-react';
@@ -61,20 +62,26 @@ import { ApplianceList } from '@/features/vision-insert';
 import { VillageViewport } from './village-viewport';
 import { PlaybackActions } from './playback-actions';
 import { ReportFireControl } from '@/features/fire-alert';
-import { AutopilotPanel, ConstitutionCard } from '@/features/autopilot';
+import {
+  AutopilotPanel,
+  ConstitutionCard,
+  DispatchLogPanel,
+  useAiDispatch,
+} from '@/features/autopilot';
 import { WeatherWorkflowPanel } from './weather-workflow-panel';
 import { HardwareLinkSection } from '@/features/hardware-link';
 import { DayStrip } from './day-strip';
 import { usePlaybackTicker } from '../hooks/use-playback-ticker';
 import { simStatusBadgeVariant } from '../utils/playback';
 
-export type SimulationTab = 'metrics' | 'controls' | 'buildings' | 'copilot';
+export type SimulationTab = 'metrics' | 'controls' | 'buildings' | 'copilot' | 'log';
 
 const TABS: { id: SimulationTab; labelKey: string; icon: typeof Activity }[] = [
   { id: 'metrics', labelKey: 'tabMetrics', icon: Activity },
   { id: 'controls', labelKey: 'tabControls', icon: Sliders },
   { id: 'buildings', labelKey: 'tabBuildings', icon: Building2 },
   { id: 'copilot', labelKey: 'tabCopilot', icon: Bot },
+  { id: 'log', labelKey: 'tabLog', icon: ScrollText },
 ];
 
 export function SimulationPage() {
@@ -102,6 +109,9 @@ export function SimulationPage() {
   const workflow = useSimulationStore(selectWorkflow);
   const dayIndex = useSimulationStore(selectDayIndex);
   const workflowResult = useSimulationStore(selectActiveWorkflowResult);
+
+  // Mount autonomous dispatch loop (PA-T3b / PA-T4b)
+  useAiDispatch();
 
   const patchInput = useSimulationStore((s) => s.patchInput);
   const resetScenario = useSimulationStore((s) => s.reset);
@@ -369,7 +379,7 @@ export function SimulationPage() {
               <div
                 role="tablist"
                 aria-label={tSim('deckTitle')}
-                className="grid grid-cols-4 border-b border-border bg-canvas-sunken/60 p-1 gap-1"
+                className="grid grid-cols-5 border-b border-border bg-canvas-sunken/60 p-1 gap-1"
               >
                 {TABS.map(({ id, labelKey, icon: Icon }) => {
                   const isActive = activeTab === id;
@@ -613,6 +623,17 @@ export function SimulationPage() {
                   <div className="rounded-card bg-surface-elevated/30 border border-border p-3">
                     <CopilotWorkspace mode="panel" />
                   </div>
+                </div>
+
+                {/* TAB 5: DISPATCH EVENT LOG (PA-T4b) */}
+                <div
+                  id="panel-log"
+                  role="tabpanel"
+                  aria-labelledby="tab-log"
+                  hidden={activeTab !== 'log'}
+                  className={cn('space-y-4', activeTab !== 'log' && 'hidden')}
+                >
+                  <DispatchLogPanel />
                 </div>
               </div>
             </aside>

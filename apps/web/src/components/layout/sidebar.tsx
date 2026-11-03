@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { StatusBadge, type StatusBadgeVariant } from '@/components/ui/status-badge';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
+import { DispatchModeToggle } from '@/features/autopilot';
 import { useTranslations } from '@/lib/i18n';
 
 export interface NavConfig {
@@ -182,6 +183,11 @@ export function Sidebar({
             );
           })}
         </nav>
+
+        {/* Dispatch Mode: Manual / Assisted / Autonomous (PA-T4a) */}
+        <div className={cn('px-3 py-2 border-t border-border/70', collapsed && 'xl:px-2')}>
+          <DispatchModeToggle variant="sidebar" collapsed={collapsed} />
+        </div>
 
         {/* Footer Area: Theme Toggle, Language Toggle, Simulation Status & Data Label */}
         {/* Folded rail hides it: theme and language stay in the header. */}

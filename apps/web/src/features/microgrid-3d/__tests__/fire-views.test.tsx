@@ -64,4 +64,12 @@ describe('fire in the scene model and the 2D views (M2-T3)', () => {
     };
     expect(cutWires(12)).toBe(cutWires(9) + 1);
   });
+
+  it('marks inAlert on the building model for critical alerts (PA-T4c)', () => {
+    const before = toSceneModel({ input, result, timeIndex: 9 });
+    const during = toSceneModel({ input, result, timeIndex: 12 });
+    expect(before.buildings.school.inAlert).toBe(false);
+    expect(during.buildings.school.inAlert).toBe(true);
+    expect(during.buildings.school.onFire).toBe(true);
+  });
 });

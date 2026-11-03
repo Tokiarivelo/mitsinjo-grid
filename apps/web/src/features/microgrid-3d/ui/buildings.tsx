@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { SECTOR_IDS, type Priority, type SectorId } from '@mitsinjo/engine';
 import { SectorIcon } from '@/components/ui/sector-icon';
+import { useSimulationStore } from '@/stores';
 import { cn } from '@/lib/utils';
 import { fmtPct } from '@/lib/format';
 import type { BuildingSceneModel } from '../types';
@@ -70,6 +71,7 @@ function BuildingFrame({
   children,
 }: BuildingFrameProps) {
   const [hovered, setHovered] = useState(false);
+  const dispatchMode = useSimulationStore((s) => s.dispatchMode);
   const { position, statusColor, coveragePct, priority } = model;
   // Brighter than 1 so the bloom pass gives the status beacon a halo.
   const beaconColor = useMemo(
@@ -103,6 +105,14 @@ function BuildingFrame({
         </mesh>
       )}
 
+      {/* Alert Ground Ring (blinking in critical red, PA-T4c) */}
+      {(model.inAlert || model.onFire) && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
+          <ringGeometry args={[ringInner - 0.1, ringInner + 0.35, 32]} />
+          <meshBasicMaterial color={TOKEN_HEX.criticalRed} transparent opacity={0.65} />
+        </mesh>
+      )}
+
       {/* Building Apex Status Beacon */}
       <mesh position={[0, ledY, 0]}>
         <sphereGeometry args={[0.16, 16, 12]} />
@@ -125,7 +135,9 @@ function BuildingFrame({
             'flex items-center gap-2 px-3 py-1.5 rounded-full shadow-xl backdrop-blur-md text-[11px] font-sans border transition-all cursor-pointer whitespace-nowrap',
             isSelected
               ? 'bg-surface-elevated/95 border-energy-cyan ring-2 ring-energy-cyan/50 scale-105'
-              : 'bg-surface/90 border border-border hover:border-text-secondary hover:bg-surface-hover'
+              : model.inAlert || model.onFire
+                ? 'bg-surface-elevated/95 border-critical-red ring-2 ring-critical-red/50 motion-safe:animate-pulse'
+                : 'bg-surface/90 border border-border hover:border-text-secondary hover:bg-surface-hover'
           )}
         >
           <div
@@ -137,7 +149,14 @@ function BuildingFrame({
             <SectorIcon sector={id} className="w-3.5 h-3.5" />
           </div>
           <div className="flex flex-col text-left leading-tight">
-            <span className="font-semibold text-text-primary text-[11px]">{sectorName}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-text-primary text-[11px]">{sectorName}</span>
+              {dispatchMode === 'autonomous' && (
+                <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-ai-violet/20 text-ai-violet border border-ai-violet/40">
+                  IA
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-1.5 font-mono text-[10px]">
               <span
                 className={cn('w-1.5 h-1.5 rounded-full shrink-0', STATUS_BG_CLASS[statusColor])}

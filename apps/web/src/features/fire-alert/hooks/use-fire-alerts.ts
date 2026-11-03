@@ -1,32 +1,63 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { activeFires, type SectorId } from '@mitsinjo/engine';
+import { activeFires, detectIncidents, type SectorId } from '@mitsinjo/engine';
 import { useSimulationStore } from '@/stores';
 
 /** How long a fire snackbar stays before it hides itself (the banner stays while the fire lasts). */
 export const FIRE_SNACKBAR_MS = 10_000;
 
-/** A fire burning at the hour shown in the app. */
+/** A fire burning or critical incident at the hour shown in the app. */
 export interface FireAlert {
-  /** `sector:startHour`, stable while the fire lasts. */
+  /** `sector:startHour`, stable while the alert lasts. */
   key: string;
   sector: SectorId;
   startHour: number;
+  kind?: string;
 }
 
-/** Fires burning at the hour shown in the app (engine `activeFires`), one per sector. */
+/** Fires and critical incidents active at the shown hour (PA-T4c), one per sector. */
 export function useActiveFires(): FireAlert[] {
   const events = useSimulationStore((s) => s.input.events);
   const timeIndex = useSimulationStore((s) => s.timeIndex);
+  const input = useSimulationStore((s) => s.input);
+  const results = useSimulationStore((s) => s.results);
+  const activeStrategy = useSimulationStore((s) => s.activeStrategy);
+  const dayIndex = useSimulationStore((s) => s.dayIndex);
+
   return useMemo(() => {
     const seen = new Set<SectorId>();
     const out: FireAlert[] = [];
-    for (const f of activeFires(events, timeIndex)) {
+
+    // 1. Active fires (engine activeFires)
+    for (const f of activeFires(events ?? [], timeIndex)) {
       if (seen.has(f.sector)) continue;
       seen.add(f.sector);
-      out.push({ key: `${f.sector}:${f.startHour}`, sector: f.sector, startHour: f.startHour });
+      out.push({
+        key: `${f.sector}:${f.startHour}`,
+        sector: f.sector,
+        startHour: f.startHour,
+        kind: 'fire',
+      });
     }
+
+    // 2. Critical forecast / other critical incidents (PA-T4c)
+    const result = results[activeStrategy];
+    if (result) {
+      const incidents = detectIncidents(input, result, timeIndex, 3, dayIndex);
+      for (const inc of incidents) {
+        if (inc.severity === 'critical' && inc.sector && !seen.has(inc.sector)) {
+          seen.add(inc.sector);
+          out.push({
+            key: `${inc.kind}:${inc.sector}:${inc.hour}`,
+            sector: inc.sector,
+            startHour: inc.hour,
+            kind: inc.kind,
+          });
+        }
+      }
+    }
+
     return out;
-  }, [events, timeIndex]);
+  }, [events, timeIndex, input, results, activeStrategy, dayIndex]);
 }
 
 /**

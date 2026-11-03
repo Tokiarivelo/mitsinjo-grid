@@ -48,6 +48,8 @@ export interface BuildingSceneModel {
   mode: SectorMode;
   /** A fire event burns in this sector at the shown hour (F1): the engine cut it to 0 kW. */
   onFire: boolean;
+  /** True when the sector is on fire or has an active critical incident (PA-T4c). */
+  inAlert?: boolean;
 }
 
 export interface SolarSceneModel {
