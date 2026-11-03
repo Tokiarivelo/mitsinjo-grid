@@ -148,4 +148,44 @@ describe('suggestPrompts (P6-T10)', () => {
     expect(prompts).toHaveLength(4);
     expect(prompts.every((p) => p.tone === 'incident')).toBe(true);
   });
+
+  it('generates promptWhyDispatchAction with sector, and promptWhyDispatchActionNoSector without sector', () => {
+    const withSector = suggestPrompts({
+      dispatchLog: [
+        {
+          id: '1',
+          day: 0,
+          hour: 14,
+          mode: 'autonomous',
+          origin: 'ai',
+          hash: 'h1',
+          action: { kind: 'isolate_sector', sector: 'market', answers: 'fire' },
+        },
+      ],
+    });
+    expect(withSector[0]).toEqual({
+      key: 'promptWhyDispatchAction',
+      params: { hour: 14, action: 'isolate_sector', sector: 'market' },
+      tone: 'incident',
+    });
+
+    const withoutSector = suggestPrompts({
+      dispatchLog: [
+        {
+          id: '2',
+          day: 0,
+          hour: 18,
+          mode: 'autonomous',
+          origin: 'ai',
+          hash: 'h2',
+          action: { kind: 'switch_strategy', strategy: 'essential_first', answers: 'reserve_low' },
+        },
+      ],
+    });
+    expect(withoutSector[0]).toEqual({
+      key: 'promptWhyDispatchActionNoSector',
+      params: { hour: 18, action: 'switch_strategy' },
+      tone: 'incident',
+    });
+  });
 });

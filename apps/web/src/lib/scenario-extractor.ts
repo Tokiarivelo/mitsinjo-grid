@@ -4,8 +4,11 @@ import {
   type ScenarioDraft,
   type ScenarioDraftDay,
   type ScenarioDraftEvent,
+  type MissingSlot,
+  DRAFT_DEFAULTS,
   missingSlots,
 } from './scenario-draft';
+import { MAX_WORKFLOW_DAYS } from '@mitsinjo/engine';
 
 /**
  * Deterministic Scenario Draft Extractor (PA-T8c).
@@ -26,17 +29,17 @@ function normalizeText(text: string): string {
 const WEATHER_PATTERNS: Array<[WeatherId, RegExp]> = [
   [
     'storm',
-    /\b(orage|orageux|tempete|storm|stormy|thunderstorm|oram-baratra|orambaratra|oram baratra)\b/,
+    /\b(orage|orageux|orageuse|tempete|storm|stormy|thunderstorm|oram-baratra|orambaratra|oram baratra)\b/,
   ],
-  ['rainy', /\b(pluvieux|pluie|pluie battante|rainy|rain|manorana|orana)\b/],
-  ['cloudy', /\b(nuageux|nuages|couvert|cloudy|overcast|rahona|mandrahona)\b/],
+  ['rainy', /\b(pluvieux|pluvieuse|pluie|pluie battante|rainy|rain|manorana|orana)\b/],
+  ['cloudy', /\b(nuageux|nuageuse|nuages|couvert|cloudy|overcast|rahona|mandrahona)\b/],
   [
     'partly_cloudy',
     /\b(partly cloudy|eclaircie|eclaircies|miovaova|rahona vitsy|rahona sy masoandro)\b/,
   ],
   [
     'sunny',
-    /\b(beau temps|ensoleille|soleil|sunny|clear|fair|masoandro|tsara andro|maina|matsilo)\b/,
+    /\b(beau temps|ensoleille|ensoleillee|soleil|sunny|clear|fair|masoandro|tsara andro|maina|matsilo)\b/,
   ],
 ];
 
@@ -140,20 +143,66 @@ function extractEvents(text: string): ScenarioDraftEvent[] {
   return events;
 }
 
+/** Ordinal words → day number (FR, EN, MG), already lower-case and without accents. */
+const ORDINAL_WORDS: Record<string, number> = {
+  premier: 1,
+  premiere: 1,
+  first: 1,
+  voalohany: 1,
+  deuxieme: 2,
+  second: 2,
+  seconde: 2,
+  faharoa: 2,
+  troisieme: 3,
+  third: 3,
+  fahatelo: 3,
+  quatrieme: 4,
+  fourth: 4,
+  fahefatra: 4,
+  cinquieme: 5,
+  fifth: 5,
+  fahadimy: 5,
+  sixieme: 6,
+  sixth: 6,
+  fahenina: 6,
+  septieme: 7,
+  seventh: 7,
+  fahafito: 7,
+};
+const ORDINAL_ALT = Object.keys(ORDINAL_WORDS).join('|');
+
 /**
- * Splits input text into day segments based on day markers:
- * "jour 1", "day 1", "andro 1", "j1", "d1", "a1"
+ * Day markers, in order of the capture groups:
+ * 1. "jour 2", "journee 2", "day 2", "andro 2"
+ * 2. "j2", "d2", "a2"
+ * 3. "2e jour", "2eme journee", "2nd day", "3rd day" (singular noun, so "7 jours" is not day 7)
+ * 4. "deuxieme jour", "second day"
+ * 5. "andro faharoa" (MG: noun before the ordinal)
+ */
+const DAY_MARKER_REGEX = new RegExp(
+  '\\b(?:jour(?:nee?)?|day|andro)\\s*([1-7])\\b' +
+    '|\\b[jda]([1-7])\\b' +
+    '|\\b([1-7])\\s*(?:er|ere|eme|e|nd|st|rd|th)\\s*(?:jour(?:nee?)?|day)\\b' +
+    `|\\b(${ORDINAL_ALT})\\s+(?:jour(?:nee?)?|day)\\b` +
+    `|\\bandro\\s+(?:faha)?(${ORDINAL_ALT})\\b`,
+  'g'
+);
+
+/**
+ * Splits input text into day segments based on day markers (see `DAY_MARKER_REGEX`).
+ * Each segment is the text after its marker, up to the next marker.
  */
 function splitByDays(normText: string): Array<{ day: number; text: string }> {
-  const dayMarkerRegex = /(?:\b(?:jour|day|andro)\s*([1-7])\b|\b[jda]([1-7])\b)/g;
-  const matches = [...normText.matchAll(dayMarkerRegex)];
+  const matches = [...normText.matchAll(DAY_MARKER_REGEX)];
 
   if (matches.length === 0) return [];
 
   const segments: Array<{ day: number; text: string }> = [];
   for (let i = 0; i < matches.length; i++) {
     const cur = matches[i]!;
-    const day = parseInt(cur[1] || cur[2] || '1', 10);
+    const digit = cur[1] || cur[2] || cur[3];
+    const word = cur[4] || cur[5];
+    const day = digit ? parseInt(digit, 10) : (ORDINAL_WORDS[word ?? ''] ?? 1);
     const startIdx = cur.index! + cur[0].length;
     const endIdx = i + 1 < matches.length ? matches[i + 1]!.index! : normText.length;
     const dayText = normText.substring(startIdx, endIdx);
@@ -161,6 +210,74 @@ function splitByDays(normText: string): Array<{ day: number; text: string }> {
   }
 
   return segments;
+}
+
+/**
+ * Total length the user wrote: "2 jours", "5 days", "3 andro". Capped at MAX_WORKFLOW_DAYS;
+ * undefined when the text names no length (no implicit default such as a week).
+ */
+export function extractTotalDays(normText: string): number | undefined {
+  const m = normText.match(/\b([1-9])\s*(?:jours|journees|days|andro)\b/);
+  if (m && m[1]) return Math.min(parseInt(m[1], 10), MAX_WORKFLOW_DAYS);
+  return undefined;
+}
+
+/**
+ * Makes the draft run from day 1 to the length the user said, or else to the last day mentioned
+ * ("jour 3 incendie" → 3 days). Gaps get `fill` (sunny unless the user gave one weather for all).
+ */
+function padDays(
+  days: ScenarioDraftDay[],
+  total: number | undefined,
+  fill: WeatherId = DRAFT_DEFAULTS.weather
+): ScenarioDraftDay[] {
+  const lastMentioned = days.reduce((max, d) => Math.max(max, d.day), 0);
+  const end = Math.min(Math.max(total ?? 0, lastMentioned), MAX_WORKFLOW_DAYS);
+  const byDay = new Map(days.map((d) => [d.day, d]));
+  for (let day = 1; day <= end; day++) {
+    if (!byDay.has(day)) byDay.set(day, { day, weather: fill });
+  }
+  return Array.from(byDay.values()).sort((a, b) => a.day - b.day);
+}
+
+/** Fills one missing slot from a free-text answer; returns true when it found a value. */
+function fillSlotFromAnswer(day: ScenarioDraftDay, slot: MissingSlot, norm: string): boolean {
+  const ev = slot.eventIndex !== undefined ? day.events?.[slot.eventIndex] : undefined;
+  switch (slot.kind) {
+    case 'missing_weather': {
+      const w = extractWeather(norm);
+      if (!w) return false;
+      day.weather = w;
+      return true;
+    }
+    case 'missing_fire_hour':
+    case 'missing_drop_hour': {
+      const h = extractHour(norm);
+      if (h === undefined || !ev || (ev.type !== 'fire' && ev.type !== 'solar_drop')) return false;
+      ev.startHour = h;
+      return true;
+    }
+    case 'missing_fire_sector': {
+      const sec = extractSector(norm);
+      if (!sec || !ev || ev.type !== 'fire') return false;
+      ev.sector = sec;
+      return true;
+    }
+    case 'missing_spike_factor': {
+      const m = norm.match(/[x×]\s*([1-3](?:\.[0-9]+)?)/);
+      if (!m || !m[1] || !ev || ev.type !== 'demand_spike') return false;
+      ev.factor = parseFloat(m[1]);
+      return true;
+    }
+    case 'missing_drop_pct': {
+      const m = norm.match(/([0-9]{1,2})\s*%/);
+      if (!m || !m[1] || !ev || ev.type !== 'solar_drop') return false;
+      ev.dropPct = parseInt(m[1], 10);
+      return true;
+    }
+    default:
+      return false;
+  }
 }
 
 /**
@@ -181,43 +298,16 @@ export function extractScenarioDraft(text: string, existingDraft?: ScenarioDraft
       })),
     };
 
+    // An answer can fill several slots of the day being asked about ("centre de santé à 14h").
     const slots = missingSlots(nextDraft);
-    if (slots.length > 0) {
-      const targetSlot = slots[0]!;
-      const targetDay = nextDraft.days.find((d) => d.day === targetSlot.day);
-      if (targetDay) {
-        if (targetSlot.kind === 'missing_weather') {
-          const w = extractWeather(norm);
-          if (w) targetDay.weather = w;
-        } else if (targetSlot.kind === 'missing_fire_hour') {
-          const h = extractHour(norm);
-          if (h !== undefined) {
-            const ev = targetDay.events?.[targetSlot.eventIndex ?? 0];
-            if (ev && ev.type === 'fire') ev.startHour = h;
-          }
-        } else if (targetSlot.kind === 'missing_fire_sector') {
-          const s = extractSector(norm);
-          if (s) {
-            const ev = targetDay.events?.[targetSlot.eventIndex ?? 0];
-            if (ev && ev.type === 'fire') ev.sector = s;
-          }
-        } else if (targetSlot.kind === 'missing_spike_factor') {
-          const factorMatch = norm.match(/[x×]\s*([1-3](?:\.[0-9]+)?)/);
-          if (factorMatch && factorMatch[1]) {
-            const f = parseFloat(factorMatch[1]);
-            const ev = targetDay.events?.[targetSlot.eventIndex ?? 0];
-            if (ev && ev.type === 'demand_spike') ev.factor = f;
-          }
-        } else if (targetSlot.kind === 'missing_drop_pct') {
-          const dropMatch = norm.match(/([0-9]{1,2})\s*%/);
-          if (dropMatch && dropMatch[1]) {
-            const dp = parseInt(dropMatch[1], 10);
-            const ev = targetDay.events?.[targetSlot.eventIndex ?? 0];
-            if (ev && ev.type === 'solar_drop') ev.dropPct = dp;
-          }
-        }
+    const targetDayNo = slots[0]?.day;
+    const targetDay = nextDraft.days.find((d) => d.day === targetDayNo);
+    if (targetDay) {
+      for (const slot of slots) {
+        if (slot.day === targetDayNo) fillSlotFromAnswer(targetDay, slot, norm);
       }
     }
+    nextDraft.days = padDays(nextDraft.days, extractTotalDays(norm));
     return nextDraft;
   }
 
@@ -233,9 +323,14 @@ export function extractScenarioDraft(text: string, existingDraft?: ScenarioDraft
     };
   });
 
-  // If no day markers were found at all and no existing draft, try to create at least a Day 1 from text
+  const totalDays = extractTotalDays(norm);
+
+  // No day markers: the text describes the whole span ("2 jours pluvieux" → 2 rainy days),
+  // events go on day 1.
+  let fillWeather: WeatherId | undefined;
   if (days.length === 0) {
     const weather = extractWeather(norm);
+    fillWeather = weather;
     const events = extractEvents(norm);
     days.push({
       day: 1,
@@ -264,12 +359,14 @@ export function extractScenarioDraft(text: string, existingDraft?: ScenarioDraft
     }
     return {
       ...existingDraft,
-      days: Array.from(dayMap.values()).sort((a, b) => a.day - b.day),
+      days: padDays(
+        Array.from(dayMap.values()).sort((a, b) => a.day - b.day),
+        totalDays,
+        fillWeather
+      ),
     };
   }
 
-  return {
-    title: `Scenario (${days.length} days)`,
-    days,
-  };
+  // No title: the UI names the draft in the user's language from its day count.
+  return { days: padDays(days, totalDays, fillWeather) };
 }

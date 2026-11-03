@@ -183,4 +183,67 @@ describe('Deterministic Scenario Extractor (PA-T8c)', () => {
       expect(fireEvent.startHour).toBe(14);
     }
   });
+
+  it('builds a 7-day draft from a total length and ordinal day markers (regression)', () => {
+    const draft = extractScenarioDraft(
+      'met une simulation de 7 jours avec comme 2è journé pluvieuse, et 3è journé il y a une incendie'
+    );
+    expect(draft.days.map((d) => d.day)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(draft.days[0]?.weather).toBe('sunny');
+    expect(draft.days[1]?.weather).toBe('rainy');
+    expect(draft.days[1]?.events).toBeUndefined();
+    expect(draft.days[2]?.events?.[0]?.type).toBe('fire');
+    expect(draft.days[6]?.weather).toBe('sunny');
+    expect(draft.title).toBeUndefined();
+
+    const slots = missingSlots(draft);
+    expect(slots.every((s) => s.day === 3)).toBe(true);
+    expect(slots.map((s) => s.kind).sort()).toEqual([
+      'missing_fire_hour',
+      'missing_fire_sector',
+      'missing_weather',
+    ]);
+  });
+
+  it.each([
+    ['5 days, 2nd day rainy, 3rd day storm', 5, 2, 'rainy'],
+    ['deuxième jour nuageux', 2, 2, 'cloudy'],
+    ['simulation 4 andro, andro fahatelo orana', 4, 3, 'rainy'],
+    ['3 jours, le 1er jour orageux', 3, 1, 'storm'],
+  ])('reads length and ordinal markers: %s', (text, total, day, weather) => {
+    const draft = extractScenarioDraft(text);
+    expect(draft.days).toHaveLength(total);
+    expect(draft.days.find((d) => d.day === day)?.weather).toBe(weather);
+  });
+
+  it('does not read "7 jours" as a day-7 marker', () => {
+    const draft = extractScenarioDraft('7 jours, jour 1 pluvieux');
+    expect(draft.days).toHaveLength(7);
+    expect(draft.days[0]?.weather).toBe('rainy');
+  });
+
+  it('fills sector and hour from one answer on the asked day', () => {
+    const draft = extractScenarioDraft('7 jours, jour 3 pluvieux avec incendie');
+    const refined = extractScenarioDraft('centre de santé à 14h', draft);
+    expect(missingSlots(refined)).toHaveLength(0);
+    const fire = refined.days.find((d) => d.day === 3)?.events?.[0];
+    expect(fire).toMatchObject({ type: 'fire', sector: 'health', startHour: 14 });
+    expect(refined.days).toHaveLength(7);
+  });
+
+  it.each([
+    ['simulation de 2 jours', 2],
+    ["jour 2 pluvieux, jour 3 incendie à l'école à 10h", 3],
+    ['simulation sur une semaine', 1],
+    ['3 jours, jour 1 orageux', 3],
+  ])('day count follows what the user said, no implicit 7: %s', (text, total) => {
+    expect(extractScenarioDraft(text).days.map((d) => d.day)).toEqual(
+      Array.from({ length: total }, (_, i) => i + 1)
+    );
+  });
+
+  it('gives the stated weather to every day when no day is named', () => {
+    const draft = extractScenarioDraft('2 jours pluvieux');
+    expect(draft.days.map((d) => d.weather)).toEqual(['rainy', 'rainy']);
+  });
 });

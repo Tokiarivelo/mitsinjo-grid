@@ -719,7 +719,8 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         text: {
           type: 'string',
-          description: 'Free-form description or answer in French, English, or Malagasy.',
+          description:
+            'The user\'s own words, verbatim (French, English or Malagasy), including the total length ("7 jours") and every day mentioned. Days not described default to sunny.',
         },
         draft: {
           type: 'object',

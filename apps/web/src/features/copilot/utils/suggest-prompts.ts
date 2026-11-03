@@ -107,7 +107,7 @@ function dispatchPrompts(dispatchLog?: readonly DispatchLogEntry[]): SuggestedPr
   if (latestAction?.action) {
     const sec = latestAction.action.sector ?? latestAction.incident?.sector;
     prompts.push({
-      key: 'promptWhyDispatchAction',
+      key: sec ? 'promptWhyDispatchAction' : 'promptWhyDispatchActionNoSector',
       params: {
         hour: latestAction.hour,
         action: latestAction.action.kind,

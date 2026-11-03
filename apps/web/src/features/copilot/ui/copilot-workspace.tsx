@@ -229,7 +229,7 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
         </div>
       ) : (
         /* Header Area (Panel Mode on Simulation Page) */
-        <div className="px-3 py-2.5 border-b border-border/60 bg-surface/70 rounded-t-lg flex flex-wrap items-center justify-between gap-2">
+        <div className="px-3 py-2 border-b border-border/60 bg-surface/70 shrink-0 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <div className="p-1 rounded bg-ai-violet/10 text-ai-violet shrink-0">
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
@@ -385,15 +385,17 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
       {/* Main Two-Column Operational Deck */}
       <div
         className={cn(
-          'flex-1 flex gap-4 lg:gap-6 p-3 sm:p-4 lg:p-6 min-h-0',
-          isFull ? 'flex-col xl:flex-row max-w-[1720px] w-full mx-auto' : 'flex-col'
+          'flex-1 flex min-h-0',
+          isFull
+            ? 'flex-col xl:flex-row max-w-[1720px] w-full mx-auto p-3 sm:p-4 lg:p-6 gap-4 lg:gap-6'
+            : 'flex-col p-2.5 gap-2'
         )}
       >
         {/* Left / Conversation Canvas */}
         <section
           aria-label={tCopilot('chatRegionAria')}
           className={cn(
-            '@container flex-1 flex flex-col gap-3 min-w-0 min-h-0',
+            '@container flex-1 flex flex-col gap-2 min-w-0 min-h-0',
             mobileTab !== 'chat' && 'hidden xl:flex'
           )}
         >
@@ -407,133 +409,167 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
             role="log"
             aria-live="polite"
             className={cn(
-              // Always a bounded scroller: unbounded, it grew with the chat and trapped the wheel.
-              'flex-1 overflow-y-auto md:overscroll-contain space-y-5 pr-1.5 min-h-[300px] max-h-[65dvh]',
-              isFull && 'xl:max-h-none'
+              'flex-1 overflow-y-auto md:overscroll-contain pr-1.5 min-h-0 max-h-[65dvh]',
+              isFull ? 'space-y-5 min-h-[300px] xl:max-h-none' : 'space-y-3'
             )}
           >
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full py-8 sm:py-12 text-center max-w-2xl mx-auto px-2">
-                {/* Hero Glow Icon */}
-                <div className="relative mb-4">
-                  <div className="w-14 h-14 rounded-2xl bg-ai-violet/10 border border-ai-violet/30 flex items-center justify-center text-ai-violet shadow-lg shadow-ai-violet/15">
-                    <Sparkles className="h-7 w-7" aria-hidden="true" />
-                  </div>
-                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ai-violet opacity-75" />
-                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-ai-violet" />
-                  </span>
-                </div>
-
-                <h2 className="font-display text-lg sm:text-2xl font-bold text-text-primary tracking-tight">
-                  {tCopilot('emptyGreeting')}
-                </h2>
-                <p className="text-xs sm:text-sm text-text-secondary mt-2 leading-relaxed max-w-lg">
-                  {tCopilot('emptyDescription')}
-                </p>
-
-                {/* Live Microgrid State Pill */}
-                <div className="w-full max-w-lg mt-5 p-3 rounded-xl border border-border/70 bg-surface/70 backdrop-blur-xs flex flex-wrap items-center justify-around gap-2 text-xs font-mono">
-                  <div className="flex items-center gap-1.5 text-text-secondary">
-                    <span className="w-2 h-2 rounded-full bg-energy-cyan animate-pulse" />
-                    <span className="text-[10px] text-text-muted uppercase">Scenario:</span>
-                    <span className="font-semibold text-text-primary">{scenarioTitle}</span>
-                  </div>
-                  <div className="h-3 w-px bg-border/80 hidden sm:block" />
-                  <div className="flex items-center gap-1.5 text-text-secondary">
-                    <span className="text-[10px] text-text-muted uppercase">Strategy:</span>
-                    <span className="font-semibold text-energy-cyan">
-                      {strategyInfo?.label || activeStrategy}
+              isFull ? (
+                <div className="flex flex-col items-center justify-center h-full py-8 sm:py-12 text-center max-w-2xl mx-auto px-2">
+                  {/* Hero Glow Icon */}
+                  <div className="relative mb-4">
+                    <div className="w-14 h-14 rounded-2xl bg-ai-violet/10 border border-ai-violet/30 flex items-center justify-center text-ai-violet shadow-lg shadow-ai-violet/15">
+                      <Sparkles className="h-7 w-7" aria-hidden="true" />
+                    </div>
+                    <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ai-violet opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-ai-violet" />
                     </span>
                   </div>
-                  <div className="h-3 w-px bg-border/80 hidden sm:block" />
-                  <div className="flex items-center gap-2 text-text-muted text-[11px]">
-                    <span>{fmtKw(input.solar.peakKw)} PV</span>
-                    <span>•</span>
-                    <span>{fmtKwh(input.battery.capacityKwh)} BESS</span>
+
+                  <h2 className="font-display text-lg sm:text-2xl font-bold text-text-primary tracking-tight">
+                    {tCopilot('emptyGreeting')}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-text-secondary mt-2 leading-relaxed max-w-lg">
+                    {tCopilot('emptyDescription')}
+                  </p>
+
+                  {/* Live Microgrid State Pill */}
+                  <div className="w-full max-w-lg mt-5 p-3 rounded-xl border border-border/70 bg-surface/70 backdrop-blur-xs flex flex-wrap items-center justify-around gap-2 text-xs font-mono">
+                    <div className="flex items-center gap-1.5 text-text-secondary">
+                      <span className="w-2 h-2 rounded-full bg-energy-cyan animate-pulse" />
+                      <span className="text-[10px] text-text-muted uppercase">
+                        {tCopilot('starterScenarioLabel')}
+                      </span>
+                      <span className="font-semibold text-text-primary">{scenarioTitle}</span>
+                    </div>
+                    <div className="h-3 w-px bg-border/80 hidden sm:block" />
+                    <div className="flex items-center gap-1.5 text-text-secondary">
+                      <span className="text-[10px] text-text-muted uppercase">
+                        {tCopilot('starterStrategyLabel')}
+                      </span>
+                      <span className="font-semibold text-energy-cyan">
+                        {strategyInfo?.label || activeStrategy}
+                      </span>
+                    </div>
+                    <div className="h-3 w-px bg-border/80 hidden sm:block" />
+                    <div className="flex items-center gap-2 text-text-muted text-[11px]">
+                      <span>{tCopilot('starterPv', { value: fmtKw(input.solar.peakKw) })}</span>
+                      <span>•</span>
+                      <span>
+                        {tCopilot('starterBess', { value: fmtKwh(input.battery.capacityKwh) })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 4 Autonomous Capabilities Cards */}
+                  <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-6 text-left">
+                    <button
+                      type="button"
+                      onClick={() => send(tCopilot('promptCompareStrategies'))}
+                      className="p-3.5 rounded-xl border border-border/70 bg-surface hover:border-ai-violet/50 hover:bg-surface-elevated transition-all cursor-pointer group shadow-xs text-left"
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="p-1 rounded-md bg-solar-amber/10 text-solar-amber">
+                          <Zap className="h-4 w-4" aria-hidden="true" />
+                        </div>
+                        <span className="text-xs font-semibold text-text-primary group-hover:text-ai-violet transition-colors">
+                          {tCopilot('capStrategyTitle')}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-text-secondary leading-relaxed">
+                        {tCopilot('capStrategyDesc')}
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => send(tCopilot('promptProtectEssential'))}
+                      className="p-3.5 rounded-xl border border-border/70 bg-surface hover:border-ai-violet/50 hover:bg-surface-elevated transition-all cursor-pointer group shadow-xs text-left"
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="p-1 rounded-md bg-secondary/10 text-secondary">
+                          <ShieldAlert className="h-4 w-4" aria-hidden="true" />
+                        </div>
+                        <span className="text-xs font-semibold text-text-primary group-hover:text-ai-violet transition-colors">
+                          {tCopilot('capLifelineTitle')}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-text-secondary leading-relaxed">
+                        {tCopilot('capLifelineDesc')}
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== 'undefined' && window.innerWidth < 1280) {
+                          setMobileTab('meeting');
+                        }
+                      }}
+                      className="p-3.5 rounded-xl border border-border/70 bg-surface hover:border-ai-violet/50 hover:bg-surface-elevated transition-all cursor-pointer group shadow-xs text-left"
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="p-1 rounded-md bg-ai-violet/10 text-ai-violet">
+                          <Users className="h-4 w-4" aria-hidden="true" />
+                        </div>
+                        <span className="text-xs font-semibold text-text-primary group-hover:text-ai-violet transition-colors">
+                          {tCopilot('capMeetingTitle')}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-text-secondary leading-relaxed">
+                        {tCopilot('capMeetingDesc')}
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsSketchOpen(true)}
+                      className="p-3.5 rounded-xl border border-border/70 bg-surface hover:border-ai-violet/50 hover:bg-surface-elevated transition-all cursor-pointer group shadow-xs text-left"
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="p-1 rounded-md bg-energy-cyan/10 text-energy-cyan">
+                          <Camera className="h-4 w-4" aria-hidden="true" />
+                        </div>
+                        <span className="text-xs font-semibold text-text-primary group-hover:text-ai-violet transition-colors">
+                          {tCopilot('capPerceptionTitle')}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-text-secondary leading-relaxed">
+                        {tCopilot('capPerceptionDesc')}
+                      </p>
+                    </button>
+                  </div>
+
+                  <div className="w-full mt-6">
+                    <SuggestedPrompts
+                      onSelectPrompt={(p) => send(p)}
+                      disabled={pending}
+                      result={result}
+                      input={input}
+                      activeStrategy={activeStrategy}
+                      fires={fireSectors}
+                      scenarioDraft={latestScenarioDraft}
+                    />
                   </div>
                 </div>
-
-                {/* 4 Autonomous Capabilities Cards */}
-                <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-6 text-left">
-                  <button
-                    type="button"
-                    onClick={() => send(tCopilot('promptCompareStrategies'))}
-                    className="p-3.5 rounded-xl border border-border/70 bg-surface hover:border-ai-violet/50 hover:bg-surface-elevated transition-all cursor-pointer group shadow-xs text-left"
-                  >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <div className="p-1 rounded-md bg-solar-amber/10 text-solar-amber">
-                        <Zap className="h-4 w-4" aria-hidden="true" />
-                      </div>
-                      <span className="text-xs font-semibold text-text-primary group-hover:text-ai-violet transition-colors">
-                        {tCopilot('capStrategyTitle')}
-                      </span>
+              ) : (
+                /* Compact Starter in Panel Mode: contextual prompts without giant cards */
+                <div className="flex flex-col gap-2 py-1 px-0.5">
+                  <div className="p-2.5 rounded-xl border border-border/60 bg-surface/70 flex items-start gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-ai-violet/10 text-ai-violet shrink-0 mt-0.5">
+                      <Sparkles className="h-4 w-4" aria-hidden="true" />
                     </div>
-                    <p className="text-[11px] text-text-secondary leading-relaxed">
-                      {tCopilot('capStrategyDesc')}
-                    </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => send(tCopilot('promptProtectEssential'))}
-                    className="p-3.5 rounded-xl border border-border/70 bg-surface hover:border-ai-violet/50 hover:bg-surface-elevated transition-all cursor-pointer group shadow-xs text-left"
-                  >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <div className="p-1 rounded-md bg-secondary/10 text-secondary">
-                        <ShieldAlert className="h-4 w-4" aria-hidden="true" />
-                      </div>
-                      <span className="text-xs font-semibold text-text-primary group-hover:text-ai-violet transition-colors">
-                        {tCopilot('capLifelineTitle')}
-                      </span>
+                    <div className="flex flex-col min-w-0">
+                      <p className="text-xs font-semibold text-text-primary">
+                        {tCopilot('emptyGreeting')}
+                      </p>
+                      <p className="text-[11px] text-text-secondary leading-relaxed">
+                        {tCopilot('emptyDescription')}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-text-secondary leading-relaxed">
-                      {tCopilot('capLifelineDesc')}
-                    </p>
-                  </button>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (typeof window !== 'undefined' && window.innerWidth < 1280) {
-                        setMobileTab('meeting');
-                      }
-                    }}
-                    className="p-3.5 rounded-xl border border-border/70 bg-surface hover:border-ai-violet/50 hover:bg-surface-elevated transition-all cursor-pointer group shadow-xs text-left"
-                  >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <div className="p-1 rounded-md bg-ai-violet/10 text-ai-violet">
-                        <Users className="h-4 w-4" aria-hidden="true" />
-                      </div>
-                      <span className="text-xs font-semibold text-text-primary group-hover:text-ai-violet transition-colors">
-                        {tCopilot('capMeetingTitle')}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-text-secondary leading-relaxed">
-                      {tCopilot('capMeetingDesc')}
-                    </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsSketchOpen(true)}
-                    className="p-3.5 rounded-xl border border-border/70 bg-surface hover:border-ai-violet/50 hover:bg-surface-elevated transition-all cursor-pointer group shadow-xs text-left"
-                  >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <div className="p-1 rounded-md bg-energy-cyan/10 text-energy-cyan">
-                        <Camera className="h-4 w-4" aria-hidden="true" />
-                      </div>
-                      <span className="text-xs font-semibold text-text-primary group-hover:text-ai-violet transition-colors">
-                        {tCopilot('capPerceptionTitle')}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-text-secondary leading-relaxed">
-                      {tCopilot('capPerceptionDesc')}
-                    </p>
-                  </button>
-                </div>
-
-                <div className="w-full mt-6">
                   <SuggestedPrompts
                     onSelectPrompt={(p) => send(p)}
                     disabled={pending}
@@ -544,7 +580,7 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
                     scenarioDraft={latestScenarioDraft}
                   />
                 </div>
-              </div>
+              )
             ) : (
               messages.map((m) => (
                 <ChatMessageItem
@@ -593,15 +629,17 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
 
           {/* Follow-up suggestions: one scrollable line, hidden while the copilot answers */}
           {messages.length > 0 && !pending && (
-            <SuggestedPrompts
-              variant="compact"
-              onSelectPrompt={(p) => send(p)}
-              result={result}
-              input={input}
-              activeStrategy={activeStrategy}
-              fires={fireSectors}
-              scenarioDraft={latestScenarioDraft}
-            />
+            <div className="shrink-0">
+              <SuggestedPrompts
+                variant="compact"
+                onSelectPrompt={(p) => send(p)}
+                result={result}
+                input={input}
+                activeStrategy={activeStrategy}
+                fires={fireSectors}
+                scenarioDraft={latestScenarioDraft}
+              />
+            </div>
           )}
 
           <ChatComposer

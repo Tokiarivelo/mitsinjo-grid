@@ -144,20 +144,20 @@ export function DispatchLogPanel({
       data-testid="dispatch-log-panel"
     >
       {/* Panel Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 sm:px-4 border-b border-border bg-surface-elevated/40">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 p-3 sm:px-4 border-b border-border bg-surface-elevated/40">
+        <div className="flex items-center gap-2 min-w-0">
           <ScrollText className="h-4 w-4 text-ai-violet shrink-0" aria-hidden="true" />
-          <h2 className="text-sm font-display font-semibold text-text-primary tracking-tight">
+          <h2 className="text-sm font-display font-semibold text-text-primary tracking-tight truncate">
             {t('eventLog')}
           </h2>
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-surface border border-border text-text-muted">
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-surface border border-border text-text-muted shrink-0">
             {filteredEntries.length}/{dispatchLog.length}
           </span>
           <StatusBadge variant="simulated" size="sm" />
         </div>
 
         {/* Export action buttons */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <Button
             variant="secondary"
             size="sm"
@@ -166,7 +166,7 @@ export function DispatchLogPanel({
             aria-label={t('downloadJson')}
             title={t('downloadJson')}
             icon={<FileCode className="h-3 w-3" aria-hidden="true" />}
-            className="text-[11px] h-7 px-2 font-mono"
+            className="text-[11px] h-7 px-2 font-mono shrink-0"
           >
             {t('exportJson')}
           </Button>
@@ -178,7 +178,7 @@ export function DispatchLogPanel({
             aria-label={t('downloadCsv')}
             title={t('downloadCsv')}
             icon={<FileSpreadsheet className="h-3 w-3" aria-hidden="true" />}
-            className="text-[11px] h-7 px-2 font-mono"
+            className="text-[11px] h-7 px-2 font-mono shrink-0"
           >
             {t('exportCsv')}
           </Button>
@@ -190,7 +190,7 @@ export function DispatchLogPanel({
             aria-label={t('shiftReport')}
             title={t('shiftReport')}
             icon={<ClipboardCheck className="h-3 w-3 text-energy-cyan" aria-hidden="true" />}
-            className="text-[11px] h-7 px-2 font-mono border-energy-cyan/40 hover:bg-energy-cyan/10"
+            className="text-[11px] h-7 px-2.5 font-sans whitespace-nowrap shrink-0 border-energy-cyan/40 hover:bg-energy-cyan/10"
             data-testid="shift-report-button"
           >
             {t('shiftReport')}
@@ -200,47 +200,60 @@ export function DispatchLogPanel({
 
       {/* Filter Toolbar */}
       {!compact && (
-        <div className="p-2 sm:px-4 border-b border-border bg-canvas-sunken/40 flex flex-wrap items-center gap-2 text-xs">
+        <div className="p-2 sm:px-4 border-b border-border bg-canvas-sunken/40 flex flex-wrap items-center gap-2.5 text-xs">
           <span className="flex items-center gap-1 text-[11px] font-mono text-text-muted uppercase tracking-wider">
             <Filter className="h-3 w-3" aria-hidden="true" />
           </span>
 
           {/* Type filter */}
-          <div
-            role="group"
-            aria-label={t('filterType')}
-            className="flex items-center gap-0.5 rounded-control-sm bg-surface border border-border p-0.5"
-          >
-            {TYPE_FILTERS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                aria-pressed={typeFilter === f.id}
-                onClick={() => setTypeFilter(f.id)}
-                className={cn(FILTER_BTN, typeFilter === f.id ? FILTER_BTN_ON : FILTER_BTN_OFF)}
-              >
-                {t(f.labelKey)}
-              </button>
-            ))}
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] font-mono uppercase text-text-muted">
+              {t('filterType')}:
+            </span>
+            <div
+              role="group"
+              aria-label={t('filterType')}
+              className="flex items-center gap-0.5 rounded-control-sm bg-surface border border-border p-0.5"
+            >
+              {TYPE_FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  aria-pressed={typeFilter === f.id}
+                  onClick={() => setTypeFilter(f.id)}
+                  className={cn(FILTER_BTN, typeFilter === f.id ? FILTER_BTN_ON : FILTER_BTN_OFF)}
+                >
+                  {f.id === 'all' ? t('filterAllTypes') : t(f.labelKey)}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Severity filter */}
-          <div
-            role="group"
-            aria-label={t('filterSeverity')}
-            className="flex items-center gap-0.5 rounded-control-sm bg-surface border border-border p-0.5"
-          >
-            {SEVERITY_FILTERS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                aria-pressed={severityFilter === f.id}
-                onClick={() => setSeverityFilter(f.id)}
-                className={cn(FILTER_BTN, severityFilter === f.id ? FILTER_BTN_ON : FILTER_BTN_OFF)}
-              >
-                {t(f.labelKey)}
-              </button>
-            ))}
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] font-mono uppercase text-text-muted">
+              {t('filterSeverity')}:
+            </span>
+            <div
+              role="group"
+              aria-label={t('filterSeverity')}
+              className="flex items-center gap-0.5 rounded-control-sm bg-surface border border-border p-0.5"
+            >
+              {SEVERITY_FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  aria-pressed={severityFilter === f.id}
+                  onClick={() => setSeverityFilter(f.id)}
+                  className={cn(
+                    FILTER_BTN,
+                    severityFilter === f.id ? FILTER_BTN_ON : FILTER_BTN_OFF
+                  )}
+                >
+                  {f.id === 'all' ? t('filterAllSeverities') : t(f.labelKey)}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Sector filter */}

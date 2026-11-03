@@ -8,9 +8,12 @@ import {
   Bot,
   Building2,
   Check,
+  ChevronDown,
   Copy,
   Download,
   Factory,
+  Flame,
+  Layers,
   PanelRightClose,
   PanelRightOpen,
   ScrollText,
@@ -62,7 +65,8 @@ import { SectorLoadPanel } from './sector-load-panel';
 import { ApplianceList } from '@/features/vision-insert';
 import { VillageViewport } from './village-viewport';
 import { PlaybackActions } from './playback-actions';
-import { ReportFireControl } from '@/features/fire-alert';
+import { DeckFocusHeader } from './deck-focus-header';
+import { ReportFireControl, useActiveFires } from '@/features/fire-alert';
 import {
   AutopilotPanel,
   ConstitutionCard,
@@ -134,6 +138,9 @@ export function SimulationPage() {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<SimulationTab>('metrics');
   const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const [deckFocus, setDeckFocus] = useState<'tabs' | 'top'>('top');
+  const dispatchMode = useSimulationStore((s) => s.dispatchMode);
+  const activeFires = useActiveFires();
 
   usePlaybackTicker(isPlaying);
 
@@ -172,6 +179,7 @@ export function SimulationPage() {
     if (sec) {
       setIsPanelOpen(true);
       setActiveTab('buildings');
+      setDeckFocus('tabs');
     }
   };
 
@@ -291,7 +299,7 @@ export function SimulationPage() {
           {/* Left / Center: Massive 3D Village Viewport + Dedicated Curseur Temporel 24h Docked Below */}
           <div
             className={cn(
-              'flex flex-col gap-4 min-w-0 transition-all duration-300',
+              'flex flex-col gap-4 min-w-0 transition-all duration-300 lg:sticky lg:top-2 self-start',
               isPanelOpen ? 'lg:col-span-7 xl:col-span-8' : 'lg:col-span-12'
             )}
           >
@@ -342,48 +350,87 @@ export function SimulationPage() {
           {isPanelOpen && (
             <aside
               aria-label={tSim('deckTitle')}
-              className="lg:col-span-5 xl:col-span-4 flex flex-col rounded-card bg-surface border border-border shadow-md overflow-hidden"
+              className="lg:col-span-5 xl:col-span-4 flex flex-col rounded-card bg-surface border border-border shadow-md overflow-hidden lg:sticky lg:top-2 lg:max-h-[calc(100vh-80px)]"
             >
-              {/* Panel Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-elevated/40">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-energy-cyan animate-pulse" />
-                  <h2 className="text-xs font-display font-semibold uppercase tracking-wider text-text-primary">
-                    {tSim('deckTitle')}
-                  </h2>
+              {/* ACCORDION: top controls open, or a compact strip while a tab is focused */}
+              <DeckFocusHeader
+                expanded={deckFocus === 'top'}
+                title={deckFocus === 'top' ? tSim('deckTitle') : tSim('controlsOverview')}
+                onToggle={() => setDeckFocus(deckFocus === 'top' ? 'tabs' : 'top')}
+                onClose={() => setIsPanelOpen(false)}
+                badges={
+                  deckFocus === 'tabs' && (
+                    <>
+                      <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono bg-surface border border-border text-text-muted shrink-0">
+                        {dispatchMode === 'autonomous' ? (
+                          <>
+                            <Bot
+                              className="h-3 w-3 text-ai-violet animate-pulse"
+                              aria-hidden="true"
+                            />
+                            <span className="text-ai-violet font-semibold">
+                              {tDispatch('modeAutonomous')}
+                            </span>
+                          </>
+                        ) : dispatchMode === 'assisted' ? (
+                          <>
+                            <Sliders className="h-3 w-3 text-energy-cyan" aria-hidden="true" />
+                            <span className="text-energy-cyan font-semibold">
+                              {tDispatch('modeAssisted')}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span
+                              className="h-1.5 w-1.5 rounded-full bg-text-muted"
+                              aria-hidden="true"
+                            />
+                            <span>{tDispatch('modeManual')}</span>
+                          </>
+                        )}
+                      </span>
+                      {activeFires.length > 0 && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-critical-red/10 border border-critical-red/40 text-critical-red shrink-0">
+                          <Flame
+                            className="h-3 w-3 motion-safe:animate-bounce"
+                            aria-hidden="true"
+                          />
+                          <span>{activeFires.length}</span>
+                        </span>
+                      )}
+                    </>
+                  )
+                }
+              />
+              {deckFocus === 'top' && (
+                <div className="flex flex-col border-b border-border bg-surface shrink-0">
+                  {/* Safety: report a fire from the deck, whatever tab is open (M2-T2) */}
+                  <div className="px-4 py-2.5 border-b border-border">
+                    <ReportFireControl variant="panel" />
+                  </div>
+
+                  {/* Rule-based autopilot: one suggestion per simulated hour, off by default (M10-T1) */}
+                  <div className="px-4 py-2.5 border-b border-border">
+                    <AutopilotPanel
+                      onOpenLog={() => {
+                        setActiveTab('log');
+                        setDeckFocus('tabs');
+                      }}
+                    />
+                  </div>
+
+                  {/* Village constitution: plain-word rules the autopilot is verified against (M10-T2) */}
+                  <div className="px-4 py-2">
+                    <ConstitutionCard defaultOpen={false} />
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsPanelOpen(false)}
-                  aria-label={tCommon('close')}
-                  title={tSim('hideDeck')}
-                  className="flex items-center gap-1 px-2 py-1 rounded-control text-xs text-text-muted hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
-                >
-                  <PanelRightClose className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span className="text-[11px] font-sans">{tSim('hideDeck')}</span>
-                </button>
-              </div>
-
-              {/* Safety: report a fire from the deck, whatever tab is open (M2-T2) */}
-              <div className="px-4 py-3 border-b border-border">
-                <ReportFireControl variant="panel" />
-              </div>
-
-              {/* Rule-based autopilot: one suggestion per simulated hour, off by default (M10-T1) */}
-              <div className="px-4 py-3 border-b border-border">
-                <AutopilotPanel />
-              </div>
-
-              {/* Village constitution: plain-word rules the autopilot is verified against (M10-T2) */}
-              <div className="px-4 py-3 border-b border-border">
-                <ConstitutionCard />
-              </div>
+              )}
 
               {/* TAB NAVIGATION BAR */}
               <div
                 role="tablist"
                 aria-label={tSim('deckTitle')}
-                className="grid grid-cols-5 border-b border-border bg-canvas-sunken/60 p-1 gap-1"
+                className="grid grid-cols-5 border-b border-border bg-canvas-sunken/60 p-1 gap-1 shrink-0"
               >
                 {TABS.map(({ id, labelKey, icon: Icon }) => {
                   const isActive = activeTab === id;
@@ -395,18 +442,23 @@ export function SimulationPage() {
                       id={`tab-${id}`}
                       aria-controls={`panel-${id}`}
                       aria-selected={isActive}
-                      onClick={() => setActiveTab(id)}
+                      onClick={() => {
+                        setActiveTab(id);
+                        setDeckFocus('tabs');
+                      }}
                       className={cn(
-                        'flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-control-sm text-[11px] font-sans transition-all cursor-pointer',
-                        isActive
+                        'flex flex-col items-center justify-center gap-1 py-1.5 px-1 rounded-control-sm text-[11px] font-sans transition-all cursor-pointer',
+                        isActive && deckFocus === 'tabs'
                           ? 'bg-surface-elevated text-energy-cyan font-semibold shadow-xs border border-border/80'
-                          : 'text-text-muted hover:text-text-primary hover:bg-surface/50'
+                          : isActive && deckFocus === 'top'
+                            ? 'bg-surface/50 text-text-secondary border border-border/40'
+                            : 'text-text-muted hover:text-text-primary hover:bg-surface/50'
                       )}
                     >
                       <Icon
                         className={cn(
                           'h-3.5 w-3.5',
-                          isActive ? 'text-energy-cyan' : 'text-text-muted'
+                          isActive && deckFocus === 'tabs' ? 'text-energy-cyan' : 'text-text-muted'
                         )}
                         aria-hidden="true"
                       />
@@ -416,8 +468,17 @@ export function SimulationPage() {
                 })}
               </div>
 
-              {/* Scrollable Tab Panels Container */}
-              <div className="p-4 max-h-[calc(100vh-220px)] overflow-y-auto">
+              {/* Tab Panels Container: expanded when deckFocus === 'tabs', hidden when collapsed */}
+              <div
+                hidden={deckFocus !== 'tabs'}
+                className={cn(
+                  'flex-1 min-h-0',
+                  deckFocus !== 'tabs' && 'hidden',
+                  activeTab === 'copilot'
+                    ? 'flex flex-col p-2 sm:p-2.5 overflow-hidden h-[560px] lg:h-auto'
+                    : 'p-4 overflow-y-auto'
+                )}
+              >
                 {/* TAB 1: METRICS & CHARTS */}
                 <div
                   id="panel-metrics"
@@ -617,15 +678,20 @@ export function SimulationPage() {
                   role="tabpanel"
                   aria-labelledby="tab-copilot"
                   hidden={activeTab !== 'copilot'}
-                  className={cn('space-y-4', activeTab !== 'copilot' && 'hidden')}
+                  className={cn(
+                    'flex-1 min-h-0 flex flex-col',
+                    activeTab !== 'copilot' && 'hidden'
+                  )}
                 >
                   {/* Impact Alerts Banner if active warnings exist */}
                   {result && result.warnings.length > 0 && (
-                    <ImpactBanner warnings={result.warnings} />
+                    <div className="shrink-0 mb-2">
+                      <ImpactBanner warnings={result.warnings} />
+                    </div>
                   )}
 
                   {/* Copilot conversational workspace in panel mode */}
-                  <div className="rounded-card bg-surface-elevated/30 border border-border p-3">
+                  <div className="flex-1 min-h-0 flex flex-col rounded-card bg-surface-elevated/30 border border-border overflow-hidden">
                     <CopilotWorkspace mode="panel" />
                   </div>
                 </div>
@@ -641,6 +707,7 @@ export function SimulationPage() {
                   <DispatchLogPanel
                     onAskWhy={(entry) => {
                       setActiveTab('copilot');
+                      setDeckFocus('tabs');
                       const sec = entry.incident?.sector ?? entry.action?.sector;
                       const targetSector = sec ? tSectors(sec) : '';
                       const actionDesc = entry.action
@@ -660,11 +727,31 @@ export function SimulationPage() {
                     }}
                     onAskCopilot={(prompt) => {
                       setActiveTab('copilot');
+                      setDeckFocus('tabs');
                       fillCopilotPrompt(prompt);
                     }}
                   />
                 </div>
               </div>
+
+              {deckFocus === 'top' && (
+                /* Collapsed tab hint when deckFocus === 'top' */
+                <button
+                  type="button"
+                  onClick={() => setDeckFocus('tabs')}
+                  className="p-3 text-xs font-semibold text-energy-cyan bg-energy-cyan/5 hover:bg-energy-cyan/10 border-t border-energy-cyan/20 flex items-center justify-center gap-2 cursor-pointer transition-colors group shrink-0"
+                >
+                  <Layers
+                    className="h-4 w-4 text-energy-cyan group-hover:scale-110 transition-transform shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span>{tSim('expandTabs')}</span>
+                  <ChevronDown
+                    className="h-3.5 w-3.5 text-energy-cyan shrink-0"
+                    aria-hidden="true"
+                  />
+                </button>
+              )}
             </aside>
           )}
         </div>

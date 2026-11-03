@@ -53,6 +53,7 @@ export function SuggestedPrompts({
   const tCopilot = useTranslations('features.copilot');
   const tSectors = useTranslations('sectors');
   const tStrategies = useTranslations('strategies');
+  const tDispatch = useTranslations('features.dispatch');
 
   const promptItems = useMemo(
     () =>
@@ -105,7 +106,7 @@ export function SuggestedPrompts({
         )}
       >
         {promptItems.map((item, idx) => {
-          // Ids from the engine (health, essential_first) → localized names.
+          // Ids from the engine (health, essential_first, shed_flexible) → localized names.
           const params = item.params && {
             ...item.params,
             ...(typeof item.params.sector === 'string' && {
@@ -113,6 +114,9 @@ export function SuggestedPrompts({
             }),
             ...(typeof item.params.strategy === 'string' && {
               strategy: tStrategies(item.params.strategy),
+            }),
+            ...(typeof item.params.action === 'string' && {
+              action: tDispatch(`actions.${item.params.action}` as never),
             }),
           };
           const promptText = tCopilot(item.key, params);

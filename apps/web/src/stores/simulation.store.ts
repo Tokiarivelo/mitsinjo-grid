@@ -114,7 +114,10 @@ export interface SimulationState {
   setDayIndex: (day: number) => void;
   /** Replaces the workflow with a seeded chaos sequence of weather and incidents (PA-T6c). */
   loadChaosWorkflow: (seed?: number, days?: number) => void;
-  /** Replaces simulation and workflow with a chat-drafted multi-day scenario (PA-T8f). */
+  /**
+   * Replaces simulation and workflow with a chat-drafted multi-day scenario (PA-T8f),
+   * runs the engine and starts playback from day 1, 00:00 (the "launch" buttons).
+   */
   loadDraft: (draft: ScenarioDraft, mode?: DispatchMode) => void;
   /** Next playback hour; rolls over to the next workflow day, then loops to day 1. */
   advancePlayback: () => void;
@@ -584,6 +587,9 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       workflow,
       dayIndex: 0,
     });
+    // Launch = run + play: without it the page opens on a stale "modified" run and nothing moves,
+    // so the autonomous dispatcher never sees an hour tick.
+    get().play();
   },
 
   removeWorkflowDay: (day: number) => {
