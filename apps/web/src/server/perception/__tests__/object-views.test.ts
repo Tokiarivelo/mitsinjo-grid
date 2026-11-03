@@ -89,6 +89,23 @@ describe('viewsRecipe (PV-H)', () => {
     expect(ObjectRecipeSchema.safeParse(r).success).toBe(true);
   });
 
+  it('front only: a vehicle still gets 4 wheels from the front drawing (before: none, live 2026-11-03)', () => {
+    const r = viewsRecipe({ front, side: null }, KIT);
+    const wheels = r.parts.filter((p) => p.kind === 'wheel');
+    expect(wheels).toHaveLength(4);
+    expect(wheels.every((w) => w.status === 'inferred' && w.rim)).toBe(true);
+    // Two axles, front and rear, each with a left and a right wheel.
+    expect(new Set(wheels.map((w) => w.at[2].toFixed(3))).size).toBe(2);
+    expect(new Set(wheels.map((w) => Math.sign(w.at[0]))).size).toBe(2);
+    // Not for a cabinet, nor when the side shows the wheels.
+    const cab = viewsRecipe({ front, side: null }, { ...KIT, archetype: 'cabinet' });
+    expect(cab.parts.some((p) => p.kind === 'wheel')).toBe(false);
+    const both = viewsRecipe({ front, side }, KIT);
+    expect(
+      both.parts.filter((p) => p.kind === 'wheel').every((w) => w.at[2] !== wheels[0]!.at[2])
+    ).toBe(true);
+  });
+
   it('a side that is a redrawn front is no side', () => {
     expect(sideLooksNew(front, { ...side, aspect: 1.32 })).toBe(false);
     expect(sideLooksNew(front, side)).toBe(true);

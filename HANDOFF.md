@@ -1,41 +1,37 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-02 (PV-G G2–G3 + PG-T19) · **By:** Claude · **Branch:** main
+**Updated:** 2026-11-03 (PV-G live pass + PG-T20/T21) · **By:** Claude · **Branch:** stacked PRs
+
+## Merge first (main needs an approving review)
+
+#33 `feat/pg-t18-lost-job-chip-shots` → #34 `feat/pg-t22-live-stage-capture` → #35 `feat/pg-t20-archetype-stages`
+(each based on the previous; merge in order, merge commits).
 
 ## PA — AI autonomous dispatch (other session, unchanged)
 
-- PA-T2 done (`decideDispatch`, `candidateActions`, anti-oscillation; 327 engine tests). Next **PA-3**
-  (`docs/tasks/PA-ai-dispatch.md`): store `dispatchMode` / `dispatchLog` + Neon `dispatch_log`, hook `useAiDispatch`.
+- PA-T2 done. Next **PA-3** (`docs/tasks/PA-ai-dispatch.md`): store `dispatchMode` / `dispatchLog` + Neon, `useAiDispatch`.
 
-## PV-G — 3D by script, checked against the 2D drawing (`docs/tasks/PV-shape-script.md`)
+## PV-G — 3D by script (`docs/tasks/PV-shape-script.md`)
 
-- **PG-T10** assemblies: part options `leaves glazed panels sill lintel cap bulge`, `MAX_COMPONENTS = 32`;
-  viewer expands (glazed double door, transom, stile, panels, lintels, chimney caps, eave roll) and drops
-  details past 5 k triangles. Facade builder reads door glazing from SAM panes.
-- **PG-T13/T14** `lib/shape-script.ts`: typed ops → pure `compileScript` (locks, budget, constraints),
-  `recipeToScript` (facade house round-trips unchanged).
-- **PG-T15/T16** `shape-stages.ts` `runShapeStages` (monotone, ≤ 3 rounds/stage) + Spark `proposeShapeOps`
-  (prompt v1, `shape-script-prompt.ts`), wired in the facade path (`facadeStageLoop`).
-- **PG-T17/T18** SSE `shape_stage` / `shape_stages_done`; stages past the 60 s answer run in a background job
-  (`shape-jobs.ts`, ≤ 3 min), `GET|DELETE /api/vision/shape/stages` resume / cancel; hook swaps models in;
-  `ImproveChip` on the viewer (en/fr/mg, aria-live).
-- **PG-T19** tree / bush / pole / lamp post → `roundViewRecipe` (lathe of the drawn silhouette, no side);
-  panel → hull path; tree prompt.
-- Goldens mean 93 unchanged; thatched elevation 89/100 (mock proposer = seed).
+- **#33** chip cause `lost` (resume 404 = server restarted, model kept); `make improve-shot` (chip gate-out done).
+- **#34 PG-T22 live** (Spark 1.3, Muse Image thatched house): Spark deleted the side-wall windows to raise the
+  front score. Fixed: `sideFacing` (front score ignores side openings) + runner `canEdit` / `houseCanEdit`.
+  Seed now 95/100. Stage capture + replay: `make facade-e2e … ID=x` → `make eval-stages` (captures gitignored).
+  Designer ≈ 3/5: walls tan (photo average of plaster + timber), roof ends hipped vs drawn half-hip.
+- **#35 PG-T20/T21**: `view-stages.ts` stages per archetype scored part by part on the views (`scoreViews`),
+  parts tagged by kind, new SAM concepts, shared `stagedLoop`, views prompt variant (v2); viewer wheel rims and
+  solar cell lines (`view-assemblies.ts`). Live car run: see PV-shape-script PG-T20 notes.
 
 ## Next
 
-- **PG-T22 live**: `make dev` with a Meta key on the thatched house → check logs `[vision] 3D stage n/4 …`
-  and the chip (scenarios V112–V116); keep or reword prompt v1 from real answers; add stage replay to
-  `make eval-shape` from captures.
-- **PG-T20/T21**: per-archetype stages need a per-part metric on the views (SAM part boxes vs rendered parts).
-- Known: timing asserts fail under parallel load only; chip gate-out static (login); jobs in memory.
+- PG-T22 to 4/5: wall colour from plaster only when a timber frame is drawn; half-hip from the side drawing.
+- PG-T20 tuning from live logs (`[vision] 3D stage n/m wheels …`); materials stage needs a per-part colour metric.
+- Known flakes: golden-shape timing under parallel load, `use-voice-input` silence timer (passes alone / reruns).
 
 ## Files touched (this session)
 
-`lib/{object-shape,shape-script}.ts`, `server/perception/{facade-house,shape-stages,shape-stages-spark,
-shape-script-prompt,shape-jobs,object-shape,object-views,facade-specialist,meta,mock,client,backend,schemas,
-vision-request}.ts`, `app/api/vision/shape/{route,stages/route}.ts`, `features/vision-insert/{hooks/use-object-shape,
-utils/{openings,roof-trim,object-geometry},ui/{improve-chip,object-shape-panel}}`, messages ×3, docs (contracts,
-copilot, architecture, design/stitch-map, screens/village, tasks PV-shape-script / -realism), README, skill shape-3d.
-Scenarios V109–V118 (`test-scenarios/06-village.md`).
+`features/vision-insert/{hooks/use-object-shape,utils/{view-assemblies,object-geometry}}`, `lib/object-shape.ts`,
+`server/perception/{elevation-score,shape-stages,shape-stages-spark,stage-capture,view-stages,object-views,
+object-shape,shape-script-prompt,meta,client,backend}.ts`, tests + `__fixtures__/views`, `scripts/improve-chip-shot.mjs`,
+messages ×3, Makefile (`improve-shot`, `eval-stages`), docs (contracts, copilot, design/stitch-map, tasks
+PV-shape-script / -realism), README, skill shape-3d. Scenarios V119–V125, V115 updated.

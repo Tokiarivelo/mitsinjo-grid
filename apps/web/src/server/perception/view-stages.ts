@@ -15,7 +15,8 @@ export type ViewStage =
   'body' | 'glass' | 'wheels' | 'doors' | 'cells' | 'trunk' | 'crown' | 'head' | 'details';
 
 const S = {
-  body: { id: 'body', kinds: ['body'], gate: 0.92 },
+  // The plan's silhouette target (PV-shape-realism stop criteria): past it, rounds go to the parts.
+  body: { id: 'body', kinds: ['body'], gate: 0.85 },
   glass: { id: 'glass', kinds: ['window'], gate: 0.8 },
   wheels: { id: 'wheels', kinds: ['wheel'], gate: 0.8 },
   vehicleDetails: { id: 'details', kinds: ['light', 'bumper', 'grille'], gate: 0.75 },

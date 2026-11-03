@@ -318,6 +318,9 @@ const centre = (b: NormBox) => [b.x + b.w / 2, b.y + b.h / 2] as const;
 /** Part names placed on the back face when read on the side view. */
 const BACK_PART = /\b(rear|back|tail|taillight|taillights|taillamp)\b/;
 
+/** Wheel centres this share of the length in from each end when only the front is drawn. */
+export const FRONT_AXLE = 0.18;
+
 /** Cell columns × rows of a solar panel patch (≈ square cells, ≤ `MAX_PANES` each way). */
 export function cellGrid(box: NormBox, aspect: number): [number, number] {
   const ratio = (box.w * aspect) / Math.max(0.01, box.h);
@@ -471,6 +474,34 @@ export function viewsRecipe(
         rim: true,
         status,
       });
+  }
+  // No wheel read on a side (front only, or a side SAM missed them): a vehicle's wheels come
+  // from the front drawing — height and diameter as drawn, front and rear axles at the usual
+  // place along the length (live 2026-11-03: a front-only car had no wheels at all).
+  if (!wheels.length && kit.archetype === 'vehicle') {
+    const seenFront = frontParts
+      .filter((p) => p.concept === 'wheel' && p.box.h > 0.05)
+      .sort((a, b) => b.box.h - a.box.h)[0];
+    if (seenFront) {
+      const b = seenFront.box;
+      const y = 0.5 - (b.y + b.h / 2);
+      const [xl, xr] = xSpan(y);
+      const dz = Math.min(0.45, b.h / Math.max(0.1, D));
+      const axle = 0.5 - Math.max(FRONT_AXLE, dz / 2 + 0.04);
+      for (const z of [axle, -axle])
+        for (const x of [xr - tire / 2, xl + tire / 2])
+          parts.push({
+            shape: 'cylinder',
+            axis: 'x',
+            at: [x, y, z],
+            size: [tire, Math.min(1, b.h), dz],
+            color: VIEW_PART_LOOK.rubber,
+            material: 'rubber',
+            kind: 'wheel',
+            rim: true,
+            status: 'inferred',
+          });
+    }
   }
   // Side glass: one band over every window SAM found, a skin patch on each side following the
   // body's width at every height (the cabin narrows toward the roof).
