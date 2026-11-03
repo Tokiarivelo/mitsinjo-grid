@@ -1,11 +1,11 @@
 import type { ObjectRecipe, PartKind } from '@/lib/object-shape';
+import { microPatch, type OpTrial } from './stage-steps';
 type Ring = ReadonlyArray<readonly [number, number]>;
 import { type ElevationStage, scoreElevation, sideFacing } from './elevation-score';
 import type { Elevation } from './facade-house';
 import {
   type Component,
   type ComponentId,
-  type OpIssue,
   type ShapeScript,
   compileScript,
 } from '@/lib/shape-script';
@@ -13,9 +13,10 @@ import {
 /**
  * Staged agent loop (PG-T16): the model is improved one stage at a time (massing → roof →
  * openings → accessories). Per stage, up to `maxRounds` rounds: the proposer (Spark, PG-T15)
- * answers patch ops for the stage's components only, the engine compiles them, and the patch is
- * kept only if the stage score rises without lowering the overall score. A stage stops at its
- * gate, after a round without gain, at `maxRounds`, or when the shared time budget runs out (the
+ * answers patch ops for the stage's components only, the engine compiles them op by op with
+ * smaller steps (`microPatch`), and the ops that raise the stage score without lowering the
+ * overall score are kept. A stage stops at its gate, after `STAGE_MAX_MISSES` rounds without
+ * gain (the retry is told what each op did), at `maxRounds`, or when the shared time budget runs out (the
  * rest keeps the seed). Deterministic given the same proposer answers. Pure apart from the
  * injected proposer and clock.
  */
@@ -45,6 +46,18 @@ export interface ProposeContext<S extends string = string> {
   locked: ReadonlyArray<ComponentId>;
   score: { stage: number; overall: number };
   signal: AbortSignal;
+  /** What the previous round of this stage did, op by op (a retry after no gain). */
+  feedback?: RoundFeedback;
+}
+
+/** The previous round's patch, op by op: Spark sees what helped and what did not. */
+export interface RoundFeedback {
+  round: number;
+  /** The round raised the stage score (part of its ops kept). */
+  kept: boolean;
+  trials: OpTrial[];
+  /** Ops refused before compiling (they created parts outside the stage). */
+  refused: number;
 }
 
 /** Answers patch ops for the stage (raw: compiled and checked here). */
@@ -62,6 +75,8 @@ export interface StageResult<S extends string = string> {
   stop: StageStop;
   /** Patch ops the compiler or the stage guard refused, all rounds. */
   dropped: number;
+  /** The last round's ops, one by one (log). */
+  trials?: OpTrial[];
 }
 
 export interface StagesResult<S extends string = string> {
@@ -100,6 +115,12 @@ export interface RunStagesOptions<S extends string = string> {
 export const STAGE_ROUNDS = 3;
 /** A patch must raise the stage score by at least this much to be kept. */
 export const STAGE_MIN_GAIN = 0.005;
+
+/**
+ * Rounds in a row without gain before a stage stops: the next round gets the op-by-op feedback
+ * (an empty answer, « already matches », stops at once).
+ */
+export const STAGE_MAX_MISSES = 2;
 
 /** Live request: stages start only with this much of the shape budget left (one Spark round). */
 export const STAGE_MIN_MS = 15_000;
@@ -242,6 +263,8 @@ export async function runShapeStages<S extends string>({
         result.stop = 'gate';
       } else {
         onStageStart?.(stage, index);
+        let misses = 0;
+        let feedback: RoundFeedback | undefined;
         for (let round = index === 0 ? startRound : 1; round <= maxRounds; round++) {
           const left = deadline - now();
           if (left <= Math.max(0, roundReserveMs)) {
@@ -267,6 +290,7 @@ export async function runShapeStages<S extends string>({
                 locked,
                 score: current,
                 signal: ctrl.signal,
+                ...(feedback ? { feedback } : {}),
               }),
               left,
               ctrl.signal
@@ -282,32 +306,39 @@ export async function runShapeStages<S extends string>({
             break;
           }
           const { kept: patch, refused } = guardPatch(Array.isArray(raw) ? raw : [], stage.kinds);
-          const next: ShapeScript = { ...script, ops: [...script.ops, ...patch] };
-          const out = compileScript(next, {
+          // Op by op, with smaller steps: one bad or overshooting op no longer sinks the round.
+          const step = microPatch({
+            script,
+            patch,
             locked: new Set(locked),
-            lockedFrom: script.ops.length,
+            components,
+            current,
+            score: (r) => score(r, stage.id),
           });
-          result.dropped += refused + countPatchDrops(out.dropped, script.ops.length);
-          const after = out.recipe ? score(out.recipe, stage.id) : null;
-          if (
-            out.recipe &&
-            after &&
-            after.stage >= current.stage + STAGE_MIN_GAIN &&
-            after.overall >= current.overall
-          ) {
-            script = next;
-            recipe = out.recipe;
-            components = out.components;
-            current = after;
+          result.dropped += refused + step.dropped;
+          result.trials = step.trials;
+          const gained =
+            step.out?.recipe &&
+            step.after.stage >= current.stage + STAGE_MIN_GAIN &&
+            step.after.overall >= current.overall;
+          feedback = { round, kept: Boolean(gained), trials: step.trials, refused };
+          if (gained && step.out?.recipe) {
+            script = { ...script, ops: [...script.ops, ...(step.ops as ShapeScript['ops'])] };
+            recipe = step.out.recipe;
+            components = step.out.components;
+            current = step.after;
             result.kept++;
-            result.after = after.stage;
-            if (after.stage >= stage.gate) {
+            result.after = step.after.stage;
+            result.stop = 'rounds';
+            misses = 0;
+            if (step.after.stage >= stage.gate) {
               result.stop = 'gate';
               break;
             }
           } else {
             result.stop = 'no_gain';
-            break;
+            misses++;
+            if (!patch.length || misses >= STAGE_MAX_MISSES) break;
           }
         }
       }
@@ -326,9 +357,6 @@ export async function runShapeStages<S extends string>({
     ...(resume ? { resume } : {}),
   };
 }
-
-const countPatchDrops = (dropped: ReadonlyArray<OpIssue>, from: number) =>
-  dropped.filter((d) => d.index >= from).length;
 
 /** House stages see the front only: side-wall openings stay as built (locked). */
 export const houseCanEdit = (c: Component) => !sideFacing(c.part);

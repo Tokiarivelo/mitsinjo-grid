@@ -12,6 +12,7 @@ import {
   ShapeStepEventSchema,
   type ImaginedAngleView,
   type ObjectShape,
+  type PartKind,
   type ShapeStageId,
   type ShapeStep,
   type ShapeTarget,
@@ -44,6 +45,8 @@ export interface ShapeImprove {
   index: number;
   total: number;
   stage: ShapeStageId;
+  /** Part kinds the stage works on (the viewer frames them), kept until the next stage. */
+  kinds?: PartKind[];
   /** Stage score before → after (0–1), once the stage ended. */
   before?: number;
   after?: number;
@@ -266,11 +269,13 @@ export function useObjectShape() {
           if (!e.success) return;
           const st = e.data;
           setState((s) => {
+            const kinds = st.kinds ?? (s.improve?.stage === st.stage ? s.improve.kinds : undefined);
             const improve: ShapeImprove = {
               status: 'running',
               index: st.index,
               total: st.total,
               stage: st.stage,
+              ...(kinds ? { kinds } : {}),
               ...(st.state === 'done' && st.before !== undefined ? { before: st.before } : {}),
               ...(st.state === 'done' && st.after !== undefined ? { after: st.after } : {}),
             };

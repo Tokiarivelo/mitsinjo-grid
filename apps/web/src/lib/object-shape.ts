@@ -423,6 +423,8 @@ export const ShapeStageEventSchema = z.object({
   before: z.number().min(0).max(1).optional(),
   after: z.number().min(0).max(1).optional(),
   stop: z.enum(SHAPE_STAGE_STOPS).optional(),
+  /** Part kinds the stage works on: the viewer frames and outlines them while it runs. */
+  kinds: z.array(PartKindSchema).max(PART_KINDS.length).optional(),
   /** The model after this stage, when a patch was kept (the viewer swaps it in). */
   recipe: ObjectRecipeSchema.optional(),
 });

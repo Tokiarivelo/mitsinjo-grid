@@ -14,8 +14,11 @@ import {
   type RecipeMaterial,
 } from '@/lib/object-shape';
 import type { ApplianceDetection } from '@/lib/vision';
+import { useReducedMotion } from '@/features/microgrid-3d/hooks/use-reduced-motion';
+import type { ShapeImprove } from '../hooks/use-object-shape';
 import { recipeMesh, silhouetteDepth, silhouetteMesh } from '../utils/object-geometry';
 import { SURFACE_LOOK, SURFACES } from '../utils/surface-look';
+import { BuildFocus } from './build-focus-3d';
 import { SWATCH_GAIN } from '../utils/surface-maps';
 import { surfaceTextures, swatchTexture } from '../utils/surface-textures';
 
@@ -30,6 +33,8 @@ export interface ObjectEditor3dProps {
   scale?: number;
   /** Tint multiplied over the measured colours (PV-T11b, visual only); null = as measured. */
   tint?: string | null;
+  /** Staged build in progress: the camera orbits and frames the parts each stage works on. */
+  improve?: ShapeImprove;
 }
 
 /** Strength of the studio reflections and fill (image-based light). */
@@ -62,8 +67,17 @@ function StudioEnvironment() {
 
 /** Camera on a ¾ view, far enough for a 1 × 1 × 1 object. */
 const CAMERA_POSITION: [number, number, number] = [1.3, 0.85, 2.35];
+const CAMERA_DISTANCE = Math.hypot(...CAMERA_POSITION);
 
-function ObjectModel({ shape, detection, imageUrl, scale = 1, tint = null }: ObjectEditor3dProps) {
+function ObjectModel({
+  shape,
+  detection,
+  imageUrl,
+  scale = 1,
+  tint = null,
+  improve,
+}: ObjectEditor3dProps) {
+  const reducedMotion = useReducedMotion();
   // Photo size only (silhouette proportions); cached image, no GPU upload.
   const image = useLoader(THREE.ImageLoader, imageUrl);
   const photoAspect = image.width && image.height ? image.width / image.height : 1;
@@ -151,6 +165,13 @@ function ObjectModel({ shape, detection, imageUrl, scale = 1, tint = null }: Obj
           </mesh>
         )}
       </group>
+      <BuildFocus
+        recipe={shape.mode === 'recipe' && shape.recipe ? shape.recipe : null}
+        {...(improve ? { improve } : {})}
+        scale={scale}
+        homeDistance={CAMERA_DISTANCE}
+        reducedMotion={reducedMotion}
+      />
     </group>
   );
 }

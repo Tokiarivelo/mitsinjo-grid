@@ -1,5 +1,7 @@
 import { MAX_PANES, RECIPE_MATERIALS, type RecipePart } from '@/lib/object-shape';
 import { FACES, MAX_REPEAT, WALL_FACES, type Component } from '@/lib/shape-script';
+import type { RoundFeedback } from './shape-stages';
+import type { OpTrial } from './stage-steps';
 
 /**
  * Stage prompt (PG-T15): one Spark call per loop round. The image is target | model | diff for
@@ -165,6 +167,39 @@ export interface StageQuestionInput {
   editable: ReadonlyArray<string>;
   /** Plain hints from the measurement (e.g. « 3 openings drawn, 2 built »). */
   notes?: ReadonlyArray<string>;
+  /** What the previous round's ops did (a retry after no gain). */
+  feedback?: RoundFeedback;
+}
+
+const OUTCOME_TEXT: Record<OpTrial['outcome'], string> = {
+  kept: 'kept',
+  worse: 'made the score worse, dropped',
+  no_effect: 'changed nothing',
+  dropped: 'refused',
+};
+
+/**
+ * The previous round, op by op: what was kept (at a smaller step when it overshot), what made
+ * things worse, what changed nothing (e.g. a `set` with no usable field) or was refused.
+ */
+export function feedbackLines(f: RoundFeedback): string[] {
+  const ops = f.trials.map((t) => {
+    const name = `${t.op}${t.id ? ` ${t.id}` : ''}`;
+    if (t.outcome === 'kept' && t.share !== undefined && t.share < 1)
+      return `${name}: overshot, kept at ${Math.round(t.share * 100)} % of the step`;
+    if (t.outcome === 'no_effect')
+      return `${name}: changed nothing${t.fields.length ? ` (fields ${t.fields.join(', ')})` : ' (no field)'}`;
+    if (t.outcome === 'dropped') return `${name}: refused (${t.reason ?? 'invalid'})`;
+    return `${name}: ${OUTCOME_TEXT[t.outcome]}`;
+  });
+  return [
+    `Previous round ${f.round}: ${f.kept ? 'part of your patch was kept' : 'no op raised the stage score'}.`,
+    ...ops.map((o) => `- ${o}`),
+    ...(f.refused ? [`- ${f.refused} op(s) named parts outside this stage: refused`] : []),
+    f.kept
+      ? 'Go on from the current model.'
+      : 'Try a different fix: smaller moves, other parts, only the listed op fields.',
+  ];
 }
 
 /** The question sent with the stage sheet. */
@@ -175,6 +210,7 @@ export function stageQuestion(q: StageQuestionInput): string {
   return [
     `Object: "${name}". Stage: ${q.stage} (round ${q.round}). Stage score ${Math.round(q.score.stage * 100)} %, whole model ${Math.round(q.score.overall * 100)} %.`,
     ...(q.notes?.length ? [`Measured: ${q.notes.join('; ')}.`] : []),
+    ...(q.feedback ? feedbackLines(q.feedback) : []),
     ...(q.stage === 'final'
       ? [
           'Final check: every earlier stage is done. Compare the WHOLE model with the drawing, part by part, and fix what still differs (missing, extra, misplaced or wrongly sized parts, wrong materials). Empty list when the model already matches.',
