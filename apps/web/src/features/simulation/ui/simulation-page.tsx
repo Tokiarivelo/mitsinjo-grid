@@ -8,9 +8,12 @@ import {
   Bot,
   Building2,
   Check,
+  ChevronDown,
+  ChevronUp,
   Copy,
   Download,
   Factory,
+  Flame,
   PanelRightClose,
   PanelRightOpen,
   ScrollText,
@@ -62,7 +65,7 @@ import { SectorLoadPanel } from './sector-load-panel';
 import { ApplianceList } from '@/features/vision-insert';
 import { VillageViewport } from './village-viewport';
 import { PlaybackActions } from './playback-actions';
-import { ReportFireControl } from '@/features/fire-alert';
+import { ReportFireControl, useActiveFires } from '@/features/fire-alert';
 import {
   AutopilotPanel,
   ConstitutionCard,
@@ -134,6 +137,9 @@ export function SimulationPage() {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<SimulationTab>('metrics');
   const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const [deckFocus, setDeckFocus] = useState<'tabs' | 'top'>('tabs');
+  const dispatchMode = useSimulationStore((s) => s.dispatchMode);
+  const activeFires = useActiveFires();
 
   usePlaybackTicker(isPlaying);
 
@@ -172,6 +178,7 @@ export function SimulationPage() {
     if (sec) {
       setIsPanelOpen(true);
       setActiveTab('buildings');
+      setDeckFocus('tabs');
     }
   };
 
@@ -344,46 +351,141 @@ export function SimulationPage() {
               aria-label={tSim('deckTitle')}
               className="lg:col-span-5 xl:col-span-4 flex flex-col rounded-card bg-surface border border-border shadow-md overflow-hidden lg:sticky lg:top-2 lg:max-h-[calc(100vh-80px)]"
             >
-              {/* Panel Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-elevated/40">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-energy-cyan animate-pulse" />
-                  <h2 className="text-xs font-display font-semibold uppercase tracking-wider text-text-primary">
-                    {tSim('deckTitle')}
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsPanelOpen(false)}
-                  aria-label={tCommon('close')}
-                  title={tSim('hideDeck')}
-                  className="flex items-center gap-1 px-2 py-1 rounded-control text-xs text-text-muted hover:text-text-primary hover:bg-surface-elevated border border-border transition-colors cursor-pointer"
+              {/* ACCORDION: Top Section (either compact strip when tabs are focused, or expanded) */}
+              {deckFocus === 'tabs' ? (
+                /* TOP COMPACT ACCORDION BAR (Click to expand controls, shrink tabs) */
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={false}
+                  onClick={() => setDeckFocus('top')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setDeckFocus('top');
+                    }
+                  }}
+                  className="flex items-center justify-between px-3.5 py-2 border-b border-border bg-surface-elevated/40 hover:bg-surface-elevated/80 transition-colors cursor-pointer select-none group shrink-0"
+                  title={tSim('expandTopControls')}
                 >
-                  <PanelRightClose className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span className="text-[11px] font-sans">{tSim('hideDeck')}</span>
-                </button>
-              </div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="h-2 w-2 rounded-full bg-energy-cyan animate-pulse shrink-0" />
+                    <span className="text-xs font-display font-semibold uppercase tracking-wider text-text-primary group-hover:text-energy-cyan transition-colors truncate">
+                      {tSim('controlsOverview')}
+                    </span>
+                    <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface border border-border text-text-muted shrink-0">
+                      {dispatchMode === 'autonomous' ? (
+                        <>
+                          <span className="h-1.5 w-1.5 rounded-full bg-ai-violet animate-pulse" />
+                          <span className="text-ai-violet font-semibold">
+                            {tDispatch('modeAutonomous')}
+                          </span>
+                        </>
+                      ) : dispatchMode === 'assisted' ? (
+                        <span className="text-energy-cyan font-semibold">
+                          {tDispatch('modeAssisted')}
+                        </span>
+                      ) : (
+                        <span>{tDispatch('modeManual')}</span>
+                      )}
+                    </span>
+                    {activeFires.length > 0 && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-critical-red/10 border border-critical-red/40 text-critical-red shrink-0">
+                        <Flame className="h-3 w-3" />
+                        <span>{activeFires.length}</span>
+                      </span>
+                    )}
+                  </div>
 
-              {/* Safety: report a fire from the deck, whatever tab is open (M2-T2) */}
-              <div className="px-4 py-3 border-b border-border">
-                <ReportFireControl variant="panel" />
-              </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-sans text-text-muted group-hover:text-text-primary transition-colors">
+                      <ChevronDown className="h-3.5 w-3.5 text-text-muted group-hover:text-text-primary" />
+                      <span className="hidden sm:inline">{tSim('expandTopControls')}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsPanelOpen(false);
+                      }}
+                      aria-label={tCommon('close')}
+                      title={tSim('hideDeck')}
+                      className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface border border-transparent hover:border-border transition-colors cursor-pointer"
+                    >
+                      <PanelRightClose className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* TOP EXPANDED ACCORDION (Click header to collapse controls, expand tabs) */
+                <div className="flex flex-col border-b border-border bg-surface shrink-0">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={true}
+                    onClick={() => setDeckFocus('tabs')}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setDeckFocus('tabs');
+                      }
+                    }}
+                    className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-surface-elevated/40 hover:bg-surface-elevated/70 transition-colors cursor-pointer select-none group"
+                    title={tSim('collapseTopControls')}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-energy-cyan animate-pulse" />
+                      <h2 className="text-xs font-display font-semibold uppercase tracking-wider text-text-primary group-hover:text-energy-cyan transition-colors">
+                        {tSim('deckTitle')}
+                      </h2>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-sans text-text-muted group-hover:text-text-primary transition-colors">
+                        <ChevronUp className="h-3.5 w-3.5 text-text-muted group-hover:text-text-primary" />
+                        <span className="hidden sm:inline">{tSim('collapseTopControls')}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsPanelOpen(false);
+                        }}
+                        aria-label={tCommon('close')}
+                        title={tSim('hideDeck')}
+                        className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface border border-transparent hover:border-border transition-colors cursor-pointer"
+                      >
+                        <PanelRightClose className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Rule-based autopilot: one suggestion per simulated hour, off by default (M10-T1) */}
-              <div className="px-4 py-3 border-b border-border">
-                <AutopilotPanel onOpenLog={() => setActiveTab('log')} />
-              </div>
+                  {/* Safety: report a fire from the deck, whatever tab is open (M2-T2) */}
+                  <div className="px-4 py-2.5 border-b border-border">
+                    <ReportFireControl variant="panel" />
+                  </div>
 
-              {/* Village constitution: plain-word rules the autopilot is verified against (M10-T2) */}
-              <div className="px-4 py-2 border-b border-border">
-                <ConstitutionCard defaultOpen={false} />
-              </div>
+                  {/* Rule-based autopilot: one suggestion per simulated hour, off by default (M10-T1) */}
+                  <div className="px-4 py-2.5 border-b border-border">
+                    <AutopilotPanel
+                      onOpenLog={() => {
+                        setActiveTab('log');
+                        setDeckFocus('tabs');
+                      }}
+                    />
+                  </div>
+
+                  {/* Village constitution: plain-word rules the autopilot is verified against (M10-T2) */}
+                  <div className="px-4 py-2">
+                    <ConstitutionCard defaultOpen={false} />
+                  </div>
+                </div>
+              )}
 
               {/* TAB NAVIGATION BAR */}
               <div
                 role="tablist"
                 aria-label={tSim('deckTitle')}
-                className="grid grid-cols-5 border-b border-border bg-canvas-sunken/60 p-1 gap-1"
+                className="grid grid-cols-5 border-b border-border bg-canvas-sunken/60 p-1 gap-1 shrink-0"
               >
                 {TABS.map(({ id, labelKey, icon: Icon }) => {
                   const isActive = activeTab === id;
@@ -395,18 +497,23 @@ export function SimulationPage() {
                       id={`tab-${id}`}
                       aria-controls={`panel-${id}`}
                       aria-selected={isActive}
-                      onClick={() => setActiveTab(id)}
+                      onClick={() => {
+                        setActiveTab(id);
+                        setDeckFocus('tabs');
+                      }}
                       className={cn(
-                        'flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-control-sm text-[11px] font-sans transition-all cursor-pointer',
-                        isActive
+                        'flex flex-col items-center justify-center gap-1 py-1.5 px-1 rounded-control-sm text-[11px] font-sans transition-all cursor-pointer',
+                        isActive && deckFocus === 'tabs'
                           ? 'bg-surface-elevated text-energy-cyan font-semibold shadow-xs border border-border/80'
-                          : 'text-text-muted hover:text-text-primary hover:bg-surface/50'
+                          : isActive && deckFocus === 'top'
+                            ? 'bg-surface/50 text-text-secondary border border-border/40'
+                            : 'text-text-muted hover:text-text-primary hover:bg-surface/50'
                       )}
                     >
                       <Icon
                         className={cn(
                           'h-3.5 w-3.5',
-                          isActive ? 'text-energy-cyan' : 'text-text-muted'
+                          isActive && deckFocus === 'tabs' ? 'text-energy-cyan' : 'text-text-muted'
                         )}
                         aria-hidden="true"
                       />
@@ -416,267 +523,283 @@ export function SimulationPage() {
                 })}
               </div>
 
-              {/* Tab Panels Container: scrollable for content lists, flex column for chat */}
-              <div
-                className={cn(
-                  'flex-1 min-h-0',
-                  activeTab === 'copilot'
-                    ? 'flex flex-col p-2 sm:p-2.5 overflow-hidden h-[560px] lg:h-auto'
-                    : 'p-4 overflow-y-auto'
-                )}
-              >
-                {/* TAB 1: METRICS & CHARTS */}
+              {/* Tab Panels Container: expanded when deckFocus === 'tabs' */}
+              {deckFocus === 'tabs' ? (
                 <div
-                  id="panel-metrics"
-                  role="tabpanel"
-                  aria-labelledby="tab-metrics"
-                  hidden={activeTab !== 'metrics'}
-                  className={cn('space-y-4', activeTab !== 'metrics' && 'hidden')}
-                >
-                  {/* 4 Metric Cards in 2x2 grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Solar PV Card */}
-                    <MetricCard
-                      variant="solar"
-                      label={tOverview('solarPeak')}
-                      value={hasResults ? fmtNum(peakSolarKw) : fmtNum(null)}
-                      unit="kW"
-                      empty={!hasResults}
-                      loading={isRunning}
-                      caption={
-                        hasResults && metrics
-                          ? tOverview('solarCaption', { kwh: fmtKwh(metrics.solarKwh) })
-                          : undefined
-                      }
-                      icon={<Sun className="h-4 w-4 text-solar-amber" aria-hidden="true" />}
-                    />
-
-                    {/* Battery SoC Card */}
-                    <MetricCard
-                      variant="battery"
-                      label={tOverview('batterySoc')}
-                      value={fmtNum(hasResults ? metrics?.socEndPct : null, 0)}
-                      unit="%"
-                      empty={!hasResults}
-                      loading={isRunning}
-                      caption={
-                        hasResults && metrics
-                          ? tOverview('batteryCaption', {
-                              min: fmtPct(metrics.socMinPct, 0),
-                              kwh: fmtKwh(input.battery.capacityKwh, 0),
-                            })
-                          : undefined
-                      }
-                      status={
-                        metrics && metrics.socEndPct < input.battery.minSocPct + 5
-                          ? 'warning'
-                          : 'normal'
-                      }
-                      icon={
-                        <BatteryCharging
-                          className="h-4 w-4 text-battery-green"
-                          aria-hidden="true"
-                        />
-                      }
-                    />
-
-                    {/* Total Demand Card */}
-                    <MetricCard
-                      variant="demand"
-                      label={tOverview('totalDemand')}
-                      value={fmtNum(hasResults ? metrics?.demandKwh : null)}
-                      unit="kWh"
-                      empty={!hasResults}
-                      loading={isRunning}
-                      caption={
-                        hasResults && metrics
-                          ? tOverview('unservedEnergy', {
-                              kwh: fmtKwh(metrics.unservedKwh),
-                            })
-                          : undefined
-                      }
-                      status={metrics && metrics.unservedKwh > 0.1 ? 'warning' : 'normal'}
-                      icon={<Factory className="h-4 w-4 text-energy-cyan" aria-hidden="true" />}
-                    />
-
-                    {/* Essential Services Coverage Card */}
-                    <MetricCard
-                      variant="essential"
-                      label={tOverview('essentialServices')}
-                      value={fmtNum(hasResults ? metrics?.criticalCoveragePct : null)}
-                      unit="%"
-                      empty={!hasResults}
-                      loading={isRunning}
-                      status={metrics && metrics.criticalUnservedKwh > 0.05 ? 'critical' : 'normal'}
-                      caption={
-                        hasResults && metrics
-                          ? metrics.criticalUnservedKwh > 0.05
-                            ? tOverview('criticalDeficitWarning', {
-                                kwh: fmtKwh(metrics.criticalUnservedKwh),
-                                hours: metrics.criticalUnmetHours,
-                              })
-                            : tOverview('criticalProtected')
-                          : undefined
-                      }
-                      icon={<Activity className="h-4 w-4 text-critical-red" aria-hidden="true" />}
-                    />
-                  </div>
-
-                  {/* 24h Generation vs Demand Chart */}
-                  <ChartCard
-                    title={tOverview('chartTitle')}
-                    subtitle={tOverview('chartSubtitle')}
-                    summary={tOverview('energyOverTimeSummary')}
-                    empty={!hasResults}
-                    legend={
-                      <span className="text-[10px] font-mono text-text-muted px-2 py-0.5 rounded-control-sm bg-surface-elevated border border-border">
-                        {tSim('cursorAt', { hour: timeIndex })}
-                      </span>
-                    }
-                  >
-                    {/* Recharts can't measure a hidden tab (0×0): mount only when shown. */}
-                    {activeTab === 'metrics' && (
-                      <EnergyOverTimeChart
-                        steps={steps}
-                        cursorHour={hasResults ? timeIndex : undefined}
-                        height={220}
-                      />
-                    )}
-                  </ChartCard>
-
-                  {/* Service Allocation Breakdown */}
-                  <div className="p-4 rounded-card bg-surface-elevated/40 border border-border">
-                    <div className="flex items-center justify-between pb-3 border-b border-border/60">
-                      <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-text-primary">
-                        {tOverview('serviceAllocationTitle')}
-                      </h3>
-                      <span className="text-[10px] font-mono text-text-muted">
-                        {tOverview('sectorsCount', { count: sectorsOrder.length })}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 flex flex-col gap-2.5">
-                      {sectorsOrder.map((sec) => {
-                        const secMetrics = metrics?.perSector[sec];
-                        const priority = input.sectors.find((s) => s.id === sec)?.priority;
-
-                        return (
-                          <EnergyBar
-                            key={sec}
-                            sectorId={sec}
-                            label={tSectors(sec)}
-                            valuePct={secMetrics?.coveragePct ?? 0}
-                            empty={!hasResults || !secMetrics}
-                            demandKwh={secMetrics?.demandKwh}
-                            servedKwh={secMetrics?.servedKwh}
-                            priority={priority}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* TAB 2: CONTROLS & PARAMETERS */}
-                <div
-                  id="panel-controls"
-                  role="tabpanel"
-                  aria-labelledby="tab-controls"
-                  hidden={activeTab !== 'controls'}
-                  className={cn('space-y-4', activeTab !== 'controls' && 'hidden')}
-                >
-                  {controlsPanel}
-                  <WeatherWorkflowPanel
-                    workflow={workflow}
-                    dayIndex={dayIndex}
-                    workflowResult={hasResults ? workflowResult : undefined}
-                    onAddDay={() => addWorkflowDay()}
-                    onRemoveDay={removeWorkflowDay}
-                    onSetWeather={setDayWeather}
-                    onSelectDay={handleSelectDay}
-                    onLoadChaos={() => loadChaosWorkflow()}
-                  />
-                  <HardwareLinkSection />
-                </div>
-
-                {/* TAB 3: BUILDING INSPECTOR */}
-                <div
-                  id="panel-buildings"
-                  role="tabpanel"
-                  aria-labelledby="tab-buildings"
-                  hidden={activeTab !== 'buildings'}
-                  className={cn('space-y-4', activeTab !== 'buildings' && 'hidden')}
-                >
-                  <SectorLoadPanel />
-                  <ApplianceList editorHref="/village" />
-                  <BuildingInspectorPanel
-                    selectedSector={selectedSector}
-                    onSelectSector={handleSelectSector}
-                    result={result}
-                    input={input}
-                    timeIndex={timeIndex}
-                  />
-                </div>
-
-                {/* TAB 4: AI COPILOT */}
-                <div
-                  id="panel-copilot"
-                  role="tabpanel"
-                  aria-labelledby="tab-copilot"
-                  hidden={activeTab !== 'copilot'}
                   className={cn(
-                    'flex-1 min-h-0 flex flex-col',
-                    activeTab !== 'copilot' && 'hidden'
+                    'flex-1 min-h-0',
+                    activeTab === 'copilot'
+                      ? 'flex flex-col p-2 sm:p-2.5 overflow-hidden h-[560px] lg:h-auto'
+                      : 'p-4 overflow-y-auto'
                   )}
                 >
-                  {/* Impact Alerts Banner if active warnings exist */}
-                  {result && result.warnings.length > 0 && (
-                    <div className="shrink-0 mb-2">
-                      <ImpactBanner warnings={result.warnings} />
-                    </div>
-                  )}
+                  {/* TAB 1: METRICS & CHARTS */}
+                  <div
+                    id="panel-metrics"
+                    role="tabpanel"
+                    aria-labelledby="tab-metrics"
+                    hidden={activeTab !== 'metrics'}
+                    className={cn('space-y-4', activeTab !== 'metrics' && 'hidden')}
+                  >
+                    {/* 4 Metric Cards in 2x2 grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Solar PV Card */}
+                      <MetricCard
+                        variant="solar"
+                        label={tOverview('solarPeak')}
+                        value={hasResults ? fmtNum(peakSolarKw) : fmtNum(null)}
+                        unit="kW"
+                        empty={!hasResults}
+                        loading={isRunning}
+                        caption={
+                          hasResults && metrics
+                            ? tOverview('solarCaption', { kwh: fmtKwh(metrics.solarKwh) })
+                            : undefined
+                        }
+                        icon={<Sun className="h-4 w-4 text-solar-amber" aria-hidden="true" />}
+                      />
 
-                  {/* Copilot conversational workspace in panel mode */}
-                  <div className="flex-1 min-h-0 flex flex-col rounded-card bg-surface-elevated/30 border border-border overflow-hidden">
-                    <CopilotWorkspace mode="panel" />
+                      {/* Battery SoC Card */}
+                      <MetricCard
+                        variant="battery"
+                        label={tOverview('batterySoc')}
+                        value={fmtNum(hasResults ? metrics?.socEndPct : null, 0)}
+                        unit="%"
+                        empty={!hasResults}
+                        loading={isRunning}
+                        caption={
+                          hasResults && metrics
+                            ? tOverview('batteryCaption', {
+                                min: fmtPct(metrics.socMinPct, 0),
+                                kwh: fmtKwh(input.battery.capacityKwh, 0),
+                              })
+                            : undefined
+                        }
+                        status={
+                          metrics && metrics.socEndPct < input.battery.minSocPct + 5
+                            ? 'warning'
+                            : 'normal'
+                        }
+                        icon={
+                          <BatteryCharging
+                            className="h-4 w-4 text-battery-green"
+                            aria-hidden="true"
+                          />
+                        }
+                      />
+
+                      {/* Total Demand Card */}
+                      <MetricCard
+                        variant="demand"
+                        label={tOverview('totalDemand')}
+                        value={fmtNum(hasResults ? metrics?.demandKwh : null)}
+                        unit="kWh"
+                        empty={!hasResults}
+                        loading={isRunning}
+                        caption={
+                          hasResults && metrics
+                            ? tOverview('unservedEnergy', {
+                                kwh: fmtKwh(metrics.unservedKwh),
+                              })
+                            : undefined
+                        }
+                        status={metrics && metrics.unservedKwh > 0.1 ? 'warning' : 'normal'}
+                        icon={<Factory className="h-4 w-4 text-energy-cyan" aria-hidden="true" />}
+                      />
+
+                      {/* Essential Services Coverage Card */}
+                      <MetricCard
+                        variant="essential"
+                        label={tOverview('essentialServices')}
+                        value={fmtNum(hasResults ? metrics?.criticalCoveragePct : null)}
+                        unit="%"
+                        empty={!hasResults}
+                        loading={isRunning}
+                        status={
+                          metrics && metrics.criticalUnservedKwh > 0.05 ? 'critical' : 'normal'
+                        }
+                        caption={
+                          hasResults && metrics
+                            ? metrics.criticalUnservedKwh > 0.05
+                              ? tOverview('criticalDeficitWarning', {
+                                  kwh: fmtKwh(metrics.criticalUnservedKwh),
+                                  hours: metrics.criticalUnmetHours,
+                                })
+                              : tOverview('criticalProtected')
+                            : undefined
+                        }
+                        icon={<Activity className="h-4 w-4 text-critical-red" aria-hidden="true" />}
+                      />
+                    </div>
+
+                    {/* 24h Generation vs Demand Chart */}
+                    <ChartCard
+                      title={tOverview('chartTitle')}
+                      subtitle={tOverview('chartSubtitle')}
+                      summary={tOverview('energyOverTimeSummary')}
+                      empty={!hasResults}
+                      legend={
+                        <span className="text-[10px] font-mono text-text-muted px-2 py-0.5 rounded-control-sm bg-surface-elevated border border-border">
+                          {tSim('cursorAt', { hour: timeIndex })}
+                        </span>
+                      }
+                    >
+                      {/* Recharts can't measure a hidden tab (0×0): mount only when shown. */}
+                      {activeTab === 'metrics' && (
+                        <EnergyOverTimeChart
+                          steps={steps}
+                          cursorHour={hasResults ? timeIndex : undefined}
+                          height={220}
+                        />
+                      )}
+                    </ChartCard>
+
+                    {/* Service Allocation Breakdown */}
+                    <div className="p-4 rounded-card bg-surface-elevated/40 border border-border">
+                      <div className="flex items-center justify-between pb-3 border-b border-border/60">
+                        <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-text-primary">
+                          {tOverview('serviceAllocationTitle')}
+                        </h3>
+                        <span className="text-[10px] font-mono text-text-muted">
+                          {tOverview('sectorsCount', { count: sectorsOrder.length })}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 flex flex-col gap-2.5">
+                        {sectorsOrder.map((sec) => {
+                          const secMetrics = metrics?.perSector[sec];
+                          const priority = input.sectors.find((s) => s.id === sec)?.priority;
+
+                          return (
+                            <EnergyBar
+                              key={sec}
+                              sectorId={sec}
+                              label={tSectors(sec)}
+                              valuePct={secMetrics?.coveragePct ?? 0}
+                              empty={!hasResults || !secMetrics}
+                              demandKwh={secMetrics?.demandKwh}
+                              servedKwh={secMetrics?.servedKwh}
+                              priority={priority}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* TAB 2: CONTROLS & PARAMETERS */}
+                  <div
+                    id="panel-controls"
+                    role="tabpanel"
+                    aria-labelledby="tab-controls"
+                    hidden={activeTab !== 'controls'}
+                    className={cn('space-y-4', activeTab !== 'controls' && 'hidden')}
+                  >
+                    {controlsPanel}
+                    <WeatherWorkflowPanel
+                      workflow={workflow}
+                      dayIndex={dayIndex}
+                      workflowResult={hasResults ? workflowResult : undefined}
+                      onAddDay={() => addWorkflowDay()}
+                      onRemoveDay={removeWorkflowDay}
+                      onSetWeather={setDayWeather}
+                      onSelectDay={handleSelectDay}
+                      onLoadChaos={() => loadChaosWorkflow()}
+                    />
+                    <HardwareLinkSection />
+                  </div>
+
+                  {/* TAB 3: BUILDING INSPECTOR */}
+                  <div
+                    id="panel-buildings"
+                    role="tabpanel"
+                    aria-labelledby="tab-buildings"
+                    hidden={activeTab !== 'buildings'}
+                    className={cn('space-y-4', activeTab !== 'buildings' && 'hidden')}
+                  >
+                    <SectorLoadPanel />
+                    <ApplianceList editorHref="/village" />
+                    <BuildingInspectorPanel
+                      selectedSector={selectedSector}
+                      onSelectSector={handleSelectSector}
+                      result={result}
+                      input={input}
+                      timeIndex={timeIndex}
+                    />
+                  </div>
+
+                  {/* TAB 4: AI COPILOT */}
+                  <div
+                    id="panel-copilot"
+                    role="tabpanel"
+                    aria-labelledby="tab-copilot"
+                    hidden={activeTab !== 'copilot'}
+                    className={cn(
+                      'flex-1 min-h-0 flex flex-col',
+                      activeTab !== 'copilot' && 'hidden'
+                    )}
+                  >
+                    {/* Impact Alerts Banner if active warnings exist */}
+                    {result && result.warnings.length > 0 && (
+                      <div className="shrink-0 mb-2">
+                        <ImpactBanner warnings={result.warnings} />
+                      </div>
+                    )}
+
+                    {/* Copilot conversational workspace in panel mode */}
+                    <div className="flex-1 min-h-0 flex flex-col rounded-card bg-surface-elevated/30 border border-border overflow-hidden">
+                      <CopilotWorkspace mode="panel" />
+                    </div>
+                  </div>
+
+                  {/* TAB 5: DISPATCH EVENT LOG (PA-T4b) */}
+                  <div
+                    id="panel-log"
+                    role="tabpanel"
+                    aria-labelledby="tab-log"
+                    hidden={activeTab !== 'log'}
+                    className={cn('space-y-4', activeTab !== 'log' && 'hidden')}
+                  >
+                    <DispatchLogPanel
+                      onAskWhy={(entry) => {
+                        setActiveTab('copilot');
+                        setDeckFocus('tabs');
+                        const sec = entry.incident?.sector ?? entry.action?.sector;
+                        const targetSector = sec ? tSectors(sec) : '';
+                        const actionDesc = entry.action
+                          ? tDispatch(`actions.${entry.action.kind}` as never)
+                          : entry.incident
+                            ? tDispatch(`incidents.${entry.incident.kind}` as never)
+                            : '';
+                        fillCopilotPrompt(
+                          targetSector
+                            ? tDispatch('askWhyPromptSector', {
+                                action: actionDesc,
+                                sector: targetSector,
+                                hour: entry.hour,
+                              })
+                            : tDispatch('askWhyPrompt', { action: actionDesc, hour: entry.hour })
+                        );
+                      }}
+                      onAskCopilot={(prompt) => {
+                        setActiveTab('copilot');
+                        setDeckFocus('tabs');
+                        fillCopilotPrompt(prompt);
+                      }}
+                    />
                   </div>
                 </div>
-
-                {/* TAB 5: DISPATCH EVENT LOG (PA-T4b) */}
-                <div
-                  id="panel-log"
-                  role="tabpanel"
-                  aria-labelledby="tab-log"
-                  hidden={activeTab !== 'log'}
-                  className={cn('space-y-4', activeTab !== 'log' && 'hidden')}
+              ) : (
+                /* Collapsed tab hint when deckFocus === 'top' */
+                <button
+                  type="button"
+                  onClick={() => setDeckFocus('tabs')}
+                  className="p-3 text-xs text-text-muted hover:text-text-primary bg-surface/30 hover:bg-surface-elevated/40 border-t border-border flex items-center justify-center gap-2 cursor-pointer transition-colors"
                 >
-                  <DispatchLogPanel
-                    onAskWhy={(entry) => {
-                      setActiveTab('copilot');
-                      const sec = entry.incident?.sector ?? entry.action?.sector;
-                      const targetSector = sec ? tSectors(sec) : '';
-                      const actionDesc = entry.action
-                        ? tDispatch(`actions.${entry.action.kind}` as never)
-                        : entry.incident
-                          ? tDispatch(`incidents.${entry.incident.kind}` as never)
-                          : '';
-                      fillCopilotPrompt(
-                        targetSector
-                          ? tDispatch('askWhyPromptSector', {
-                              action: actionDesc,
-                              sector: targetSector,
-                              hour: entry.hour,
-                            })
-                          : tDispatch('askWhyPrompt', { action: actionDesc, hour: entry.hour })
-                      );
-                    }}
-                    onAskCopilot={(prompt) => {
-                      setActiveTab('copilot');
-                      fillCopilotPrompt(prompt);
-                    }}
-                  />
-                </div>
-              </div>
+                  <span>{tSim('expandTabs')}</span>
+                  <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              )}
             </aside>
           )}
         </div>

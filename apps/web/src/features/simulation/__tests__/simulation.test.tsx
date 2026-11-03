@@ -328,4 +328,27 @@ describe('SimulationPage (P5-T1, P5-T2, P5-T5, P5-T6)', () => {
     // Deck tablist is restored
     expect(screen.getByRole('tablist', { name: /telemetry & controls/i })).toBeInTheDocument();
   });
+
+  it('toggles accordion focus between top controls and tabs', () => {
+    render(<SimulationPage />);
+
+    // Starts in tabs focus: tabpanel is present, top is compact strip with expand button
+    expect(screen.getByRole('tabpanel', { name: /metrics/i })).toBeInTheDocument();
+    expect(screen.getByTitle('Expand controls')).toBeInTheDocument();
+
+    // Click top strip to focus controls
+    fireEvent.click(screen.getByTitle('Expand controls'));
+
+    // Top section is now expanded: shows full deck header and collapse trigger
+    expect(screen.getByTitle('Collapse controls')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /expand tab content/i })).toBeInTheDocument();
+    expect(screen.queryByRole('tabpanel', { name: /metrics/i })).not.toBeInTheDocument();
+
+    // Click a tab button to refocus tabs and expand upwards
+    fireEvent.click(screen.getByRole('tab', { name: /controls/i }));
+
+    // Tab content is restored and expanded upwards
+    expect(screen.getByRole('tabpanel', { name: /controls/i })).toBeInTheDocument();
+    expect(screen.getByTitle('Expand controls')).toBeInTheDocument();
+  });
 });
