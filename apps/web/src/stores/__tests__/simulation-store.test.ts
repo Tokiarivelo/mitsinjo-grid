@@ -355,5 +355,41 @@ describe('useSimulationStore & selectors (P4-T1)', () => {
       expect(entry?.hash).toBe(dispatchLogHash(entry!));
       expect(entry?.hash).not.toBe(dispatchLogHash(draft));
     });
+
+    it('loadDraft sets workflow with per-day events and switches dispatch mode (PA-T8f)', () => {
+      const store = useSimulationStore.getState();
+      store.loadDraft(
+        {
+          days: [
+            { day: 1, weather: 'cloudy' },
+            { day: 2, weather: 'rainy' },
+            {
+              day: 3,
+              weather: 'sunny',
+              events: [
+                {
+                  type: 'fire',
+                  sector: 'school',
+                  startHour: 10,
+                  durationH: 14,
+                },
+              ],
+            },
+          ],
+        },
+        'autonomous'
+      );
+
+      const next = useSimulationStore.getState();
+      expect(next.dispatchMode).toBe('autonomous');
+      expect(next.workflow).toHaveLength(3);
+      expect(next.workflow[0]?.weather).toBe('cloudy');
+      expect(next.workflow[1]?.weather).toBe('rainy');
+      expect(next.workflow[2]?.weather).toBe('sunny');
+      expect(next.workflow[2]?.events).toHaveLength(1);
+      expect(next.workflow[2]?.events?.[0]?.type).toBe('fire');
+      expect(next.dayIndex).toBe(0);
+      expect(next.timeIndex).toBe(0);
+    });
   });
 });

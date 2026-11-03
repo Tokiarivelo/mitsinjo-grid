@@ -716,3 +716,109 @@ expectEvidence}` evals (synthetic only — Contributor trains on inputs); the ha
 4-section shape and `done`. Both run offline from deterministic templates by default
 (`make gen-scenarios`, `make gen-evals`); `--live` variants need `META_API_KEY`. jiti runs the
 scripts (tsx needs an IPC pipe, blocked in sandboxes).
+
+## Scenario Draft & Chat Dispatch (PA-T8b..f, J9–J10)
+
+### Types (`apps/web/src/lib/scenario-draft.ts`)
+
+```ts
+type ScenarioDraftEventType = 'fire' | 'solar_drop' | 'demand_spike';
+
+interface ScenarioDraftFireEvent {
+  type: 'fire';
+  sector?: SectorId;
+  startHour?: number; // 0–23
+  durationH?: number; // 1–24
+}
+
+interface ScenarioDraftSolarDropEvent {
+  type: 'solar_drop';
+  dropPct?: number; // 0–90%
+  startHour?: number;
+  durationH?: number;
+}
+
+interface ScenarioDraftDemandSpikeEvent {
+  type: 'demand_spike';
+  sector?: SectorId | 'all';
+  factor?: number; // 0.5–3.0
+  startHour?: number;
+  durationH?: number;
+}
+
+type ScenarioDraftEvent =
+  ScenarioDraftFireEvent | ScenarioDraftSolarDropEvent | ScenarioDraftDemandSpikeEvent;
+
+interface ScenarioDraftDay {
+  day: number; // 1–7
+  weather?: WeatherId;
+  events?: ScenarioDraftEvent[];
+}
+
+interface ScenarioDraft {
+  title?: string;
+  days: ScenarioDraftDay[];
+  startSocPct?: number; // 0–100
+  strategy?: StrategyId;
+  dispatchMode?: DispatchMode;
+}
+
+type MissingSlotKind =
+  | 'day_out_of_bounds'
+  | 'duplicate_weather'
+  | 'missing_weather'
+  | 'missing_fire_sector'
+  | 'missing_fire_hour'
+  | 'missing_spike_sector'
+  | 'missing_spike_factor'
+  | 'missing_drop_pct'
+  | 'missing_drop_hour';
+
+interface MissingSlot {
+  kind: MissingSlotKind;
+  day: number;
+  eventIndex?: number;
+  messageKey: string;
+  suggestedResponses: Array<{ label: string; value: string | number }>;
+}
+
+interface ScenarioDraftPreview {
+  worstDay: number;
+  totalDeficitKwh: number;
+  criticalUnservedKwh: number;
+  dayDeficits: Array<{ day: number; deficitKwh: number }>;
+}
+
+interface ScenarioDraftPayload {
+  draft: ScenarioDraft;
+  missingSlots: MissingSlot[];
+  isComplete: boolean;
+  preview?: ScenarioDraftPreview;
+}
+```
+
+### Pure Helpers & Invariants
+
+- `missingSlots(draft: ScenarioDraft): MissingSlot[]`: Returns ordered missing slots requiring conversational clarification. A complete draft produces 0 missing slots.
+- `applyDraftDefaults(draft: ScenarioDraft): ScenarioDraft`: Purely fills unspecified fields with standard defaults (fire duration to midnight `24 - startHour`, initial SoC 60%, strategy `proportional`, mode `manual`).
+- `draftToWorkflow(draft: ScenarioDraft)`: Converts draft into engine `Workflow` (`WorkflowDay[]` with per-day `events`), `startSocPct`, `strategy`, and `dispatchMode`.
+
+### Copilot Tool & SSE Event
+
+- Copilot Tool `draft_scenario`: input `{ text: string, currentDraft?: ScenarioDraft }`. Extracts multi-day scenario structure (FR/EN/MG), merges with existing session draft, validates via `ScenarioDraftSchema`, and computes `missingSlots` plus `compareWorkflow` engine preview if complete.
+- SSE Event `scenario_draft`: streams `ScenarioDraftPayload` to the client for live interactive rendering in `ScenarioDraftCard`.
+
+### Neon Persistence (`apps/web/src/server/db/`)
+
+- Migration `0005_scenario_drafts`:
+  ```sql
+  CREATE TABLE IF NOT EXISTS scenario_drafts (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    draft JSONB NOT NULL,
+    summary JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  ```
+- API route: `GET /api/scenarios/drafts`, `POST /api/scenarios/drafts`, `DELETE /api/scenarios/drafts?id=:id`. In-memory fallback active when `DATABASE_URL` is unset.

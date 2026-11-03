@@ -6,6 +6,7 @@ import {
   type StrategyId,
   type DispatchLogEntry,
 } from '@mitsinjo/engine';
+import type { ScenarioDraftPayload } from '../types';
 
 export interface SuggestedPromptItem {
   key: string;
@@ -24,6 +25,8 @@ export interface SuggestPromptsOptions {
   fires?: readonly SectorId[];
   /** Autonomous dispatch event log (PA-T5b). */
   dispatchLog?: readonly DispatchLogEntry[];
+  /** Active multi-day scenario draft (PA-T8g). */
+  scenarioDraft?: ScenarioDraftPayload;
 }
 
 /** Questions about a fire, in order. Worded without "cut" so the offline copilot never reads a new order. */
@@ -150,7 +153,20 @@ export function suggestPrompts(options?: SuggestPromptsOptions): SuggestedPrompt
   // 0b. Autonomous dispatch events (PA-T5b)
   dispatchPrompts(options?.dispatchLog).forEach(pushPrompt);
 
-  if (!result || !result.metrics) return dynamic;
+  // 0c. Multi-day scenario draft in progress (PA-T8g)
+  if (options?.scenarioDraft && options.scenarioDraft.missingSlots.length > 0) {
+    const slot = options.scenarioDraft.missingSlots[0]!;
+    for (const opt of slot.suggestedResponses.slice(0, 3)) {
+      pushPrompt({
+        key: 'promptAnswerDraftSlot',
+        params: { day: slot.day, value: String(opt.value), label: opt.label },
+      });
+    }
+  }
+
+  if (!result || !result.metrics) {
+    return dynamic;
+  }
   const { metrics } = result;
 
   // 1. Fires the scenario will start later (scripted incident).
@@ -217,6 +233,11 @@ export function suggestPrompts(options?: SuggestPromptsOptions): SuggestedPrompt
       pushPrompt({ key: 'promptSolarDrop40' });
       pushPrompt({ key: 'promptProtectEssential' });
     }
+  }
+
+  // 9. Multi-day scenario crafting prompt (PA-T8g) - only on calm simulations without active fires
+  if (fires.length === 0 && dynamic.length < MAX_PROMPTS) {
+    pushPrompt({ key: 'promptDescribeMultiDay' });
   }
 
   return dynamic;

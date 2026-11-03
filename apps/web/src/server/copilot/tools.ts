@@ -29,6 +29,14 @@ import {
   type StepResult,
 } from '@mitsinjo/engine';
 import { proposalImpact } from '@/lib/proposal-impact';
+import {
+  type ScenarioDraft,
+  ScenarioDraftSchema,
+  missingSlots,
+  draftToWorkflow,
+} from '@/lib/scenario-draft';
+import { extractScenarioDraft } from '@/lib/scenario-extractor';
+import type { ScenarioDraftPayload } from '@/features/copilot/types';
 import { rememberResult } from './result-cache';
 import { batteryStory, lowestSocHour } from './battery-story';
 import type { ToolDefinition } from './provider';
@@ -702,7 +710,37 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'draft_scenario',
+    description:
+      'Draft or refine a multi-day scenario from user descriptions or slot answers (e.g. "day 1: cloudy, day 2: rainy, day 3: sunny + fire at school"). Detects days, weather and incidents, computes missing slots, and calculates engine preview metrics when complete.',
+    parameters: {
+      type: 'object',
+      properties: {
+        text: {
+          type: 'string',
+          description: 'Free-form description or answer in French, English, or Malagasy.',
+        },
+        draft: {
+          type: 'object',
+          description: 'Optional partial or full scenario draft object.',
+        },
+        applyDefaults: {
+          type: 'boolean',
+          description:
+            'Fill in default values for unspecified secondary parameters (SoC 60%, proportional strategy).',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ];
+
+export const DraftScenarioSchema = z.object({
+  text: z.string().optional(),
+  draft: ScenarioDraftSchema.optional(),
+  applyDefaults: z.boolean().optional(),
+});
 
 export interface ToolContext {
   input: SimulationInput;
@@ -729,6 +767,8 @@ export interface ToolResult {
   evidence?: Record<string, number | string>;
   /** control_playback: what the app runs on the client (time cursor / playback only). */
   control?: { action: PlaybackAction; hour?: number };
+  /** Multi-day scenario draft (PA-T8d). */
+  scenarioDraft?: ScenarioDraftPayload;
 }
 
 /** Short, readable validation error for the model (no Zod JSON dump), with a fix hint when there is one. */
@@ -1319,6 +1359,98 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
           totalEntries: filtered.length,
           actionsCount,
           totalSavedKwh: round2(totalSavedKwh),
+        },
+      };
+    }
+
+    case 'draft_scenario': {
+      const parsed = DraftScenarioSchema.safeParse(rawArgs);
+      if (!parsed.success) {
+        return {
+          toolName,
+          error: invalidArgs('draft_scenario', parsed.error),
+        };
+      }
+
+      const { text, draft: inputDraft, applyDefaults } = parsed.data;
+      let draft: ScenarioDraft;
+
+      if (text) {
+        draft = extractScenarioDraft(text, inputDraft);
+      } else if (inputDraft) {
+        draft = inputDraft;
+      } else {
+        draft = { days: [{ day: 1, weather: 'sunny' }] };
+      }
+
+      const slots = missingSlots(draft);
+      const isComplete = slots.length === 0;
+
+      let preview: ScenarioDraftPayload['preview'] = undefined;
+      if (isComplete || applyDefaults) {
+        try {
+          const { workflow } = draftToWorkflow(draft);
+          const strat = ctx.activeStrategy || 'proportional';
+          const comparison = compareWorkflow(ctx.input, workflow, [strat]);
+          const res = comparison[strat];
+          if (res) {
+            let maxDeficit = -1;
+            let worstDay = 1;
+            const dayDeficits: Array<{ day: number; deficitKwh: number }> = [];
+
+            for (let i = 0; i < res.days.length; i++) {
+              const d = res.days[i]!;
+              const unserved = round2(d.result.metrics.unservedKwh);
+              dayDeficits.push({ day: d.day + 1, deficitKwh: unserved });
+              if (unserved > maxDeficit) {
+                maxDeficit = unserved;
+                worstDay = d.day + 1;
+              }
+            }
+
+            preview = {
+              worstDay,
+              totalDeficitKwh: round2(res.totals.unservedKwh),
+              criticalUnservedKwh: round2(res.totals.criticalUnservedKwh),
+              dayDeficits,
+            };
+          }
+        } catch (err) {
+          console.warn('[tools:draft_scenario] Preview computation failed:', err);
+        }
+      }
+
+      const payload: ScenarioDraftPayload = {
+        draft,
+        missingSlots: slots,
+        isComplete,
+        ...(preview ? { preview } : {}),
+      };
+
+      return {
+        toolName,
+        scenarioDraft: payload,
+        data: {
+          daysCount: draft.days.length,
+          missingSlotsCount: slots.length,
+          missingSlots: slots.map((s) => ({
+            kind: s.kind,
+            day: s.day,
+            suggestedResponses: s.suggestedResponses.map((r) => r.label),
+          })),
+          isComplete,
+          ...(preview ? { preview } : {}),
+        },
+        evidence: {
+          draftDaysCount: draft.days.length,
+          draftMissingSlotsCount: slots.length,
+          ...(preview?.totalDeficitKwh !== undefined && {
+            draftTotalDeficitKwh: preview.totalDeficitKwh,
+          }),
+          ...(preview?.criticalUnservedKwh !== undefined && {
+            draftCriticalUnservedKwh: preview.criticalUnservedKwh,
+          }),
+          ...(preview?.worstDay !== undefined && { draftWorstDay: preview.worstDay }),
         },
       };
     }

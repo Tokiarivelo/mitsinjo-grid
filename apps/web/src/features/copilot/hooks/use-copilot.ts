@@ -15,6 +15,7 @@ import type {
   CopilotPerception,
   CopilotProposal,
   CopilotVisual,
+  ScenarioDraftPayload,
   FallbackReason,
   ProposalDecision,
   ProposalDecisionStatus,
@@ -344,6 +345,7 @@ export function useCopilot() {
         let collectedVideoCaption: string | undefined;
         let collectedVisual: CopilotVisual | undefined;
         let collectedChart: ChatChartData | undefined;
+        let collectedScenarioDraft: ScenarioDraftPayload | undefined;
         let detectedModelName: string | undefined;
 
         await readSseStream(res.body, (event, dataObj) => {
@@ -553,6 +555,17 @@ export function useCopilot() {
                   prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, control } : msg))
                 );
               }
+              break;
+            }
+            case 'scenario_draft': {
+              collectedScenarioDraft = dataObj as unknown as ScenarioDraftPayload;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId
+                    ? { ...msg, scenarioDraft: collectedScenarioDraft }
+                    : msg
+                )
+              );
               break;
             }
             case 'summary': {

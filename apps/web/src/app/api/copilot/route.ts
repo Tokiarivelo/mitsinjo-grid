@@ -18,6 +18,7 @@ import type {
   CopilotEvidence,
   CopilotProposal,
   ChatChartData,
+  ScenarioDraftPayload,
   ChatMediaItem,
 } from '@/features/copilot/types';
 import { storeGeneratedImage } from '@/server/storage/media';
@@ -183,6 +184,7 @@ export async function POST(req: NextRequest) {
       let collectedProposal: CopilotProposal | undefined = undefined;
       const collectedEvidence: CopilotEvidence[] = [];
       let collectedChart: ChatChartData | undefined = undefined;
+      let collectedScenarioDraft: ScenarioDraftPayload | undefined = undefined;
       const sessionId = parsed.data.sessionId;
       // Generated image → R2 in the background; awaited only when the session is saved.
       let generatedImage: Promise<ChatMediaItem | null> | undefined;
@@ -203,6 +205,8 @@ export async function POST(req: NextRequest) {
           }).catch(() => {});
         } else if (event === 'chart') {
           collectedChart = data as unknown as ChatChartData;
+        } else if (event === 'scenario_draft') {
+          collectedScenarioDraft = data as unknown as ScenarioDraftPayload;
         } else if (event === 'image' && sessionId && typeof data.imageUrl === 'string') {
           generatedImage = storeGeneratedImage(data.imageUrl, {
             sessionId,
@@ -273,6 +277,7 @@ export async function POST(req: NextRequest) {
               evidence: collectedEvidence.length > 0 ? collectedEvidence : undefined,
               proposal: collectedProposal,
               chart: collectedChart,
+              scenarioDraft: collectedScenarioDraft,
               media: image ? [image] : undefined,
             }).catch(() => {});
           }

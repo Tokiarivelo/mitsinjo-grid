@@ -1,38 +1,37 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-03 (PA-6 closed) · **By:** Antigravity · **Branch:** feat/pa-6-incident-scenarios
+**Updated:** 2026-11-03 (PA-8 closed) · **By:** Antigravity · **Branch:** feat/pa-8-chat-scenario
 
 ## Current state
 
-- Branch `feat/pa-6-incident-scenarios` branched from latest `main` (after merging PR #41).
-- PA-6 & PA-T8a closed:
-  - PA-T6b: Scenario `overload_evening` (carpentry workshop connected, evening household spike ×1.4, school feeder line outage 14:00–24:00).
-  - PA-T6c: Chaos mode with seeded incidents (`generateChaosWorkflow`, pure Mulberry32 PRNG, fires/spikes/drops across multi-day workflow).
-  - PA-T8a: Engine `WorkflowDay.events?: ScenarioEvent[]` (per-day events apply only on that day, battery passes day-to-day).
-  - Web UI: "Mode chaos" trigger in `WeatherWorkflowPanel`, incident count badges on multi-day workflow days, `overload_evening` scenario card.
-  - 100% i18n parity EN/FR/MG (`make check-i18n`), unit tests green, typecheck green.
+- Branch `feat/pa-8-chat-scenario` branched from latest `main` (commit `c437016`).
+- PA-8 ("Scénario par le chat", J9–J10) completed:
+  - PA-T8b: Schema `ScenarioDraft` (Zod), pure `missingSlots(draft)`, `applyDraftDefaults(draft)`.
+  - PA-T8c: Multilingual deterministic regex extractor (FR/EN/MG, 15 eval phrases + conversational refinement passing).
+  - PA-T8d: Tool `draft_scenario`, SSE event `scenario_draft`, mock provider tool call & narration.
+  - PA-T8e: Interactive chat card `ScenarioDraftCard` (dual theme, mobile-first, missing slot pills, engine preview).
+  - PA-T8f: Launching ("Lancer cette simulation", "Lancer en mode IA autonome" via store `loadDraft`), Neon migration `0005_scenario_drafts`, DB helpers, API `/api/scenarios/drafts`, "Mes scénarios" panel.
+  - PA-T8g: Contextual suggested prompts for empty chat and in-progress drafts.
+  - 100% key parity across EN/FR/MG (`make check-i18n`), typecheck and lint green.
 
 ## Next
 
-- **PA-8** (`docs/tasks/PA-ai-dispatch.md`): Multi-day scenario drafting via chat:
-  - PA-T8b: Schema `ScenarioDraft` (Zod) + `missingSlots(draft)` pure function.
-  - PA-T8c: Deterministic extractor FR/EN/MG.
-  - PA-T8d: Copilot tool `draft_scenario` & SSE event `scenario_draft`.
-  - PA-T8e: Draft card in chat UI.
-- **PA-7**: End-to-end quality & playwright tests.
+- **PA-7** (`docs/tasks/PA-ai-dispatch.md`): End-to-end quality & playwright tests:
+  - Playwright demo path in autonomous AI dispatch mode (incident → isolation → log → why → take back control).
+  - Playwright chat scenario path (multi-day scenario → questions → launch).
+  - 60 fps simulation playback audit with autonomous decisions.
 
 ## Files touched (this session)
 
-`packages/engine/src/{chaos.ts,workflow.ts,index.ts}`, `packages/engine/src/scenarios/index.ts`,
-`packages/engine/src/schemas/{common.ts,workflow.ts}`,
-`packages/engine/src/__tests__/{chaos.test.ts,scenarios.test.ts,workflow.test.ts,autonomy.test.ts}`,
-`apps/web/src/stores/simulation.store.ts`, `apps/web/src/stores/__tests__/workflow-store.test.ts`,
-`apps/web/src/features/simulation/ui/{weather-workflow-panel.tsx,simulation-page.tsx}`,
-`apps/web/src/features/simulation/__tests__/weather-workflow.test.tsx`,
-`apps/web/src/features/scenarios/ui/scenario-card.tsx`, `apps/web/src/features/scenarios/__tests__/scenarios.test.tsx`,
-`apps/web/src/messages/{en,fr,mg}.json`, `docs/contracts.md`, `docs/engine-spec.md`, `docs/tasks/PA-ai-dispatch.md`.
+`apps/web/src/lib/{scenario-draft.ts,scenario-extractor.ts}`, `apps/web/src/lib/__tests__/*`,
+`apps/web/src/server/copilot/{tools.ts,loop.ts,prompt.ts,providers/mock.ts}`,
+`apps/web/src/server/db/{migrations.ts,neon.ts}`, `apps/web/src/app/api/scenarios/drafts/route.ts`,
+`apps/web/src/features/copilot/{types.ts,ui/scenario-draft-card.tsx,ui/copilot-workspace.tsx}`,
+`apps/web/src/features/scenarios/ui/{scenarios-page.tsx,custom-scenarios-panel.tsx}`,
+`apps/web/src/stores/simulation.store.ts`, `apps/web/src/messages/{en,fr,mg}.json`,
+`docs/{contracts.md,tasks/PA-ai-dispatch.md}`.
 
 ## Decisions
 
-- Chaos mode uses deterministic Mulberry32 PRNG with reproducible seed so every run is auditable.
-- Per-day events in `WorkflowDay` add to input events for that specific day without mutating the base scenario.
+- Deterministic regex extractor operates offline with zero external API calls in EN, FR, and MG.
+- Missing slots trigger interactive suggestion chips in the chat UI without blocking direct editing.

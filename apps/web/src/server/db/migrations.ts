@@ -76,6 +76,21 @@ export const MIGRATIONS: readonly Migration[] = [
       'CREATE INDEX IF NOT EXISTS idx_dispatch_log_day_hour ON dispatch_log (day, hour)',
     ],
   },
+  {
+    id: '0005_scenario_drafts',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS scenario_drafts (
+        id VARCHAR(64) PRIMARY KEY,
+        title TEXT NOT NULL,
+        draft JSONB NOT NULL,
+        summary JSONB,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )`,
+      'CREATE INDEX IF NOT EXISTS idx_scenario_drafts_created_at ON scenario_drafts (created_at DESC)',
+      'ALTER TABLE copilot_messages ADD COLUMN IF NOT EXISTS scenario_draft JSONB',
+    ],
+  },
 ];
 
 const ID_PATTERN = /^\d{4}_[a-z0-9_]+$/;

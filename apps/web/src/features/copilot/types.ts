@@ -2,6 +2,9 @@ import type { ChangeImpact, InputPatch, SectorId, StrategyId } from '@mitsinjo/e
 // Type-only: this module runs in client components, never the server barrel.
 import type { MeetingPriority } from '@/lib/meeting-priorities';
 import type { Observation } from '@/server/perception/schemas';
+import type { ScenarioDraftPayload, ScenarioDraftPreview } from '@/lib/scenario-draft';
+
+export type { ScenarioDraftPayload, ScenarioDraftPreview };
 
 export interface CopilotEvidence {
   resultId: string;
@@ -222,6 +225,8 @@ export interface ChatMessageData {
   decision?: ProposalDecision;
   /** Playback command the copilot ran (time cursor only), shown as a small line on the answer. */
   control?: PlaybackControl;
+  /** Multi-day scenario draft card (PA-T8e). */
+  scenarioDraft?: ScenarioDraftPayload;
   /** Answer the operator asked to redo (Retry): kept on screen, no longer sent to the model. */
   retried?: boolean;
   timestamp?: string;

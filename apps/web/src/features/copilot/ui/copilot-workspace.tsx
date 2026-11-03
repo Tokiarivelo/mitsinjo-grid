@@ -101,6 +101,10 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
 
   const { locale } = useAppLocale();
   const lastMessage = messages.at(-1);
+  const latestScenarioDraft = useMemo(
+    () => [...messages].reverse().find((m) => m.scenarioDraft)?.scenarioDraft,
+    [messages]
+  );
   const answerStarted = lastMessage?.role === 'assistant' && lastMessage.content.length > 0;
   const chatRef = useRef<HTMLDivElement>(null);
   const chatScroll = useStickToBottom(chatRef, [messages, toolActivity, pending]);
@@ -537,6 +541,7 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
                     input={input}
                     activeStrategy={activeStrategy}
                     fires={fireSectors}
+                    scenarioDraft={latestScenarioDraft}
                   />
                 </div>
               </div>
@@ -595,6 +600,7 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
               input={input}
               activeStrategy={activeStrategy}
               fires={fireSectors}
+              scenarioDraft={latestScenarioDraft}
             />
           )}
 
