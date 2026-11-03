@@ -282,7 +282,8 @@
           "cloudy": "Rahona",
           "rainy": "Orana",
           "storm": "Tafio-drivotra"
-        }
+        },
+        "incidentCountOne": "1 tranga"
       },
       "sectorLoad": {
         "title": "Enta-jiro isaky ny sehatra (mivantana)",

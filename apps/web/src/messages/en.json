@@ -264,7 +264,7 @@
         "dayCount": "{count}/{max} days",
         "addDay": "Add day",
         "chaosMode": "Chaos mode",
-        "incidentCount": "{count} incident(s)",
+        "incidentCount": "{count} incidents",
         "removeDay": "Remove {day}",
         "dayLabel": "Day {n}",
         "weatherFor": "Weather for {day}",
@@ -282,7 +282,8 @@
           "cloudy": "Cloudy",
           "rainy": "Rainy",
           "storm": "Storm"
-        }
+        },
+        "incidentCountOne": "1 incident"
       },
       "sectorLoad": {
         "title": "Sector load (live)",

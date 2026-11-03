@@ -264,7 +264,7 @@
         "dayCount": "{count}/{max} jours",
         "addDay": "Ajouter un jour",
         "chaosMode": "Mode chaos",
-        "incidentCount": "{count} incident(s)",
+        "incidentCount": "{count} incidents",
         "removeDay": "Supprimer {day}",
         "dayLabel": "Jour {n}",
         "weatherFor": "Météo du {day}",
@@ -282,7 +282,8 @@
           "cloudy": "Nuageux",
           "rainy": "Pluvieux",
           "storm": "Orage"
-        }
+        },
+        "incidentCountOne": "1 incident"
       },
       "sectorLoad": {
         "title": "Charge des secteurs (en direct)",

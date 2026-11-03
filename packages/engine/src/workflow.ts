@@ -46,7 +46,7 @@ export function simulateWorkflow(
       dayInput.events = [...(dayInput.events ?? []), ...dayEvents];
     }
     const result = simulate(dayInput, strategy);
-    days.push({ day, weather, events: dayEvents, result });
+    days.push({ day, weather, ...(dayEvents?.length ? { events: dayEvents } : {}), result });
     socPct = result.metrics.socEndPct;
   }
 

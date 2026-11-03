@@ -144,6 +144,9 @@ describe('simulateWorkflow', () => {
     );
 
     expect(wf.days).toHaveLength(3);
+    // A day without events carries no `events` key (PR #42 review); day 3 keeps its own.
+    expect('events' in wf.days[0]!).toBe(false);
+    expect(wf.days[2]!.events).toHaveLength(1);
 
     // Days 0 & 1: school operates normally at 10:00 (> 0 kW)
     expect(wf.days[0]!.result.steps[10]?.sectors.school?.servedKw).toBeGreaterThan(0);

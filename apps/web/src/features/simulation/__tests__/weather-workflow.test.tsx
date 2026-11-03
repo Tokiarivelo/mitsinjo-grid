@@ -150,7 +150,7 @@ describe('WeatherWorkflowPanel', () => {
         onSelectDay={noop}
       />
     );
-    expect(screen.getByText('1 incident(s)')).toBeInTheDocument();
+    expect(screen.getByText('1 incident')).toBeInTheDocument();
   });
 });
 

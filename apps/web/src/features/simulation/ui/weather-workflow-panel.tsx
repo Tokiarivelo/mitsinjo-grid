@@ -119,7 +119,9 @@ export function WeatherWorkflowPanel({
                   </button>
                   {eventCount > 0 && (
                     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-critical-red/15 text-critical-red border border-critical-red/40 font-semibold">
-                      {t('incidentCount', { count: eventCount })}
+                      {eventCount === 1
+                        ? t('incidentCountOne')
+                        : t('incidentCount', { count: eventCount })}
                     </span>
                   )}
                 </div>
