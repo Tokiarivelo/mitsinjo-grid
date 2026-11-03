@@ -8,12 +8,12 @@ All work in `video/` (layout: plan § 3). New commands → Makefile targets in a
 
 ## PD0 — Rules and repo (before recording)
 
-- [ ] **PD-T0** Hackathon rules (plan § 0): the author confirms that the event started on or before
+- [x] **PD-T0** Hackathon rules (plan § 0): the author confirms that the event started on or before
       Oct 26, 2026 (first commit). Otherwise pre-event code must move to its own repo, pinned and downloaded by a
       script, and both the README and segment 00 change. **Done when** the README provenance line and voice-over 00
       say the same thing and are true.
-- [ ] **PD-T1** README: music credit ("Passion" — Luke Bergs & AgusAlvarez, Free To Use Music, plus its source
-      URL and license as the author gives them) in a "Video credits" section; video line 15 points to
+- [x] **PD-T1** README: music credit ("Passion" — Luke Bergs & AgusAlvarez, Free To Use Music; free to use, no
+      license required) in a "Video credits" section; video line 15 points to
       `video/VIDEO_PLAN.md` until the link exists. **Done when** `rg -n "Luke Bergs" README.md` hits.
 - [ ] **PD-T2** Live provenance: keep the `server.log` of the recording run (with key and paths removed) and the
       copilot traces as `docs/provenance/` samples, linked from the README keyless-mode note. **Done when** a judge
