@@ -353,19 +353,74 @@ NEXT_PUBLIC_BRIDGE_URL=ws://localhost:8787 make dev-mock   # /simulation → Con
 
 ## 9. Environment Variables
 
-Judges need at most two: `LLM_PROVIDER=meta` and `META_API_KEY` (§ 8). Everything is optional; defaults:
+All variables live in **one root `.env`** (`cp .env.example .env`); `apps/web/.env.local` also works and wins,
+a shell variable wins over both. Every one is optional: with an empty `.env` the app runs fully offline.
+**Judges need at most two:** `LLM_PROVIDER=meta` and `META_API_KEY` (§ 8). Never commit `.env`.
+Template with comments: [.env.example](.env.example) · local vs Vercel: [docs/setup/env.md](docs/setup/env.md).
 
-| Variable                                                                                                   | Default                                                                                           | Meaning                                                                                |
-| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `LLM_PROVIDER`                                                                                             | `mock`                                                                                            | `mock` (offline) · `meta` (live Meta Model API) · `glimmer` (local model)              |
-| `META_API_KEY`                                                                                             | empty                                                                                             | your key from dev.meta.ai; empty → mock. **Secret**                                    |
-| `PORT`                                                                                                     | `3000`                                                                                            | dev server port (Docker: use `HOST_PORT`)                                              |
-| `META_MODEL`                                                                                               | `muse-spark-1.3`                                                                                  | copilot chat model                                                                     |
-| `META_SPEND_CAP_USD`                                                                                       | `15`                                                                                              | estimated Meta spend per chat session; over it → mock; `0` = no paid call              |
-| `META_PREFER_CONTRIBUTOR`                                                                                  | `true`                                                                                            | cheaper Spark `*-contributor` ids (Meta may train on them); `false` for real user data |
-| `META_VOICE_MODEL` · `META_VISION_MODEL` · `META_SEGMENT_MODEL` · `META_IMAGE_MODEL` · `META_REFINE_MODEL` | `muse-voice-transcribe-1.0` · `muse-spark-1.3` · `sam-3.1` · `muse-image-1.0` · `muse-wonder-1.0` | perception and 3D models                                                               |
+### Web server
 
-Full commented list: [.env.example](.env.example) · local vs Vercel: [docs/setup/env.md](docs/setup/env.md).
+| Variable    | Needed for | Default | Meaning                                                                |
+| ----------- | ---------- | ------- | ---------------------------------------------------------------------- |
+| `PORT`      | —          | `3000`  | `pnpm dev` / `make dev` port, also used by Playwright and `make shots` |
+| `HOST_PORT` | Docker     | `3000`  | host port mapped to the container's 3000 (`PORT` is ignored in Docker) |
+
+### Copilot and Meta models (server-only)
+
+| Variable                  | Needed for  | Default                     | Meaning                                                                                             |
+| ------------------------- | ----------- | --------------------------- | --------------------------------------------------------------------------------------------------- |
+| `LLM_PROVIDER`            | live AI     | `mock`                      | `mock` (offline, scripted) · `meta` (Meta Model API) · `glimmer` (local model first)                |
+| `META_API_KEY`            | live AI     | empty                       | your key from [dev.meta.ai](https://dev.meta.ai); empty → mock. **Secret**                          |
+| `META_BASE_URL`           | —           | `https://api.meta.ai/v1`    | Meta Model API base URL                                                                             |
+| `META_MODEL`              | —           | `muse-spark-1.3`            | copilot chat + tool calling (Muse Spark)                                                            |
+| `META_VOICE_MODEL`        | —           | `muse-voice-transcribe-1.0` | voice input transcription (WAV)                                                                     |
+| `META_VISION_MODEL`       | —           | `muse-spark-1.3`            | reads photos: names appliances / buildings, 3D parts and stages                                     |
+| `META_SEGMENT_MODEL`      | —           | `sam-3.1`                   | outlines each detected object (SAM)                                                                 |
+| `META_IMAGE_MODEL`        | —           | `muse-image-1.0`            | 2D facade drawings, shedding posters                                                                |
+| `META_REFINE_MODEL`       | —           | `muse-wonder-1.0`           | final check + re-refinement of the 3D model (falls back to `META_VISION_MODEL`)                     |
+| `META_SPEND_CAP_USD`      | —           | `15`                        | estimated Meta spend allowed per chat session; over it → mock; `0` = no paid call                   |
+| `META_PREFER_CONTRIBUTOR` | —           | `true`                      | prefer Spark `*-contributor` ids (≈ 12× cheaper, Meta trains on them); `false` for real user data   |
+| `GLIMMER_BASE_URL`        | local model | empty                       | OpenAI-compatible URL (Ollama `http://localhost:11434/v1`, vLLM); set → chain Meta → Glimmer → mock |
+| `GLIMMER_MODEL`           | local model | `muse-glimmer-30b`          | model id served locally                                                                             |
+| `GLIMMER_API_KEY`         | local model | empty                       | only if the local server asks for one. **Secret**                                                   |
+
+### Database — Neon Postgres (optional, details in § 8)
+
+| Variable                                                                             | Needed for                | Default | Meaning                                                                                            |
+| ------------------------------------------------------------------------------------ | ------------------------- | ------- | -------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                                       | data kept across restarts | empty   | pooled URL read by the app (chats, custom scenarios, Event Log); empty → server memory. **Secret** |
+| `DATABASE_URL_UNPOOLED`                                                              | `make db-migrate`         | empty   | direct URL, preferred for migrations. **Secret**                                                   |
+| `PGHOST` `PGHOST_UNPOOLED` `PGUSER` `PGDATABASE` `PGPASSWORD`, `POSTGRES_*` (8 vars) | —                         | empty   | written by the Vercel–Neon integration; **not read by the app**                                    |
+
+### Media storage — Cloudflare R2 (optional)
+
+| Variable                                                      | Needed for               | Default               | Meaning                                                                                                                                                         |
+| ------------------------------------------------------------- | ------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `R2_ACCOUNT_ID` · `R2_ACCESS_KEY_ID` · `R2_SECRET_ACCESS_KEY` | keeping generated images | empty (all 3 or none) | saves facades / posters with the session; empty → images stay in the page only. **Secrets** — guide: [docs/setup/cloudflare-r2.md](docs/setup/cloudflare-r2.md) |
+| `R2_BUCKET_NAME`                                              | R2                       | `mitsinjo-grid-media` | bucket name                                                                                                                                                     |
+| `R2_PUBLIC_URL`                                               | R2                       | empty                 | public bucket URL (r2.dev or custom domain)                                                                                                                     |
+
+### Physical scale model — `make bridge` (optional, local only; details: [docs/bridge.md](docs/bridge.md))
+
+| Variable                                               | Default                                | Meaning                                                                              |
+| ------------------------------------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_BRIDGE_URL`                               | empty                                  | browser → bridge WebSocket (`ws://localhost:8787`); empty → scale-model panel hidden |
+| `BRIDGE_MODE`                                          | `twin`                                 | `replay` (engine drives the model) · `twin` (model sensors feed the engine)          |
+| `BRIDGE_SCENARIO` · `BRIDGE_STRATEGY`                  | `cloudy_afternoon` · `essential_first` | scenario and strategy the bridge runs                                                |
+| `BRIDGE_WS_PORT`                                       | `8787`                                 | bridge WebSocket port                                                                |
+| `BRIDGE_EMBEDDED_BROKER`                               | `true`                                 | in-process MQTT broker; `false` → use `MQTT_URL`                                     |
+| `MQTT_PORT` · `MQTT_URL`                               | `1883` · empty                         | broker port / external broker URL                                                    |
+| `MQTT_USERNAME` · `MQTT_PASSWORD`                      | empty                                  | MQTT login (both or none, same in the firmware). **Secrets**                         |
+| `BRIDGE_TOKEN`                                         | empty                                  | ≥ 16 chars; set → only `?bridgeToken=` browsers may send commands. **Secret**        |
+| `HW_POWER_SCALE` · `HW_TIME_SCALE` · `HW_LUX_FULL_SUN` | `4000` · `20` · `20000`                | 1 W model = 4 kW simulated · 1 simulated hour = 20 s · lux under the lamp            |
+
+### Tooling (not the app)
+
+| Variable                   | Read by                        | Meaning                                                      |
+| -------------------------- | ------------------------------ | ------------------------------------------------------------ |
+| `BENCH_OUT` · `BENCH_RUNS` | `make bench`                   | report path (set by the Makefile) · runs per measure (`200`) |
+| `STITCH_API_KEY`           | Stitch MCP (Claude Code)       | design-tool key, exported by `make claude`. **Secret**       |
+| `VERCEL_OIDC_TOKEN`        | Vercel CLI (`vercel env pull`) | written by Vercel; not read by the app. **Secret**           |
 
 ---
 
