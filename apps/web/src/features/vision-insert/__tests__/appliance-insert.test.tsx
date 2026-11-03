@@ -3,7 +3,13 @@ import { APPLIANCE_CATALOG, applianceProfileKw, applianceSummary } from '@mitsin
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@/lib/i18n';
 import type { ApplianceDetection } from '@/lib/vision';
-import { resetSimulationStore, selectActiveResult, useSimulationStore } from '@/stores';
+import type { ObjectRecipe } from '@/lib/object-shape';
+import {
+  resetSimulationStore,
+  selectActiveResult,
+  useSimulationStore,
+  usePlacedModelsStore,
+} from '@/stores';
 import { useApplianceDraft } from '../hooks/use-appliance-draft';
 import { ApplianceInsert } from '../ui/appliance-insert';
 
@@ -99,10 +105,10 @@ describe('useApplianceDraft (PV-T11)', () => {
   });
 });
 
-const renderInsert = (detection: ApplianceDetection, name: string) =>
+const renderInsert = (detection: ApplianceDetection, name: string, recipe?: ObjectRecipe | null) =>
   render(
     <I18nProvider>
-      <ApplianceInsert detection={detection} name={name} photo="p1" />
+      <ApplianceInsert detection={detection} name={name} photo="p1" recipe={recipe} />
     </I18nProvider>
   );
 
@@ -182,5 +188,25 @@ describe('ApplianceInsert (PV-T12)', () => {
     expect(screen.getByLabelText('Feeder line')).toHaveValue('school');
     fireEvent.click(screen.getByRole('button', { name: 'Back to the ring' }));
     expect(screen.getByText('Ring around the building')).toBeTruthy();
+  });
+
+  it('stores placed 3D model in usePlacedModelsStore on insert and clears on remove (PI-T1)', () => {
+    const recipe: ObjectRecipe = {
+      proportions: { w: 1, h: 0.6, d: 0.5 },
+      parts: [{ shape: 'box', at: [0, 0, 0], size: [1, 1, 1], color: '#336699' }],
+    };
+    renderInsert(pump, 'Water pump', recipe);
+    fireEvent.click(screen.getByRole('button', { name: 'Insert into simulation' }));
+
+    const id = 'vision-p1-det-1';
+    const placed = usePlacedModelsStore.getState().getModel(id);
+    expect(placed).toBeDefined();
+    expect(placed?.applianceId).toBe(id);
+    expect(placed?.recipe).toEqual(recipe);
+    expect(placed?.scale).toBe(0.9); // machine / pump scale
+
+    // Removing clears from placed models store
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from simulation' }));
+    expect(usePlacedModelsStore.getState().getModel(id)).toBeUndefined();
   });
 });

@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import type { Appliance } from '@mitsinjo/engine';
-import { selectInput, useSimulationStore } from '@/stores';
+import { selectInput, useSimulationStore, usePlacedModelsStore } from '@/stores';
 import { upsertAppliance } from '../utils/appliance-draft';
 
 const NONE: readonly Appliance[] = [];
@@ -25,12 +25,14 @@ export function useSimulationAppliances() {
     [applyProposal]
   );
   const remove = useCallback(
-    (id: string) =>
+    (id: string) => {
+      usePlacedModelsStore.getState().remove(id);
       applyProposal({
         appliances: (useSimulationStore.getState().input.appliances ?? []).filter(
           (a) => a.id !== id
         ),
-      }),
+      });
+    },
     [applyProposal]
   );
 
