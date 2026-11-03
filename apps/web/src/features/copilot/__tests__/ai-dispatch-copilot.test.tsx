@@ -92,7 +92,7 @@ describe('Copilot in Autonomous Dispatch Mode (PA-T3c)', () => {
     expect(operatorLog).toBeDefined();
     expect(operatorLog?.action?.kind).toBe('cap_sector');
     expect(operatorLog?.action?.sector).toBe('market');
-    expect(operatorLog?.narration?.text).toContain("Demandé par l'opérateur");
+    expect(operatorLog?.narration?.text).toBe('Reduce load at evening peak');
   });
 
   it('in autonomous mode, a proposal violating constitution is NOT auto-applied', async () => {

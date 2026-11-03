@@ -563,6 +563,19 @@ describe('decideDispatch (PA-T2b)', () => {
     expect(decision.action?.sector).toBe('market');
   });
 
+  it('does not re-isolate a burning sector that is already isolated', () => {
+    const base = scenarios.village_fire.input;
+    const input = {
+      ...base,
+      sectorCaps: [{ sector: 'market' as const, maxKw: 0, fromHour: 14, toHour: 24 }],
+    };
+    const incs = detectIncidents(input, simulate(input, 'proportional'), 14);
+    const decision = decideDispatch(input, 14, 'proportional', incs);
+    expect(decision.action?.kind === 'isolate_sector' && decision.action.sector === 'market').toBe(
+      false
+    );
+  });
+
   it('isolates a burning sector even after 2 actions this hour', () => {
     const input = scenarios.village_fire.input;
     const sim = simulate(input, 'proportional');

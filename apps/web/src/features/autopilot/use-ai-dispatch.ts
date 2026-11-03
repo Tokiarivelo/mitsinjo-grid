@@ -1,15 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   detectIncidents,
   decideDispatch,
-  dispatchLogHash,
   DEFAULT_CONSTITUTION,
   simulate,
   type DispatchLogEntry,
-  type Incident,
 } from '@mitsinjo/engine';
+import { sealLogEntry } from '@/lib/dispatch-log';
 import { autopilotProposal, type AutopilotSuggestion } from '@/lib/autopilot';
 import { ENVELOPE_OFF, withinEnvelope, type AutonomyEnvelope } from '@/lib/envelope';
 import { useSimulationStore } from '@/stores';
@@ -44,128 +43,75 @@ export function useAiDispatch() {
 
   const [envelope, setEnvelope] = useState<AutonomyEnvelope>(ENVELOPE_OFF);
   const [entries, setEntries] = useState<AutopilotEntry[]>([]);
-  const lastProcessed = useRef<{ hour: number; day: number } | null>(null);
+  /** Last (mode, day, hour) decided: each mode decides a given hour once. */
+  const lastProcessed = useRef<string | null>(null);
 
   // Autonomous mode loop: runs detectors and decision policy on each simulated hour
   useEffect(() => {
-    if (dispatchMode !== 'autonomous') {
-      return;
-    }
-
-    if (
-      lastProcessed.current &&
-      lastProcessed.current.hour === timeIndex &&
-      lastProcessed.current.day === dayIndex
-    ) {
-      return;
-    }
-    lastProcessed.current = { hour: timeIndex, day: dayIndex };
+    if (dispatchMode !== 'autonomous') return;
+    const key = `autonomous:${dayIndex}:${timeIndex}`;
+    if (lastProcessed.current === key) return;
+    lastProcessed.current = key;
 
     const state = useSimulationStore.getState();
-    const { input, activeStrategy, results, workflowResults, appendDispatchLog } = state;
+    const { input, activeStrategy } = state;
+    const result = state.results[activeStrategy] ?? simulate(input, activeStrategy);
 
-    // Get current simulation result for the active strategy
-    const currentResult =
-      results[activeStrategy] ??
-      workflowResults[activeStrategy]?.days[dayIndex]?.result ??
-      simulate(input, activeStrategy);
+    const incidents = detectIncidents(input, result, timeIndex, 3, dayIndex);
+    if (incidents.length === 0) return;
 
-    // 1. Detect incidents
-    const incidents = detectIncidents(input, currentResult, timeIndex, 3, dayIndex);
-    if (incidents.length === 0) {
-      return;
-    }
+    const stamp = Date.now();
+    const base = {
+      day: dayIndex,
+      hour: timeIndex,
+      mode: 'autonomous' as const,
+      origin: 'ai' as const,
+    };
+    const newEntries: DispatchLogEntry[] = incidents.map((incident, i) =>
+      sealLogEntry({
+        ...base,
+        id: `inc-d${dayIndex}-h${timeIndex}-${incident.kind}-${i}-${stamp}`,
+        incident,
+      })
+    );
 
-    const newEntries: DispatchLogEntry[] = [];
-    const timestamp = Date.now();
-
-    // 2. Log detected incidents
-    for (let i = 0; i < incidents.length; i++) {
-      const inc = incidents[i]!;
-      const incDraft = {
-        id: `inc-d${dayIndex}-h${timeIndex}-${inc.kind}-${i}-${timestamp}`,
-        day: dayIndex,
-        hour: timeIndex,
-        mode: 'autonomous' as const,
-        origin: 'ai' as const,
-        incident: inc,
-      };
-      newEntries.push({
-        ...incDraft,
-        hash: dispatchLogHash(incDraft),
-      });
-    }
-
-    // 3. Decide dispatch action
-    const currentHistory = state.dispatchLog;
     const decision = decideDispatch(
       input,
       timeIndex,
       activeStrategy,
       incidents,
       DEFAULT_CONSTITUTION,
-      currentHistory,
+      state.dispatchLog,
       dayIndex
     );
-
-    // 4. Apply action if decided
-    if (decision.action) {
-      if (decision.action.kind !== 'alert_only') {
-        const actionId = `ai-${decision.action.kind}-d${dayIndex}-h${timeIndex}`;
-        useSimulationStore
-          .getState()
-          .approveChange(actionId, decision.action.patch, decision.action.strategy);
-
-        const actDraft = {
-          id: `act-d${dayIndex}-h${timeIndex}-${decision.action.kind}-${timestamp}`,
-          day: dayIndex,
-          hour: timeIndex,
-          mode: 'autonomous' as const,
-          origin: 'ai' as const,
-          action: decision.action,
-          before: decision.before,
-          after: decision.after,
-        };
-        newEntries.push({
-          ...actDraft,
-          hash: dispatchLogHash(actDraft),
-        });
-      } else {
-        const alertDraft = {
-          id: `act-d${dayIndex}-h${timeIndex}-alert-${timestamp}`,
-          day: dayIndex,
-          hour: timeIndex,
-          mode: 'autonomous' as const,
-          origin: 'ai' as const,
-          action: decision.action,
-        };
-        newEntries.push({
-          ...alertDraft,
-          hash: dispatchLogHash(alertDraft),
-        });
+    const { action } = decision;
+    if (action) {
+      const applies = action.kind !== 'alert_only';
+      if (applies) {
+        state.approveChange(
+          `ai-${action.kind}-d${dayIndex}-h${timeIndex}`,
+          action.patch,
+          action.strategy
+        );
       }
+      newEntries.push(
+        sealLogEntry({
+          ...base,
+          id: `act-d${dayIndex}-h${timeIndex}-${action.kind}-${stamp}`,
+          action,
+          ...(applies ? { before: decision.before, after: decision.after } : {}),
+        })
+      );
     }
-
-    // 5. Append all new entries to dispatchLog
-    if (newEntries.length > 0) {
-      appendDispatchLog(newEntries);
-    }
+    state.appendDispatchLog(newEntries);
   }, [dispatchMode, timeIndex, dayIndex]);
 
   // Assisted mode loop (M10 autopilot compatibility)
   useEffect(() => {
-    if (dispatchMode !== 'assisted') {
-      return;
-    }
-
-    if (
-      lastProcessed.current &&
-      lastProcessed.current.hour === timeIndex &&
-      lastProcessed.current.day === dayIndex
-    ) {
-      return;
-    }
-    lastProcessed.current = { hour: timeIndex, day: dayIndex };
+    if (dispatchMode !== 'assisted') return;
+    const key = `assisted:${dayIndex}:${timeIndex}`;
+    if (lastProcessed.current === key) return;
+    lastProcessed.current = key;
 
     const { input, activeStrategy } = useSimulationStore.getState();
     const suggestion = autopilotProposal(input, timeIndex, activeStrategy);
@@ -193,11 +139,9 @@ export function useAiDispatch() {
     });
   }, [dispatchMode, timeIndex, dayIndex, envelope]);
 
-  // Reset lastProcessed ref when switching modes or when manual
+  // Back to manual: the next mode starts fresh on the current hour.
   useEffect(() => {
-    if (dispatchMode === 'manual') {
-      lastProcessed.current = null;
-    }
+    if (dispatchMode === 'manual') lastProcessed.current = null;
   }, [dispatchMode]);
 
   const accept = useCallback(
@@ -222,15 +166,6 @@ export function useAiDispatch() {
     );
   }, []);
 
-  const activeIncidents = useMemo((): Incident[] => {
-    const { input, activeStrategy, results, workflowResults } = useSimulationStore.getState();
-    const currentResult =
-      results[activeStrategy] ??
-      workflowResults[activeStrategy]?.days[dayIndex]?.result ??
-      simulate(input, activeStrategy);
-    return detectIncidents(input, currentResult, timeIndex, 3, dayIndex);
-  }, [timeIndex, dayIndex]);
-
   return {
     dispatchMode,
     setDispatchMode,
@@ -246,7 +181,6 @@ export function useAiDispatch() {
     refuse,
     // Autonomous information
     dispatchLog,
-    activeIncidents,
   };
 }
 

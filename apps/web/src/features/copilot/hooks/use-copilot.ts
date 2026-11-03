@@ -20,18 +20,8 @@ import type {
   ProposalDecisionStatus,
   ProposalDiffItem,
 } from '../types';
-import {
-  type InputPatch,
-  type SectorId,
-  checkConstitution,
-  DEFAULT_CONSTITUTION,
-  dispatchLogHash,
-  simulate,
-  AutoActionSchema,
-  type AutoAction,
-  type DispatchSnapshot,
-  type DispatchLogEntry,
-} from '@mitsinjo/engine';
+import { simulate, type InputPatch } from '@mitsinjo/engine';
+import { operatorAutoAction, operatorLogEntry } from '@/lib/dispatch-log';
 import { proposalImpact } from '@/lib/proposal-impact';
 import { parseMessageSections } from '../utils/parse-sections';
 import { COPILOT_PAYLOAD_MAX } from '../utils/history';
@@ -496,102 +486,41 @@ export function useCopilot() {
                 )
               );
 
-              // PA-T3c: in autonomous mode, copilot proposals apply alone if compliant with constitution
+              // PA-T3c: in autonomous mode a compliant proposal applies alone and is logged.
               const sim = useSimulationStore.getState();
-              if (sim.dispatchMode === 'autonomous' && collectedProposal) {
-                const { violations } = checkConstitution(DEFAULT_CONSTITUTION, {
-                  patch: collectedProposal.patch,
-                  strategy: collectedProposal.strategy,
-                });
-
-                if (violations.length === 0) {
-                  const baseSim =
-                    sim.results[sim.activeStrategy] ?? simulate(sim.input, sim.activeStrategy);
-                  const beforeSnapshot: DispatchSnapshot = {
-                    resultId: baseSim.id,
-                    unservedKwh: baseSim.metrics.unservedKwh,
-                    criticalUnservedKwh: baseSim.metrics.criticalUnservedKwh,
-                    socEndPct: baseSim.steps[23]?.socPct ?? 0,
-                  };
-
-                  sim.approveChange(
-                    collectedProposal.proposalId,
-                    collectedProposal.patch,
-                    collectedProposal.strategy
-                  );
-
-                  const updatedState = useSimulationStore.getState();
-                  const updatedSim =
-                    updatedState.results[updatedState.activeStrategy] ??
-                    simulate(updatedState.input, updatedState.activeStrategy);
-                  const afterSnapshot: DispatchSnapshot = {
-                    resultId: updatedSim.id,
-                    unservedKwh: updatedSim.metrics.unservedKwh,
-                    criticalUnservedKwh: updatedSim.metrics.criticalUnservedKwh,
-                    socEndPct: updatedSim.steps[23]?.socPct ?? 0,
-                  };
-
-                  let action: AutoAction;
-                  if (collectedProposal.strategy) {
-                    action = AutoActionSchema.parse({
-                      kind: 'switch_strategy',
-                      strategy: collectedProposal.strategy,
-                      patch: collectedProposal.patch,
-                    });
-                  } else if (
-                    collectedProposal.patch?.sectorCaps &&
-                    collectedProposal.patch.sectorCaps.length > 0
-                  ) {
-                    action = AutoActionSchema.parse({
-                      kind: 'cap_sector',
-                      sector: collectedProposal.patch.sectorCaps[0]!.sector,
-                      patch: collectedProposal.patch,
-                    });
-                  } else if (collectedProposal.patch?.lifeline) {
-                    action = AutoActionSchema.parse({
-                      kind: 'raise_clinic_floor',
-                      patch: collectedProposal.patch,
-                    });
-                  } else {
-                    const targetSector =
-                      (collectedProposal.patch?.appliances?.[0]?.sector as SectorId | undefined) ??
-                      'workshop';
-                    action = AutoActionSchema.parse({
-                      kind: 'shed_flexible',
-                      sector: targetSector,
-                      patch: collectedProposal.patch ?? {},
-                    });
-                  }
-
-                  const logDraft = {
+              const action =
+                sim.dispatchMode === 'autonomous' && collectedProposal
+                  ? operatorAutoAction(sim.input, collectedProposal)
+                  : null;
+              if (action && collectedProposal) {
+                const before =
+                  sim.results[sim.activeStrategy] ?? simulate(sim.input, sim.activeStrategy);
+                sim.approveChange(
+                  collectedProposal.proposalId,
+                  collectedProposal.patch,
+                  collectedProposal.strategy
+                );
+                const next = useSimulationStore.getState();
+                const after =
+                  next.results[next.activeStrategy] ?? simulate(next.input, next.activeStrategy);
+                next.appendDispatchLog(
+                  operatorLogEntry({
                     id: `op-${collectedProposal.proposalId}-${Date.now()}`,
                     day: sim.dayIndex,
                     hour: sim.timeIndex,
-                    mode: 'autonomous' as const,
-                    origin: 'operator' as const,
                     action,
-                    before: beforeSnapshot,
-                    after: afterSnapshot,
-                    narration: {
-                      text: `Demandé par l'opérateur: ${collectedProposal.reason}`,
-                      source: 'template' as const,
-                    },
-                  };
-
-                  const logEntry: DispatchLogEntry = {
-                    ...logDraft,
-                    hash: dispatchLogHash(logDraft),
-                  };
-                  updatedState.appendDispatchLog(logEntry);
-
-                  postDecision({
-                    proposalId: collectedProposal.proposalId,
-                    status: 'approved',
-                    items: [],
-                    patch: collectedProposal.patch,
-                    strategy: collectedProposal.strategy,
-                  });
-                }
+                    before,
+                    after,
+                    reason: collectedProposal.reason,
+                  })
+                );
+                postDecision({
+                  proposalId: collectedProposal.proposalId,
+                  status: 'approved',
+                  items: [],
+                  patch: collectedProposal.patch,
+                  strategy: collectedProposal.strategy,
+                });
               }
               break;
             }

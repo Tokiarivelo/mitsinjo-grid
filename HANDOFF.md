@@ -22,10 +22,12 @@
 `CLAUDE.md`, `.claude/rules/review.md`, `docs/conventions.md`, `docs/contracts.md`, `docs/tasks/PA-ai-dispatch.md`,
 `packages/engine/src/autonomy.ts`, `apps/web/src/server/db/{migrations,neon}.ts`,
 `apps/web/src/stores/{simulation.store,selectors}.ts`, `apps/web/src/features/autopilot/{use-ai-dispatch,use-autopilot,index}.ts`,
-`apps/web/src/features/copilot/hooks/use-copilot.ts`, `apps/web/src/app/api/dispatch/log/route.ts`,
+`apps/web/src/features/copilot/hooks/use-copilot.ts`, `apps/web/src/app/api/dispatch/log/route.ts`, `apps/web/src/lib/dispatch-log.ts`,
 tests (store, migrations, route, ai-dispatch, copilot). Scenario S90.
 
 ## Decisions
 
 - Fire isolation in engine ignores already-isolated sectors so secondary fires (e.g. water at 15h) are not starved.
-- Copilot operator proposals in autonomous mode validate village constitution before auto-applying.
+- Copilot operator proposals in autonomous mode auto-apply only via `operatorAutoAction` (`lib/dispatch-log.ts`):
+  constitution incl. lifeline floors, never `clearFires`, no invented sector; otherwise the Approve card stays.
+- Log narration stores the proposal reason only; "asked by the operator" comes from `origin` + i18n (PA-4).

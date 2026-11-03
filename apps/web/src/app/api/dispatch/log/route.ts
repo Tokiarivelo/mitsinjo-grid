@@ -5,18 +5,18 @@ import { z } from 'zod';
 import { DispatchLogEntrySchema } from '@mitsinjo/engine';
 import {
   listDispatchLog,
-  saveDispatchLogEntry,
   saveDispatchLogEntries,
   clearDispatchLog,
   isNeonConfigured,
 } from '@/server/db/neon';
 
-const PostBodySchema = z.union([DispatchLogEntrySchema, z.array(DispatchLogEntrySchema)]);
+const PostBodySchema = z.union([DispatchLogEntrySchema, z.array(DispatchLogEntrySchema).max(200)]);
+const LimitSchema = z.coerce.number().int().min(1).max(500).catch(100);
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const limit = searchParams.get('limit') ? Number(searchParams.get('limit')) : 100;
+    const limit = LimitSchema.parse(searchParams.get('limit') ?? undefined);
     const entries = await listDispatchLog(limit);
     return new Response(
       JSON.stringify({
@@ -57,11 +57,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (Array.isArray(parsed.data)) {
-      await saveDispatchLogEntries(parsed.data);
-    } else {
-      await saveDispatchLogEntry(parsed.data);
-    }
+    await saveDispatchLogEntries(Array.isArray(parsed.data) ? parsed.data : [parsed.data]);
 
     return new Response(JSON.stringify({ ok: true, dbConfigured: isNeonConfigured() }), {
       status: 201,

@@ -255,60 +255,52 @@ export async function deleteSession(id: string): Promise<boolean> {
   return true;
 }
 
-export async function saveDispatchLogEntry(entry: DispatchLogEntry): Promise<void> {
+/** Stores dispatch log lines (an existing id only gets its narration updated). */
+export async function saveDispatchLogEntries(entries: readonly DispatchLogEntry[]): Promise<void> {
   if (!isNeonConfigured()) {
-    const idx = inMemoryDispatchLog.findIndex((e) => e.id === entry.id);
-    if (idx >= 0) {
-      inMemoryDispatchLog[idx] = entry;
-    } else {
-      inMemoryDispatchLog.push(entry);
+    for (const entry of entries) {
+      const idx = inMemoryDispatchLog.findIndex((e) => e.id === entry.id);
+      if (idx >= 0) inMemoryDispatchLog[idx] = entry;
+      else inMemoryDispatchLog.push(entry);
     }
     return;
   }
 
   const sql = neon(env.DATABASE_URL!);
   await ensureNeonTables(sql);
-
-  await sql`
-    INSERT INTO dispatch_log (
-      id, day, hour, mode, origin, incident, action, "before", "after", narration, hash
-    ) VALUES (
-      ${entry.id},
-      ${entry.day},
-      ${entry.hour},
-      ${entry.mode},
-      ${entry.origin},
-      ${entry.incident ? JSON.stringify(entry.incident) : null},
-      ${entry.action ? JSON.stringify(entry.action) : null},
-      ${entry.before ? JSON.stringify(entry.before) : null},
-      ${entry.after ? JSON.stringify(entry.after) : null},
-      ${entry.narration ? JSON.stringify(entry.narration) : null},
-      ${entry.hash}
-    )
-    ON CONFLICT (id) DO UPDATE SET
-      narration = ${entry.narration ? JSON.stringify(entry.narration) : null};
-  `;
-}
-
-export async function saveDispatchLogEntries(entries: readonly DispatchLogEntry[]): Promise<void> {
+  const json = (v: unknown) => (v ? JSON.stringify(v) : null);
   for (const entry of entries) {
-    await saveDispatchLogEntry(entry);
+    await sql`
+      INSERT INTO dispatch_log (
+        id, day, hour, mode, origin, incident, action, "before", "after", narration, hash
+      ) VALUES (
+        ${entry.id}, ${entry.day}, ${entry.hour}, ${entry.mode}, ${entry.origin},
+        ${json(entry.incident)}, ${json(entry.action)}, ${json(entry.before)},
+        ${json(entry.after)}, ${json(entry.narration)}, ${entry.hash}
+      )
+      ON CONFLICT (id) DO UPDATE SET narration = EXCLUDED.narration;
+    `;
   }
 }
 
+/** The latest `limit` log lines, oldest first. */
 export async function listDispatchLog(limit = 100): Promise<DispatchLogEntry[]> {
   if (!isNeonConfigured()) {
-    return [...inMemoryDispatchLog].slice(-limit);
+    return inMemoryDispatchLog.slice(-limit);
   }
 
   const sql = neon(env.DATABASE_URL!);
   await ensureNeonTables(sql);
 
   const rows = await sql`
-    SELECT id, day, hour, mode, origin, incident, action, "before", "after", narration, hash
-    FROM dispatch_log
-    ORDER BY created_at ASC
-    LIMIT ${limit};
+    SELECT * FROM (
+      SELECT id, day, hour, mode, origin, incident, action, "before", "after", narration, hash,
+        created_at
+      FROM dispatch_log
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+    ) latest
+    ORDER BY created_at ASC;
   `;
 
   return rows.map((r: Record<string, unknown>) => ({

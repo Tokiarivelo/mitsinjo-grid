@@ -75,6 +75,23 @@ describe('Dispatch log API route (PA-T3a)', () => {
     expect(data.entries).toHaveLength(2);
   });
 
+  it('GET returns the latest entries and ignores a bad limit', async () => {
+    const entries = [sampleEntry(), sampleEntry(), sampleEntry()];
+    await POST(mockRequest('http://localhost/api/dispatch/log', 'POST', entries));
+
+    const latest = await (
+      await GET(mockRequest('http://localhost/api/dispatch/log?limit=2'))
+    ).json();
+    expect(latest.entries.map((e: DispatchLogEntry) => e.id)).toEqual([
+      entries[1]!.id,
+      entries[2]!.id,
+    ]);
+
+    const bad = await GET(mockRequest('http://localhost/api/dispatch/log?limit=abc'));
+    expect(bad.status).toBe(200);
+    expect((await bad.json()).entries).toHaveLength(3);
+  });
+
   it('POST /api/dispatch/log rejects invalid payload with 400', async () => {
     const invalid = { id: 'missing-all-required-fields' };
     const res = await POST(mockRequest('http://localhost/api/dispatch/log', 'POST', invalid));
