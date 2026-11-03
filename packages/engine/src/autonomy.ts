@@ -885,11 +885,16 @@ export function decideDispatch(
     });
 
     // Check if candidate improves on bestSnapshot
-    // For fire isolation: always apply isolate_sector for an active fire!
+    // For fire isolation: always apply isolate_sector for an active fire (unless already isolated)!
+    const isSectorAlreadyIsolated = (input.sectorCaps ?? []).some(
+      (c) => c.sector === action.sector && c.maxKw === 0
+    );
+
     const isMandatoryFireIsolation =
       action.kind === 'isolate_sector' &&
       action.sector !== undefined &&
-      burningNow.has(action.sector);
+      burningNow.has(action.sector) &&
+      !isSectorAlreadyIsolated;
 
     if (isMandatoryFireIsolation && !fireLocked) {
       fireLocked = true;

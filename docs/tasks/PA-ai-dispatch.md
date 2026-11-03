@@ -110,13 +110,13 @@ autonome » attend PA-3.
 
 ### PA-3 — Orchestrateur et store · J5
 
-- [ ] **PA-T3a** Store : `dispatchMode`, `dispatchLog`, `setDispatchMode`, `takeBackControl` (→ manual).
+- [x] **PA-T3a** Store : `dispatchMode`, `dispatchLog`, `setDispatchMode`, `takeBackControl` (→ manual).
       Les actions IA passent par `approveChange('ai-…')` (undo gratuit). Journal persisté dans Neon (table
       `dispatch_log`, nouvelle migration dans `server/db/migrations.ts`, appliquée par `make db-migrate`). Tests store.
-- [ ] **PA-T3b** Hook `useAiDispatch` (remplace `useAutopilot`) : sur chaque nouvelle heure de lecture en mode
+- [x] **PA-T3b** Hook `useAiDispatch` (remplace `useAutopilot`) : sur chaque nouvelle heure de lecture en mode
       autonome → détecter → décider → appliquer → journaliser. Mode assisté = comportement M10 actuel (propositions).
       **Done when** lecture de `village_fire` en mode IA : 2 incidents, 2 isolations, alerte, journal de ≥ 4 lignes.
-- [ ] **PA-T3c** En mode IA, `propose_change` du copilote s'applique seul après constitution, journalisé « demandé
+- [x] **PA-T3c** En mode IA, `propose_change` du copilote s'applique seul après constitution, journalisé « demandé
       par l'opérateur ». En mode manuel, rien ne change.
 
 ### PA-4 — UI · J6

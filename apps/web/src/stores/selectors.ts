@@ -12,6 +12,8 @@ import type {
   Workflow,
   WorkflowComparison,
   WorkflowResult,
+  DispatchMode,
+  DispatchLogEntry,
 } from '@mitsinjo/engine';
 import type { SimStatus, PlaybackStatus, SimulationState } from './simulation.store';
 
@@ -74,3 +76,6 @@ export const selectDayIndex = (s: SimulationState): number => s.dayIndex;
 export const selectWorkflowResults = (s: SimulationState): WorkflowComparison => s.workflowResults;
 export const selectActiveWorkflowResult = (s: SimulationState): WorkflowResult | undefined =>
   s.workflowResults[s.activeStrategy];
+
+export const selectDispatchMode = (s: SimulationState): DispatchMode => s.dispatchMode;
+export const selectDispatchLog = (s: SimulationState): DispatchLogEntry[] => s.dispatchLog;

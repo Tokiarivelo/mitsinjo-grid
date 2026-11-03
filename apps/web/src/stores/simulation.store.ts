@@ -10,6 +10,8 @@ import {
   type Workflow,
   type WorkflowComparison,
   type BridgeState,
+  type DispatchMode,
+  type DispatchLogEntry,
   scenarios,
   compareWorkflow,
   applyPatch,
@@ -57,6 +59,10 @@ export interface SimulationState {
   deviceHourMs: number | null;
   /** Approved changes of this session, oldest first. Cleared by loadScenario, reset and the scale model. */
   changeHistory: AppliedChange[];
+  /** Dispatch mode (PA): manual operator control, assisted proposals, or autonomous AI execution. */
+  dispatchMode: DispatchMode;
+  /** Chronological event log of detections and actions (PA). */
+  dispatchLog: DispatchLogEntry[];
 
   // Actions
   loadScenario: (scenarioId: ScenarioId) => void;
@@ -80,6 +86,13 @@ export interface SimulationState {
   applyDeviceRun: (run: DeviceRun) => void;
   /** Stop following the scale model (the last input stays, editable). */
   releaseDevice: () => void;
+
+  // Dispatch Actions (PA)
+  setDispatchMode: (mode: DispatchMode) => void;
+  /** Immediately restore full manual control (one-tap take back control). */
+  takeBackControl: () => void;
+  appendDispatchLog: (entry: DispatchLogEntry | DispatchLogEntry[]) => void;
+  clearDispatchLog: () => void;
 
   // Weather workflow actions
   addWorkflowDay: (weather?: WeatherId) => void;
@@ -144,6 +157,8 @@ export const initialSimulationData = {
   source: 'scenario' as InputSource,
   deviceHourMs: null as number | null,
   changeHistory: [] as AppliedChange[],
+  dispatchMode: 'manual' as DispatchMode,
+  dispatchLog: [] as DispatchLogEntry[],
 };
 
 export function resetSimulationStore() {
@@ -152,6 +167,8 @@ export function resetSimulationStore() {
     input: cloneInput(scenarios[INITIAL_SCENARIO_ID].input),
     workflow: DEFAULT_WORKFLOW,
     changeHistory: [],
+    dispatchMode: 'manual',
+    dispatchLog: [],
   });
 }
 
@@ -242,6 +259,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       dayIndex: 0,
       error: null,
       changeHistory: [],
+      dispatchMode: 'manual',
+      dispatchLog: [],
     });
   },
 
@@ -298,6 +317,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       dayIndex: 0,
       error: null,
       changeHistory: [],
+      dispatchMode: 'manual',
+      dispatchLog: [],
     });
   },
 
@@ -390,6 +411,36 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   releaseDevice: () => {
     set({ source: 'scenario' });
+  },
+
+  setDispatchMode: (mode: DispatchMode) => {
+    set({ dispatchMode: mode });
+  },
+
+  takeBackControl: () => {
+    set({ dispatchMode: 'manual' });
+  },
+
+  appendDispatchLog: (entry: DispatchLogEntry | DispatchLogEntry[]) => {
+    const next = Array.isArray(entry) ? entry : [entry];
+    if (next.length === 0) return;
+    set((state) => ({
+      dispatchLog: [...state.dispatchLog, ...next],
+    }));
+    if (typeof fetch === 'function') {
+      fetch('/api/dispatch/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      }).catch(() => {});
+    }
+  },
+
+  clearDispatchLog: () => {
+    set({ dispatchLog: [] });
+    if (typeof fetch === 'function') {
+      fetch('/api/dispatch/log', { method: 'DELETE' }).catch(() => {});
+    }
   },
 
   play: () => {

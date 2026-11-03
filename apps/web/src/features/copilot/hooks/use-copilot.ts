@@ -20,7 +20,18 @@ import type {
   ProposalDecisionStatus,
   ProposalDiffItem,
 } from '../types';
-import type { InputPatch } from '@mitsinjo/engine';
+import {
+  type InputPatch,
+  type SectorId,
+  checkConstitution,
+  DEFAULT_CONSTITUTION,
+  dispatchLogHash,
+  simulate,
+  AutoActionSchema,
+  type AutoAction,
+  type DispatchSnapshot,
+  type DispatchLogEntry,
+} from '@mitsinjo/engine';
 import { proposalImpact } from '@/lib/proposal-impact';
 import { parseMessageSections } from '../utils/parse-sections';
 import { COPILOT_PAYLOAD_MAX } from '../utils/history';
@@ -194,6 +205,26 @@ export function useCopilot() {
         setSelectedModel('auto');
       });
   }, []);
+
+  /** Posts an operator decision in the chat and saves it with the session (keeps the card locked on reopen). */
+  const postDecision = useCallback(
+    (decision: ProposalDecision) => {
+      const decisionMessage: ChatMessageData = {
+        id: `decision-${decision.proposalId}-${decision.status}-${Date.now()}`,
+        role: 'decision',
+        content: '',
+        decision,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, decisionMessage]);
+      void fetch(`/api/copilot/sessions/${sessionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(decisionMessage),
+      }).catch(() => {});
+    },
+    [sessionId]
+  );
 
   const sendMessage = useCallback(
     async (prompt: string, media?: ChatMediaItem[], options?: { retryOf?: string }) => {
@@ -464,6 +495,104 @@ export function useCopilot() {
                   msg.id === assistantMsgId ? { ...msg, proposal: collectedProposal } : msg
                 )
               );
+
+              // PA-T3c: in autonomous mode, copilot proposals apply alone if compliant with constitution
+              const sim = useSimulationStore.getState();
+              if (sim.dispatchMode === 'autonomous' && collectedProposal) {
+                const { violations } = checkConstitution(DEFAULT_CONSTITUTION, {
+                  patch: collectedProposal.patch,
+                  strategy: collectedProposal.strategy,
+                });
+
+                if (violations.length === 0) {
+                  const baseSim =
+                    sim.results[sim.activeStrategy] ?? simulate(sim.input, sim.activeStrategy);
+                  const beforeSnapshot: DispatchSnapshot = {
+                    resultId: baseSim.id,
+                    unservedKwh: baseSim.metrics.unservedKwh,
+                    criticalUnservedKwh: baseSim.metrics.criticalUnservedKwh,
+                    socEndPct: baseSim.steps[23]?.socPct ?? 0,
+                  };
+
+                  sim.approveChange(
+                    collectedProposal.proposalId,
+                    collectedProposal.patch,
+                    collectedProposal.strategy
+                  );
+
+                  const updatedState = useSimulationStore.getState();
+                  const updatedSim =
+                    updatedState.results[updatedState.activeStrategy] ??
+                    simulate(updatedState.input, updatedState.activeStrategy);
+                  const afterSnapshot: DispatchSnapshot = {
+                    resultId: updatedSim.id,
+                    unservedKwh: updatedSim.metrics.unservedKwh,
+                    criticalUnservedKwh: updatedSim.metrics.criticalUnservedKwh,
+                    socEndPct: updatedSim.steps[23]?.socPct ?? 0,
+                  };
+
+                  let action: AutoAction;
+                  if (collectedProposal.strategy) {
+                    action = AutoActionSchema.parse({
+                      kind: 'switch_strategy',
+                      strategy: collectedProposal.strategy,
+                      patch: collectedProposal.patch,
+                    });
+                  } else if (
+                    collectedProposal.patch?.sectorCaps &&
+                    collectedProposal.patch.sectorCaps.length > 0
+                  ) {
+                    action = AutoActionSchema.parse({
+                      kind: 'cap_sector',
+                      sector: collectedProposal.patch.sectorCaps[0]!.sector,
+                      patch: collectedProposal.patch,
+                    });
+                  } else if (collectedProposal.patch?.lifeline) {
+                    action = AutoActionSchema.parse({
+                      kind: 'raise_clinic_floor',
+                      patch: collectedProposal.patch,
+                    });
+                  } else {
+                    const targetSector =
+                      (collectedProposal.patch?.appliances?.[0]?.sector as SectorId | undefined) ??
+                      'workshop';
+                    action = AutoActionSchema.parse({
+                      kind: 'shed_flexible',
+                      sector: targetSector,
+                      patch: collectedProposal.patch ?? {},
+                    });
+                  }
+
+                  const logDraft = {
+                    id: `op-${collectedProposal.proposalId}-${Date.now()}`,
+                    day: sim.dayIndex,
+                    hour: sim.timeIndex,
+                    mode: 'autonomous' as const,
+                    origin: 'operator' as const,
+                    action,
+                    before: beforeSnapshot,
+                    after: afterSnapshot,
+                    narration: {
+                      text: `Demandé par l'opérateur: ${collectedProposal.reason}`,
+                      source: 'template' as const,
+                    },
+                  };
+
+                  const logEntry: DispatchLogEntry = {
+                    ...logDraft,
+                    hash: dispatchLogHash(logDraft),
+                  };
+                  updatedState.appendDispatchLog(logEntry);
+
+                  postDecision({
+                    proposalId: collectedProposal.proposalId,
+                    status: 'approved',
+                    items: [],
+                    patch: collectedProposal.patch,
+                    strategy: collectedProposal.strategy,
+                  });
+                }
+              }
               break;
             }
             case 'perception': {
@@ -544,7 +673,17 @@ export function useCopilot() {
         setToolActivity(null);
       }
     },
-    [messages, pending, selectedModel, sessionId, locale, fetchSessions, summary, summarizedCount]
+    [
+      messages,
+      pending,
+      selectedModel,
+      sessionId,
+      locale,
+      fetchSessions,
+      summary,
+      summarizedCount,
+      postDecision,
+    ]
   );
 
   const decisions = useMemo(() => proposalDecisions(messages), [messages]);
@@ -567,26 +706,6 @@ export function useCopilot() {
     if (!question) return;
     void sendMessage(question.content, question.media, { retryOf: retryableId });
   }, [messages, retryableId, sendMessage]);
-
-  /** Posts an operator decision in the chat and saves it with the session (keeps the card locked on reopen). */
-  const postDecision = useCallback(
-    (decision: ProposalDecision) => {
-      const decisionMessage: ChatMessageData = {
-        id: `decision-${decision.proposalId}-${decision.status}-${Date.now()}`,
-        role: 'decision',
-        content: '',
-        decision,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages((prev) => [...prev, decisionMessage]);
-      void fetch(`/api/copilot/sessions/${sessionId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(decisionMessage),
-      }).catch(() => {});
-    },
-    [sessionId]
-  );
 
   /** Applies (or not) this message's own proposal, once, and posts the decision in the chat. */
   const decideProposal = useCallback(

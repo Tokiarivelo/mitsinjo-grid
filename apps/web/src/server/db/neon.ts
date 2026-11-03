@@ -8,6 +8,7 @@ import type {
   ChatSessionDetail,
   ChatMessageData,
 } from '@/features/copilot/types';
+import type { DispatchLogEntry } from '@mitsinjo/engine';
 
 preferIpv4Fetch();
 
@@ -15,6 +16,7 @@ preferIpv4Fetch();
 const inMemorySessions = new Map<string, ChatSessionSummary>();
 const inMemoryMessages = new Map<string, ChatMessageData[]>();
 const inMemorySummaries = new Map<string, SessionSummaryNote>();
+const inMemoryDispatchLog: DispatchLogEntry[] = [];
 
 /** Conversation summary of a session: text + how many payload messages it covers. */
 export interface SessionSummaryNote {
@@ -251,4 +253,86 @@ export async function deleteSession(id: string): Promise<boolean> {
     DELETE FROM copilot_sessions WHERE id = ${id};
   `;
   return true;
+}
+
+export async function saveDispatchLogEntry(entry: DispatchLogEntry): Promise<void> {
+  if (!isNeonConfigured()) {
+    const idx = inMemoryDispatchLog.findIndex((e) => e.id === entry.id);
+    if (idx >= 0) {
+      inMemoryDispatchLog[idx] = entry;
+    } else {
+      inMemoryDispatchLog.push(entry);
+    }
+    return;
+  }
+
+  const sql = neon(env.DATABASE_URL!);
+  await ensureNeonTables(sql);
+
+  await sql`
+    INSERT INTO dispatch_log (
+      id, day, hour, mode, origin, incident, action, "before", "after", narration, hash
+    ) VALUES (
+      ${entry.id},
+      ${entry.day},
+      ${entry.hour},
+      ${entry.mode},
+      ${entry.origin},
+      ${entry.incident ? JSON.stringify(entry.incident) : null},
+      ${entry.action ? JSON.stringify(entry.action) : null},
+      ${entry.before ? JSON.stringify(entry.before) : null},
+      ${entry.after ? JSON.stringify(entry.after) : null},
+      ${entry.narration ? JSON.stringify(entry.narration) : null},
+      ${entry.hash}
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      narration = ${entry.narration ? JSON.stringify(entry.narration) : null};
+  `;
+}
+
+export async function saveDispatchLogEntries(entries: readonly DispatchLogEntry[]): Promise<void> {
+  for (const entry of entries) {
+    await saveDispatchLogEntry(entry);
+  }
+}
+
+export async function listDispatchLog(limit = 100): Promise<DispatchLogEntry[]> {
+  if (!isNeonConfigured()) {
+    return [...inMemoryDispatchLog].slice(-limit);
+  }
+
+  const sql = neon(env.DATABASE_URL!);
+  await ensureNeonTables(sql);
+
+  const rows = await sql`
+    SELECT id, day, hour, mode, origin, incident, action, "before", "after", narration, hash
+    FROM dispatch_log
+    ORDER BY created_at ASC
+    LIMIT ${limit};
+  `;
+
+  return rows.map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    day: Number(r.day),
+    hour: Number(r.hour),
+    mode: r.mode as DispatchLogEntry['mode'],
+    origin: r.origin as DispatchLogEntry['origin'],
+    incident: (r.incident as DispatchLogEntry['incident']) ?? undefined,
+    action: (r.action as DispatchLogEntry['action']) ?? undefined,
+    before: (r.before as DispatchLogEntry['before']) ?? undefined,
+    after: (r.after as DispatchLogEntry['after']) ?? undefined,
+    narration: (r.narration as DispatchLogEntry['narration']) ?? undefined,
+    hash: r.hash as string,
+  }));
+}
+
+export async function clearDispatchLog(): Promise<void> {
+  if (!isNeonConfigured()) {
+    inMemoryDispatchLog.length = 0;
+    return;
+  }
+
+  const sql = neon(env.DATABASE_URL!);
+  await ensureNeonTables(sql);
+  await sql`DELETE FROM dispatch_log;`;
 }
