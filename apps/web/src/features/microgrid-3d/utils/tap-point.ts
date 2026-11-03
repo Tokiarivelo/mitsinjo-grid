@@ -362,6 +362,9 @@ export function tapPoint(
   };
 }
 
+/** Electron speed on an appliance derivation, from its current draw (visual only). */
+export const derivationSpeed = (kwNow: number): number => Math.min(2.5, Math.max(0.5, kwNow / 2));
+
 export interface ApplianceDerivationsResult {
   lines: LineFlowSceneModel[];
   poles: SectorPole[];
@@ -407,7 +410,7 @@ export function buildApplianceDerivations(
     const statusColor = b?.statusColor ?? (m.running ? 'battery-green' : 'idle');
     const color = STATUS_HEX[statusColor] ?? TOKEN_HEX.energyCyan;
     const cut = Boolean(b?.onFire);
-    const speed = Math.min(2.5, Math.max(0.5, m.kwNow / 2));
+    const speed = derivationSpeed(m.kwNow);
 
     // One cable per segment: tap → (corner pole →) appliance.
     const stops = tap.waypoint ? [tap.point, tap.waypoint, m.position] : [tap.point, m.position];

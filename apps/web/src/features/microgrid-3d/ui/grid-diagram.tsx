@@ -7,7 +7,13 @@ import { cn } from '@/lib/utils';
 import { fmtKw, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
 import { SectorIcon } from '@/components/ui/sector-icon';
-import type { BreakerState, BuildingSceneModel, ControllerSceneModel, SceneModel } from '../types';
+import type {
+  BreakerState,
+  BuildingSceneModel,
+  ControllerSceneModel,
+  LineFlowSceneModel,
+  SceneModel,
+} from '../types';
 import { useReducedMotion } from '../hooks/use-reduced-motion';
 import { useZoomPan } from '../hooks/use-zoom-pan';
 import { ZOOM_MAX, ZOOM_MIN, toTransform } from '../utils/zoom-pan';
@@ -16,6 +22,7 @@ import {
   DIAGRAM_SECTORS,
   DIAGRAM_W,
   applianceBranchRoute,
+  applianceBranchSlots,
   diagramLayout,
   type Box,
   type DiagramLayout,
@@ -23,7 +30,8 @@ import {
   type Pt,
 } from '../utils/diagram-layout';
 import { toSvgPath } from '../utils/flow-path';
-import { STATUS_BG_CLASS, STATUS_HEX, STATUS_TEXT_CLASS, TOKEN_HEX } from '../utils/scene-palette';
+import { STATUS_BG_CLASS, STATUS_HEX, STATUS_TEXT_CLASS } from '../utils/scene-palette';
+import { derivationSpeed } from '../utils/tap-point';
 import { NO_LOAD_KW } from '../utils/feeder-tone';
 import { useFeederLabels } from '../hooks/use-feeder-labels';
 import { appliancesPerSector } from '../utils/appliance-markers';
@@ -77,6 +85,10 @@ export function GridDiagram({
   const feeders = useFeederLabels(model);
   const { lines, solar, battery, buildings } = model;
   const applianceCounts = useMemo(() => appliancesPerSector(model.appliances), [model.appliances]);
+  const branchSlots = useMemo(
+    () => applianceBranchSlots(model.appliances ?? []),
+    [model.appliances]
+  );
   const feederOn = lines.batteryToBus.active;
 
   const batteryState = !model.hasResult
@@ -208,30 +220,27 @@ export function GridDiagram({
               })}
 
               {/* Inserted appliance branch lines & nodes (PI-T9) */}
-              {model.appliances?.map((appliance, idx) => {
+              {model.appliances?.map((appliance) => {
                 const mode = appliance.connectionMode ?? 'branch';
-                const route = applianceBranchRoute(appliance.sector, mode, variant, layout, idx);
+                const route = applianceBranchRoute(
+                  appliance.sector,
+                  mode,
+                  variant,
+                  layout,
+                  branchSlots[appliance.id]
+                );
                 const b = buildings[appliance.sector];
-                const isCut = Boolean(b?.onFire);
-                const lineState: WireState = isCut
-                  ? 'cut'
-                  : appliance.running && b?.connected
-                    ? b.mode === 'lifeline'
-                      ? 'lifeline'
-                      : 'flow'
-                    : 'idle';
-                const lineFlow = {
-                  from: [route.points[0][0], 0, route.points[0][1]] as [number, number, number],
-                  to: [route.node[0], 0, route.node[1]] as [number, number, number],
+                const isCut = b.onFire;
+                const lineState = sectorWireState(b, appliance.running && b.connected);
+                const tone = isCut ? 'critical-red' : appliance.running ? 'battery-green' : 'idle';
+                const lineFlow: LineFlowSceneModel = {
+                  from: [route.points[0]![0], 0, route.points[0]![1]],
+                  to: [route.node[0], 0, route.node[1]],
                   active: appliance.running && !isCut,
                   flowKw: appliance.kwNow,
-                  direction: (appliance.running ? 'forward' : 'idle') as 'forward' | 'idle',
-                  speed: Math.min(2.5, Math.max(0.5, appliance.kwNow / 2)),
-                  color: isCut
-                    ? STATUS_HEX['critical-red']
-                    : appliance.running
-                      ? STATUS_HEX['battery-green']
-                      : TOKEN_HEX.idle,
+                  direction: appliance.running ? 'forward' : 'idle',
+                  speed: derivationSpeed(appliance.kwNow),
+                  color: STATUS_HEX[tone],
                   cut: isCut,
                 };
 
@@ -242,11 +251,7 @@ export function GridDiagram({
                       line={lineFlow}
                       state={lineState}
                       intensity={appliance.running ? 1 : 0}
-                      colorClass={
-                        STATUS_TEXT_CLASS[
-                          isCut ? 'critical-red' : appliance.running ? 'battery-green' : 'idle'
-                        ]
-                      }
+                      colorClass={STATUS_TEXT_CLASS[tone]}
                       animate={animate}
                       glow={glow}
                     />
@@ -254,7 +259,6 @@ export function GridDiagram({
                       data-testid={`diagram-appliance-${appliance.id}`}
                       data-connection-mode={mode}
                       data-sector={appliance.sector}
-                      className="cursor-pointer"
                     >
                       <circle
                         cx={route.node[0]}
@@ -277,7 +281,14 @@ export function GridDiagram({
                         className={appliance.running ? 'fill-slate-950' : 'fill-text-muted'}
                       />
                       <title>
-                        {`${appliance.name} (${appliance.watts} W) · ${mode === 'ems' ? 'EMS' : tSectors(appliance.sector)}`}
+                        {t('applianceTitle', {
+                          name: appliance.name,
+                          kw: fmtKw(appliance.kwNow),
+                          feed:
+                            mode === 'ems'
+                              ? t('controller.shortTitle')
+                              : tSectors(appliance.sector),
+                        })}
                       </title>
                     </g>
                   </g>

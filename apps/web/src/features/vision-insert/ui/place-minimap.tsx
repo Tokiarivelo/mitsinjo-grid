@@ -182,7 +182,7 @@ export function PlaceMinimap({
             textAnchor="middle"
             className="text-[2.6px] font-mono fill-energy-cyan font-bold pointer-events-none select-none"
           >
-            EMS
+            {t('minimapEms')}
           </text>
         </g>
         {objects.map((k) => (

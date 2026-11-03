@@ -8,7 +8,9 @@ import {
   DIAGRAM_H,
   DIAGRAM_SECTORS,
   DIAGRAM_W,
+  APPLIANCE_BRANCH_SLOTS,
   applianceBranchRoute,
+  applianceBranchSlots,
   boxesOverlap,
   diagramLayout,
   segmentCrossesBox,
@@ -271,18 +273,38 @@ describe('GridDiagram appliances (PV-T13, PI-T9)', () => {
       const boxes = allBoxes(layout);
       for (const sector of DIAGRAM_SECTORS) {
         for (const mode of modes) {
-          const route = applianceBranchRoute(sector, mode, v, layout);
-          for (let k = 1; k < route.points.length; k++) {
-            for (const b of boxes) {
-              expect(
-                segmentCrossesBox(route.points[k - 1]!, route.points[k]!, b),
-                `${v}/${sector}/${mode}`
-              ).toBe(false);
+          // Every slot, plus one past the cap (clamped): stays clear and inside the viewBox.
+          for (let slot = 0; slot <= APPLIANCE_BRANCH_SLOTS; slot++) {
+            const route = applianceBranchRoute(sector, mode, v, layout, slot);
+            for (const [x, y] of route.points) {
+              expect(x >= 0 && x <= DIAGRAM_W && y >= 0 && y <= DIAGRAM_H).toBe(true);
+            }
+            for (let k = 1; k < route.points.length; k++) {
+              for (const b of boxes) {
+                expect(
+                  segmentCrossesBox(route.points[k - 1]!, route.points[k]!, b),
+                  `${v}/${sector}/${mode}/slot ${slot}`
+                ).toBe(false);
+              }
             }
           }
         }
       }
     }
+  });
+
+  it('applianceBranchSlots stacks per sector (EMS shared) and caps the slot (PR #57 review)', () => {
+    const list = [
+      { id: 'w1', sector: 'water' as const },
+      { id: 'h1', sector: 'health' as const },
+      { id: 'w2', sector: 'water' as const },
+      { id: 'e1', sector: 'water' as const, connectionMode: 'ems' as const },
+      { id: 'e2', sector: 'school' as const, connectionMode: 'ems' as const },
+      ...Array.from({ length: 10 }, (_, i) => ({ id: `m${i}`, sector: 'market' as const })),
+    ];
+    const slots = applianceBranchSlots(list);
+    expect([slots.w1, slots.h1, slots.w2, slots.e1, slots.e2]).toEqual([0, 0, 1, 0, 1]);
+    expect(slots.m9).toBe(APPLIANCE_BRANCH_SLOTS - 1);
   });
 
   it('draws branch wire and terminal node in branch and ems modes with electrons (PI-T9)', () => {

@@ -27,8 +27,8 @@ function setup(
 
 describe('PlaceMinimap (PP-T4, PI-T9)', () => {
   it('shows the six buildings, EMS shelter, derivation cable, and the placed dot', () => {
-    const { container } = setup({ x: 30, z: 30 });
-    expect(screen.getByTestId('minimap-ems')).toBeTruthy();
+    setup({ x: 30, z: 30 });
+    expect(screen.getByTestId('minimap-ems').textContent).toBe('EMS');
     expect(screen.getByTestId('minimap-derivation')).toBeTruthy();
     expect(screen.getByTestId('minimap-tap')).toBeTruthy();
     expect(screen.getByText('Arrows move the cursor. Enter places.')).toBeTruthy();

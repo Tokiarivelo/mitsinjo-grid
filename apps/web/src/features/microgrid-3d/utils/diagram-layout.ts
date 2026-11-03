@@ -210,6 +210,27 @@ export function segmentCrossesBox([x1, y1]: Pt, [x2, y2]: Pt, b: Box): boolean {
   return minX < b.x + b.w && maxX > b.x && minY < b.y + b.h && maxY > b.y;
 }
 
+/** Stacked branch slots per sector and mode; extra appliances share the last slot. */
+export const APPLIANCE_BRANCH_SLOTS = 3;
+
+/**
+ * Slot of each appliance among those on the same sector and connection mode (PI-T9),
+ * capped so every route stays inside the diagram and clear of every label box.
+ */
+export function applianceBranchSlots(
+  appliances: readonly { id: string; sector: SectorId; connectionMode?: 'branch' | 'ems' }[]
+): Record<string, number> {
+  const seen = new Map<string, number>();
+  const slots: Record<string, number> = {};
+  for (const a of appliances) {
+    const group = a.connectionMode === 'ems' ? 'ems' : a.sector;
+    const n = seen.get(group) ?? 0;
+    seen.set(group, n + 1);
+    slots[a.id] = Math.min(n, APPLIANCE_BRANCH_SLOTS - 1);
+  }
+  return slots;
+}
+
 export interface ApplianceBranchRoute {
   points: Pt[];
   node: Pt;
@@ -227,19 +248,20 @@ export function applianceBranchRoute(
   mode: 'branch' | 'ems',
   variant: DiagramVariant,
   layout: DiagramLayout,
-  index = 0
+  slot = 0
 ): ApplianceBranchRoute {
+  const index = Math.min(Math.max(0, slot), APPLIANCE_BRANCH_SLOTS - 1);
   if (variant === 'circuit') {
     if (mode === 'ems') {
       const start: Pt = [181, 10];
-      const node: Pt = [194, 10 + index * 4];
+      const node: Pt = [194, 10 + index * 3];
       return {
         tap: start,
         node,
         points: [start, node],
       };
     }
-    const y = layout.wires.busToSector[sector][0][1];
+    const y = layout.wires.busToSector[sector][0]![1];
     const tapX = 174;
     const nodeY = y + 8 + index * 4;
     const node: Pt = [188, nodeY];
@@ -287,12 +309,12 @@ export function applianceBranchRoute(
     }
     case 'industry': {
       const tap: Pt = [314, 118];
-      const node: Pt = [302, 118 - index * 6];
+      const node: Pt = [302, 118 - index * 4];
       return { tap, node, points: [tap, node] };
     }
     case 'health': {
       const tap: Pt = [272, 118];
-      const node: Pt = [286, 118 - index * 6];
+      const node: Pt = [286, 118 - index * 4];
       return { tap, node, points: [tap, node] };
     }
   }
