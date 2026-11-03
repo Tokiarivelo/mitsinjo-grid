@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { ringRange, spanAt, type Ring } from '@/lib/hull';
+import { clipRing, ringRange, spanAt, type Ring } from '@/lib/hull';
 import { kitToRecipe, type KitArchetype, type ObjectKit } from '@/lib/object-kit';
 import {
   MAX_BUILT_PARTS,
@@ -186,6 +186,25 @@ function toObjectBox(
   );
 }
 
+/** Share of a part box that must lie on the object for the part to be kept. */
+export const PART_INSIDE_MIN = 0.6;
+
+/**
+ * A part (not a wheel) kept only when most of its box lies on the object, then cut to it
+ * (before: SAM took a topiary car's plinth for its bumper, a box larger than the car floating
+ * under it, live 2026-11-03).
+ */
+function insideObject<P extends { box: NormBox }>(p: P): P[] {
+  const { x, y, w, h } = p.box;
+  const x0 = Math.max(0, x);
+  const x1 = Math.min(1, x + w);
+  const y0 = Math.max(0, y);
+  const y1 = Math.min(1, y + h);
+  if (!(x1 > x0 && y1 > y0)) return [];
+  if (((x1 - x0) * (y1 - y0)) / Math.max(1e-6, w * h) < PART_INSIDE_MIN) return [];
+  return [{ ...p, box: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } }];
+}
+
 /** A side drawing that is really a redrawn front (same aspect, ±8 %) is no side. */
 export function sideLooksNew(front: ViewMeasure, side: ViewMeasure): boolean {
   return Math.abs(side.aspect - front.aspect) / front.aspect > 0.08;
@@ -333,17 +352,6 @@ export function cellGrid(box: NormBox, aspect: number): [number, number] {
 export const SKIN = 0.012;
 const SKIN_LEVELS = 6;
 
-/** Closed ring [x, y] → unit-space rectangle, clamped. */
-const rect = (a0: number, a1: number, y0: number, y1: number): Array<[number, number]> =>
-  (
-    [
-      [a0, y0],
-      [a1, y0],
-      [a1, y1],
-      [a0, y1],
-    ] as Array<[number, number]>
-  ).map(([a, y]) => [clampU(a), clampU(y)]);
-
 /** Thin ring hugging a surface: (f(y) ± SKIN, y) from y0 to y1, clamped. */
 function strip(f: (y: number) => number, y0: number, y1: number): Array<[number, number]> {
   const ys = Array.from(
@@ -400,10 +408,51 @@ export function viewsRecipe(
   const xSpan = (y: number) => spanAt(points, y) ?? ringRange(points, 0);
   const zSpan = (y: number) =>
     section ? (spanAt(section, y) ?? ringRange(section, 0)) : ([-0.5, 0.5] as [number, number]);
+  /**
+   * A patch's outline cut to the body ring it lies on, or null when it misses the body (before:
+   * full rectangles, so glass and grille stuck out past the roof and the nose, live 2026-11-03).
+   */
+  const cut = (ring: Ring, a0: number, a1: number, y0: number, y1: number) => {
+    const c = clipRing(
+      ring,
+      Math.min(a0, a1),
+      Math.max(a0, a1),
+      Math.min(y0, y1),
+      Math.max(y0, y1)
+    );
+    return c.length >= 3 && area(c) > 1e-4 ? c : null;
+  };
+  /** Skin patch on the front or back face (`face(y)` = its z), cut to the front ring. */
+  const faceSkin = (
+    a0: number,
+    a1: number,
+    y0: number,
+    y1: number,
+    face: (y: number) => number
+  ) => {
+    const c = cut(points, a0, a1, y0, y1);
+    if (!c) return [];
+    const [lo, hi] = ringRange(c, 1);
+    return [skin(c, strip(face, lo, hi))];
+  };
+  /** Skin patch on the right (edge 1) or left (edge 0) side, cut to the side ring. */
+  const sideSkin = (edge: 0 | 1, z0: number, z1: number, y0: number, y1: number) => {
+    const c = section ? cut(section, z0, z1, y0, y1) : null;
+    if (!c) return [];
+    const [lo, hi] = ringRange(c, 1);
+    return [
+      skin(
+        strip((y) => xSpan(y)[edge], lo, hi),
+        c
+      ),
+    ];
+  };
 
   // Wheels (side view): the 3 largest apart along z, each mirrored on both sides.
-  const sideParts = side?.parts ?? [];
-  const frontParts = front.parts;
+  const onObject = (ps: ViewMeasure['parts']) =>
+    ps.flatMap((p) => (p.concept === 'wheel' ? [p] : insideObject(p)));
+  const sideParts = onObject(side?.parts ?? []);
+  const frontParts = onObject(front.parts);
   const tire = (() => {
     const ws = frontParts.filter((p) => p.concept === 'wheel').map((p) => p.box.w);
     return ws.length ? Math.min(0.3, Math.max(0.06, Math.min(...ws))) : 0.14;
@@ -522,16 +571,15 @@ export function viewsRecipe(
             [1, 'measured'],
             [0, 'inferred'],
           ] as const
-        ).map(([edge, status]): RecipePart => ({
-          ...skin(
-            strip((y) => xSpan(y)[edge], y0, y1),
-            rect(z0, z1, y0, y1)
-          ),
-          color: glass,
-          material: 'glass',
-          kind: 'window',
-          status,
-        }))
+        ).flatMap(([edge, status]) =>
+          sideSkin(edge, z0, z1, y0, y1).map((s): RecipePart => ({
+            ...s,
+            color: glass,
+            material: 'glass',
+            kind: 'window',
+            status,
+          }))
+        )
       );
   }
   // Windshield and grille (front view): skin patches on the front face, following its slope.
@@ -553,14 +601,12 @@ export function viewsRecipe(
     if (!p || !section) continue;
     const y0 = 0.5 - (p.box.y + p.box.h);
     const y1 = 0.5 - p.box.y;
-    add(rank, {
-      ...skin(
-        rect(p.box.x - 0.5, p.box.x + p.box.w - 0.5, y0, y1),
-        strip((y) => zSpan(y)[1], y0, y1)
-      ),
-      ...look,
-      status: 'measured',
-    });
+    add(
+      rank,
+      ...faceSkin(p.box.x - 0.5, p.box.x + p.box.w - 0.5, y0, y1, (y) => zSpan(y)[1]).map(
+        (s): RecipePart => ({ ...s, ...look, status: 'measured' })
+      )
+    );
   }
   // Parts the AI check named that no rule knows: a patch on their face, in the colour it read.
   for (const [view, list] of [
@@ -577,13 +623,12 @@ export function viewsRecipe(
         status: 'measured' as const,
       };
       if (view === 'front') {
-        add(RANK.asked, {
-          ...skin(
-            rect(p.box.x - 0.5, p.box.x + p.box.w - 0.5, y0, y1),
-            strip((y) => zSpan(y)[1], y0, y1)
-          ),
-          ...look,
-        });
+        add(
+          RANK.asked,
+          ...faceSkin(p.box.x - 0.5, p.box.x + p.box.w - 0.5, y0, y1, (y) => zSpan(y)[1]).map(
+            (s): RecipePart => ({ ...s, ...look })
+          )
+        );
       } else if (section && BACK_PART.test(p.concept)) {
         // Seen on the side at the back end (rear bumper, tail lights): placed on the back face,
         // a pair of lamps at both corners or a band across the width.
@@ -592,7 +637,6 @@ export function viewsRecipe(
         // Lamps come in pairs at the corners; a bumper or a panel spans the width.
         const lamp = /light|lamp/.test(p.concept);
         const lw = Math.min(0.3, p.box.h / Math.max(0.1, W));
-        const back = strip((y) => zSpan(y)[0], y0, y1);
         const spans: Array<[number, number]> = lamp
           ? [
               [xr - 0.02 - lw, xr - 0.02],
@@ -601,21 +645,22 @@ export function viewsRecipe(
           : [[xl + 0.01, xr - 0.01]];
         add(
           RANK.asked,
-          ...spans.map(([a0, a1]): RecipePart => ({ ...skin(rect(a0, a1, y0, y1), back), ...look }))
+          ...spans.flatMap(([a0, a1]) =>
+            faceSkin(a0, a1, y0, y1, (y) => zSpan(y)[0]).map((s): RecipePart => ({ ...s, ...look }))
+          )
         );
       } else if (section) {
         const z0 = 0.5 - (p.box.x + p.box.w);
         const z1 = 0.5 - p.box.x;
         add(
           RANK.asked,
-          ...([1, 0] as const).map((edge): RecipePart => ({
-            ...skin(
-              strip((y) => xSpan(y)[edge], y0, y1),
-              rect(z0, z1, y0, y1)
-            ),
-            ...look,
-            ...(edge === 0 ? { status: 'inferred' as const } : {}),
-          }))
+          ...([1, 0] as const).flatMap((edge) =>
+            sideSkin(edge, z0, z1, y0, y1).map((s): RecipePart => ({
+              ...s,
+              ...look,
+              ...(edge === 0 ? { status: 'inferred' as const } : {}),
+            }))
+          )
         );
       }
     }
@@ -623,6 +668,12 @@ export function viewsRecipe(
   // Front details: headlights (2 largest) and the bumper, flush with the front at their height.
   const lights = frontParts
     .filter((p) => p.concept === 'headlight' && p.box.w < 0.35)
+    // On the body: the light's centre inside the front ring at its height.
+    .filter((p) => {
+      const [cx, cy] = centre(p.box);
+      const xs = spanAt(points, 0.5 - cy);
+      return !!xs && cx - 0.5 >= xs[0] && cx - 0.5 <= xs[1];
+    })
     .sort((a, b) => b.box.w * b.box.h - a.box.w * a.box.h)
     .slice(0, 2);
   add(
@@ -645,14 +696,28 @@ export function viewsRecipe(
   const bumper = frontParts
     .filter((p) => p.concept === 'bumper' && p.box.w > 0.4)
     .sort((a, b) => b.box.w - a.box.w)[0];
-  if (bumper) {
-    const [cx, cy] = centre(bumper.box);
-    const ys = [bumper.box.y, cy, bumper.box.y + bumper.box.h].map((v) => 0.5 - v);
-    const zf = Math.max(...ys.map((y) => zSpan(y)[1]));
+  // Cut to the body: its width at the bumper's height, never below or above the body.
+  const bumperRect = (() => {
+    if (!bumper) return null;
+    const c = cut(
+      points,
+      bumper.box.x - 0.5,
+      bumper.box.x + bumper.box.w - 0.5,
+      0.5 - (bumper.box.y + bumper.box.h),
+      0.5 - bumper.box.y
+    );
+    if (!c) return null;
+    const [x0, x1] = ringRange(c, 0);
+    const [y0, y1] = ringRange(c, 1);
+    return x1 - x0 > 0.2 && y1 - y0 > 0.005 ? { x0, x1, y0, y1 } : null;
+  })();
+  if (bumperRect) {
+    const { x0, x1, y0, y1 } = bumperRect;
+    const zf = Math.max(...[y0, (y0 + y1) / 2, y1].map((y) => zSpan(y)[1]));
     add(RANK.detail, {
       shape: 'box',
-      at: [cx - 0.5, 0.5 - cy, zf],
-      size: [Math.min(1, bumper.box.w), Math.max(0.01, bumper.box.h), 0.06],
+      at: [(x0 + x1) / 2, (y0 + y1) / 2, zf],
+      size: [x1 - x0, Math.max(0.01, y1 - y0), 0.06],
       color: VIEW_PART_LOOK.chrome,
       material: 'metal',
       kind: 'bumper',
@@ -666,14 +731,17 @@ export function viewsRecipe(
     const y0 = 0.5 - (p.box.y + p.box.h);
     const y1 = 0.5 - p.box.y;
     const face = (y: number) => zSpan(y)[1] + (look.proud ?? 0);
-    add(RANK.detail, {
-      ...skin(rect(p.box.x - 0.5, p.box.x + p.box.w - 0.5, y0, y1), strip(face, y0, y1)),
-      color: p.look?.color ?? look.color ?? kit.colors.secondary,
-      material: p.look?.material ?? look.material,
-      kind: look.kind,
-      ...(look.kind === 'cell' ? { grid: cellGrid(p.box, W) } : {}),
-      status: 'measured',
-    });
+    add(
+      RANK.detail,
+      ...faceSkin(p.box.x - 0.5, p.box.x + p.box.w - 0.5, y0, y1, face).map((s): RecipePart => ({
+        ...s,
+        color: p.look?.color ?? look.color ?? kit.colors.secondary,
+        material: p.look?.material ?? look.material,
+        kind: look.kind,
+        ...(look.kind === 'cell' ? { grid: cellGrid(p.box, W) } : {}),
+        status: 'measured',
+      }))
+    );
   }
   // 12-part budget, by rank (stable); a group that does not fit is skipped whole.
   const all = parts.slice(0, MAX_BUILT_PARTS);

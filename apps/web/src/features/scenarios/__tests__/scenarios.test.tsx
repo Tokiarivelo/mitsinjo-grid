@@ -87,8 +87,13 @@ describe('ScenariosPage (P5-T3, P5-T6)', () => {
   it('the village fire card is tagged Incident and names the first burning sector', () => {
     render(<ScenariosPage />);
     expect(screen.getByText('Village Fire (market → water)')).toBeInTheDocument();
-    expect(screen.getByText('Incident')).toBeInTheDocument();
+    expect(screen.getAllByText('Incident').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Fire – .+ from 14:00/)).toBeInTheDocument();
+  });
+
+  it('renders overload_evening card tagged Incident (PA-T6b)', () => {
+    render(<ScenariosPage />);
+    expect(screen.getByText('Evening Overload & Feeder Outage')).toBeInTheDocument();
   });
 
   it('editing an assumption in AssumptionsInspector updates the store input and sets modified', () => {

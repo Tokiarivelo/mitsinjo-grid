@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  ResponsiveContainer,
   LineChart,
   Line,
   BarChart,
@@ -14,6 +13,7 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+import { ResponsiveChart } from '@/components/charts/responsive-chart';
 import { BarChart3, TrendingUp, Layers } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -198,9 +198,7 @@ export function ChatChart({ data, className }: ChatChartProps) {
       )}
 
       <div className="w-full h-56 pt-1">
-        <ResponsiveContainer width="100%" height="100%">
-          {renderChart()}
-        </ResponsiveContainer>
+        <ResponsiveChart>{renderChart()}</ResponsiveChart>
       </div>
     </div>
   );

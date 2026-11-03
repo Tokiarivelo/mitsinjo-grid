@@ -141,14 +141,14 @@ autonome » attend PA-3.
 ### PA-6 — Scénarios d'incident · J8
 
 - [x] **PA-T6a** Scénario `village_fire` (marché 14 h → station de pompage 15 h). _(fait, voir engine-spec §6)_
-- [ ] **PA-T6b** Scénario `overload_evening` (surconsommation ménages + atelier branché) ; panne de ligne simulée.
-- [ ] **PA-T6c** Mode chaos : incidents tirés au sort **avec graine** dans le workflow multi-jours.
+- [x] **PA-T6b** Scénario `overload_evening` (surconsommation ménages + atelier branché) ; panne de ligne simulée.
+- [x] **PA-T6c** Mode chaos : incidents tirés au sort **avec graine** dans le workflow multi-jours.
 
 ### PA-8 — Scénario par le chat · J9–J10
 
 Exemple cible : « jour 1 : nuageux, jour 2 : pluvieux, jour 3 : beau temps + école en feu ».
 
-- [ ] **PA-T8a** (moteur) `WorkflowDay.events?: ScenarioEvent[]` : événements propres à un jour, ajoutés à ceux de
+- [x] **PA-T8a** (moteur) `WorkflowDay.events?: ScenarioEvent[]` : événements propres à un jour, ajoutés à ceux de
       l'input ce jour-là seulement ; la batterie continue de passer d'un jour à l'autre. Contrat + engine-spec.
       **Done when** un feu à l'école le jour 3 coupe l'école le jour 3 seulement ; workflows existants inchangés ; tests.
 - [ ] **PA-T8b** Schéma `ScenarioDraft` (web, Zod) : `title?`, `days[]` (1–7) de `{ weather?, events[] }`, événements

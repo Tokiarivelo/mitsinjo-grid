@@ -100,6 +100,40 @@ export function createVillageFireInput(): SimulationInput {
   return input;
 }
 
+/**
+ * Scripted evening overload and feeder outage incident (PA-T6b):
+ * - Evening household surge (demand spike ×1.4 from 18:00 to 23:00)
+ * - Carpentry workshop connected (industry loadMultiplier = 0.2)
+ * - Distribution feeder outage cuts school to 0 kW from 14:00 to 24:00
+ */
+export function createOverloadEveningInput(): SimulationInput {
+  const input = createBaselineInput();
+  input.scenarioId = 'overload_evening';
+  const industry = input.sectors.find((s) => s.id === 'industry');
+  if (industry) {
+    // Carpentry workshop connected at moderate load.
+    industry.loadMultiplier = 0.2;
+  }
+  input.events = [
+    {
+      type: 'demand_spike',
+      sector: 'households',
+      startHour: 18,
+      durationH: 5,
+      factor: 1.4,
+    },
+  ];
+  input.sectorCaps = [
+    {
+      sector: 'school',
+      maxKw: 0,
+      fromHour: 14,
+      toHour: 24,
+    },
+  ];
+  return input;
+}
+
 export const scenarios: Record<ScenarioId, ScenarioDefinition> = {
   baseline: {
     title: 'Sunny Baseline Day',
@@ -142,5 +176,11 @@ export const scenarios: Record<ScenarioId, ScenarioDefinition> = {
     description:
       'Scripted incident: the market catches fire at 14:00 and the fire spreads to the water pumping station at 15:00. Both sectors are cut to 0 kW for safety until the end of the day; the rest of the village keeps running.',
     input: createVillageFireInput(),
+  },
+  overload_evening: {
+    title: 'Evening Overload & Feeder Outage',
+    description:
+      'Evening household demand surge with connected carpentry workshop (industry active) and simulated feeder outage on the school sector from 14:00 to midnight.',
+    input: createOverloadEveningInput(),
   },
 };

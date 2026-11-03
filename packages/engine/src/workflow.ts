@@ -39,11 +39,14 @@ export function simulateWorkflow(
   let socPct = input.battery.initialSocPct;
 
   for (let day = 0; day < workflow.length; day++) {
-    const { weather } = workflow[day]!;
+    const { weather, events: dayEvents } = workflow[day]!;
     const dayInput = applyWeather(input, weather);
     dayInput.battery.initialSocPct = socPct;
+    if (dayEvents && dayEvents.length > 0) {
+      dayInput.events = [...(dayInput.events ?? []), ...dayEvents];
+    }
     const result = simulate(dayInput, strategy);
-    days.push({ day, weather, result });
+    days.push({ day, weather, ...(dayEvents?.length ? { events: dayEvents } : {}), result });
     socPct = result.metrics.socEndPct;
   }
 

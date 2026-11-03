@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { StrategyIdSchema } from './common';
+import { ScenarioEventSchema } from './input';
 import { SimulationResultSchema } from './result';
 
 /** Daily weather preset: scales the whole solar profile of that day. */
@@ -13,6 +14,7 @@ export const MAX_WORKFLOW_DAYS = 7;
 
 export const WorkflowDaySchema = z.object({
   weather: WeatherIdSchema,
+  events: z.array(ScenarioEventSchema).optional(),
 });
 export type WorkflowDay = z.infer<typeof WorkflowDaySchema>;
 
@@ -36,6 +38,7 @@ export type WorkflowTotals = z.infer<typeof WorkflowTotalsSchema>;
 export const WorkflowDayResultSchema = z.object({
   day: z.number().int().min(0),
   weather: WeatherIdSchema,
+  events: z.array(ScenarioEventSchema).optional(),
   result: SimulationResultSchema,
 });
 export type WorkflowDayResult = z.infer<typeof WorkflowDayResultSchema>;

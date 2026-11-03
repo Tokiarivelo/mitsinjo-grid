@@ -17,6 +17,7 @@ describe('Scenarios Presets & Invariants', () => {
       'essential_stress',
       'meter_anomaly',
       'village_fire',
+      'overload_evening',
     ]);
   });
 
@@ -62,5 +63,32 @@ describe('Scenarios Presets & Invariants', () => {
     for (const step of sim.steps) {
       expect(step.sectors.health?.servedKw).toBeCloseTo(step.sectors.health?.demandKw ?? 0, 6);
     }
+  });
+
+  it('overload_evening scenario cuts school from 14 h, industry is connected, and households surge in evening (PA-T6b)', () => {
+    const input = scenarios.overload_evening.input;
+    const industry = input.sectors.find((s) => s.id === 'industry');
+    expect(industry?.loadMultiplier).toBe(0.2);
+
+    const sim = simulate(input, 'essential_first');
+    expect(sim.metrics.violations).toBe(0);
+
+    // School is cut from 14:00 to 24:00 due to feeder outage
+    expect(sim.steps[13]?.sectors.school?.servedKw).toBeGreaterThan(0);
+    for (let h = 14; h < 24; h++) {
+      expect(sim.steps[h]?.sectors.school?.servedKw).toBe(0);
+    }
+
+    // Households evening demand is higher than baseline
+    const baselineSim = simulate(scenarios.baseline.input, 'essential_first');
+    expect(sim.steps[19]?.sectors.households?.demandKw).toBeGreaterThan(
+      baselineSim.steps[19]?.sectors.households?.demandKw ?? 0
+    );
+
+    // Overload creates unserved energy in the evening
+    expect(sim.metrics.unservedKwh).toBeGreaterThan(0);
+
+    const propSim = simulate(input, 'proportional');
+    expect(propSim.metrics.unservedKwh).toBeGreaterThan(0);
   });
 });

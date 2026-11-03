@@ -23,7 +23,8 @@ type ScenarioId =
   | 'battery_constraint'
   | 'essential_stress'
   | 'meter_anomaly'
-  | 'village_fire';
+  | 'village_fire'
+  | 'overload_evening';
 ```
 
 ```ts
@@ -207,11 +208,12 @@ interface SimulationResult {
 type Comparison = Record<StrategyId, SimulationResult>; // only strategies requested
 ```
 
-### Weather workflow (multi-day)
+### Weather workflow & Chaos mode (multi-day, PA-T6c, PA-T8a)
 
 ```ts
 type WeatherId = 'sunny' | 'partly_cloudy' | 'cloudy' | 'rainy' | 'storm';
-type Workflow = { weather: WeatherId }[]; // 1..MAX_WORKFLOW_DAYS (7)
+type WorkflowDay = { weather: WeatherId; events?: ScenarioEvent[] };
+type Workflow = WorkflowDay[]; // 1..MAX_WORKFLOW_DAYS (7)
 type WorkflowTotals = {
   demandKwh;
   servedKwh;
@@ -224,12 +226,26 @@ type WorkflowTotals = {
   socMinPct;
   violations;
 }; // sums; SoC start=day 1, end=last day, min=over all days
+type WorkflowDayResult = {
+  day: number;
+  weather: WeatherId;
+  events?: ScenarioEvent[];
+  result: SimulationResult;
+};
 type WorkflowResult = {
   strategy: StrategyId;
-  days: { day: number; weather: WeatherId; result: SimulationResult }[];
+  days: WorkflowDayResult[];
   totals: WorkflowTotals;
 };
 type WorkflowComparison = Record<StrategyId, WorkflowResult>; // only strategies requested
+
+// Chaos mode generator (PA-T6c): pure deterministic Mulberry32 PRNG
+function generateChaosWorkflow(options: {
+  seed: number;
+  days?: number;
+  weathers?: readonly WeatherId[];
+  maxIncidentsPerDay?: number;
+}): Workflow;
 ```
 
 Store (`useSimulationStore`): `workflow` (default `[{ weather: 'sunny' }]` = plain 24 h run), `workflowResults`,
@@ -531,7 +547,7 @@ fallback? }` (no `vision_detections`). Client: `useVisionSession.sendShapes(shap
 kind / category / box; drawn outline kept until SAM sends one. Failure → `identifyFailed`, the shape keeps the operator text.
 `POST /api/vision/shape` (PV-T9) multipart `{ image (same rules and normalization as /api/vision, shared
 `server/perception/vision-request.ts`), target: JSON ShapeTarget { id, label, category, scenery?, box, outline? (SAM path ≤ SHAPE_OUTLINE_MAX chars) }, sessionId? }` → `text/event-stream`:
-`shape_step { step: 'crop'|'model'|'fit'|'check' }` (live, `SHAPE_STEPS`; `check` = AI views check, PV-H, shown only once it starts) · `shape_stage { jobId?, phase: 'first'|'background', index, total, stage: 'massing'|'roof'|'openings'|'accessories' /*house*/ | 'body'|'glass'|'wheels'|'doors'|'cells'|'trunk'|'crown'|'head'|'details' /*objects from their 2D view, PG-T20*/ | 'final' /*last, background only: Muse Wonder checks and re-refines the whole model, PG-T24*/, state: 'running'|'done', before?, after? /*0–1*/, stop?, recipe? /*model after a kept patch*/, seq? /*job events*/ }` (facade houses, PG-T17) · `shape_result { shape: ObjectShape, jobId? /*stages left for the background*/ }` · then, with a `jobId`, background `shape_stage` events until `shape_stages_done { jobId, status: 'done'|'stopped', cause?: 'timeout'|'error'|'aborted' }` (≤ `SHAPE_STAGES_BACKGROUND_MS` 3 min, PG-T18) · `done`. `GET /api/vision/shape/stages?job=&from=<seq>` → same SSE from that event (resume a dropped stream), `DELETE ?job=` cancels (204), 400 bad id, 404 unknown / expired (10 min, in memory; the hook shows it as cause `lost`, model kept);
+`shape_step { step: 'crop'|'model'|'fit'|'check' }` (live, `SHAPE_STEPS`; `check` = AI views check, PV-H, shown only once it starts) · `shape_stage { jobId?, phase: 'first'|'background', index, total, stage: 'massing'|'roof'|'openings'|'accessories' /*house*/ | 'body'|'glass'|'wheels'|'doors'|'cells'|'trunk'|'crown'|'head'|'details' /*objects from their 2D view, PG-T20*/ | 'final' /*last, background only: Muse Wonder checks and re-refines the whole model, PG-T24*/, state: 'running'|'done', before?, after? /*0–1*/, stop?, recipe? /*model after a kept patch*/, seq? /*job events*/ }` (facade houses, PG-T17) · `shape_result { shape: ObjectShape, jobId? /*stages left for the background*/ }` · then, with a `jobId`, background `shape_stage` events until `shape_stages_done { jobId, status: 'done'|'stopped', cause?: 'timeout'|'error'|'aborted' }` (`SHAPE_STAGES_BACKGROUND_MS` = no limit: always waits for Meta, stops only on `DELETE` = the chip's « Cancel », cause `aborted`, PG-T18) · `done`. `GET /api/vision/shape/stages?job=&from=<seq>` → same SSE from that event (resume a dropped stream), `DELETE ?job=` cancels (204), 400 bad id, 404 unknown / expired (10 min, in memory; the hook shows it as cause `lost`, model kept);
 `ObjectShape { detectionId, mode: 'recipe'|'silhouette', recipe? /*recipe only*/, reason? /*silhouette only: 'provider_error'|
 'spend_cap'|'malformed'|'no_body'|'timeout' (Spark past SHAPE_TIMEOUT_MS = 60 s)|'network' (browser side)*/, source, model,
 fallback?, detail? /*'http_429', 'timeout', 'offline'…*/, fit?: { iou: 0–1 } /*PF-T6, computed: silhouette vs SAM outline, panel « Matches the photo outline: 82% »*/, imaginedViews?: ImaginedAngleView[6] /*PR-0.7, flat renders of the final recipe at the 6 canonical angles*/, partMasks?: PartMask[] /*PR-2.5, SAM parts on the crop: { concept /*wheel, window, door, chimney, lamp*/, box /*crop fractions*/, outline? } (vehicle/house/lamp_post only, ≤ 8 per concept, meta-only, absent when skipped)*/, kit?: ObjectKit /*PR-0.6, Spark's kit behind the recipe (meta-only; the critic patches it)*/, outline?: string /*PR-0.6, SAM outline used for fit+score (fetched ones included)*/ }`; 400 (JSON) missing / invalid target. One Spark critic round below score 70 with ≥ 20 s left (PR-0.6: `shapeWithCritic`, `criticizeShape`, patch → re-fit → keep-if-rises; mock/skipped without Meta). Views recipes: `checkViews(sheetUrl, question) → { check: { missing: { part, view: 'front'|'side', color?, material? }[] (≤ 4), redrawSide } | null }` (PV-H, `views-check.ts`; mock → null), ≤ 2 rounds within 90 s. Facade houses: `proposeShapeOps(sheetUrl, question) → { ops: unknown[] | null }` (PG-T15, optional on the backend; mock → `[]`), each op checked by `compileScript`. `withViews` (route: always true) gates `imaginedViews`; without it the route returns the recipe alone.

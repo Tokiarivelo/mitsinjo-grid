@@ -129,6 +129,7 @@ export function SimulationPage() {
   const removeWorkflowDay = useSimulationStore((s) => s.removeWorkflowDay);
   const setDayWeather = useSimulationStore((s) => s.setDayWeather);
   const setDayIndex = useSimulationStore((s) => s.setDayIndex);
+  const loadChaosWorkflow = useSimulationStore((s) => s.loadChaosWorkflow);
 
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<SimulationTab>('metrics');
@@ -586,6 +587,7 @@ export function SimulationPage() {
                     onRemoveDay={removeWorkflowDay}
                     onSetWeather={setDayWeather}
                     onSelectDay={handleSelectDay}
+                    onLoadChaos={() => loadChaosWorkflow()}
                   />
                   <HardwareLinkSection />
                 </div>

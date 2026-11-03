@@ -120,6 +120,50 @@ describe('simulateWorkflow', () => {
     expect(() => simulateWorkflow(input, tooLong, 'proportional')).toThrow();
     expect(WorkflowSchema.safeParse([{ weather: 'snow' }]).success).toBe(false);
   });
+
+  it('supports per-day events: fire cuts school on day 3 only (PA-T8a)', () => {
+    const input = createBaselineInput();
+    const wf = simulateWorkflow(
+      input,
+      [
+        { weather: 'sunny' },
+        { weather: 'cloudy' },
+        {
+          weather: 'sunny',
+          events: [
+            {
+              type: 'fire',
+              sector: 'school',
+              startHour: 10,
+              durationH: 14,
+            },
+          ],
+        },
+      ],
+      'essential_first'
+    );
+
+    expect(wf.days).toHaveLength(3);
+    // A day without events carries no `events` key (PR #42 review); day 3 keeps its own.
+    expect('events' in wf.days[0]!).toBe(false);
+    expect(wf.days[2]!.events).toHaveLength(1);
+
+    // Days 0 & 1: school operates normally at 10:00 (> 0 kW)
+    expect(wf.days[0]!.result.steps[10]?.sectors.school?.servedKw).toBeGreaterThan(0);
+    expect(wf.days[1]!.result.steps[10]?.sectors.school?.servedKw).toBeGreaterThan(0);
+
+    // Day 2 (day 3): fire cuts school to 0 kW from 10:00 onwards
+    for (let h = 10; h < 24; h++) {
+      expect(wf.days[2]!.result.steps[h]?.sectors.school?.servedKw).toBe(0);
+    }
+
+    // Battery carries over smoothly across all 3 days
+    expect(wf.days[1]!.result.metrics.socStartPct).toBe(wf.days[0]!.result.metrics.socEndPct);
+    expect(wf.days[2]!.result.metrics.socStartPct).toBe(wf.days[1]!.result.metrics.socEndPct);
+
+    // Invariants preserved: 0 violations
+    expect(wf.totals.violations).toBe(0);
+  });
 });
 
 describe('compareWorkflow', () => {

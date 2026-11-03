@@ -6,11 +6,11 @@ import {
   ComposedChart,
   Line,
   ReferenceLine,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
+import { ResponsiveChart } from './responsive-chart';
 import type { StepResult } from '@mitsinjo/engine';
 import { fmtHour, fmtKw, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
@@ -85,7 +85,7 @@ export function EnergyOverTimeChart({
 
   return (
     <div className={className} style={{ width: '100%', height }}>
-      <ResponsiveContainer width="100%" height="100%" minHeight={height}>
+      <ResponsiveChart minHeight={height}>
         <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
           <defs>
             <linearGradient id="solarGradient" x1="0" y1="0" x2="0" y2="1">
@@ -197,7 +197,7 @@ export function EnergyOverTimeChart({
             />
           )}
         </ComposedChart>
-      </ResponsiveContainer>
+      </ResponsiveChart>
     </div>
   );
 }

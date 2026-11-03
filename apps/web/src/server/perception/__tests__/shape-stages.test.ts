@@ -149,6 +149,36 @@ describe('runShapeStages (PG-T16)', () => {
     expect(res.recipe.parts).toEqual([wall, roof]);
   });
 
+  it('no time limit: a slow answer is waited for, only a cancel stops it (before: cut at 3 min, live 2026-11-03)', async () => {
+    const slow: Proposer<S> = ({ stage }) =>
+      new Promise((r) =>
+        setTimeout(
+          () => r(stage.id === 'massing' ? [{ op: 'set', id: 'wall', size: [0.8, 0.6, 0.6] }] : []),
+          20
+        )
+      );
+    const res = await runShapeStages({
+      seed,
+      stages: STAGES,
+      score,
+      budgetMs: Number.POSITIVE_INFINITY,
+      propose: slow,
+    });
+    expect(res.stages.map((s) => s.stop)).not.toContain('timeout');
+    expect(res.stages[0]!.kept).toBe(1);
+    const ctrl = new AbortController();
+    const cancelled = runShapeStages({
+      seed,
+      stages: STAGES,
+      score,
+      budgetMs: Number.POSITIVE_INFINITY,
+      signal: ctrl.signal,
+      propose: () => new Promise(() => {}),
+    });
+    ctrl.abort();
+    expect((await cancelled).stages.map((s) => s.stop)).toEqual(['skipped', 'skipped']);
+  });
+
   it('a failing proposer ends its stage; the next stage still runs', async () => {
     const res = await runShapeStages({
       seed,

@@ -127,4 +127,14 @@ describe('weather workflow in useSimulationStore', () => {
     expect(get().workflowResults).toEqual({});
     expect(selectDayIndex(get())).toBe(0);
   });
+
+  it('loadChaosWorkflow sets a seeded multi-day chaos workflow (PA-T6c)', () => {
+    get().loadChaosWorkflow(42, 3);
+    const wf = selectWorkflow(get());
+    expect(wf).toHaveLength(3);
+    expect(selectDayIndex(get())).toBe(0);
+    // At least one day has scripted chaos incidents
+    const hasIncidents = wf.some((d) => (d.events?.length ?? 0) > 0);
+    expect(hasIncidents).toBe(true);
+  });
 });

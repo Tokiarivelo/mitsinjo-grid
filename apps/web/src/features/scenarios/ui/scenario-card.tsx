@@ -66,15 +66,16 @@ export function ScenarioCard({
     deltaLabel = tScenarios('deltaGlobalLoad', { pct: `${multPct >= 0 ? '+' : ''}${multPct}` });
   }
 
-  const typeVariant = firstFire
-    ? 'incident'
-    : id === 'baseline'
-      ? 'nominal'
-      : id === 'cloudy_afternoon' || id === 'essential_stress'
-        ? 'climate'
-        : id === 'battery_constraint'
-          ? 'storage'
-          : 'demand';
+  const typeVariant =
+    firstFire || id === 'overload_evening'
+      ? 'incident'
+      : id === 'baseline'
+        ? 'nominal'
+        : id === 'cloudy_afternoon' || id === 'essential_stress'
+          ? 'climate'
+          : id === 'battery_constraint'
+            ? 'storage'
+            : 'demand';
 
   return (
     <div

@@ -379,6 +379,19 @@ export function useObjectShape() {
     if (last) void requestShape(last.image, last.target, last.sessionId, true);
   }, [requestShape]);
 
+  /**
+   * « Cancel » on the improvement chip: stops the background stages on the server (the stages
+   * otherwise wait for Meta with no time limit); the last model shown is kept.
+   */
+  const cancelImprove = useCallback(() => {
+    cancelJob();
+    setState((s) =>
+      s.improve?.status === 'running'
+        ? { ...s, improve: { ...s.improve, status: 'stopped', cause: 'aborted' } }
+        : s
+    );
+  }, [cancelJob]);
+
   const reset = useCallback(() => {
     abortRef.current?.abort();
     cancelJob();
@@ -396,5 +409,15 @@ export function useObjectShape() {
     setState(IDLE);
   }, [cancelJob]);
 
-  return { ...state, requestShape, requestViews, peek, retry, regenerate, reset, clear };
+  return {
+    ...state,
+    requestShape,
+    requestViews,
+    peek,
+    retry,
+    regenerate,
+    cancelImprove,
+    reset,
+    clear,
+  };
 }

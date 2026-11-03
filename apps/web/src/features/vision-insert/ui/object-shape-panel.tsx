@@ -179,6 +179,8 @@ export interface ObjectShapePanelProps extends ObjectShapeState {
   onRetry?: () => void;
   /** « Regenerate the 3D model »: re-run Spark for an existing 3D model, skipping cache. */
   onRegenerate?: () => void;
+  /** « Cancel » on the improvement chip: stops the background stages. */
+  onCancelImprove?: () => void;
   /** « Generate the 3D model »: nothing is asked to Spark before (selecting only shows a kept model). */
   /** `facade` = the validated 2D elevation, used as a reference image by the 3D call. */
   onGenerate?: (facade?: ValidatedFacade) => void;
@@ -204,6 +206,7 @@ export function ObjectShapePanel({
   imageUrl,
   onRetry,
   onRegenerate,
+  onCancelImprove,
   onGenerate,
   sessionId,
 }: ObjectShapePanelProps) {
@@ -337,7 +340,12 @@ export function ObjectShapePanel({
                 )}
               </div>
               {/* Staged improvement (PG-T18): the model keeps getting better after it shows. */}
-              {ready && <ImproveChip improve={improve} />}
+              {ready && (
+                <ImproveChip
+                  improve={improve}
+                  {...(onCancelImprove ? { onCancel: onCancelImprove } : {})}
+                />
+              )}
             </div>
           )}
         </>

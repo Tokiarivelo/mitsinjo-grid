@@ -458,4 +458,30 @@ describe('useObjectShape staged improvement (PG-T17/T18)', () => {
       ).toBe(true)
     );
   });
+
+  it('« Cancel » stops the running job on the server, the model shown is kept', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        new ReadableStream({
+          start(c) {
+            const enc = new TextEncoder();
+            c.enqueue(enc.encode(ev('shape_result', { shape: recipeShape, jobId: JOB })));
+            c.enqueue(enc.encode(ev('shape_stage', { ...stage({}), seq: 0 })));
+          },
+        })
+      )
+    );
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+    const { result } = renderHook(() => useObjectShape());
+    act(() => {
+      void result.current.requestShape('data:image/png;base64,AA', target);
+    });
+    await waitFor(() => expect(result.current.improve?.status).toBe('running'));
+    act(() => result.current.cancelImprove());
+    expect(result.current.improve).toMatchObject({ status: 'stopped', cause: 'aborted' });
+    expect(result.current.shape).toEqual(recipeShape);
+    expect(
+      fetchMock.mock.calls.some((c) => c[1]?.method === 'DELETE' && String(c[0]).includes(JOB))
+    ).toBe(true);
+  });
 });

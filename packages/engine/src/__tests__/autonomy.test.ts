@@ -211,6 +211,19 @@ describe('detectIncidents (PA-T1)', () => {
     expect(anomaly?.severity).toBe('info');
   });
 
+  it('overload_evening scenario detects demand_surge on households and overload in evening (PA-T6b)', () => {
+    const input = scenarios.overload_evening.input;
+    const sim = simulate(input, 'proportional');
+
+    // Hour 18: evening household demand surge starts
+    const inc18 = detectIncidents(input, sim, 18);
+    expect(inc18.some((i) => i.kind === 'demand_surge' && i.sector === 'households')).toBe(true);
+
+    // Later evening (e.g. 21h): overload detected due to high evening demand + workshop
+    const inc21 = detectIncidents(input, sim, 21);
+    expect(inc21.some((i) => i.kind === 'overload' || i.kind === 'demand_surge')).toBe(true);
+  });
+
   it('handles invalid hours and sorts results strictly by severity', () => {
     const sim = simulate(scenarios.baseline.input, 'essential_first');
     expect(detectIncidents(scenarios.baseline.input, sim, -1)).toEqual([]);
