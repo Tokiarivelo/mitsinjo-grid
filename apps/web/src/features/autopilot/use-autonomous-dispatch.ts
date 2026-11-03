@@ -11,6 +11,7 @@ import {
 import { sealLogEntry } from '@/lib/dispatch-log';
 import type { Locale } from '@/lib/i18n';
 import { useSimulationStore } from '@/stores';
+import { dayEvents } from '@/lib/day-events';
 
 /**
  * Autonomous dispatch loop (PA-T3b): on each new simulated hour, runs the engine detectors and
@@ -32,7 +33,12 @@ export function useAutonomousDispatch(locale: Locale = 'en'): void {
     lastProcessed.current = key;
 
     const state = useSimulationStore.getState();
-    const { input, activeStrategy } = state;
+    const { activeStrategy } = state;
+    // Fires reported on a multi-day run live on the days: the AI sees the day shown.
+    const input = {
+      ...state.input,
+      events: dayEvents(state.input.events, state.workflow, dayIndex),
+    };
     const result = state.results[activeStrategy] ?? simulate(input, activeStrategy);
 
     const incidents = detectIncidents(input, result, timeIndex, 3, dayIndex);
