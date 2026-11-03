@@ -63,10 +63,11 @@ proportions)` (une maison ≈ une maison du village, un frigo ≈ 1 m) ; `footpr
       plus être posé sur un bâtiment, un chemin, la mare ou un autre objet placé (poussé vers le bord libre le plus proche).
       **Done when:** tests de collision (bâtiment, chemin, mare, deux objets) ; les positions des 6 bâtiments ne bougent pas.
       **Done:** `site-zones.ts` (`siteZones(placed)`, `placedItemZone`, `ARCHETYPE_CLEARING_MARGIN`), wired to `landscape.ts` (`isBlocked`), `placement.ts` (`snapAwayFromBuildings` respecting dynamic zones, paths and cross-relaxations), `place-minimap.tsx` (visual obstacles and blocked cursor), and `appliance-markers.ts`. 9/9 unit tests passing with full collision coverage (bâtiment, chemin, mare, deux objets) and 6 building positions invariance verified.
-- [ ] **PI-T4 Les arbres disparaissent autour.** La végétation est filtrée par `siteZones` : les instances dans une clairière
+- [x] **PI-T4 Les arbres disparaissent autour.** La végétation est filtrée par `siteZones` : les instances dans une clairière
       sont masquées (échelle 0 dans l'`InstancedMesh`, sans regénérer la forêt ; D2). Recalcul au commit seulement.
       **Done when:** test pur (aucun arbre / buisson / rocher dans la zone, le reste inchangé et à la même place) ;
       retirer l'objet → les arbres reviennent ; aucune image saccadée au glisser (fantôme seulement).
+      **Done:** `dynamicPlacedZones` in `site-zones.ts`, `isPositionInClearing`, `clearingItemScale`, and `applyClearingScales` in `scatter.ts`, wired to `Vegetation` and `PartInstances` in `vegetation.tsx` and `village-canvas.tsx`. 4/4 pure unit tests passing in `vegetation-clearing.test.ts`.
 - [ ] **PI-T5 Le sol devient rouge.** Une cour en latérite sous chaque objet, **même couleur et même bord irrégulier** que les
       cours existantes (`GROUND_HEX.yard`, bruit `fbm2d`) : disque drapé sur le relief (+3 cm, pas de z-fighting), instancié,
       au lieu de recalculer les couleurs de tout le terrain. Taille = zone de PI-T3.

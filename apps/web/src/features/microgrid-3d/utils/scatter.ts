@@ -1,6 +1,12 @@
 import { fbm2d, mulberry32 } from './noise';
 import { CANOPY_VARIANTS } from './canopy-tree';
-import { FLAT_RADIUS, isBlocked, terrainHeight, TERRAIN_RADIUS } from './landscape';
+import {
+  FLAT_RADIUS,
+  isBlocked,
+  terrainHeight,
+  TERRAIN_RADIUS,
+  type KeepOutZone,
+} from './landscape';
 
 /** Broadleaf trees are procedural (utils/canopy-tree); the rest are `/3d/nature.glb` node names. */
 export const BROADLEAF_MODELS = CANOPY_VARIANTS;
@@ -113,4 +119,41 @@ export function scatterVegetation({
   }
 
   return items;
+}
+
+/**
+ * Returns true if a position (x, z) falls inside any dynamic clearing zone (PI-T4).
+ */
+export function isPositionInClearing(
+  x: number,
+  z: number,
+  clearings?: readonly KeepOutZone[] | null
+): boolean {
+  if (!clearings || clearings.length === 0) return false;
+  for (const k of clearings) {
+    if (Math.hypot(x - k.x, z - k.z) < k.r) return true;
+  }
+  return false;
+}
+
+/**
+ * Computes the instance scale for a vegetation item given active clearing zones (PI-T4).
+ * Returns 0 if inside a clearing, preserving the item's original scale otherwise.
+ */
+export function clearingItemScale(
+  item: ScatterItem,
+  clearings?: readonly KeepOutZone[] | null
+): number {
+  if (!clearings || clearings.length === 0) return item.scale;
+  return isPositionInClearing(item.position[0], item.position[2], clearings) ? 0 : item.scale;
+}
+
+/**
+ * Pure evaluation of instance scales for a collection of scatter items (PI-T4).
+ */
+export function applyClearingScales(
+  items: readonly ScatterItem[],
+  clearings?: readonly KeepOutZone[] | null
+): number[] {
+  return items.map((it) => clearingItemScale(it, clearings));
 }

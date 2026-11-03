@@ -4,6 +4,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei';
 import {
+  clearingItemScale,
   scatterVegetation,
   type NatureKind,
   type NatureModel,
@@ -12,6 +13,7 @@ import {
 import type { SceneQuality } from '../hooks/use-scene-quality';
 import { CANOPY_VARIANTS, createCanopyTree, type CanopyVariant } from '../utils/canopy-tree';
 import { toFloatGeometry } from '../utils/float-geometry';
+import type { KeepOutZone } from '../utils/landscape';
 
 export const NATURE_URL = '/3d/nature.glb';
 /**
@@ -124,11 +126,13 @@ function PartInstances({
   items,
   kind,
   castShadow,
+  clearings,
 }: {
   part: ModelPart;
   items: ScatterItem[];
   kind: NatureKind;
   castShadow: boolean;
+  clearings?: readonly KeepOutZone[];
 }) {
   const ref = useRef<THREE.InstancedMesh>(null);
 
@@ -144,7 +148,8 @@ function PartInstances({
     const tints = LEAF_TINTS[kind];
     items.forEach((it, i) => {
       q.setFromAxisAngle(up, it.rotationY);
-      s.setScalar(it.scale);
+      const scale = clearingItemScale(it, clearings);
+      s.setScalar(scale);
       // Sink slightly so trunks never hover on slopes.
       p.set(it.position[0], it.position[1] - 0.05, it.position[2]);
       m.compose(p, q, s);
@@ -157,7 +162,7 @@ function PartInstances({
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.computeBoundingSphere();
-  }, [items, kind, part.role]);
+  }, [items, kind, part.role, clearings]);
 
   return (
     <instancedMesh
@@ -171,9 +176,10 @@ function PartInstances({
 
 export interface VegetationProps {
   quality?: SceneQuality;
+  clearings?: readonly KeepOutZone[];
 }
 
-export function Vegetation({ quality = 'high' }: VegetationProps) {
+export function Vegetation({ quality = 'high', clearings }: VegetationProps) {
   const { scene } = useGLTF(NATURE_URL);
 
   const groups = useMemo(() => {
@@ -210,6 +216,7 @@ export function Vegetation({ quality = 'high' }: VegetationProps) {
             items={g.items}
             kind={g.kind}
             castShadow={g.castShadow}
+            clearings={clearings}
           />
         ))
       )}

@@ -129,6 +129,20 @@ export function placedItemZone(item: PlacedZoneItem, index = 0): KeepOutZone | n
 }
 
 /**
+ * Returns only the dynamic keep-out zones for placed objects (excluding static village zones).
+ * Used by tree clearing (PI-T4) and laterite yards (PI-T5).
+ */
+export function dynamicPlacedZones(placed?: readonly PlacedZoneItem[] | null): KeepOutZone[] {
+  if (!placed || placed.length === 0) return [];
+  const list: KeepOutZone[] = [];
+  placed.forEach((item, i) => {
+    const zone = placedItemZone(item, i);
+    if (zone) list.push(zone);
+  });
+  return list;
+}
+
+/**
  * Pure dynamic site zones (PI-T3, Rule 2):
  * Single source of truth for "where things cannot be placed":
  * `KEEP_OUT_ZONES` (static buildings, pads, pond) + one circle per placed object.
@@ -137,13 +151,9 @@ export function placedItemZone(item: PlacedZoneItem, index = 0): KeepOutZone | n
  */
 export function siteZones(placed?: readonly PlacedZoneItem[] | null): KeepOutZone[] {
   const staticZones = KEEP_OUT_ZONES;
-  if (!placed || placed.length === 0) {
+  const dynamic = dynamicPlacedZones(placed);
+  if (dynamic.length === 0) {
     return [...staticZones];
   }
-  const dynamicZones: KeepOutZone[] = [];
-  placed.forEach((item, i) => {
-    const zone = placedItemZone(item, i);
-    if (zone) dynamicZones.push(zone);
-  });
-  return [...staticZones, ...dynamicZones];
+  return [...staticZones, ...dynamic];
 }
