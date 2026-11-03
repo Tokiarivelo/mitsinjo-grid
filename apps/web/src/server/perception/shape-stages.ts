@@ -158,11 +158,16 @@ function guardPatch(ops: unknown[], kinds: ReadonlyArray<PartKind>) {
   return { kept, refused };
 }
 
-/** Rejects after `ms`, or when `signal` aborts; the timer never outlives the race. */
+/**
+ * Rejects after `ms` (never when infinite: `setTimeout` would fire at once past 2^31 ms), or
+ * when `signal` aborts; the timer never outlives the race.
+ */
 function withDeadline<T>(p: Promise<T>, ms: number, signal: AbortSignal): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     if (signal.aborted) return reject(new Error('aborted'));
-    const timer = setTimeout(() => reject(new Error('timeout')), Math.max(0, ms));
+    const timer = Number.isFinite(ms)
+      ? setTimeout(() => reject(new Error('timeout')), Math.max(0, ms))
+      : undefined;
     const onAbort = () => {
       clearTimeout(timer);
       reject(new Error('aborted'));

@@ -6,11 +6,11 @@ import {
   Line,
   LineChart,
   ReferenceLine,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
+import { ResponsiveChart } from '@/components/charts/responsive-chart';
 import type { StrategyId, SweepParam, SweepResult } from '@mitsinjo/engine';
 import { ChartCard } from '@/components/ui/chart-card';
 import { STRATEGY_COLORS } from '@/components/charts/strategy-colors';
@@ -144,7 +144,7 @@ export function SensitivityChart({
       className={className}
     >
       <div style={{ width: '100%', height }}>
-        <ResponsiveContainer width="100%" height="100%" debounce={100}>
+        <ResponsiveChart debounce={100}>
           <LineChart data={chartData} margin={{ top: 12, right: 24, left: 0, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.6} />
             <XAxis
@@ -201,7 +201,7 @@ export function SensitivityChart({
               />
             ))}
           </LineChart>
-        </ResponsiveContainer>
+        </ResponsiveChart>
       </div>
     </ChartCard>
   );

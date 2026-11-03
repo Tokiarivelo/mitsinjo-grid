@@ -54,4 +54,31 @@ describe('ImproveChip (PG-T18)', () => {
     expect(improveProgress({ ...running, index: 1, after: 0.5 })).toBe(0.25);
     expect(improveProgress({ ...running, status: 'done' })).toBe(1);
   });
+
+  it('« Cancel » while it runs (no time limit), none once it ended or without a handler', () => {
+    const onCancel = vi.fn();
+    const { rerender } = render(
+      <I18nProvider>
+        <ImproveChip improve={running} onCancel={onCancel} />
+      </I18nProvider>
+    );
+    act(() => screen.getByRole('button', { name: 'Cancel the model improvement' }).click());
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    rerender(
+      <I18nProvider>
+        <ImproveChip
+          improve={{ ...running, status: 'stopped', cause: 'aborted' }}
+          onCancel={onCancel}
+        />
+      </I18nProvider>
+    );
+    expect(screen.getByText('Improvement stopped: cancelled')).toBeTruthy();
+    expect(screen.queryByRole('button')).toBeNull();
+    rerender(
+      <I18nProvider>
+        <ImproveChip improve={running} />
+      </I18nProvider>
+    );
+    expect(screen.queryByRole('button')).toBeNull();
+  });
 });

@@ -1066,7 +1066,9 @@
           "error": "nisy olana",
           "aborted": "nofoanana",
           "lost": "nisokatra indray ny mpizara, voatahiry ity modely ity"
-        }
+        },
+        "cancel": "Foanana",
+        "cancelLabel": "Foanana ny fanatsarana ny modely"
       }
     },
     "dispatch": {

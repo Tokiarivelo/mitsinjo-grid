@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CircleAlert, CircleCheck, Loader2 } from 'lucide-react';
+import { CircleAlert, CircleCheck, Loader2, X } from 'lucide-react';
 import { fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -21,9 +21,16 @@ export function improveProgress(i: ShapeImprove): number {
  * Improvement indicator (PG-T18) over the 3D viewer: « Improving: stage 2/4 — Roof » with a
  * spinner, a progress bar and the stage score before → after while the background stages run,
  * then « Model finalised » or « Improvement stopped: <cause> », which fades out. Announced to
- * screen readers (`aria-live="polite"`). AI output → violet.
+ * screen readers (`aria-live="polite"`). AI output → violet. `onCancel` adds a « Cancel » button
+ * while it runs (the stages have no time limit).
  */
-export function ImproveChip({ improve }: { improve?: ShapeImprove }) {
+export function ImproveChip({
+  improve,
+  onCancel,
+}: {
+  improve?: ShapeImprove;
+  onCancel?: () => void;
+}) {
   const t = useTranslations('features.visionInsert.model3dImprove');
   const final = improve && improve.status !== 'running';
   // Hidden once a final state has been shown for `IMPROVE_FADE_MS` (keyed by that state).
@@ -73,6 +80,17 @@ export function ImproveChip({ improve }: { improve?: ShapeImprove }) {
                   ? t('done')
                   : t('stopped', { cause: t(`cause.${improve.cause ?? 'error'}`) })}
             </span>
+            {improve.status === 'running' && onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                aria-label={t('cancelLabel')}
+                className="pointer-events-auto -my-2 -mr-2 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-control px-2 text-text-secondary hover:bg-surface-hover hover:text-text-primary focus-visible:outline-2 focus-visible:outline-ai-violet"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+                {t('cancel')}
+              </button>
+            )}
           </p>
           {improve.status === 'running' && (
             <div

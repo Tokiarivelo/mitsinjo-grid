@@ -1066,7 +1066,9 @@
           "error": "an error occurred",
           "aborted": "cancelled",
           "lost": "the server restarted, this model is kept"
-        }
+        },
+        "cancel": "Cancel",
+        "cancelLabel": "Cancel the model improvement"
       }
     },
     "dispatch": {

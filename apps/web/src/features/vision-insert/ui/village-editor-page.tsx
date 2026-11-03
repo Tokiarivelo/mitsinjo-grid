@@ -57,6 +57,7 @@ export function VillageEditorPage() {
     requestShape,
     peek: peekShape,
     retry: retryShape,
+    cancelImprove,
     reset: resetShape,
     clear: clearShapes,
     ...objectShape
@@ -467,6 +468,7 @@ export function VillageEditorPage() {
                         imageUrl={imageUrl}
                         onRetry={retryShape}
                         onRegenerate={regenerateShape}
+                        onCancelImprove={cancelImprove}
                         onGenerate={generateShape}
                       />
                       <div className="flex items-center justify-between gap-2 rounded-xl border border-energy-cyan/30 bg-energy-cyan/5 p-3 text-xs">

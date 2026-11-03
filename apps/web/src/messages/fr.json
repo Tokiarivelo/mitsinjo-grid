@@ -1066,7 +1066,9 @@
           "error": "une erreur est survenue",
           "aborted": "annulée",
           "lost": "le serveur a redémarré, ce modèle est conservé"
-        }
+        },
+        "cancel": "Annuler",
+        "cancelLabel": "Annuler l'amélioration du modèle"
       }
     },
     "dispatch": {

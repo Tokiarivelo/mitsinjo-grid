@@ -1,15 +1,7 @@
 'use client';
 
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { Bar, BarChart, CartesianGrid, Legend, Tooltip, XAxis, YAxis } from 'recharts';
+import { ResponsiveChart } from './responsive-chart';
 import type { SimulationResult, StrategyId } from '@mitsinjo/engine';
 import { fmtKwh, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
@@ -106,7 +98,7 @@ export function StrategyComparisonChart({
 
   return (
     <div className={className} style={{ width: '100%', height }}>
-      <ResponsiveContainer width="100%" height="100%" minHeight={height}>
+      <ResponsiveChart minHeight={height}>
         <BarChart data={metrics} margin={{ top: 15, right: 15, left: -10, bottom: 5 }}>
           <CartesianGrid
             strokeDasharray="3 3"
@@ -159,7 +151,7 @@ export function StrategyComparisonChart({
             />
           )}
         </BarChart>
-      </ResponsiveContainer>
+      </ResponsiveChart>
     </div>
   );
 }

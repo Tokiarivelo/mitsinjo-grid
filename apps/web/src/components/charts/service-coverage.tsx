@@ -1,15 +1,7 @@
 'use client';
 
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, Tooltip, XAxis, YAxis } from 'recharts';
+import { ResponsiveChart } from './responsive-chart';
 import { SECTOR_IDS, type SectorId, type SectorMetrics } from '@mitsinjo/engine';
 import { fmtKwh, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
@@ -93,7 +85,7 @@ export function ServiceCoverageChart({
 
   return (
     <div className={className} style={{ width: '100%', height }}>
-      <ResponsiveContainer width="100%" height="100%" minHeight={height}>
+      <ResponsiveChart minHeight={height}>
         <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
           <CartesianGrid
             strokeDasharray="3 3"
@@ -138,7 +130,7 @@ export function ServiceCoverageChart({
             })}
           </Bar>
         </BarChart>
-      </ResponsiveContainer>
+      </ResponsiveChart>
     </div>
   );
 }

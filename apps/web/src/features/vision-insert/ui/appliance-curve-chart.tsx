@@ -1,6 +1,7 @@
 'use client';
 
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, Tooltip, XAxis, YAxis } from 'recharts';
+import { ResponsiveChart } from '@/components/charts/responsive-chart';
 import { fmtHour, fmtKw, fmtKwh } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
 
@@ -37,7 +38,7 @@ export function ApplianceCurveChart({ curve, peakKw, dailyKwh }: ApplianceCurveC
     <figure className="flex flex-col gap-1">
       <figcaption className="text-xs text-text-secondary">{t('insertCurveTitle')}</figcaption>
       <div className="h-[120px] w-full" aria-hidden="true">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveChart>
           <BarChart data={data} margin={{ top: 2, right: 2, left: 2, bottom: 0 }}>
             <XAxis
               dataKey="hour"
@@ -60,7 +61,7 @@ export function ApplianceCurveChart({ curve, peakKw, dailyKwh }: ApplianceCurveC
               radius={[2, 2, 0, 0]}
             />
           </BarChart>
-        </ResponsiveContainer>
+        </ResponsiveChart>
       </div>
       <p className="sr-only">
         {t('insertCurveSummary', { peak: fmtKw(peakKw, 2), daily: fmtKwh(dailyKwh, 2) })}

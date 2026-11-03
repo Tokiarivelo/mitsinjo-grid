@@ -389,8 +389,12 @@ export const SHAPE_STAGE_IDS = [
   'final',
 ] as const;
 export type ShapeStageId = (typeof SHAPE_STAGE_IDS)[number];
-/** Background stages stop after this (the plan's « background stages finish ≤ 3 min »). */
-export const SHAPE_STAGES_BACKGROUND_MS = 180_000;
+/**
+ * Background stages have no time limit: they always wait for Meta, however long it takes, and
+ * stop only when the operator cancels (« Cancel » on the improvement chip, `DELETE` on the job)
+ * (user 2026-11-03; before: 3 min, a slow Spark answer was aborted and replaced by the mock).
+ */
+export const SHAPE_STAGES_BACKGROUND_MS = Number.POSITIVE_INFINITY;
 export const SHAPE_STAGE_STOPS = [
   'gate',
   'no_gain',
