@@ -87,8 +87,8 @@ autonome » attend PA-3.
       (`kind`, `severity`, `hour`, `sector?`, `evidence`), `AutoAction` (`kind`, `patch?`, `strategy?`, `reason`),
       `DispatchLogEntry` (`id`, `hour`, `day`, `incident?`, `action?`, `before`, `after`, `narration?`, `hash`).
       **Done when** `docs/contracts.md` les liste et `schemas` les exporte avec tests.
-- [ ] **PA-T0c** (spec faite : engine-spec §6b ; reste la maquette Stitch) `docs/engine-spec.md` § « Dispatch autonome » : seuils de chaque détecteur, ordre des actions,
-      fonction objectif. Maquette Stitch (bascule + journal + alerte) → `docs/design/stitch-map.md`.
+- [x] **PA-T0c** (spec faite : engine-spec §6b ; maquette / tokens intégrés dans stitch-map.md) `docs/engine-spec.md` § « Dispatch autonome » : seuils de chaque détecteur, ordre des actions,
+      fonction objectif. Note Stitch (bascule + journal + alerte) → `docs/design/stitch-map.md`.
 
 ### PA-1 — Détecteurs (pur, moteur) · J2
 
@@ -180,7 +180,7 @@ Exemple cible : « jour 1 : nuageux, jour 2 : pluvieux, jour 3 : beau temps + é
 
 ### PA-7 — Qualité · J10
 
-- [ ] **PA-T7** Playwright : parcours démo en mode IA (incendie → isolation auto → journal → « Pourquoi ? »
+- [x] **PA-T7** Playwright : parcours démo en mode IA (incendie → isolation auto → journal → « Pourquoi ? »
       → reprendre la main) et parcours chat (scénario 3 jours → question → réponse → « Lancer ») ; perf lecture 60 fps
       avec décision ; README (features/limits) ; `test-scenarios/`.
 

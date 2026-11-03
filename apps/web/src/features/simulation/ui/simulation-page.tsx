@@ -645,7 +645,9 @@ export function SimulationPage() {
                       const targetSector = sec ? tSectors(sec) : '';
                       const actionDesc = entry.action
                         ? tDispatch(`actions.${entry.action.kind}` as never)
-                        : '';
+                        : entry.incident
+                          ? tDispatch(`incidents.${entry.incident.kind}` as never)
+                          : '';
                       fillCopilotPrompt(
                         targetSector
                           ? tDispatch('askWhyPromptSector', {
