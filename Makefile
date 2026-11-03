@@ -243,11 +243,15 @@ deploy-link: ## Link this clone to the Vercel project (once per machine)
 deploy: ## Manual production deploy (only from a clean main = origin/main)
 	@scripts/deploy.sh
 
-docker-build: ## Build the Docker image (keyless, LLM_PROVIDER=mock by default)
-	docker build -t mitsinjo-grid .
+docker-up: ## Build + start the app with Docker Compose on :3000 (HOST_PORT=…; root .env optional, else mock)
+	docker compose up -d --build
+	@echo "→ http://localhost:$(or $(HOST_PORT),3000)  (make docker-logs · make docker-down)"
 
-docker-run: ## Run the Docker image on :3000 (pass Meta keys with ENV_FILE=.env)
-	docker run --rm -p 3000:3000 $(if $(ENV_FILE),--env-file $(ENV_FILE)) -e PORT=3000 mitsinjo-grid
+docker-down: ## Stop the Docker Compose app
+	docker compose down
+
+docker-logs: ## Follow the Docker Compose app logs
+	docker compose logs -f web
 
 ##@ Cleanup
 clean: ## Remove build/test output (keeps node_modules)

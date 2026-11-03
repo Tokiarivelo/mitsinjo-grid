@@ -8,9 +8,10 @@
 - Done against the community checklist (artifacts.watt-mind.com/meta-hackathon-2026/checklist), video excluded:
   - README top: provenance (built from scratch from Oct 26), track (Build for Your World, Indie), bonus targets
     (Best Agentic, Best Creative), "not a 1-prompt wrapper" paragraph, Meta models table (Spark, SAM 3.1, Muse Image,
-    Muse Wonder, Muse Voice, optional Glimmer). Quickstart gained Docker + Benchmarks sections.
+    Muse Wonder, Muse Voice, optional Glimmer). Quickstart gained Docker Compose + Benchmarks sections.
   - `benchmarks/` (README + `engine.json`) from `make bench` (`packages/engine/src/__tests__/benchmark.test.ts`).
-  - `Dockerfile` + `.dockerignore`, `make docker-build` / `make docker-run` (keyless mock; image builds and serves).
+  - `Dockerfile` + `compose.yaml` + `.dockerignore`: `docker compose up -d --build` / `make docker-up|docker-down|docker-logs`
+    (keyless mock without `.env`; healthcheck on `/overview`; verified healthy).
   - GitHub repo homepage set to `https://mitsinjo-grid.vercel.app` (same as README; `-fqfg` is the auto alias).
 
 ## Next
@@ -22,7 +23,7 @@
 
 ## Files touched (this session)
 
-`README.md`, `Dockerfile`, `.dockerignore`, `Makefile`, `.env.example`, `benchmarks/{README.md,engine.json}`,
+`README.md`, `apps/web/README.md`, `Dockerfile`, `compose.yaml`, `.dockerignore`, `Makefile`, `.env.example`, `benchmarks/{README.md,engine.json}`,
 `packages/engine/src/__tests__/benchmark.test.ts`, `docs/performance.md`, `docs/tasks/P9-ship.md`, `HANDOFF.md`.
 
 ## Decisions

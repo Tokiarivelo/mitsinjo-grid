@@ -32,7 +32,7 @@
   | **Muse Voice**                                | Chat voice input transcription (EN / FR / MG)                                                                |
   | **Muse Glimmer 30B** (open weights, optional) | Local step in the fallback chain Meta → Glimmer → offline mock (`GLIMMER_BASE_URL`, vLLM / Ollama)           |
 
-- **Judges without keys**: `LLM_PROVIDER=mock` (default) runs the whole demo path offline and deterministically; `make docker-build && make docker-run` or `make install && make dev-mock`.
+- **Judges without keys**: `LLM_PROVIDER=mock` (default) runs the whole demo path offline and deterministically; `docker compose up -d --build` (or `make docker-up`) or `make install && make dev-mock`.
 
 ---
 
@@ -195,13 +195,17 @@ make install
 make env
 ```
 
-### Docker (no Node or pnpm needed)
+### Docker Compose (no Node or pnpm needed)
 
 ```bash
-make docker-build                 # docker build -t mitsinjo-grid .
-make docker-run                   # http://localhost:3000, offline mock copilot, no key needed
-make docker-run ENV_FILE=.env     # live Meta models with your own keys
+docker compose up -d --build      # or: make docker-up → http://localhost:3000
+docker compose logs -f web        # or: make docker-logs
+docker compose down               # or: make docker-down
 ```
+
+Without a root `.env` the copilot runs in offline mock mode (no key needed). With a root `.env` (copy
+[.env.example](.env.example), set `LLM_PROVIDER=meta` and `META_API_KEY`) the live Meta models are used.
+`HOST_PORT=8080 docker compose up -d` changes the host port; the app always listens on 3000 in the container.
 
 ### Benchmarks
 

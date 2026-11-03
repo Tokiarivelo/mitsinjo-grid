@@ -114,4 +114,4 @@ them after mount (re-targeting races React root unmounts and can leave a label e
 - `next build` with Turbopack dev; `transpilePackages: ['@mitsinjo/engine']`; `optimizePackageImports: ['lucide-react','recharts','@react-three/drei']`.
 - Static generation for every route (no request-time data except `/api/copilot`).
 - Vercel: copilot route `runtime = 'nodejs'`, `maxDuration = 30`.
-- Docker (`Dockerfile`, `make docker-build` / `make docker-run`): one image, `pnpm install --frozen-lockfile` → `next build` → `next start` on :3000, `LLM_PROVIDER=mock` unless an env file is passed.
+- Docker Compose (`compose.yaml` + `Dockerfile`, `make docker-up` / `docker-down` / `docker-logs`): one `web` service, `pnpm install --frozen-lockfile` → `next build` → `next start` on :3000 (host `HOST_PORT`, default 3000), healthcheck on `/overview`; root `.env` optional, `LLM_PROVIDER=mock` without it.

@@ -1,5 +1,5 @@
 # Mitsinjo Grid web app (Next.js 15 + engine). Keyless by default: LLM_PROVIDER=mock.
-# make docker-build && make docker-run   → http://localhost:3000
+# Run it with Docker Compose (compose.yaml): make docker-up → http://localhost:3000
 FROM node:22-bookworm-slim AS deps
 ENV SKIP_INSTALL_SIMPLE_GIT_HOOKS=1 \
     NEXT_TELEMETRY_DISABLED=1
