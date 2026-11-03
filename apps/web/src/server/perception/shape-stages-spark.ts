@@ -15,6 +15,7 @@ import {
   type Proposer,
   type StageResult,
   type StageSpec,
+  houseCanEdit,
   houseStageScorer,
   runShapeStages,
 } from './shape-stages';
@@ -198,6 +199,7 @@ export async function facadeStageLoop(input: FacadeLoopInput): Promise<{
       seed: recipeToScript(recipe),
       stages: HOUSE_STAGES,
       score,
+      canEdit: houseCanEdit,
       propose,
       budgetMs: input.firstBudgetMs,
       ...(input.signal ? { signal: input.signal } : {}),
@@ -222,6 +224,7 @@ export async function facadeStageLoop(input: FacadeLoopInput): Promise<{
             seed: recipeToScript(seed),
             stages: remaining,
             score,
+            canEdit: houseCanEdit,
             propose,
             budgetMs,
             ...(signal ? { signal } : {}),

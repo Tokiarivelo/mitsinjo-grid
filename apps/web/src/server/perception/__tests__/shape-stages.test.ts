@@ -6,6 +6,7 @@ import {
   type Proposer,
   type StageScorer,
   type StageSpec,
+  houseCanEdit,
   houseStageScorer,
   runShapeStages,
 } from '../shape-stages';
@@ -198,6 +199,44 @@ describe('runShapeStages (PG-T16)', () => {
     expect(a.stages).toEqual(b.stages);
     expect(seen[0]).toEqual(['wall', '|', 'roof']);
     expect(seen.at(-1)).toEqual(['roof', '|', 'wall']);
+  });
+});
+
+describe('canEdit', () => {
+  it('keeps components the score cannot see locked (side-wall windows)', async () => {
+    const side: RecipePart = {
+      shape: 'box',
+      at: [0.305, -0.2, 0],
+      size: [0.01, 0.15, 0.12],
+      color: '#334455',
+      material: 'glass',
+      kind: 'window',
+    };
+    const front: RecipePart = { ...side, at: [0, -0.2, 0.305], size: [0.12, 0.15, 0.01] };
+    const s0 = recipeToScript({
+      proportions: { w: 1, h: 0.7, d: 0.6 },
+      parts: [wall, roof, front, side],
+    });
+    const seen: string[][] = [];
+    const res = await runShapeStages<'openings'>({
+      seed: s0,
+      stages: [{ id: 'openings', kinds: ['window'], gate: 0.99 }],
+      score: (r) => {
+        const n = r.parts.filter((p) => p.kind === 'window').length;
+        return { stage: n === 1 ? 0.9 : 0.5, overall: 0.5 };
+      },
+      budgetMs: 5_000,
+      canEdit: houseCanEdit,
+      propose: async (ctx) => {
+        seen.push([...ctx.editable]);
+        // Removing the side window would « help » this score: refused by the lock.
+        return ctx.components
+          .filter((c) => c.part.size[0] < c.part.size[2] && c.part.kind === 'window')
+          .map((c) => ({ op: 'remove', id: c.id }));
+      },
+    });
+    expect(seen[0]).toHaveLength(1);
+    expect(res.recipe.parts.filter((p) => p.kind === 'window')).toHaveLength(2);
   });
 });
 
