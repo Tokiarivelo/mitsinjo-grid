@@ -1,33 +1,31 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-03 (PI-I0 complete, PR #49 open) · **By:** Antigravity · **Branch:** feat/pi-0-placed-model
+**Updated:** 2026-11-03 (PR #49 PI-T1/T2 reviewed + merged; P9-T7 submission readiness on main) · **By:** Claude Code
 
 ## Current state
 
-- Branch `feat/pi-0-placed-model` rebased on latest `origin/main` (`a558cef`), PR #49 open.
-- PI-T1 PlacedModel contract & store:
-  - Visual store `usePlacedModelsStore` (`apps/web/src/stores/placed-models.store.ts`) with `localStorage` try/catch.
-  - Helpers `sceneScale(archetype, proportions)` and `footprint(recipe, scale, yaw)`.
-  - Wired to `ApplianceInsert` and `useSimulationAppliances` (upsert on insert with recipe, prune on delete).
-  - Pure engine invariance confirmed: simulation & comparison results and hashes are 100% identical.
-- PI-T2 Render 3D model in place:
-  - `buildPlacedModelsGeometry` (`placed-models-geometry.ts`) reuses `recipeMesh` without duplication, positions on `terrainHeight` at lowest footprint point with slope plinths, reflects feeder departure states (dimmed if unserved, fire alert if on fire), LOD box on tier `low`.
-  - Merges up to 30 placed models into 1 mesh (budget ≤ +2 draw calls respected).
-  - Integrated in `ApplianceMarkers` (`appliance-markers.tsx`) and `village-canvas.tsx` across `/village`, `/simulation`, and overview preview.
-- All checks pass: `pnpm typecheck`, `make lint`, `make check-i18n`, `make test-engine`, and tests green.
+- `main` has P9-T7 (README provenance, `benchmarks/`, Docker Compose `make docker-up`) and PI I0:
+  - PI-T1 `usePlacedModelsStore` (`apps/web/src/stores/placed-models.store.ts`, localStorage try/catch), `sceneScale`, `footprint`.
+  - PI-T2 `buildPlacedModelsGeometry` (`microgrid-3d/utils/placed-models-geometry.ts`): all placed models in one merged
+    mesh, slope plinths in one instanced batch, model stands on its plinth, dimmed when idle/unserved, fire tint.
+    Rebuilt only when `placedGeometryKey` changes; old geometry disposed. Engine untouched (invariance test).
+- PR #49 review fixes: plinth draw calls (was 1 mesh each), model sunk in plinth, geometry rebuilt every render +
+  GPU leak, idle appliance in served sector not dimmed, double remove, duplicated type, raw hex.
 
 ## Next
 
-- Proceed with I1: PI-T3 (Dynamic zones `siteZones(placed)`), PI-T4 (Tree clearing), PI-T5 (Red laterite yard ground).
+- P9-T5 (human): record the 3-min video; link in README line 15. P9-T6 (human): submit before Wed Nov 4 21:00 EST.
+- PI I1: PI-T3 `siteZones(placed)`, PI-T4 tree clearing, PI-T5 laterite yard (`docs/tasks/PI-village-integration.md`).
+- Open: `syncWithAppliances` is not called anywhere yet (stale localStorage entries after a scenario reset are
+  harmless: only markers with a model render it). Design gate screenshots for PI-T2 not taken.
 
 ## Files touched (this session)
 
-`apps/web/src/stores/{placed-models.store.ts,index.ts,__tests__/placed-models.store.test.ts}`,
-`apps/web/src/features/microgrid-3d/{ui/appliance-markers.tsx,ui/village-canvas.tsx,utils/placed-models-geometry.ts,__tests__/{placed-models-geometry.test.ts,appliance-markers-ui.test.tsx}}`,
-`apps/web/src/features/vision-insert/{ui/{appliance-insert.tsx,village-editor-page.tsx},hooks/use-simulation-appliances.ts,__tests__/appliance-insert.test.tsx}`,
-`docs/contracts.md`, `docs/tasks/PI-village-integration.md`, `HANDOFF.md`.
+`apps/web/src/features/microgrid-3d/{ui/appliance-markers.tsx,ui/village-canvas.tsx,utils/placed-models-geometry.ts,__tests__/*}`,
+`apps/web/src/features/vision-insert/ui/appliance-insert.tsx`, `docs/contracts.md`, `HANDOFF.md`.
 
 ## Decisions
 
-- Placed models live exclusively in client visual store; engine remains strictly pure.
-- Merged BufferGeometry ensures ≤ +2 draw calls even with 30 concurrent placed models in the village.
+- Benchmark: essential-first never serves the clinic worse than proportional; critical loads 73.3 % vs 73.7 % under
+  `essential_stress` is reported as a trade-off in `benchmarks/README.md`.
+- Placed models live only in a client visual store; plinth fills lowest → highest footprint point (+4 cm sink).

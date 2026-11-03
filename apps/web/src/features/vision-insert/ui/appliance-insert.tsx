@@ -43,11 +43,6 @@ export function ApplianceInsert({ detection, name, photo, recipe }: ApplianceIns
     }
   };
 
-  const handleRemove = () => {
-    usePlacedModelsStore.getState().remove(id);
-    remove(id);
-  };
-
   return (
     <ApplianceInsertPanel
       draft={draft}
@@ -55,7 +50,7 @@ export function ApplianceInsert({ detection, name, photo, recipe }: ApplianceIns
       inSimulation={Boolean(existing)}
       full={!existing && list.length >= MAX_APPLIANCES}
       onInsert={handleInsert}
-      onRemove={handleRemove}
+      onRemove={() => remove(id)}
     />
   );
 }

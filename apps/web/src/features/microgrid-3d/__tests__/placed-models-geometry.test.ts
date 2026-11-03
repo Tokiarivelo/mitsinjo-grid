@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import type { ObjectRecipe } from '@/lib/object-shape';
-import { buildPlacedModelsGeometry, type PlacedModelItem } from '../utils/placed-models-geometry';
+import {
+  buildPlacedModelsGeometry,
+  placedGeometryKey,
+  type PlacedModelItem,
+} from '../utils/placed-models-geometry';
 
 const SAMPLE_RECIPE: ObjectRecipe = {
   proportions: { w: 1, h: 0.8, d: 0.6 },
@@ -137,5 +141,71 @@ describe('placed-models-geometry (PI-T2)', () => {
     expect(resLow.modelsGeometry).toBeInstanceOf(THREE.BufferGeometry);
     // Box geometry has 24 vertices (or 36 indices)
     expect(resLow.modelsGeometry!.getAttribute('position').count).toBe(24);
+  });
+
+  it('stands the model on top of its plinth on a slope (uphill ground never pokes through)', () => {
+    const item: PlacedModelItem = {
+      id: 'app-hill',
+      sector: 'households',
+      running: true,
+      position: [30, 0, 30],
+      recipe: SAMPLE_RECIPE,
+      scale: 2.0,
+    };
+    const res = buildPlacedModelsGeometry([item]);
+    const plinth = res.plinths[0]!;
+    const plinthTop = plinth.position[1] + plinth.size[1] / 2;
+    res.modelsGeometry!.computeBoundingBox();
+    expect(res.modelsGeometry!.boundingBox!.min.y).toBeCloseTo(plinthTop, 3);
+  });
+
+  it('dims an idle appliance even when its sector is served', () => {
+    const base: PlacedModelItem = {
+      id: 'a',
+      sector: 'water',
+      running: true,
+      position: [0, 0, 0],
+      recipe: SAMPLE_RECIPE,
+    };
+    const served = { water: { unserved: false } };
+    const on = buildPlacedModelsGeometry([base], served).modelsGeometry!.getAttribute('color');
+    const off = buildPlacedModelsGeometry(
+      [{ ...base, running: false }],
+      served
+    ).modelsGeometry!.getAttribute('color');
+    expect(off.getX(0)).toBeLessThan(on.getX(0));
+  });
+
+  describe('placedGeometryKey', () => {
+    const item: PlacedModelItem = {
+      id: 'a',
+      sector: 'water',
+      running: true,
+      position: [1, 0, 2],
+      recipe: SAMPLE_RECIPE,
+    };
+
+    it('is identical for equal inputs built as new objects (no rebuild on re-render)', () => {
+      const k1 = placedGeometryKey([{ ...item }], { water: { unserved: false } }, 'high');
+      const k2 = placedGeometryKey([{ ...item }], { water: { unserved: false } }, 'high');
+      expect(k1).toBe(k2);
+    });
+
+    it('ignores sectors with no placed model', () => {
+      expect(placedGeometryKey([item], { school: { onFire: true } }, 'high')).toBe(
+        placedGeometryKey([item], {}, 'high')
+      );
+    });
+
+    it('changes on move, running state, sector state, tier and a new recipe', () => {
+      const k = placedGeometryKey([item], {}, 'high');
+      expect(placedGeometryKey([{ ...item, position: [2, 0, 2] }], {}, 'high')).not.toBe(k);
+      expect(placedGeometryKey([{ ...item, running: false }], {}, 'high')).not.toBe(k);
+      expect(placedGeometryKey([item], { water: { onFire: true } }, 'high')).not.toBe(k);
+      expect(placedGeometryKey([item], {}, 'low')).not.toBe(k);
+      expect(placedGeometryKey([{ ...item, recipe: { ...SAMPLE_RECIPE } }], {}, 'high')).not.toBe(
+        k
+      );
+    });
   });
 });

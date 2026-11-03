@@ -28,6 +28,7 @@ import { createSceneStats, sampleSceneStats, type SceneStatsSample } from '../ut
 import { applyOvercast, skyPalette } from '../utils/sky-palette';
 import { WEATHER_ATMOSPHERE } from '../utils/weather-atmosphere';
 import { SUN_AZIMUTH_RAD } from '../utils/landscape';
+import type { SectorStateOverride } from '../utils/placed-models-geometry';
 import { SceneStatsProbe } from './scene-stats-probe';
 import { VillageTerrain } from './terrain';
 import { SolarArray } from './solar-array';
@@ -68,7 +69,7 @@ function DraggableApplianceMarkers({
   tagOf: (m: ApplianceMarkerSceneModel) => string;
   htmlPortal?: RefObject<HTMLElement | null>;
   tier?: 'high' | 'low';
-  sectorStatuses?: Partial<Record<SectorId, { unserved?: boolean; onFire?: boolean }>>;
+  sectorStatuses?: Partial<Record<SectorId, SectorStateOverride>>;
 }) {
   const moveMarker = useMoveMarker();
   const { selectedId, dragId, ghostRef, bindMarker } = useMarkerDrag({ onCommit: moveMarker });
@@ -138,7 +139,7 @@ export function VillageCanvas({
   const high = quality === 'high';
 
   const sectorStatuses = useMemo(() => {
-    const map: Partial<Record<SectorId, { unserved?: boolean; onFire?: boolean }>> = {};
+    const map: Partial<Record<SectorId, SectorStateOverride>> = {};
     for (const [id, b] of Object.entries(model.buildings) as [SectorId, BuildingSceneModel][]) {
       map[id] = {
         unserved: b.status === 'unserved' || b.status === 'disconnected',

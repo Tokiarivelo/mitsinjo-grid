@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, type RefObject } from 'react';
+import { useEffect, useMemo, type RefObject } from 'react';
 import { Html, Instance, Instances, Line } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -10,6 +10,7 @@ import type { ApplianceMarkerSceneModel } from '../types';
 import { MARKER_PLINTH_HEX, TOKEN_HEX } from '../utils/scene-palette';
 import {
   buildPlacedModelsGeometry,
+  placedGeometryKey,
   type PlacedModelItem,
   type SectorStateOverride,
 } from '../utils/placed-models-geometry';
@@ -58,7 +59,10 @@ export function ApplianceMarkers({
   sectorStatuses,
 }: ApplianceMarkersProps) {
   const placedModels = usePlacedModelsStore((s) => s.models);
-  const shown = dragId ? markers.filter((m) => m.id !== dragId) : markers;
+  const shown = useMemo(
+    () => (dragId ? markers.filter((m) => m.id !== dragId) : markers),
+    [markers, dragId]
+  );
 
   // Split into 3D modeled appliances and standard box markers
   const modeledMarkers = useMemo(
@@ -88,10 +92,14 @@ export function ApplianceMarkers({
     [modeledMarkers, placedModels]
   );
 
+  // Rebuild the merged mesh only when what it draws changes (not on every scene-model refresh).
+  const geometryKey = placedGeometryKey(placedItems, sectorStatuses, tier);
   const { modelsGeometry, plinths, modelBounds } = useMemo(
     () => buildPlacedModelsGeometry(placedItems, sectorStatuses, tier),
-    [placedItems, sectorStatuses, tier]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- geometryKey covers every input
+    [geometryKey]
   );
+  useEffect(() => () => modelsGeometry?.dispose(), [modelsGeometry]);
 
   // One LineSegments2 for every marker→building link: a single draw call (PP-T3 budget).
   const feederLinks = useMemo(
@@ -132,13 +140,16 @@ export function ApplianceMarkers({
         </mesh>
       )}
 
-      {/* Plinths under models on sloped ground */}
-      {plinths.map((p, idx) => (
-        <mesh key={`plinth-${idx}`} position={p.position} castShadow receiveShadow>
-          <boxGeometry args={p.size} />
+      {/* Plinths under models on sloped ground: one instanced draw call */}
+      {plinths.length > 0 && (
+        <Instances limit={MAX_APPLIANCES} name="placed-model-plinths" castShadow receiveShadow>
+          <boxGeometry args={[1, 1, 1]} />
           <meshStandardMaterial color={MARKER_PLINTH_HEX} roughness={0.8} />
-        </mesh>
-      ))}
+          {plinths.map((p, idx) => (
+            <Instance key={`plinth-${idx}`} position={p.position} scale={p.size} />
+          ))}
+        </Instances>
+      )}
 
       {/* Invisible hit targets for placed models (click/drag support) */}
       {modeledMarkers.map((m) => {

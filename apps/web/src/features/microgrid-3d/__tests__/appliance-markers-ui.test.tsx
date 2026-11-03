@@ -231,4 +231,26 @@ describe('ApplianceMarkers with Placed Models (PI-T2)', () => {
     // Standard instances are completely empty (0 standard markers)
     expect(screen.queryByTestId('mock-instance')).toBeNull();
   });
+
+  it('draws every slope plinth in one instanced batch (no mesh per plinth)', () => {
+    const hills: Appliance[] = Array.from({ length: 3 }, (_, i) => ({
+      ...pump,
+      id: `hill-${i}`,
+      position: { x: 30 + i * 3, z: 30 },
+    }));
+    for (const p of hills) {
+      usePlacedModelsStore.getState().upsert({ applianceId: p.id, recipe, scale: 2.0 });
+    }
+    const { container } = render(
+      <ApplianceMarkers
+        markers={applianceMarkers(hills, SECTOR_POSITIONS, 12)}
+        selectedSector={null}
+        tagOf={(m) => m.name}
+      />
+    );
+    const meshes = container.querySelectorAll('mesh');
+    // merged models + one invisible hit target per model; plinths are Instance children
+    expect(meshes).toHaveLength(1 + hills.length);
+    expect(screen.getAllByTestId('mock-instance').length).toBeGreaterThan(0);
+  });
 });

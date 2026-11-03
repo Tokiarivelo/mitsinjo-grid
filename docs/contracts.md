@@ -269,7 +269,7 @@ in visual store `usePlacedModelsStore` (`apps/web/src/stores/placed-models.store
 Helpers:
 `sceneScale(archetype, proportions)` → target scene scale (house ≈ 3.8, vehicle ≈ 2.4, cabinet/fridge ≈ 1.0, machine/pump ≈ 0.9).
 `footprint(recipe, scale, yaw)` → `{ radius: number, box: FootprintBox }`.
-Rendering (PI-T2): `buildPlacedModelsGeometry` merges all placed models into a single `BufferGeometry` (≤ +2 draw calls budget for up to 30 objects), sits on `terrainHeight` taking footprint slope into account (concrete plinth if slope > 0.04), reflects departure states (dimmed if unserved, fiery red alert if sector on fire). Un-modeled appliances fall back to standard instanced markers.
+Rendering (PI-T2): `buildPlacedModelsGeometry` merges all placed models into a single `BufferGeometry` (≤ +2 draw calls budget for up to 30 objects), sits on `terrainHeight` at the footprint's lowest point; on a slope (> 0.04) it stands on a plinth (one instanced batch) reaching the highest point; reflects departure states (dimmed if unserved or not drawing power, fiery red alert if sector on fire); rebuilt only when `placedGeometryKey` changes. Un-modeled appliances fall back to standard instanced markers.
 2D diagram sector card adds « n added » when appliances feed the sector (`appliancesPerSector`).
 3D `SceneModel.weather: WeatherId` (from `toSceneModel({ weather })`, default `sunny`): drives sky, clouds and rain only.
 

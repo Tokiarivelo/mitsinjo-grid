@@ -5,6 +5,7 @@ import type { KitArchetype } from '@/lib/object-kit';
 import type { ObjectRecipe } from '@/lib/object-shape';
 import { recipeMesh } from '@/features/vision-insert/utils/object-geometry';
 import { terrainHeight } from './landscape';
+import { TOKEN_HEX } from './scene-palette';
 import { footprint, sceneScale } from '@/stores/placed-models.store';
 
 export interface PlacedModelItem {
@@ -38,6 +39,11 @@ export interface SectorStateOverride {
 }
 
 const tmpColor = new THREE.Color();
+
+/** Ground height difference over the footprint above which the model stands on a plinth. */
+export const PLINTH_SLOPE_MIN = 0.04;
+/** Plinth sinks this far below the lowest ground point (no gap on the downhill side). */
+const PLINTH_SINK = 0.04;
 
 /**
  * Builds a single merged BufferGeometry for all placed models (PI-T2):
@@ -79,12 +85,16 @@ export function buildPlacedModelsGeometry(
     const maxH = Math.max(hCenter, h1, h2, h3, h4);
     const slope = maxH - baseH;
 
-    // Add plinth if terrain is significantly sloped
-    if (slope > 0.04) {
+    // On a slope, a plinth fills from the lowest point to the highest and the model stands on top,
+    // so the uphill ground never pokes through the model.
+    let restY = baseH;
+    if (slope > PLINTH_SLOPE_MIN) {
+      const bottom = baseH - PLINTH_SINK;
       plinths.push({
-        position: [x, (baseH + maxH) / 2, z],
-        size: [fp.box.width + 0.1, Math.max(0.08, slope + 0.04), fp.box.depth + 0.1],
+        position: [x, (bottom + maxH) / 2, z],
+        size: [fp.box.width + 0.1, maxH - bottom, fp.box.depth + 0.1],
       });
+      restY = maxH;
     }
 
     let g: THREE.BufferGeometry;
@@ -92,7 +102,7 @@ export function buildPlacedModelsGeometry(
       // Simple LOD box on low tier
       const height = item.recipe.proportions.h * effScale;
       g = new THREE.BoxGeometry(fp.box.width, height, fp.box.depth);
-      const mainColor = item.recipe.parts[0]?.color ?? '#64748b';
+      const mainColor = item.recipe.parts[0]?.color ?? TOKEN_HEX.idle;
       tmpColor.set(mainColor);
       const count = g.getAttribute('position').count;
       const colors = new Float32Array(count * 3);
@@ -123,13 +133,14 @@ export function buildPlacedModelsGeometry(
     if (tier !== 'low') {
       g.scale(effScale, effScale, effScale);
     }
-    // Translate so bottom of model rests on baseH
-    g.translate(x, baseH - bottomY * (tier === 'low' ? 1 : effScale), z);
+    // Translate so the bottom of the model rests on the ground (or its plinth)
+    g.translate(x, restY - bottomY * (tier === 'low' ? 1 : effScale), z);
 
     // Apply feeder / departure states to vertex colors
     const sec = sectorStatus?.[item.sector];
     const onFire = sec?.onFire ?? false;
-    const unserved = sec?.unserved ?? !item.running;
+    // Dimmed when the sector is unserved or the appliance draws nothing now (same as the box markers).
+    const unserved = (sec?.unserved ?? false) || !item.running;
 
     const colorAttr = g.getAttribute('color');
     if (colorAttr) {
@@ -165,4 +176,37 @@ export function buildPlacedModelsGeometry(
     plinths,
     modelBounds,
   };
+}
+
+/** Stable signature of everything `buildPlacedModelsGeometry` reads (recipes are replaced, never mutated). */
+export function placedGeometryKey(
+  items: readonly PlacedModelItem[],
+  sectorStatuses: Partial<Record<SectorId, SectorStateOverride>> | undefined,
+  tier: 'high' | 'low'
+): string {
+  const sectors = new Set(items.map((i) => i.sector));
+  const status = [...sectors]
+    .sort()
+    .map(
+      (id) =>
+        `${id}:${sectorStatuses?.[id]?.unserved ? 1 : 0}${sectorStatuses?.[id]?.onFire ? 1 : 0}`
+    )
+    .join(',');
+  const parts = items.map(
+    (i) =>
+      `${i.id}@${i.position.join(',')}:${i.running ? 1 : 0}:${i.scale ?? ''}:${i.yaw ?? ''}:${i.archetype ?? ''}:${recipeId(i.recipe)}`
+  );
+  return `${tier}|${status}|${parts.join(';')}`;
+}
+
+/** Identity tag per recipe object, so a new recipe for the same appliance changes the key. */
+const recipeIdMap = new WeakMap<object, number>();
+let nextRecipeId = 0;
+function recipeId(recipe: object): number {
+  let id = recipeIdMap.get(recipe);
+  if (id === undefined) {
+    id = ++nextRecipeId;
+    recipeIdMap.set(recipe, id);
+  }
+  return id;
 }
