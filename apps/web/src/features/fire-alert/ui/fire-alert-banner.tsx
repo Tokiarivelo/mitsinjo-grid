@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Flame } from 'lucide-react';
+import { AlertTriangle, Flame } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { fmtHour } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
@@ -15,14 +15,24 @@ export interface FireAlertBannerProps {
   className?: string;
 }
 
-/** Big red warning while a fire burns (M2-T2): sectors cut, since when, what happens next. */
+/** Big red warning while a fire burns or critical incident triggers (M2-T2, PA-T4c). */
 export function FireAlertBanner({ fires, compact = false, className }: FireAlertBannerProps) {
   const t = useTranslations('features.fireAlert');
+  const tDispatch = useTranslations('features.dispatch');
   const tSectors = useTranslations('sectors');
   if (fires.length === 0) return null;
 
+  const hasFire = fires.some((f) => !f.kind || f.kind === 'fire');
   const sectors = fires.map((f) => tSectors(f.sector)).join(', ');
   const since = fmtHour(Math.min(...fires.map((f) => f.startHour)));
+
+  const title = hasFire ? t('bannerTitle', { sectors }) : tDispatch('criticalAlert', { sectors });
+
+  const desc = hasFire
+    ? t('bannerDesc', { hour: since })
+    : tDispatch('criticalForecastDesc', { hour: since });
+
+  const Icon = hasFire ? Flame : AlertTriangle;
 
   if (compact) {
     return (
@@ -33,8 +43,8 @@ export function FireAlertBanner({ fires, compact = false, className }: FireAlert
           className
         )}
       >
-        <Flame className="h-4 w-4 shrink-0 motion-safe:animate-pulse" aria-hidden="true" />
-        <span className="min-w-0">{t('bannerTitle', { sectors })}</span>
+        <Icon className="h-4 w-4 shrink-0 motion-safe:animate-pulse" aria-hidden="true" />
+        <span className="min-w-0">{title}</span>
         <span className="shrink-0 font-mono text-[10px] text-text-secondary">{since}</span>
       </div>
     );
@@ -51,7 +61,7 @@ export function FireAlertBanner({ fires, compact = false, className }: FireAlert
       <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 p-4 md:p-5 bg-critical-red/10">
         <div className="flex items-start gap-3 min-w-0 flex-1">
           <span className="shrink-0 h-12 w-12 rounded-full bg-critical-red/20 border border-critical-red/50 flex items-center justify-center">
-            <Flame
+            <Icon
               className="h-7 w-7 text-critical-red motion-safe:animate-pulse"
               aria-hidden="true"
             />
@@ -59,15 +69,13 @@ export function FireAlertBanner({ fires, compact = false, className }: FireAlert
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-display text-base md:text-lg font-bold text-critical-red">
-                {t('bannerTitle', { sectors })}
+                {title}
               </h2>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold uppercase border border-border text-text-secondary">
                 {t('simulatedTag')}
               </span>
             </div>
-            <p className="mt-1 text-xs md:text-sm text-text-primary leading-relaxed">
-              {t('bannerDesc', { hour: since })}
-            </p>
+            <p className="mt-1 text-xs md:text-sm text-text-primary leading-relaxed">{desc}</p>
           </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 shrink-0">

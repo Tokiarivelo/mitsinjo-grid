@@ -19,6 +19,8 @@ export interface VillageBuildingsProps {
   priorityLabels: Record<Priority, string>;
   /** Badge text for a sector at load 0 ("Not connected"). */
   disconnectedLabel: string;
+  /** Small "AI" tag on every label while the AI dispatches alone (PA-T4c); hidden when unset. */
+  aiBadgeLabel?: string;
   /** Stable DOM parent for labels (see VillageCanvas). */
   htmlPortal?: RefObject<HTMLElement | null>;
   /** Time-of-day lamp factor from the sky palette (dusk/night → 1, afternoon → low). */
@@ -39,6 +41,7 @@ interface BuildingFrameProps extends FrameLayout {
   priorityLabel: string;
   /** Shown instead of the coverage when the sector's load is 0. */
   disconnectedLabel: string;
+  aiBadgeLabel?: string;
   htmlPortal?: RefObject<HTMLElement | null>;
   children: ReactNode;
 }
@@ -64,6 +67,7 @@ function BuildingFrame({
   sectorName,
   priorityLabel,
   disconnectedLabel,
+  aiBadgeLabel,
   ringInner,
   ledY,
   htmlPortal,
@@ -103,6 +107,14 @@ function BuildingFrame({
         </mesh>
       )}
 
+      {/* Alert Ground Ring (blinking in critical red, PA-T4c) */}
+      {(model.inAlert || model.onFire) && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
+          <ringGeometry args={[ringInner - 0.1, ringInner + 0.35, 32]} />
+          <meshBasicMaterial color={TOKEN_HEX.criticalRed} transparent opacity={0.65} />
+        </mesh>
+      )}
+
       {/* Building Apex Status Beacon */}
       <mesh position={[0, ledY, 0]}>
         <sphereGeometry args={[0.16, 16, 12]} />
@@ -125,7 +137,9 @@ function BuildingFrame({
             'flex items-center gap-2 px-3 py-1.5 rounded-full shadow-xl backdrop-blur-md text-[11px] font-sans border transition-all cursor-pointer whitespace-nowrap',
             isSelected
               ? 'bg-surface-elevated/95 border-energy-cyan ring-2 ring-energy-cyan/50 scale-105'
-              : 'bg-surface/90 border border-border hover:border-text-secondary hover:bg-surface-hover'
+              : model.inAlert || model.onFire
+                ? 'bg-surface-elevated/95 border-critical-red ring-2 ring-critical-red/50 motion-safe:animate-pulse'
+                : 'bg-surface/90 border border-border hover:border-text-secondary hover:bg-surface-hover'
           )}
         >
           <div
@@ -137,7 +151,14 @@ function BuildingFrame({
             <SectorIcon sector={id} className="w-3.5 h-3.5" />
           </div>
           <div className="flex flex-col text-left leading-tight">
-            <span className="font-semibold text-text-primary text-[11px]">{sectorName}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-text-primary text-[11px]">{sectorName}</span>
+              {aiBadgeLabel && (
+                <span className="px-1 py-px rounded text-[9px] font-mono font-bold bg-ai-violet/20 text-ai-violet border border-ai-violet/40">
+                  {aiBadgeLabel}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-1.5 font-mono text-[10px]">
               <span
                 className={cn('w-1.5 h-1.5 rounded-full shrink-0', STATUS_BG_CLASS[statusColor])}
@@ -168,6 +189,7 @@ export function VillageBuildings({
   sectorNames,
   priorityLabels,
   disconnectedLabel,
+  aiBadgeLabel,
   htmlPortal,
   lampGlow = 1,
 }: VillageBuildingsProps) {
@@ -186,6 +208,7 @@ export function VillageBuildings({
             sectorName={sectorNames[id]}
             priorityLabel={priorityLabels[model.priority]}
             disconnectedLabel={disconnectedLabel}
+            aiBadgeLabel={aiBadgeLabel}
             htmlPortal={htmlPortal}
             {...BODY_LAYOUT[id]}
           >

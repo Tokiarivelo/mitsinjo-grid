@@ -116,16 +116,18 @@ autonome » attend PA-3.
 - [x] **PA-T3b** Hook `useAiDispatch` (remplace `useAutopilot`) : sur chaque nouvelle heure de lecture en mode
       autonome → détecter → décider → appliquer → journaliser. Mode assisté = comportement M10 actuel (propositions).
       **Done when** lecture de `village_fire` en mode IA : 2 incidents, 2 isolations, alerte, journal de ≥ 4 lignes.
+      La boucle autonome vit dans `useAutonomousDispatch`, montée **une seule fois** par `SimulationPage`
+      (`useAiDispatch` garde l'état du mode assisté) : deux montages appliqueraient chaque action deux fois.
 - [x] **PA-T3c** En mode IA, `propose_change` du copilote s'applique seul après constitution, journalisé « demandé
       par l'opérateur ». En mode manuel, rien ne change.
 
 ### PA-4 — UI · J6
 
-- [ ] **PA-T4a** Bascule 3 niveaux (en-tête, barre latérale, `MobileNav`) ; badge permanent « IA AUX COMMANDES »
+- [x] **PA-T4a** Bascule 3 niveaux (en-tête, barre latérale, `MobileNav`) ; badge permanent « IA AUX COMMANDES »
       (ai-violet) + bouton « Reprendre la main » ≥ 44 px.
-- [ ] **PA-T4b** Panneau « Journal des événements » (simulation + colonne copilote) : sévérité, heure, texte IA
+- [x] **PA-T4b** Panneau « Journal des événements » (simulation + colonne copilote) : sévérité, heure, texte IA
       distinct des chiffres, filtre, export JSON/CSV, clic → heure + secteur.
-- [ ] **PA-T4c** Alertes : réutiliser bannière/toasts incendie pour tout incident `critical` ; 3D : zone qui clignote.
+- [x] **PA-T4c** Alertes : réutiliser bannière/toasts incendie pour tout incident `critical` ; 3D : zone qui clignote.
       i18n EN/FR/MG, clair/sombre, 320 px. Captures `make shots` (design gate).
 
 ### PA-5 — Narration IA et copilote · J7

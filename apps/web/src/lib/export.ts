@@ -171,13 +171,10 @@ export function generateSummaryMarkdown(
   return lines.join('\n');
 }
 
-/**
- * Triggers a browser download of a JSON object.
- */
-export function downloadJsonFile(filename: string, data: unknown): void {
+/** Triggers a browser download of a text file (CSV, Markdown…). */
+export function downloadTextFile(filename: string, text: string, mime = 'text/plain'): void {
   if (typeof window === 'undefined') return;
-  const jsonStr = JSON.stringify(data, null, 2);
-  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const blob = new Blob([text], { type: `${mime};charset=utf-8` });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -186,6 +183,11 @@ export function downloadJsonFile(filename: string, data: unknown): void {
   anchor.click();
   document.body.removeChild(anchor);
   URL.revokeObjectURL(url);
+}
+
+/** Triggers a browser download of a JSON object. */
+export function downloadJsonFile(filename: string, data: unknown): void {
+  downloadTextFile(filename, JSON.stringify(data, null, 2), 'application/json');
 }
 
 /**

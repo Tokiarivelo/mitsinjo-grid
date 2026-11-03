@@ -143,4 +143,30 @@ describe('fire alarm UI', () => {
     expect(screen.getByText(/FIRE: Local Market & Artisans cut off/)).toBeInTheDocument();
     expect(screen.getByText(/Fire reported: Local Market & Artisans/)).toBeInTheDocument();
   });
+
+  it('renders critical alert banner and snackbar for critical_forecast incidents (PA-T4c)', async () => {
+    const { FireAlertBanner } = await import('../ui/fire-alert-banner');
+    const { FireSnackbars } = await import('../ui/fire-snackbars');
+
+    const forecastAlert = {
+      key: 'critical_forecast:health:18',
+      sector: 'health' as const,
+      startHour: 18,
+      kind: 'critical_forecast',
+    };
+
+    render(
+      <I18nProvider>
+        <FireAlertBanner fires={[forecastAlert]} />
+        <FireSnackbars items={[forecastAlert]} onDismiss={vi.fn()} />
+      </I18nProvider>
+    );
+
+    // Shows critical alert banner & snackbar
+    const banners = screen.getAllByRole('alert');
+    expect(banners.some((b) => b.textContent?.includes('CRITICAL ALERT: Health Clinic'))).toBe(
+      true
+    );
+    expect(screen.getAllByText(/Power shortfall forecasted at hour 18:00/)).toHaveLength(2);
+  });
 });

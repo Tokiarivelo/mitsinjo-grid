@@ -2,6 +2,13 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { resetSimulationStore, useSimulationStore } from '@/stores';
 import { useAiDispatch } from '../use-ai-dispatch';
+import { useAutonomousDispatch } from '../use-autonomous-dispatch';
+
+/** Page wiring: the loop mounted once + the panel hook. */
+function usePageDispatch() {
+  useAutonomousDispatch();
+  return useAiDispatch();
+}
 
 describe('useAiDispatch (PA-T3b, autonomous dispatch)', () => {
   beforeEach(() => {
@@ -15,7 +22,7 @@ describe('useAiDispatch (PA-T3b, autonomous dispatch)', () => {
       useSimulationStore.getState().setTimeIndex(13);
     });
 
-    const { result } = renderHook(() => useAiDispatch());
+    const { result } = renderHook(() => usePageDispatch());
     expect(result.current.dispatchMode).toBe('autonomous');
 
     // Hour 13: no active fire yet
@@ -74,7 +81,7 @@ describe('useAiDispatch (PA-T3b, autonomous dispatch)', () => {
       useSimulationStore.getState().setTimeIndex(13);
     });
 
-    const { result } = renderHook(() => useAiDispatch());
+    const { result } = renderHook(() => usePageDispatch());
 
     // Advance to 14: auto-isolates market
     act(() => {
@@ -112,7 +119,7 @@ describe('useAiDispatch (PA-T3b, autonomous dispatch)', () => {
       useSimulationStore.getState().setTimeIndex(14);
     });
 
-    renderHook(() => useAiDispatch());
+    renderHook(() => usePageDispatch());
 
     expect(
       useSimulationStore
@@ -133,5 +140,39 @@ describe('useAiDispatch (PA-T3b, autonomous dispatch)', () => {
           .input.sectorCaps?.some((c) => c.sector === 'market' && c.maxKw === 0)
       )
     ).toBe(false);
+  });
+
+  it('PR #39 regression: page loop + deck panel hook apply and log each action once', () => {
+    act(() => {
+      useSimulationStore.getState().loadScenario('village_fire');
+      useSimulationStore.getState().setDispatchMode('autonomous');
+      useSimulationStore.getState().setTimeIndex(13);
+    });
+
+    // SimulationPage mounts the loop, AutopilotPanel mounts useAiDispatch (alias useAutopilot).
+    renderHook(() => usePageDispatch());
+    renderHook(() => useAiDispatch());
+
+    act(() => {
+      useSimulationStore.getState().setTimeIndex(14);
+    });
+
+    const log = useSimulationStore.getState().dispatchLog;
+    const isolations = log.filter(
+      (e) => e.action?.kind === 'isolate_sector' && e.action?.sector === 'market'
+    );
+    const fires = log.filter((e) => e.incident?.kind === 'fire' && e.incident?.sector === 'market');
+    expect(isolations).toHaveLength(1);
+    expect(fires).toHaveLength(1);
+  });
+
+  it('useAiDispatch alone never runs the autonomous loop', () => {
+    act(() => {
+      useSimulationStore.getState().loadScenario('village_fire');
+      useSimulationStore.getState().setDispatchMode('autonomous');
+      useSimulationStore.getState().setTimeIndex(14);
+    });
+    renderHook(() => useAiDispatch());
+    expect(useSimulationStore.getState().dispatchLog).toHaveLength(0);
   });
 });

@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { DispatchLogEntrySchema, dispatchLogHash, scenarios, simulate } from '@mitsinjo/engine';
 import {
+  DispatchLogEntrySchema,
+  detectIncidents,
+  dispatchLogHash,
+  scenarios,
+  simulate,
+} from '@mitsinjo/engine';
+import {
+  criticalSectorIncidents,
+  dispatchLogToCsv,
+  entrySavedKwh,
+  entrySector,
   operatorAutoAction,
   operatorLogEntry,
   resultSnapshot,
@@ -82,5 +92,70 @@ describe('dispatch-log helpers (PA-T3c)', () => {
     expect(entry.narration?.text).toHaveLength(400);
     const { hash, ...draft } = entry;
     expect(hash).toBe(dispatchLogHash(draft));
+  });
+});
+
+describe('dispatch-log view helpers (PA-T4b/c)', () => {
+  const snap = (unservedKwh: number, socEndPct: number) => ({
+    resultId: 'r',
+    unservedKwh,
+    criticalUnservedKwh: 0,
+    socEndPct,
+  });
+  const action = sealLogEntry({
+    id: 'a1',
+    day: 0,
+    hour: 14,
+    mode: 'autonomous',
+    origin: 'ai',
+    action: { kind: 'cap_sector', sector: 'market', patch: { sectorCaps: [] } } as never,
+    before: snap(5, 40),
+    after: snap(3.5, 42),
+    narration: { text: 'Cap market, "peak", now', source: 'llm' },
+  });
+  const incident = sealLogEntry({
+    id: 'i1',
+    day: 0,
+    hour: 14,
+    mode: 'autonomous',
+    origin: 'ai',
+    incident: {
+      kind: 'fire',
+      severity: 'critical',
+      sector: 'water',
+      hour: 14,
+      evidence: {},
+    } as never,
+  });
+
+  it('entrySector prefers the incident sector, else the action sector', () => {
+    expect(entrySector(action)).toBe('market');
+    expect(entrySector(incident)).toBe('water');
+  });
+
+  it('entrySavedKwh is the engine before − after, never negative, 0 without figures', () => {
+    expect(entrySavedKwh(action)).toBeCloseTo(1.5);
+    expect(entrySavedKwh(incident)).toBe(0);
+    expect(entrySavedKwh({ ...action, before: snap(1, 40), after: snap(2, 40) })).toBe(0);
+  });
+
+  it('dispatchLogToCsv writes a header + one row per line and escapes quotes/commas', () => {
+    const lines = dispatchLogToCsv([action, incident]).split('\n');
+    expect(lines).toHaveLength(3);
+    expect(lines[0]!.startsWith('id,day,hour,mode,origin,type,severity,kind,sector')).toBe(true);
+    expect(lines[1]).toContain(',action,,cap_sector,market,5,3.5,0,0,40,42,');
+    expect(lines[1]).toContain('"Cap market, ""peak"", now"');
+    expect(lines[2]).toContain(',incident,critical,fire,water,');
+  });
+
+  it('criticalSectorIncidents keeps only critical incidents tied to a sector', () => {
+    const fire = scenarios.village_fire.input;
+    const r = simulate(fire, 'proportional');
+    for (let h = 0; h < 24; h++) {
+      const all = detectIncidents(fire, r, h, 3, 0);
+      const crit = criticalSectorIncidents(fire, r, h);
+      expect(crit).toEqual(all.filter((i) => i.severity === 'critical' && i.sector));
+    }
+    expect(criticalSectorIncidents(fire, r, 14).some((i) => i.kind === 'fire')).toBe(true);
   });
 });

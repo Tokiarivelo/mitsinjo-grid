@@ -36,6 +36,7 @@ import { ToolActivity } from './tool-activity';
 import { SuggestedPrompts } from './suggested-prompts';
 import { ContextPanel } from './context-panel';
 import { MeetingPanel } from './meeting-panel';
+import { DispatchLogPanel } from '@/features/autopilot';
 import { MediaLightboxModal, type ActiveMedia } from './media-lightbox-modal';
 import { CanvasSketchDialog } from './canvas-sketch-dialog';
 
@@ -600,6 +601,9 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
             </div>
             <div className={cn(mobileTab === 'meeting' && 'hidden xl:block')}>
               <ContextPanel className="w-full" />
+            </div>
+            <div className={cn(mobileTab === 'meeting' && 'hidden xl:block')}>
+              <DispatchLogPanel compact className="w-full" />
             </div>
           </div>
         )}

@@ -8,6 +8,7 @@ import { StatusBadge, type StatusBadgeVariant } from '@/components/ui/status-bad
 import { ScenarioSelector, type ScenarioOption } from '@/components/ui/scenario-selector';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
+import { DispatchModeToggle } from '@/features/autopilot';
 import { useTranslations } from '@/lib/i18n';
 
 export interface HeaderProps {
@@ -104,6 +105,9 @@ export function Header({
             />
           </div>
         )}
+
+        {/* Dispatch mode: Manual / Assisted / Autonomous (PA-T4a) */}
+        <DispatchModeToggle variant="header" />
 
         {/* Status badge */}
         <div className="hidden sm:block">
