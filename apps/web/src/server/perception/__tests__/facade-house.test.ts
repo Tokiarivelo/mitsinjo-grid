@@ -7,6 +7,8 @@ import {
   depthRatio,
   facadeHouseRecipe,
   fuseDepth,
+  gableShare,
+  MIN_HIP_CLIP,
   measureElevation,
   paneGrid,
   doorGlazing,
@@ -161,6 +163,67 @@ describe('roof kind and side checks', () => {
     expect(roofKind(peak, null)).toEqual({ kind: 'gable', ridge: 0 });
     expect(roofKind(peak, { ...side(), ridge: 1 }).kind).toBe('gable');
     expect(roofKind(peak, { ...side(), ridge: 0.05 })).toEqual({ kind: 'hip', ridge: 0 });
+  });
+
+  // Live thatched front (2026-11-03): ridge 0.86, the ends stand vertical from the eave to ~2/3
+  // of the roof height, then a small hip (a half-hip the builder used to flatten to a side gable).
+  const HALF_HIP: Array<[number, number]> = [
+    [0.2133, 0.1928],
+    [0.309, 0.1981],
+    [0.6902, 0.1981],
+    [0.7848, 0.1923],
+    [0.7883, 0.214],
+    [0.8137, 0.2497],
+    [0.8348, 0.2685],
+    [0.85, 0.2913],
+    [0.8773, 0.357],
+    [0.8773, 0.3617],
+    [0.868, 0.3757],
+    [0.8688, 0.5551],
+    [0.8648, 0.5856],
+    [0.8621, 0.5897],
+    [0.8504, 0.5932],
+    [0.141, 0.592],
+    [0.1352, 0.5856],
+    [0.132, 0.5657],
+    [0.1328, 0.3781],
+    [0.1297, 0.3687],
+    [0.1234, 0.3628],
+    [0.1227, 0.3558],
+    [0.15, 0.2913],
+    [0.1676, 0.2649],
+    [0.1871, 0.2485],
+    [0.2094, 0.2186],
+    [0.2125, 0.2116],
+  ];
+  const halfHip = (): Elevation => ({
+    ...front(),
+    left: 0.1227,
+    right: 0.8773,
+    top: 0.1923,
+    eave: 0.5932,
+    bottom: 0.8875,
+    ridge: 0.86,
+    chimneys: [],
+    roofRings: [HALF_HIP],
+  });
+
+  it('half-hip (PG-T22): vertical ends read on the front outline → hip with its clip', () => {
+    const share = gableShare(halfHip())!;
+    expect(share).toBeGreaterThan(0.5);
+    expect(share).toBeLessThan(0.8);
+    expect(roofKind(halfHip(), null)).toEqual({ kind: 'hip', ridge: 0.86, clip: share });
+    const roof = facadeHouseRecipe({ front: halfHip(), side: null, colors: COLORS }).parts.find(
+      (p) => p.kind === 'roof'
+    )!;
+    expect(roof.shape).toBe('hip');
+    expect(roof.clip).toBeCloseTo(share, 6);
+  });
+
+  it('a full hip slopes to its corners: no clip (regression: the plain trapezoid stays a hip)', () => {
+    expect(gableShare(front())!).toBeLessThan(MIN_HIP_CLIP);
+    expect(roofKind(front(), side()).clip).toBeUndefined();
+    expect(gableShare({ ...front(), roofRings: undefined })).toBeNull();
   });
 
   it('the side prompt asks for the roof end or its long slope', () => {

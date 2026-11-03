@@ -2,6 +2,7 @@ import type { ApplianceCategory } from '@mitsinjo/engine';
 import type { KitArchetype } from '@/lib/object-kit';
 import type { SceneryType } from '@/lib/vision';
 import type { UsageSample } from '@/server/spend';
+import type { StageSheet } from './shape-script-prompt';
 import type {
   CriticResult,
   ViewsCheckResult,
@@ -95,7 +96,8 @@ export interface PerceptionBackend {
   proposeShapeOps?(
     imageUrl: string,
     question: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    sheet?: StageSheet
   ): Promise<PerceptionCall<ShapeOpsResult>>;
 }
 

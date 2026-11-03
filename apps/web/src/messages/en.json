@@ -1040,7 +1040,16 @@
           "massing": "Massing",
           "roof": "Roof",
           "openings": "Openings",
-          "accessories": "Accessories"
+          "accessories": "Accessories",
+          "body": "Body",
+          "glass": "Glass",
+          "wheels": "Wheels",
+          "doors": "Doors and panels",
+          "cells": "Solar cells",
+          "trunk": "Trunk",
+          "crown": "Crown",
+          "head": "Head",
+          "details": "Details"
         },
         "cause": {
           "timeout": "time is up",

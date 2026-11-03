@@ -14,11 +14,23 @@ import {
   STAGE_MIN_MS,
   type Proposer,
   type StageResult,
+  type StageScorer,
   type StageSpec,
   houseCanEdit,
   houseStageScorer,
   runShapeStages,
 } from './shape-stages';
+import type { KitArchetype } from '@/lib/object-kit';
+import type { Component } from '@/lib/shape-script';
+import { viewsSheet, type ObjectViews } from './object-views';
+import type { StageSheet } from './shape-script-prompt';
+import {
+  VIEW_STAGES,
+  type ViewStage,
+  scoreViews,
+  viewStageNotes,
+  viewStageScorer,
+} from './view-stages';
 
 /**
  * Spark as the stage proposer (PG-T15): builds the stage sheet (drawing | model | diff), asks
@@ -127,7 +139,7 @@ export function sparkStageProposer(input: SparkStageInput): Proposer<ElevationSt
   };
 }
 
-/** One stage event of the facade loop, as streamed (`shape_stage`, without the job id). */
+/** One stage event of a staged loop, as streamed (`shape_stage`, without the job id). */
 export type StageProgress = Omit<ShapeStageEvent, 'jobId'>;
 
 /** The stages left after the first answer, to run in the background (PG-T18). */
@@ -142,42 +154,40 @@ export interface StagesContinuation {
   }): Promise<{ recipe: ObjectRecipe; cause?: 'timeout' | 'error' | 'aborted' }>;
 }
 
-export interface FacadeLoopInput extends Omit<SparkStageInput, 'drawing'> {
-  recipe: ObjectRecipe;
-  /** Fetched once, on the first round that needs it. */
-  drawing: () => Promise<Buffer | null>;
+interface LoopTiming {
   /** Time left for the first answer's stages (ms); below `STAGE_MIN_MS` every stage waits. */
   firstBudgetMs: number;
   signal?: AbortSignal;
   onProgress?: (e: StageProgress) => void;
 }
 
-/**
- * The facade house loop (PG-T16…T18): stages that fit the first answer's budget run now; the
- * others come back as a continuation for the background. Swatches and dimension statuses of
- * the built model are kept on every staged model.
- */
-export async function facadeStageLoop(input: FacadeLoopInput): Promise<{
+export interface StagedLoopInput<S extends ShapeStageId> extends LoopTiming {
   recipe: ObjectRecipe;
-  rest: StagesContinuation | null;
-}> {
-  const total = HOUSE_STAGES.length;
+  stages: ReadonlyArray<StageSpec<S>>;
+  score: StageScorer<S>;
+  propose: Proposer<S>;
+  canEdit?: (c: Component) => boolean;
+}
+
+/**
+ * A staged loop split in two (PG-T16…T18, any archetype since PG-T20): the stages that fit the
+ * first answer's budget run now, the others come back as a continuation for the background.
+ * Swatches and dimension statuses of the built model are kept on every staged model.
+ */
+export async function stagedLoop<S extends ShapeStageId>(
+  input: StagedLoopInput<S>
+): Promise<{ recipe: ObjectRecipe; rest: StagesContinuation | null }> {
+  const total = input.stages.length;
   const keep = (r: ObjectRecipe): ObjectRecipe => ({
     ...r,
     ...(input.recipe.swatches ? { swatches: input.recipe.swatches } : {}),
     ...(input.recipe.dimStatus ? { dimStatus: input.recipe.dimStatus } : {}),
   });
-  let drawing: Promise<Buffer | null> | null = null;
-  const propose: Proposer<ElevationStage> = async (ctx) => {
-    drawing ??= input.drawing().catch(() => null);
-    return sparkStageProposer({ ...input, drawing: await drawing })(ctx);
-  };
-  const score = houseStageScorer(input.front, input.roofRings);
-  const position = (id: ElevationStage) => HOUSE_STAGES.findIndex((st) => st.id === id) + 1;
+  const position = (id: S) => input.stages.findIndex((st) => st.id === id) + 1;
   const stream = (phase: StageProgress['phase'], emit?: (e: StageProgress) => void) => ({
-    onStageStart: (st: { id: ElevationStage }) =>
+    onStageStart: (st: { id: S }) =>
       emit?.({ phase, index: position(st.id), total, stage: st.id, state: 'running' }),
-    onStage: (res: StageResult<ElevationStage>, recipe: ObjectRecipe) => {
+    onStage: (res: StageResult<S>, recipe: ObjectRecipe) => {
       if (res.stop === 'timeout' || res.stop === 'skipped') return;
       emit?.({
         phase,
@@ -192,21 +202,24 @@ export async function facadeStageLoop(input: FacadeLoopInput): Promise<{
       });
     },
   });
+  const common = {
+    score: input.score,
+    propose: input.propose,
+    ...(input.canEdit ? { canEdit: input.canEdit } : {}),
+  };
   let recipe = input.recipe;
-  let remaining: ReadonlyArray<StageSpec<ElevationStage>> = HOUSE_STAGES;
+  let remaining: ReadonlyArray<StageSpec<S>> = input.stages;
   if (input.firstBudgetMs >= STAGE_MIN_MS) {
     const first = await runShapeStages({
+      ...common,
       seed: recipeToScript(recipe),
-      stages: HOUSE_STAGES,
-      score,
-      canEdit: houseCanEdit,
-      propose,
+      stages: input.stages,
       budgetMs: input.firstBudgetMs,
       ...(input.signal ? { signal: input.signal } : {}),
       ...stream('first', input.onProgress),
     });
     recipe = keep(first.recipe);
-    remaining = HOUSE_STAGES.filter((_, i) => {
+    remaining = input.stages.filter((_, i) => {
       const stop = first.stages[i]?.stop;
       return stop === 'timeout' || stop === 'skipped';
     });
@@ -221,11 +234,9 @@ export async function facadeStageLoop(input: FacadeLoopInput): Promise<{
       run: async ({ budgetMs, signal, onProgress }) => {
         try {
           const res = await runShapeStages({
+            ...common,
             seed: recipeToScript(seed),
             stages: remaining,
-            score,
-            canEdit: houseCanEdit,
-            propose,
             budgetMs,
             ...(signal ? { signal } : {}),
             ...stream('background', onProgress),
@@ -246,6 +257,78 @@ export async function facadeStageLoop(input: FacadeLoopInput): Promise<{
       },
     },
   };
+}
+
+/** Fetches the drawing once, on the first round that needs it. */
+function lazyDrawing(get: () => Promise<Buffer | null>) {
+  let drawing: Promise<Buffer | null> | null = null;
+  return () => (drawing ??= get().catch(() => null));
+}
+
+export interface FacadeLoopInput extends Omit<SparkStageInput, 'drawing'>, LoopTiming {
+  recipe: ObjectRecipe;
+  /** Fetched once, on the first round that needs it. */
+  drawing: () => Promise<Buffer | null>;
+}
+
+/** The facade house loop (PG-T16…T18): elevation stages, side-wall openings locked. */
+export function facadeStageLoop(input: FacadeLoopInput) {
+  const drawing = lazyDrawing(input.drawing);
+  const propose: Proposer<ElevationStage> = async (ctx) =>
+    sparkStageProposer({ ...input, drawing: await drawing() })(ctx);
+  return stagedLoop({
+    ...input,
+    stages: HOUSE_STAGES,
+    score: houseStageScorer(input.front, input.roofRings),
+    propose,
+    canEdit: houseCanEdit,
+  });
+}
+
+export interface ViewLoopInput extends LoopTiming {
+  recipe: ObjectRecipe;
+  archetype: KitArchetype;
+  views: ObjectViews;
+  label: string;
+  /** `perception.proposeShapeOps` bound to its backend (views sheet). */
+  proposeShapeOps: (
+    imageUrl: string,
+    question: string,
+    signal?: AbortSignal,
+    sheet?: StageSheet
+  ) => Promise<{ result: { ops: unknown[] | null } }>;
+}
+
+/**
+ * Objects built from their 2D view (PG-T20): the archetype's stages (`VIEW_STAGES`), scored on
+ * the views (`scoreViews`), Spark sees the views sheet (drawings | model). Null when the
+ * archetype has no stage list or no stage is measured on the drawings (nothing to improve).
+ */
+export function viewStageLoop(input: ViewLoopInput) {
+  const stages = VIEW_STAGES[input.archetype];
+  if (!stages?.length) return null;
+  const views = { front: input.views.front, side: input.views.side };
+  const first = scoreViews(input.recipe, views, stages);
+  // Only the body and the stages with drawn parts can be judged.
+  const judged = stages.filter((st) => st.id === 'body' || first.measured.includes(st.id));
+  if (!judged.length) return null;
+  const score = viewStageScorer(views, judged);
+  const propose: Proposer<ViewStage> = async (ctx) => {
+    const sheet = await viewsSheet(ctx.recipe, input.views, ctx.signal);
+    if (!sheet) return [];
+    const question = stageQuestion({
+      label: input.label,
+      stage: ctx.stage.id,
+      round: ctx.round,
+      score: ctx.score,
+      components: ctx.components,
+      editable: ctx.editable,
+      notes: viewStageNotes(scoreViews(ctx.recipe, views, judged)),
+    });
+    const { result } = await input.proposeShapeOps(sheet, question, ctx.signal, 'views');
+    return result.ops ?? [];
+  };
+  return stagedLoop({ ...input, stages: judged, score, propose });
 }
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, Number.isFinite(v) ? v : 0));

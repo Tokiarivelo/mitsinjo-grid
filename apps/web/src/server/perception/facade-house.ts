@@ -4,6 +4,7 @@ import {
   MAX_TIMBER,
   MAX_COMPONENTS,
   MAX_DOOR_GLAZED,
+  HIP_CLIP_MAX,
   type ObjectRecipe,
   type RecipeMaterial,
   type RecipePart,
@@ -473,21 +474,67 @@ export function sideConsistent(front: Elevation, side: Elevation): boolean {
 
 export type RoofKind = 'flat' | 'gable' | 'hip';
 
+/** Outer share of the roof width read for its end height (half-hip shoulders, PG-T22). */
+const END_BAND = 0.04;
+/** A gable share below this is a full hip (thatch rolls and overhangs round the corners). */
+export const MIN_HIP_CLIP = 0.2;
+
 /**
- * Roof form from the two flat shares. Front ridge long → hipped (or side gable when ≈ 1). Front
- * peaked → gable facing the street, unless the side is peaked too (pyramid = hip, ridge 0).
+ * Half-hip (PG-T22): how high the roof's ends stand vertical, share of the roof height from the
+ * eave, read on the front outline. A full hip slopes down to its corners (≈ 0); a half-hip shows
+ * vertical ends up to its shoulders, then the small hip. Null without an outline.
+ */
+export function gableShare(e: Elevation): number | null {
+  if (!e.roofRings?.length || e.eave <= e.top) return null;
+  const box: NormBox = { x: e.left, y: e.top, w: e.right - e.left, h: e.eave - e.top };
+  const sky = skylineFromRings(e.roofRings, box);
+  const n = sky.length;
+  const band = Math.max(1, Math.round(END_BAND * n));
+  const xOf = (c: number) => box.x + ((c + 0.5) / n) * box.w;
+  const end = (cols: number[]) => {
+    const tops = cols
+      .filter((c) => !e.chimneys.some((ch) => xOf(c) >= ch.x && xOf(c) <= right(ch)))
+      .map((c) => sky[c]!)
+      .filter(Number.isFinite)
+      .sort((a, b) => a - b);
+    return tops.length ? tops[Math.floor(tops.length / 2)]! : null;
+  };
+  const ends = [
+    end(Array.from({ length: band }, (_, i) => i)),
+    end(Array.from({ length: band }, (_, i) => n - 1 - i)),
+  ].filter((v): v is number => v !== null);
+  if (!ends.length) return null;
+  return clamp(1 - ends.reduce((a, b) => a + b, 0) / ends.length, 0, 1);
+}
+
+/**
+ * Roof form from the two flat shares. Front ridge long → hipped (or side gable when ≈ 1), a
+ * half-hip (`clip`) when the front outline's ends stand vertical. Front peaked → gable facing the
+ * street, unless the side is peaked too (pyramid = hip, ridge 0).
  */
 export function roofKind(
   front: Elevation,
   side: Elevation | null
-): { kind: RoofKind; ridge: number } {
+): { kind: RoofKind; ridge: number; clip?: number } {
   if (front.eave <= front.top) return { kind: 'flat', ridge: 0 };
   const f = front.ridge;
   if (f === null || f < PEAK_RIDGE) {
     if (side && side.ridge !== null && side.ridge < PEAK_RIDGE) return { kind: 'hip', ridge: 0 };
     return { kind: 'gable', ridge: 0 };
   }
+  const clip = gableShare(front);
+  if (clip !== null && clip >= MIN_HIP_CLIP && clip <= HIP_CLIP_MAX && f < 1 - PEAK_RIDGE / 3) {
+    return { kind: 'hip', ridge: f, clip };
+  }
   return { kind: 'hip', ridge: f > 1 - PEAK_RIDGE ? 1 : f };
+}
+
+/** Measured beams first; else Spark says the walls are half-timbered → the usual layout. */
+export function wallTimber(
+  front: Elevation,
+  details?: ObjectKit['details']
+): ReturnType<typeof timberFrame> {
+  return timberFrame(front) ?? (details?.timberFrame ? inferredTimber(front) : null);
 }
 
 export interface FacadeHouseInput {
@@ -539,8 +586,7 @@ export function facadeHouseRecipe({
     size: [X(right(b)) - X(b.x), Y(b.y) - Y(bottomOf(b)), thick],
   });
   const t = DECAL;
-  // Measured beams first; else Spark says the walls are half-timbered → the usual layout.
-  const timber = timberFrame(front) ?? (details?.timberFrame ? inferredTimber(front) : null);
+  const timber = wallTimber(front, details);
   const walls: RecipePart = {
     shape: 'box',
     at: at(0, (eaveY - 1) / 2, 0),
@@ -550,7 +596,7 @@ export function facadeHouseRecipe({
     ...(timber ? { timber } : {}),
     ...role('main', 'walls'),
   };
-  const { kind, ridge } = roofKind(front, side);
+  const { kind, ridge, clip } = roofKind(front, side);
   const roofLook = role('secondary', 'roof');
   const roofColor = separateRoofColor(roofLook, walls).color;
   const roofFinal = { ...roofLook, color: roofColor };
@@ -579,7 +625,7 @@ export function facadeHouseRecipe({
             shape: kind === 'hip' ? 'hip' : 'prism',
             at: at((X(front.left) + X(front.right)) / 2 - cx, eaveY / 2, 0),
             size: [roofW, roofH, depth + 2 * overhang],
-            ...(kind === 'hip' ? { ridge } : { apex: 0.5 }),
+            ...(kind === 'hip' ? { ridge, ...(clip ? { clip } : {}) } : { apex: 0.5 }),
             kind: 'roof' as const,
             ...roofLook,
             color: roofColor,

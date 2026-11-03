@@ -4,6 +4,7 @@ import {
   MAX_DOOR_GLAZED,
   MAX_DOOR_PANELS,
   MAX_PANES,
+  HIP_CLIP_MAX,
   MAX_ROOF_BULGE,
   ObjectRecipeSchema,
   RECIPE_BOUND,
@@ -63,6 +64,7 @@ const options = {
   cap: z.boolean().optional(),
   bulge: z.number().min(0).max(MAX_ROOF_BULGE).optional(),
   ridge: share.optional(),
+  clip: z.number().min(0).max(HIP_CLIP_MAX).optional(),
   apex: share.optional(),
 };
 

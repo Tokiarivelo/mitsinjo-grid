@@ -225,5 +225,6 @@ describe.skipIf(!FRONT)('facade → 3D end to end (live)', () => {
         JSON.stringify({ ...elev.score, render: undefined, target: undefined }, null, 2)
       );
     }
-  }, 300_000);
+    // First answer (≤ 90 s) + background stages (≤ 3 min) + drawing the photo.
+  }, 600_000);
 });

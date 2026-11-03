@@ -7,7 +7,7 @@ not faithful to the imagined 2D elevation. Example: « rural thatched house » (
 same blotchy photo texture**, three dark rectangles for windows and door. Ask: Spark writes a **generation
 script**, builds the model **piece by piece**, and an agent loop renders → compares → corrects each piece until
 the render matches; same for every kind of object.
-**Status:** 🟡 G0 + G1 + G2 done (2026-11-02); live Meta run on the thatched-house drawing: facade path, elevation 87–91/100, IoU 0.98, first model in 48–68 s (chimney accessory score 0.44–0.71: roof hides its foot). G3 done (PG-T13–T18) + PG-T19 + PG-T23. Live loop pass 2026-11-03 (PG-T22, below): a scorer bug fixed, the seed now scores 95/100 on a new thatched drawing. Open: PG-T20/T21, PG-T22 designer ≥ 4/5. **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
+**Status:** 🟡 G0 + G1 + G2 done (2026-11-02); live Meta run on the thatched-house drawing: facade path, elevation 87–91/100, IoU 0.98, first model in 48–68 s (chimney accessory score 0.44–0.71: roof hides its foot). G3 done (PG-T13–T18) + PG-T19 + PG-T23. Live loop pass 2026-11-03 (PG-T22, below): a scorer bug fixed, the seed now scores 95/100 on a new thatched drawing. PG-T20/T21 done (offline). Open: PG-T22 designer ≥ 4/5, PG-T20 live run. **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
 writes vertices or runnable code (it writes Zod-checked ops, the engine builds); pure, seeded, tested geometry;
 never paste the photo on the model (small tileable swatches OK); ≤ 5 k triangles per object.
 **Skills:** `/shape-3d` (vocabulary, files) · `/shape-loop` (scores, log) · `/facade-2d` (target image).
@@ -149,17 +149,19 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
       appliance, lamp/pole, tree, solar panel, battery, generic `other`. Muse Image draws a straight-on
       elevation (`/facade-2d`), and the user validates it as for houses.
       **Done:** every archetype now has a straight-on prompt (tree / bush added; vehicle, panel, pole, appliances existed). With a validated view: vehicle, appliances, other and now **solar panel** → hull path (PV-H, side drawn); **tree, bush, lamp post, pole** → `roundViewRecipe` (no side drawn: their side is their front; template body → lathe of the drawn silhouette, `withLatheBody`; trunk / head kept). Houses keep the elevation builder. **Deviation:** battery = `cabinet` archetype (already on the hull path).
-- [ ] **PG-T20 Stage lists per archetype** (same runner, different stages and concepts):
+- [x] **PG-T20 Stage lists per archetype** (same runner, different stages and concepts):
       vehicle: body profile → cabin + glass → wheels → bumpers + lights → materials;
       appliance: body → doors / panels → handles + display → materials;
       tree: trunk → crown tiers → materials; lamp/pole: lathe profile → head → arm;
       solar panel: frame → cell grid → stand; other: free parts (`free-recipe.ts`) → details → materials.
-- [ ] **PG-T21 Assemblies per archetype** (G2 pattern): `wheel {rim, tyre}`, `glass band`, `panel grid`,
+      **Done:** `view-stages.ts` `VIEW_STAGES` (vehicle body → glass → wheels → details; appliances body → doors → details; panel body → cells; tree / bush trunk → crown; lamp post / pole body → head; other body), per-part metric `scoreViews` (silhouette IoU + greedy box IoU of SAM part boxes vs the rendered parts of the stage's kind), parts tagged by kind in `viewsRecipe` / `roundViewRecipe`, new SAM concepts per archetype, `viewStageLoop` on the shared `stagedLoop` (first answer + background job, chip labels en/fr/mg), Spark views prompt variant (v2). **Deviation:** no materials stage (no colour metric per part on the views yet); the hull body's shape is not editable by ops (Spark moves / resizes / adds box parts, the body stays the measured hull). **Live 2026-11-03** (`make facade-e2e` « purple vintage car », Spark 1.3, prompt v2): run 1 (side drawn) body 0.83 → 0.85 by `set body`, but 3 body rounds ate the background budget → body gate lowered to 0.85 (the plan's silhouette target); run 2 (side unreadable, front only): first answer 97 s, background 158 s: glass 0 → 0.50 (Spark added the windshield), details 0.72 → 0.86 (grille added), wheels 0 → 0 — the front-only build had **no wheels** and Spark may only add boxes → fixed in the builder: with no wheel on a side, a vehicle's 4 wheels come from the front drawing (axles 18 % in from each end, inferred).
+- [x] **PG-T21 Assemblies per archetype** (G2 pattern): `wheel {rim, tyre}`, `glass band`, `panel grid`,
       `handle`, `crown tier`, as needed by the scores, not up front.
+      **Done:** `features/vision-insert/utils/view-assemblies.ts`: wheel `rim` → metal rim disc on its outer face; solar cells (`kind: 'cell'`, `grid` from the patch aspect, `cellGrid`) → cell lines following the panel tilt (full detail only). Glass band = the side glass skin (PV-H). **Deviation:** no `handle` / `crown tier` assembly (handles are measured boxes, crown tiers come from the lathe); faint line ends at a tilted panel's lower lip.
 
 ### G5 Close
 
-- [ ] **PG-T22 Loop pass.** `/shape-loop` on the golden set + the user's thatched house. Stop criteria below.
+- [x] **PG-T22 Loop pass.** `/shape-loop` on the golden set + the user's thatched house. Stop criteria below.
       `/designer-3d` review on the ¾ sheet.
       **Live pass 2026-11-03** (`make facade-e2e … ID=thatched`, Muse Image front « rural thatched house » + ¾ photo, Spark 1.3):
       first model 66 s; massing 0.98, roof 0.95 at the gate; Spark's openings patch (remove `window.3`, `window.4`,
@@ -170,8 +172,16 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
       gate, nothing removed. Goldens mean 93 unchanged. **Designer (¾ sheet) ≈ 3/5:** walls read tan (photo colour
       averaged over plaster + timber + shadow; the drawing and the photo say white plaster), the roof ends are fully
       hipped where the side drawing shows a gable with a small hip, flat render has no thatch / opening detail
-      (viewer-only). Chimneys, door, windows and plinth match. Open: wall colour from the plaster only when a timber
-      frame is drawn, half-hip from the side drawing.
+      (viewer-only). Chimneys, door, windows and plinth match.
+      **Fixed 2026-11-03:** half-hip = `hip` `clip` (vertical gable ends up to that share of the roof height, hip
+      above; viewer, flat render, fit, ShapeScript `set`), measured on the **front** roof outline (`gableShare`:
+      the outer 4 % columns' skyline; ≥ 0.2 → half-hip) — the outline already shows the vertical ends, so the side
+      drawing is not needed (**deviation**). Live front: ridge 0.86 + clip 0.68 (was rounded to a side gable, ridge 1).
+      Walls of a half-timbered house (`wallTimber`) take the plaster colour (`measureKitColors` `plaster`: lightest
+      big wall group). Rebuilt seed on the capture: elevation 95 → 97 (roof 0.95 → 0.97); goldens mean 93
+      unchanged. Fixture fix: the hand-made thatched roof box now bounds its outline (SAM boxes always do).
+      Designer (¾ viewer shot) ≈ 4/5: white plaster, half-hip ends, thatch roll, brick chimneys; flat render
+      still has no thatch texture (viewer-only).
 - [x] **PG-T23 Docs + scenarios.** `docs/contracts.md` (ShapeScript, components, SSE stage), `docs/copilot.md`
       (stage prompt), `/shape-3d` skill (vocabulary), README limits, `test-scenarios/06-village.md` (V96+).
       **Done:** contracts (assemblies, ShapeScript, runner, `proposeShapeOps`, SSE stage events + stages route), copilot (staged loop, round objects), `/shape-3d` map, README feature line, scenarios V109–V118.

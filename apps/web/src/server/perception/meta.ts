@@ -36,7 +36,8 @@ import { boxUnionCoverage, parseSamOutput } from './parse-sam';
 import {
   SHAPE_SCRIPT_JSON_SCHEMA,
   SHAPE_SCRIPT_PROMPT_VERSION,
-  SHAPE_SCRIPT_SYSTEM_PROMPT,
+  shapeScriptSystemPrompt,
+  type StageSheet,
   parseStageOps,
 } from './shape-script-prompt';
 import { redactDataUrls, redactDataUrlsInText, type VisionCallLog } from './vision-log';
@@ -428,16 +429,17 @@ export class MetaPerceptionBackend implements PerceptionBackend {
   async proposeShapeOps(
     imageUrl: string,
     question: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    sheet: StageSheet = 'elevation'
   ): Promise<PerceptionCall<ShapeOpsResult>> {
     const { content, model, usage } = await this.visionJson(
-      SHAPE_SCRIPT_SYSTEM_PROMPT,
+      shapeScriptSystemPrompt(sheet),
       question,
       imageUrl,
       SHAPE_SCRIPT_JSON_SCHEMA,
       signal,
       false,
-      { kind: 'proposeShapeOps', params: { promptVersion: SHAPE_SCRIPT_PROMPT_VERSION } }
+      { kind: 'proposeShapeOps', params: { promptVersion: SHAPE_SCRIPT_PROMPT_VERSION, sheet } }
     );
     const ops = parseStageOps(content);
     console.info(
