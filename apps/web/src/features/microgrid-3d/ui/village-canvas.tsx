@@ -32,6 +32,7 @@ import type { SectorStateOverride } from '../utils/placed-models-geometry';
 import { dynamicPlacedZones, type PlacedZoneItem } from '../utils/site-zones';
 import { SceneStatsProbe } from './scene-stats-probe';
 import { VillageTerrain } from './terrain';
+import { PlacedYards } from './placed-yards';
 import { SolarArray } from './solar-array';
 import { BatteryUnit } from './battery-unit';
 import { DispatchControllerUnit } from './dispatch-controller-unit';
@@ -320,6 +321,7 @@ export function VillageCanvas({
         </Suspense>
 
         <VillageTerrain quality={quality} />
+        <PlacedYards clearings={clearings} />
         <Suspense fallback={null}>
           <Vegetation quality={quality} clearings={clearings} />
           <Vehicles />

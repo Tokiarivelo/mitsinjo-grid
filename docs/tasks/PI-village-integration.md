@@ -68,11 +68,12 @@ proportions)` (une maison ≈ une maison du village, un frigo ≈ 1 m) ; `footpr
       **Done when:** test pur (aucun arbre / buisson / rocher dans la zone, le reste inchangé et à la même place) ;
       retirer l'objet → les arbres reviennent ; aucune image saccadée au glisser (fantôme seulement).
       **Done:** `dynamicPlacedZones` in `site-zones.ts`, `isPositionInClearing`, `clearingItemScale`, and `applyClearingScales` in `scatter.ts`, wired to `Vegetation` and `PartInstances` in `vegetation.tsx` and `village-canvas.tsx`. 4/4 pure unit tests passing in `vegetation-clearing.test.ts`.
-- [ ] **PI-T5 Le sol devient rouge.** Une cour en latérite sous chaque objet, **même couleur et même bord irrégulier** que les
+- [x] **PI-T5 Le sol devient rouge.** Une cour en latérite sous chaque objet, **même couleur et même bord irrégulier** que les
       cours existantes (`GROUND_HEX.yard`, bruit `fbm2d`) : disque drapé sur le relief (+3 cm, pas de z-fighting), instancié,
       au lieu de recalculer les couleurs de tout le terrain. Taille = zone de PI-T3.
       **Done when:** test de la fonction de couleur (même teinte que `terrainColor` dans une cour) ; capture /village avant /
       après ; +1 draw call au plus.
+      **Done:** `buildPlacedYardsGeometry` and `buildSingleYardGeometry` in `placed-yards-geometry.ts` (draped at `terrainHeight + 0.03`, `fbm2d` irregular border, `GROUND_HEX.yard`), rendered via `<PlacedYards />` in `village-canvas.tsx` into 1 merged draw call (≤ +1 draw call budget). 4/4 unit tests passing in `placed-yards.test.ts`.
 
 ### I2 Poteaux vers sa ramification ou le Dispatch EMS
 
