@@ -1,37 +1,40 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-03 (PV-G live pass + PG-T20/T21) · **By:** Claude · **Branch:** stacked PRs
+**Updated:** 2026-11-03 (PG-T22 closed) · **By:** Claude · **Branch:** stacked PRs
 
-## Merge first (main needs an approving review)
+## Merge first (main needs an approving review, or an admin merge by the owner)
 
-#33 `feat/pg-t18-lost-job-chip-shots` → #34 `feat/pg-t22-live-stage-capture` → #35 `feat/pg-t20-archetype-stages`
-(each based on the previous; merge in order, merge commits).
+#33 `feat/pg-t18-lost-job-chip-shots` (CI green) → #34 `feat/pg-t22-live-stage-capture` → #35
+`feat/pg-t20-archetype-stages` (now also holds the PG-T22 close commit). Each is based on the previous: merge in
+order, merge commits; after each merge the next PR retargets main and CI runs on it.
 
 ## PA — AI autonomous dispatch (other session, unchanged)
 
 - PA-T2 done. Next **PA-3** (`docs/tasks/PA-ai-dispatch.md`): store `dispatchMode` / `dispatchLog` + Neon, `useAiDispatch`.
 
-## PV-G — 3D by script (`docs/tasks/PV-shape-script.md`)
+## PV-G — 3D by script (`docs/tasks/PV-shape-script.md`) — all tasks ticked
 
-- **#33** chip cause `lost` (resume 404 = server restarted, model kept); `make improve-shot` (chip gate-out done).
-- **#34 PG-T22 live** (Spark 1.3, Muse Image thatched house): Spark deleted the side-wall windows to raise the
-  front score. Fixed: `sideFacing` (front score ignores side openings) + runner `canEdit` / `houseCanEdit`.
-  Seed now 95/100. Stage capture + replay: `make facade-e2e … ID=x` → `make eval-stages` (captures gitignored).
-  Designer ≈ 3/5: walls tan (photo average of plaster + timber), roof ends hipped vs drawn half-hip.
-- **#35 PG-T20/T21**: `view-stages.ts` stages per archetype scored part by part on the views (`scoreViews`),
-  parts tagged by kind, new SAM concepts, shared `stagedLoop`, views prompt variant (v2); viewer wheel rims and
-  solar cell lines (`view-assemblies.ts`). Live car run: see PV-shape-script PG-T20 notes.
+- **PG-T22 closed:** half-hip roof = `hip` part `clip` (vertical gable ends up to that share of the roof height),
+  read on the front roof outline (`gableShare`, outer 4 % skyline columns; ≥ 0.2 → half-hip). Viewer
+  (`unitHip(ridge, clip)`), flat render, silhouette fit, ShapeScript `set clip` (prompt v3). Half-timbered walls
+  (`wallTimber`) take the plaster colour (`measureKitColors(…, { plaster })`).
+- Live capture seed rebuilt 95 → 97 (roof 0.95 → 0.97); goldens mean 93; designer ≈ 4/5 (¾ viewer shot).
+- Fixture fix: hand-made thatched roof box now bounds its ring (SAM boxes always do).
 
 ## Next
 
-- PG-T22 to 4/5: wall colour from plaster only when a timber frame is drawn; half-hip from the side drawing.
-- PG-T20 tuning from live logs (`[vision] 3D stage n/m wheels …`); materials stage needs a per-part colour metric.
-- Known flakes: golden-shape timing under parallel load, `use-voice-input` silence timer (passes alone / reruns).
+- Live re-run `make facade-e2e … ID=thatched` to confirm half-hip + plaster on real Meta answers (costs API).
+- PG-T20 tuning from live logs; materials stage needs a per-part colour metric.
+- Known flakes under load (load avg ≈ 17 here): golden-shape / model-score / engine timing budgets,
+  `use-voice-input` silence timer — all pass alone.
 
 ## Files touched (this session)
 
-`features/vision-insert/{hooks/use-object-shape,utils/{view-assemblies,object-geometry}}`, `lib/object-shape.ts`,
-`server/perception/{elevation-score,shape-stages,shape-stages-spark,stage-capture,view-stages,object-views,
-object-shape,shape-script-prompt,meta,client,backend}.ts`, tests + `__fixtures__/views`, `scripts/improve-chip-shot.mjs`,
-messages ×3, Makefile (`improve-shot`, `eval-stages`), docs (contracts, copilot, design/stitch-map, tasks
-PV-shape-script / -realism), README, skill shape-3d. Scenarios V119–V125, V115 updated.
+`lib/{object-shape,shape-script}.ts`, `server/perception/{facade-house,color-measure,flat-render,silhouette-fit,
+object-shape,shape-script-prompt}.ts`, `features/vision-insert/utils/object-geometry.ts`, tests (facade-house,
+flat-render, color-measure, object-geometry), `__fixtures__/elevation`, docs (contracts, copilot, tasks
+PV-shape-script / -realism). Scenarios V127–V129.
+
+## Decisions
+
+- Half-hip read on the front outline, not the side drawing (the outline already shows the vertical ends).
