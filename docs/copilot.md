@@ -137,9 +137,9 @@ proposal; a blurry photo answers « illisible » with no numbers (evals 25–26)
 - Multi-day scenario ("jour 1 nuageux, jour 2 pluvieux, jour 3 incendie à l'école"): call `draft_scenario`
   (PA-T8). It returns the draft, its missing slots and, once complete, an engine preview (deficit, critical
   unserved, worst day); SSE `scenario_draft` renders the draft card, stored on the message (`scenario_draft`
-  column). Ask only about the missing slots. Pass the user's own words in `text`. The extractor reads a
-  total length (« 7 jours », "5 days", « une semaine » → 7) and pads undescribed days as sunny, and day
-  markers in number or ordinal form (« jour 2 », « 2è journée », "3rd day", « andro fahatelo »). A launch
+  column). Ask only about the missing slots. Pass the user's own words in `text`. The day count follows the user: a stated length (« 2 jours », "5 days")
+  or else the last day mentioned; gaps are sunny, and no length is implied (no week default). Day
+  markers come in number or ordinal form (« jour 2 », « 2è journée », "3rd day", « andro fahatelo »). A launch
   button loads the draft, runs the engine and starts playback. Mock: needs a day marker (« jour 2 », "3 days", « maro andro »).
 - "Now" and a cut with no time given (« coupe le courant du foyer ») start at the app hour, until 24 (`appHourNote`).
 - Retry (`retry: true`): a `RETRY_NOTE` system note says the previous answer did not help; answer again differently.

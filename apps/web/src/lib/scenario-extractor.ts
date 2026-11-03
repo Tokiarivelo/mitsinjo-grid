@@ -213,22 +213,29 @@ function splitByDays(normText: string): Array<{ day: number; text: string }> {
 }
 
 /**
- * Total length asked for the scenario: "7 jours", "5 days", "3 andro", "une semaine", "a week".
- * Capped at MAX_WORKFLOW_DAYS; undefined when the text names no length.
+ * Total length the user wrote: "2 jours", "5 days", "3 andro". Capped at MAX_WORKFLOW_DAYS;
+ * undefined when the text names no length (no implicit default such as a week).
  */
 export function extractTotalDays(normText: string): number | undefined {
   const m = normText.match(/\b([1-9])\s*(?:jours|journees|days|andro)\b/);
   if (m && m[1]) return Math.min(parseInt(m[1], 10), MAX_WORKFLOW_DAYS);
-  if (/\b(?:semaine|week|herinandro)\b/.test(normText)) return MAX_WORKFLOW_DAYS;
   return undefined;
 }
 
-/** Adds the days 1..total the user did not describe, with the default (sunny) weather. */
-function padDays(days: ScenarioDraftDay[], total: number | undefined): ScenarioDraftDay[] {
-  if (!total) return days;
+/**
+ * Makes the draft run from day 1 to the length the user said, or else to the last day mentioned
+ * ("jour 3 incendie" → 3 days). Gaps get `fill` (sunny unless the user gave one weather for all).
+ */
+function padDays(
+  days: ScenarioDraftDay[],
+  total: number | undefined,
+  fill: WeatherId = DRAFT_DEFAULTS.weather
+): ScenarioDraftDay[] {
+  const lastMentioned = days.reduce((max, d) => Math.max(max, d.day), 0);
+  const end = Math.min(Math.max(total ?? 0, lastMentioned), MAX_WORKFLOW_DAYS);
   const byDay = new Map(days.map((d) => [d.day, d]));
-  for (let day = 1; day <= total; day++) {
-    if (!byDay.has(day)) byDay.set(day, { day, weather: DRAFT_DEFAULTS.weather });
+  for (let day = 1; day <= end; day++) {
+    if (!byDay.has(day)) byDay.set(day, { day, weather: fill });
   }
   return Array.from(byDay.values()).sort((a, b) => a.day - b.day);
 }
@@ -318,9 +325,12 @@ export function extractScenarioDraft(text: string, existingDraft?: ScenarioDraft
 
   const totalDays = extractTotalDays(norm);
 
-  // If no day markers were found at all and no existing draft, try to create at least a Day 1 from text
+  // No day markers: the text describes the whole span ("2 jours pluvieux" → 2 rainy days),
+  // events go on day 1.
+  let fillWeather: WeatherId | undefined;
   if (days.length === 0) {
     const weather = extractWeather(norm);
+    fillWeather = weather;
     const events = extractEvents(norm);
     days.push({
       day: 1,
@@ -351,11 +361,12 @@ export function extractScenarioDraft(text: string, existingDraft?: ScenarioDraft
       ...existingDraft,
       days: padDays(
         Array.from(dayMap.values()).sort((a, b) => a.day - b.day),
-        totalDays
+        totalDays,
+        fillWeather
       ),
     };
   }
 
   // No title: the UI names the draft in the user's language from its day count.
-  return { days: padDays(days, totalDays) };
+  return { days: padDays(days, totalDays, fillWeather) };
 }

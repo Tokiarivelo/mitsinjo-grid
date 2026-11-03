@@ -207,7 +207,7 @@ describe('Deterministic Scenario Extractor (PA-T8c)', () => {
 
   it.each([
     ['5 days, 2nd day rainy, 3rd day storm', 5, 2, 'rainy'],
-    ['une semaine, deuxième jour nuageux', 7, 2, 'cloudy'],
+    ['deuxième jour nuageux', 2, 2, 'cloudy'],
     ['simulation 4 andro, andro fahatelo orana', 4, 3, 'rainy'],
     ['3 jours, le 1er jour orageux', 3, 1, 'storm'],
   ])('reads length and ordinal markers: %s', (text, total, day, weather) => {
@@ -229,5 +229,21 @@ describe('Deterministic Scenario Extractor (PA-T8c)', () => {
     const fire = refined.days.find((d) => d.day === 3)?.events?.[0];
     expect(fire).toMatchObject({ type: 'fire', sector: 'health', startHour: 14 });
     expect(refined.days).toHaveLength(7);
+  });
+
+  it.each([
+    ['simulation de 2 jours', 2],
+    ["jour 2 pluvieux, jour 3 incendie à l'école à 10h", 3],
+    ['simulation sur une semaine', 1],
+    ['3 jours, jour 1 orageux', 3],
+  ])('day count follows what the user said, no implicit 7: %s', (text, total) => {
+    expect(extractScenarioDraft(text).days.map((d) => d.day)).toEqual(
+      Array.from({ length: total }, (_, i) => i + 1)
+    );
+  });
+
+  it('gives the stated weather to every day when no day is named', () => {
+    const draft = extractScenarioDraft('2 jours pluvieux');
+    expect(draft.days.map((d) => d.weather)).toEqual(['rainy', 'rainy']);
   });
 });
