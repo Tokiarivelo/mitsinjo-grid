@@ -304,7 +304,7 @@ describe('useObjectShape staged improvement (PG-T17/T18)', () => {
       async start(c) {
         const enc = new TextEncoder();
         c.enqueue(enc.encode(ev('shape_result', { shape: recipeShape, jobId: JOB })));
-        c.enqueue(enc.encode(ev('shape_stage', { ...stage({}), seq: 0 })));
+        c.enqueue(enc.encode(ev('shape_stage', { ...stage({ kinds: ['roof'] }), seq: 0 })));
         await gate;
         c.enqueue(
           enc.encode(
@@ -330,11 +330,13 @@ describe('useObjectShape staged improvement (PG-T17/T18)', () => {
       index: 2,
       total: 4,
       stage: 'roof',
+      kinds: ['roof'],
     });
     expect(result.current.shape!.recipe!.parts[0]!.color).toBe('#eeeeee');
     act(() => finish());
     await waitFor(() => expect(result.current.improve?.status).toBe('done'));
-    expect(result.current.improve).toMatchObject({ before: 0.5, after: 0.8 });
+    // The stage's parts stay known after its « done » event (the viewer keeps framing them).
+    expect(result.current.improve).toMatchObject({ before: 0.5, after: 0.8, kinds: ['roof'] });
     expect(result.current.shape!.recipe!.parts[0]!.color).toBe('#cc8844');
   });
 

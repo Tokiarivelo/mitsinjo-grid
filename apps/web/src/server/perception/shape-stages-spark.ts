@@ -1,6 +1,7 @@
 import type { StageLoopContext } from './stage-checkpoint';
 import sharp from 'sharp';
 import type { ObjectRecipe, ShapeStageEvent, ShapeStageId } from '@/lib/object-shape';
+import { trialsLog } from './stage-steps';
 import { recipeToScript } from '@/lib/shape-script';
 import {
   type ElevationStage,
@@ -143,6 +144,7 @@ export function sparkStageProposer(input: SparkStageInput): Proposer<ElevationSt
       score: ctx.score,
       components: ctx.components,
       editable: ctx.editable,
+      ...(ctx.feedback ? { feedback: ctx.feedback } : {}),
       notes: stageNotes(scored),
     });
     const { result } = await input.proposeShapeOps(
@@ -239,10 +241,19 @@ export async function stagedLoop<S extends ShapeStageId>(
   });
   const position = (id: S) => order.indexOf(id) + 1;
   const stream = (phase: StageProgress['phase'], emit?: (e: StageProgress) => void) => ({
-    onStageStart: (st: { id: S }) =>
-      emit?.({ phase, index: position(st.id), total, stage: st.id, state: 'running' }),
+    onStageStart: (st: StageSpec<S>) =>
+      emit?.({
+        phase,
+        index: position(st.id),
+        total,
+        stage: st.id,
+        state: 'running',
+        kinds: [...st.kinds],
+      }),
     onStage: (res: StageResult<S>, recipe: ObjectRecipe) => {
       if (res.stop === 'timeout' || res.stop === 'skipped') return;
+      if (res.trials?.length)
+        console.info(`[vision] 3D stage ${res.id} ops, one by one: ${trialsLog(res.trials)}`);
       emit?.({
         phase,
         index: position(res.id),
@@ -402,6 +413,7 @@ export function viewStageLoop(input: ViewLoopInput) {
       score: ctx.score,
       components: ctx.components,
       editable: ctx.editable,
+      ...(ctx.feedback ? { feedback: ctx.feedback } : {}),
       notes: viewStageNotes(scoreViews(ctx.recipe, views, judged)),
     });
     const { result } = await input.proposeShapeOps(

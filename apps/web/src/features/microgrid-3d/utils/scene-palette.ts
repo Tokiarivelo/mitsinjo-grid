@@ -11,6 +11,8 @@ export const TOKEN_HEX = {
   warningAmber: '#ffcb70',
   criticalRed: '#ff7185',
   idle: '#64748b',
+  /** AI work in progress (staged build outlines): mid violet, readable on both studio backdrops. */
+  aiViolet: '#8b5cf6',
 } as const;
 
 /** Concrete plinth under an inserted appliance marker (PV-T13). */

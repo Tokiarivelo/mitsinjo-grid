@@ -334,6 +334,7 @@ export function ObjectShapePanel({
                     imageUrl={imageUrl}
                     scale={shown.scale}
                     tint={shown.tint}
+                    {...(improve ? { improve } : {})}
                   />
                 ) : (
                   <ViewerSkeleton />
