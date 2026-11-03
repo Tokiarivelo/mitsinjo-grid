@@ -17,6 +17,7 @@ import { MAX_MISSING, knownConcept, parseViewsCheck, viewsCheckQuestion } from '
 import {
   ROUND_VIEW_ARCHETYPES,
   VIEW_ARCHETYPES,
+  VIEW_CHECK_ROUND_MS,
   VIEW_HULL_ARCHETYPES,
   applyViewsCheck,
   checkViewsModel,
@@ -455,6 +456,34 @@ describe('AI views check (PV-H)', () => {
     );
     expect(none).toBeNull();
     expect(segmentImage).not.toHaveBeenCalled();
+  });
+
+  it('bounds the check call by the views deadline, not only by the request (Vercel 300 s kill, 2026-11-03)', async () => {
+    const png = await sharp({
+      create: { width: 300, height: 100, channels: 3, background: '#8060c0' },
+    })
+      .png()
+      .toBuffer();
+    const views = {
+      front,
+      side,
+      frontUrl: `data:image/png;base64,${png.toString('base64')}`,
+      sidePng: png,
+    };
+    const recipe = viewsRecipe(views, KIT);
+    const checkViews = vi.fn(async (_img: string, _q: string, _signal?: AbortSignal) => ({
+      source: 'meta' as const,
+      model: 'spark',
+      check: { missing: [], redrawSide: false },
+    }));
+    const request = new AbortController().signal;
+    await checkViewsModel({ checkViews, segmentImage: vi.fn() }, recipe, views, KIT, 'car', 'car', {
+      signal: request,
+      deadline: Date.now() + VIEW_CHECK_ROUND_MS + 60_000,
+    });
+    const sent = checkViews.mock.calls[0]![2];
+    expect(sent).toBeInstanceOf(AbortSignal);
+    expect(sent).not.toBe(request);
   });
 });
 
