@@ -8,5 +8,6 @@
 - [x] **P9-T4** README final: problem, users, screenshot/GIF, architecture diagram, assumptions, run/test commands, env vars, real vs simulated vs estimated, limits, roadmap, video link.
 - [ ] **P9-T5** (human) Record 3-min video + backup recording.
 - [ ] **P9-T6** (human) Submit per official rules; tag `v1.0.0`.
+- [x] **P9-T7** Submission readiness: README provenance + track + bonus + Meta models table, `benchmarks/` (`make bench`), `Dockerfile` + `compose.yaml` (`docker compose up -d --build` / `make docker-up`), GitHub homepage = README URL.
 
 **Exit criteria:** submission done; public URL + video + repo consistent.

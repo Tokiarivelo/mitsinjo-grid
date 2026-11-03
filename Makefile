@@ -175,6 +175,10 @@ mockups: ## List Stitch mockup exports and their map status
 	@grep -E '^\| (Live|Overview|Strategy|AI|Scenarios)' docs/design/stitch-map.md | awk -F'|' '{printf "  %-16s %s\n",$$2,$$7}'
 
 ##@ Performance
+bench: ## Engine benchmark: latency + strategy A/B on every scenario → benchmarks/engine.json (RUNS=200)
+	$(need_ws)
+	BENCH_OUT=$(CURDIR)/benchmarks/engine.json BENCH_RUNS=$(or $(RUNS),200) $(PNPM) --filter $(ENGINE) exec vitest run src/__tests__/benchmark.test.ts
+
 analyze: ## Bundle analysis build (needs @next/bundle-analyzer)
 	$(need_ws)
 	ANALYZE=true $(PNPM) --filter $(WEB) build
@@ -238,6 +242,16 @@ deploy-link: ## Link this clone to the Vercel project (once per machine)
 
 deploy: ## Manual production deploy (only from a clean main = origin/main)
 	@scripts/deploy.sh
+
+docker-up: ## Build + start the app with Docker Compose on :3000 (HOST_PORT=…; root .env optional, else mock)
+	docker compose up -d --build
+	@echo "→ http://localhost:$(or $(HOST_PORT),3000)  (make docker-logs · make docker-down)"
+
+docker-down: ## Stop the Docker Compose app
+	docker compose down
+
+docker-logs: ## Follow the Docker Compose app logs
+	docker compose logs -f web
 
 ##@ Cleanup
 clean: ## Remove build/test output (keeps node_modules)

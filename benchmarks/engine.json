@@ -1,0 +1,279 @@
+{
+  "generatedBy": "make bench",
+  "node": "v24.11.0",
+  "runsPerMeasure": 200,
+  "scenarios": [
+    {
+      "scenario": "baseline",
+      "simulate": {
+        "medianMs": 0.539,
+        "p95Ms": 1.139
+      },
+      "compare3": {
+        "medianMs": 1.543,
+        "p95Ms": 3.206
+      },
+      "outcome": {
+        "proportional": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 100,
+          "criticalUnmetHours": 0,
+          "unservedKwh": 0,
+          "violations": 0
+        },
+        "essential_first": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 100,
+          "criticalUnmetHours": 0,
+          "unservedKwh": 0,
+          "violations": 0
+        },
+        "balanced": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 100,
+          "criticalUnmetHours": 0,
+          "unservedKwh": 0,
+          "violations": 0
+        }
+      }
+    },
+    {
+      "scenario": "cloudy_afternoon",
+      "simulate": {
+        "medianMs": 0.57,
+        "p95Ms": 1.125
+      },
+      "compare3": {
+        "medianMs": 1.643,
+        "p95Ms": 2.532
+      },
+      "outcome": {
+        "proportional": {
+          "healthCoveragePct": 98.8,
+          "criticalCoveragePct": 99.6,
+          "criticalUnmetHours": 1,
+          "unservedKwh": 1.17,
+          "violations": 0
+        },
+        "essential_first": {
+          "healthCoveragePct": 99.7,
+          "criticalCoveragePct": 100,
+          "criticalUnmetHours": 0,
+          "unservedKwh": 1.17,
+          "violations": 0
+        },
+        "balanced": {
+          "healthCoveragePct": 99.5,
+          "criticalCoveragePct": 100,
+          "criticalUnmetHours": 0,
+          "unservedKwh": 1.17,
+          "violations": 0
+        }
+      }
+    },
+    {
+      "scenario": "high_demand",
+      "simulate": {
+        "medianMs": 0.535,
+        "p95Ms": 0.817
+      },
+      "compare3": {
+        "medianMs": 1.583,
+        "p95Ms": 2.021
+      },
+      "outcome": {
+        "proportional": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 100,
+          "criticalUnmetHours": 0,
+          "unservedKwh": 0,
+          "violations": 0
+        },
+        "essential_first": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 100,
+          "criticalUnmetHours": 0,
+          "unservedKwh": 0,
+          "violations": 0
+        },
+        "balanced": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 100,
+          "criticalUnmetHours": 0,
+          "unservedKwh": 0,
+          "violations": 0
+        }
+      }
+    },
+    {
+      "scenario": "battery_constraint",
+      "simulate": {
+        "medianMs": 0.556,
+        "p95Ms": 0.877
+      },
+      "compare3": {
+        "medianMs": 1.594,
+        "p95Ms": 1.932
+      },
+      "outcome": {
+        "proportional": {
+          "healthCoveragePct": 88,
+          "criticalCoveragePct": 93.1,
+          "criticalUnmetHours": 6,
+          "unservedKwh": 9.86,
+          "violations": 0
+        },
+        "essential_first": {
+          "healthCoveragePct": 90.2,
+          "criticalCoveragePct": 93.1,
+          "criticalUnmetHours": 5,
+          "unservedKwh": 9.86,
+          "violations": 0
+        },
+        "balanced": {
+          "healthCoveragePct": 90.2,
+          "criticalCoveragePct": 93.4,
+          "criticalUnmetHours": 4,
+          "unservedKwh": 9.86,
+          "violations": 0
+        }
+      }
+    },
+    {
+      "scenario": "essential_stress",
+      "simulate": {
+        "medianMs": 0.519,
+        "p95Ms": 0.604
+      },
+      "compare3": {
+        "medianMs": 1.612,
+        "p95Ms": 1.902
+      },
+      "outcome": {
+        "proportional": {
+          "healthCoveragePct": 71.9,
+          "criticalCoveragePct": 73.7,
+          "criticalUnmetHours": 12,
+          "unservedKwh": 39.28,
+          "violations": 0
+        },
+        "essential_first": {
+          "healthCoveragePct": 75.5,
+          "criticalCoveragePct": 73.3,
+          "criticalUnmetHours": 11,
+          "unservedKwh": 39.28,
+          "violations": 0
+        },
+        "balanced": {
+          "healthCoveragePct": 74.4,
+          "criticalCoveragePct": 73.9,
+          "criticalUnmetHours": 10,
+          "unservedKwh": 39.28,
+          "violations": 0
+        }
+      }
+    },
+    {
+      "scenario": "meter_anomaly",
+      "simulate": {
+        "medianMs": 0.529,
+        "p95Ms": 0.769
+      },
+      "compare3": {
+        "medianMs": 1.547,
+        "p95Ms": 3.087
+      },
+      "outcome": {
+        "proportional": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 100,
+          "criticalUnmetHours": 0,
+          "unservedKwh": 0,
+          "violations": 0
+        },
+        "essential_first": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 100,
+          "criticalUnmetHours": 0,
+          "unservedKwh": 0,
+          "violations": 0
+        },
+        "balanced": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 100,
+          "criticalUnmetHours": 0,
+          "unservedKwh": 0,
+          "violations": 0
+        }
+      }
+    },
+    {
+      "scenario": "village_fire",
+      "simulate": {
+        "medianMs": 0.665,
+        "p95Ms": 1.007
+      },
+      "compare3": {
+        "medianMs": 1.829,
+        "p95Ms": 3.728
+      },
+      "outcome": {
+        "proportional": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 95.3,
+          "criticalUnmetHours": 4,
+          "unservedKwh": 11,
+          "violations": 0
+        },
+        "essential_first": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 95.3,
+          "criticalUnmetHours": 4,
+          "unservedKwh": 11,
+          "violations": 0
+        },
+        "balanced": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 95.3,
+          "criticalUnmetHours": 4,
+          "unservedKwh": 11,
+          "violations": 0
+        }
+      }
+    },
+    {
+      "scenario": "overload_evening",
+      "simulate": {
+        "medianMs": 0.618,
+        "p95Ms": 1.251
+      },
+      "compare3": {
+        "medianMs": 1.729,
+        "p95Ms": 2.083
+      },
+      "outcome": {
+        "proportional": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 99.2,
+          "criticalUnmetHours": 2,
+          "unservedKwh": 3,
+          "violations": 0
+        },
+        "essential_first": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 99.2,
+          "criticalUnmetHours": 2,
+          "unservedKwh": 3,
+          "violations": 0
+        },
+        "balanced": {
+          "healthCoveragePct": 100,
+          "criticalCoveragePct": 99.2,
+          "criticalUnmetHours": 2,
+          "unservedKwh": 3,
+          "violations": 0
+        }
+      }
+    }
+  ]
+}
