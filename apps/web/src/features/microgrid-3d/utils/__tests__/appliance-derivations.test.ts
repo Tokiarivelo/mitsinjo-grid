@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Appliance, SectorId } from '@mitsinjo/engine';
 import { SECTOR_POSITIONS, BUS_POSITION } from '../site-positions';
-import { mapPolesToSectors, routeCable } from '../cable-route';
+import { mapPolesToSectors } from '../cable-route';
 import { applianceMarkers } from '../appliance-markers';
-import { buildApplianceDerivations, tapPoint } from '../tap-point';
-import { toSceneModel } from '../to-scene-model';
+import { buildApplianceDerivations } from '../tap-point';
 import { NO_LOAD_KW } from '../feeder-tone';
 
 const baseAppliance: Appliance = {
@@ -34,7 +33,8 @@ describe('Appliance derivations & poles (PI-T7)', () => {
     expect(derivations.poles.length).toBeGreaterThanOrEqual(3);
 
     // Verify pole positions and spacing <= 4.5
-    let prev = [derivations.lines[0]!.from[0], derivations.lines[0]!.from[2]];
+    const start = derivations.lines[0]!.from;
+    let prev: [number, number] = [start[0], start[2]];
     for (const pole of derivations.poles) {
       expect(pole.sectorId).toBe('water');
       const dist = Math.hypot(pole.x - prev[0], pole.z - prev[1]);

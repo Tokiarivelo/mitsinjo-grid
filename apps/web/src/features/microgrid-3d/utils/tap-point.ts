@@ -47,7 +47,7 @@ export function parsePositionCoords(
   pos: [number, number] | [number, number, number] | { x: number; z: number }
 ): { x: number; z: number; y?: number } {
   if (Array.isArray(pos)) {
-    if (pos.length >= 3) {
+    if (pos.length === 3) {
       return { x: pos[0], y: pos[1], z: pos[2] };
     }
     return { x: pos[0], z: pos[1] };
@@ -183,17 +183,11 @@ export function contourWaypoint(
   const dist1 = evalDetour(cand1);
   const dist2 = evalDetour(cand2);
 
-  if (dist1 !== null && dist2 !== null) {
-    const chosen = dist1 <= dist2 ? cand1 : cand2;
-    return [chosen[0], terrainHeight(chosen[0], chosen[1]), chosen[1]];
-  }
-  if (dist1 !== null) {
-    return [cand1[0], terrainHeight(cand1[0], cand1[1]), cand1[0]];
-  }
-  if (dist2 !== null) {
-    return [cand2[0], terrainHeight(cand2[0], cand2[1]), cand2[1]];
-  }
-  return null;
+  let chosen: [number, number] | null = null;
+  if (dist1 !== null && (dist2 === null || dist1 <= dist2)) chosen = cand1;
+  else if (dist2 !== null) chosen = cand2;
+  if (!chosen) return null;
+  return [chosen[0], terrainHeight(chosen[0], chosen[1]), chosen[1]];
 }
 
 interface CandidateEval {
@@ -415,33 +409,12 @@ export function buildApplianceDerivations(
     const cut = Boolean(b?.onFire);
     const speed = Math.min(2.5, Math.max(0.5, m.kwNow / 2));
 
-    if (tap.waypoint) {
-      // Segment 1: tap point -> corner pole waypoint
+    // One cable per segment: tap → (corner pole →) appliance.
+    const stops = tap.waypoint ? [tap.point, tap.waypoint, m.position] : [tap.point, m.position];
+    for (let i = 1; i < stops.length; i++) {
       lines.push({
-        from: tap.point,
-        to: tap.waypoint,
-        active: m.running,
-        flowKw: m.kwNow,
-        direction: m.running ? 'forward' : 'idle',
-        speed,
-        color,
-        cut,
-      });
-      // Segment 2: corner pole waypoint -> appliance position
-      lines.push({
-        from: tap.waypoint,
-        to: m.position,
-        active: m.running,
-        flowKw: m.kwNow,
-        direction: m.running ? 'forward' : 'idle',
-        speed,
-        color,
-        cut,
-      });
-    } else {
-      lines.push({
-        from: tap.point,
-        to: m.position,
+        from: stops[i - 1]!,
+        to: stops[i]!,
         active: m.running,
         flowKw: m.kwNow,
         direction: m.running ? 'forward' : 'idle',

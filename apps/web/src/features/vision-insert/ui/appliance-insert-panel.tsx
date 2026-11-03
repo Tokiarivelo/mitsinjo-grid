@@ -33,12 +33,19 @@ export interface ApplianceInsertPanelProps {
   inSimulation: boolean;
   /** The engine list is full (30) and this object is not in it. */
   full: boolean;
+  /** A 3D model is ready for this object: its grid connection mode can be stored (PI-T8). */
+  canConnect?: boolean;
   onInsert: () => void;
   onRemove: () => void;
 }
 
 const BUTTON =
   'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50';
+
+const CONNECTION_MODES = [
+  { mode: 'branch', label: 'connectionBranch' },
+  { mode: 'ems', label: 'connectionEms' },
+] as const;
 
 /**
  * « Add to the simulation » block (PV-T11 / PV-T12): AI estimate (AI category + engine catalog power) or
@@ -49,6 +56,7 @@ export function ApplianceInsertPanel({
   scenery,
   inSimulation,
   full,
+  canConnect = false,
   onInsert,
   onRemove,
 }: ApplianceInsertPanelProps) {
@@ -205,46 +213,40 @@ export function ApplianceInsertPanel({
             )}
           </p>
         )}
-        <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1 xl:col-span-2">
-          <span className="text-xs text-text-secondary">{t('insertConnection')}</span>
-          <div
-            role="group"
-            aria-label={t('insertConnection')}
-            className="grid grid-cols-1 gap-1.5 sm:grid-cols-2"
-          >
-            <button
-              type="button"
-              aria-pressed={d.connectionMode !== 'ems'}
-              onClick={() => draft.setConnectionMode('branch')}
-              className={cn(
-                BUTTON,
-                'border px-2 text-xs text-center min-h-11',
-                d.connectionMode !== 'ems'
-                  ? 'border-energy-cyan/60 bg-energy-cyan/15 text-text-primary'
-                  : 'border-border bg-surface-elevated text-text-secondary hover:bg-surface-hover'
-              )}
+        {canConnect && (
+          <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1 xl:col-span-2">
+            <span className="text-xs text-text-secondary">{t('insertConnection')}</span>
+            <div
+              role="group"
+              aria-label={t('insertConnection')}
+              className="grid grid-cols-1 gap-1.5 sm:grid-cols-2"
             >
-              {t('connectionBranch')}
-            </button>
-            <button
-              type="button"
-              aria-pressed={d.connectionMode === 'ems'}
-              onClick={() => draft.setConnectionMode('ems')}
-              className={cn(
-                BUTTON,
-                'border px-2 text-xs text-center min-h-11',
-                d.connectionMode === 'ems'
-                  ? 'border-energy-cyan/60 bg-energy-cyan/15 text-text-primary'
-                  : 'border-border bg-surface-elevated text-text-secondary hover:bg-surface-hover'
-              )}
-            >
-              {t('connectionEms')}
-            </button>
+              {CONNECTION_MODES.map(({ mode, label }) => {
+                const on = (d.connectionMode ?? 'branch') === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => draft.setConnectionMode(mode)}
+                    className={cn(
+                      BUTTON,
+                      'border px-2 text-center text-xs',
+                      on
+                        ? 'border-energy-cyan/60 bg-energy-cyan/15 text-text-primary'
+                        : 'border-border bg-surface-elevated text-text-secondary hover:bg-surface-hover'
+                    )}
+                  >
+                    {t(label)}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-text-muted">
+              {t('connectionNote', { sector: tSector(d.sector) })}
+            </p>
           </div>
-          <p className="text-[11px] text-text-muted">
-            {t('connectionNote', { sector: tSector(d.sector) })}
-          </p>
-        </div>
+        )}
         <div className="flex flex-col gap-1">
           <label className="flex flex-col gap-1 text-xs text-text-secondary">
             {t('insertWatts')}

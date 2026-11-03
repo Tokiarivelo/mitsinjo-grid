@@ -3,6 +3,7 @@ import { SECTOR_POSITIONS, BUS_POSITION, feederExitPosition } from '../site-posi
 import { routeCable } from '../cable-route';
 import { KEEP_OUT_ZONES, POND_CENTER, POND_RADIUS, terrainHeight } from '../landscape';
 import {
+  contourWaypoint,
   tapPoint,
   parsePositionCoords,
   segmentIntersectsObstacle,
@@ -87,7 +88,7 @@ describe('tapPoint (PI-T6)', () => {
       expect(res.needsPoles).toBe(true);
       expect(res.poles.length).toBeGreaterThanOrEqual(2);
       // Verify every span between consecutive poles is <= 4.5
-      let prev = [res.point[0], res.point[2]];
+      let prev: [number, number] = [res.point[0], res.point[2]];
       for (const p of res.poles) {
         const span = Math.hypot(p[0] - prev[0], p[1] - prev[1]);
         expect(span).toBeLessThanOrEqual(4.6);
@@ -102,8 +103,8 @@ describe('tapPoint (PI-T6)', () => {
       expect(pondZone).toBeDefined();
 
       // Line passing right through pond center [-11.5, 4.5]
-      const a = [-5, 4.5];
-      const b = [-18, 4.5];
+      const a: [number, number] = [-5, 4.5];
+      const b: [number, number] = [-18, 4.5];
       const cuts = segmentIntersectsObstacle(a[0], a[1], b[0], b[1], pondZone);
       expect(cuts).toBe(true);
 
@@ -138,11 +139,27 @@ describe('tapPoint (PI-T6)', () => {
     });
   });
 
+  describe('contourWaypoint', () => {
+    it('keeps the detour on the obstacle side it picked, on both sides (z is not x)', () => {
+      const obstacle = { x: 0, z: 0, r: 3, id: 'placed:rock' };
+      // East-west segment through the obstacle: detours are north and south of it.
+      for (const blockSide of [1, -1]) {
+        // A second obstacle blocks one detour so the other side must be chosen.
+        const blocker = { x: -5, z: blockSide * 1.5, r: 1.5, id: 'placed:blocker' };
+        const wp = contourWaypoint(-10, 0, 10, 0, obstacle, [obstacle, blocker]);
+        expect(wp).not.toBeNull();
+        expect(wp![0]).toBeCloseTo(0);
+        expect(Math.sign(wp![2])).toBe(-blockSide);
+        expect(Math.abs(wp![2])).toBeGreaterThan(physicalObstacleRadius(obstacle));
+      }
+    });
+  });
+
   describe('Changement de point de raccordement si obstacle sur un candidat', () => {
     it('chooses an alternate candidate on the branch if the closest candidate is blocked', () => {
       // Create a test obstacle that specifically blocks the direct line from the building
       // but leaves a clear path from a branch pole
-      const bPos = SECTOR_POSITIONS.school; // [2, 0, -9]
+      // School sits at [2, 0, -9]
       const target = { x: 2, z: -16 }; // North of school
 
       // Fake obstacle directly behind school
@@ -175,8 +192,8 @@ describe('tapPoint (PI-T6)', () => {
       expect(Array.isArray(res.poles)).toBe(true);
       expect(Array.isArray(res.routePoints)).toBe(true);
       // No kW, kWh, or energy fields in the result
-      expect((res as any).kw).toBeUndefined();
-      expect((res as any).kwh).toBeUndefined();
+      expect(res).not.toHaveProperty('kw');
+      expect(res).not.toHaveProperty('kwh');
     });
   });
 });

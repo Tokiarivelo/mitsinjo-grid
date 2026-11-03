@@ -239,4 +239,11 @@ describe('ApplianceInsert (PV-T12)', () => {
     expect(placed).toBeDefined();
     expect(placed?.connectionMode).toBe('ems');
   });
+
+  it('without a 3D model: no connection selector and no placed model stored (PR #56 review)', () => {
+    renderInsert(pump, 'Water pump');
+    expect(screen.queryByRole('group', { name: 'Grid connection' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Insert into simulation' }));
+    expect(usePlacedModelsStore.getState().getModel('vision-p1-det-1')).toBeUndefined();
+  });
 });
