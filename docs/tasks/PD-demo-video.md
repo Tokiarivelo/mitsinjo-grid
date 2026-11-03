@@ -34,7 +34,8 @@ All work in `video/` (layout: plan § 3). New commands → Makefile targets in a
       big-cursor overlay, `markers.json`) + `record-region.sh` (x11grab, NVENC, `-draw_mouse 0`) +
       `make video-capture`. Shots H1, L1–L3, R1, A1–A10, V1–V3, B1–B9 (plan § 6). **Done when** one dry run with
       `make dev-mock` gives every shot id in `markers.json`.
-- [ ] **PD-T7** (human) Live take with `LLM_PROVIDER=meta` (+ backup take); check no mock text, no key on screen;
+- [ ] **PD-T7** (human) Live take with `LLM_PROVIDER=meta` (+ backup take), B-shots on
+      `video/images/demo-photo-bourton.jpg` (CC BY-SA 3.0, credited); check no mock text, no key on screen;
       fill `video/output/values.md` with every number used in overlays and the voice-over.
 
 ## PD3 — Voice, edit, deliver

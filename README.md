@@ -32,7 +32,7 @@
   | **Muse Voice**                                | Chat voice input transcription (EN / FR / MG)                                                                |
   | **Muse Glimmer 30B** (open weights, optional) | Local step in the fallback chain Meta → Glimmer → offline mock (`GLIMMER_BASE_URL`, vLLM / Ollama)           |
 
-- **Judges without keys**: `LLM_PROVIDER=mock` (default) runs the whole demo path offline and deterministically; `docker compose up -d --build` (or `make docker-up`) or `make install && make dev-mock`.
+- **Run it**: `docker compose up -d --build` → http://localhost:3000, offline mock by default (no key); live Meta models with your own key = 2 lines in `.env`. Steps, mock vs live, a 5-minute tour: [§ 8 Run It](#8-run-it-judges-start-here).
 
 ---
 
@@ -175,38 +175,118 @@ _For complete modeling formulas and boundary conditions, see [docs/assumptions.m
 
 ---
 
-## 8. Getting Started
+## 8. Run It (judges: start here)
 
-### Prerequisites
+Two ways to run the app. Both start in **offline mock mode** (no key, deterministic, recorded sample answers),
+and switch to the **live Meta models** with one variable plus your own key.
 
-- Node.js >= 20.10.0
-- pnpm >= 9.x / 10.x
-
-### Quick Installation
+### Option A — Docker (no Node or pnpm needed)
 
 ```bash
-# Clone the repository
 git clone https://github.com/Tokiarivelo/mitsinjo-grid.git
 cd mitsinjo-grid
-
-# Install workspace dependencies
-make install
-
-# Configure environment variables
-make env
+docker compose up -d --build        # or: make docker-up
 ```
 
-### Docker Compose (no Node or pnpm needed)
+Open **http://localhost:3000**. Logs: `docker compose logs -f web` · stop: `docker compose down`.
+Port 3000 busy? `HOST_PORT=8080 docker compose up -d --build` → http://localhost:8080.
+
+### Option B — Node + pnpm
+
+Requires **Node.js ≥ 20.12** (22 LTS recommended) and **pnpm 10** (`corepack enable` installs the pinned
+version, 10.29.3).
 
 ```bash
-docker compose up -d --build      # or: make docker-up → http://localhost:3000
-docker compose logs -f web        # or: make docker-logs
-docker compose down               # or: make docker-down
+git clone https://github.com/Tokiarivelo/mitsinjo-grid.git
+cd mitsinjo-grid
+corepack enable                     # provides pnpm 10.29.3
+pnpm install                        # or: make install
+cp .env.example .env                # offline mock by default
+pnpm dev                            # or: make dev
 ```
 
-Without a root `.env` the copilot runs in offline mock mode (no key needed). With a root `.env` (copy
-[.env.example](.env.example), set `LLM_PROVIDER=meta` and `META_API_KEY`) the live Meta models are used.
-`HOST_PORT=8080 docker compose up -d` changes the host port; the app always listens on 3000 in the container.
+Open **http://localhost:3000** (`PORT` in `.env`). `make dev-mock` forces mock mode whatever `.env` says.
+
+### Use the live Meta models (your own key)
+
+1. Get a Meta Model API key at [dev.meta.ai](https://dev.meta.ai).
+2. In the root `.env` (create it with `cp .env.example .env`), set exactly two lines:
+
+   ```ini
+   LLM_PROVIDER=meta
+   META_API_KEY=<your key>
+   ```
+
+3. Restart: `pnpm dev` (Option B), or `docker compose up -d --build` (Option A — compose reads the same
+   root `.env`).
+
+Never commit `.env` (it is git-ignored). With an empty key the app runs the offline mock; a failing live call
+also falls back to it instead of crashing. Spend guard: `META_SPEND_CAP_USD` (default 15 USD per chat session; over it → mock).
+
+### Mock vs live: what changes
+
+| Feature                                                                                   | Offline mock (default)                                         | Live Meta (`LLM_PROVIDER=meta`)                                              |
+| ----------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Engine, strategies, 3D / Topology / Circuit views, 7-day scenarios, Autonomous AI actions | identical (deterministic engine, no AI)                        | identical                                                                    |
+| Copilot answers, tool calls, evidence                                                     | scripted answers on the demo questions, real engine numbers    | Muse Spark (Muse Wonder for deep reasoning)                                  |
+| Voice input                                                                               | scripted transcript                                            | Muse Voice                                                                   |
+| Photo → objects                                                                           | sample detections, labelled "Demo detections (offline sample)" | Muse Spark (names) + SAM 3.1 (outlines)                                      |
+| 2D facade → 3D model                                                                      | 3D from the object's outline                                   | Muse Image (facade) → Muse Spark (parts, stages) → Muse Wonder (final check) |
+
+Provenance for keyless judging: the demo video shows the live Meta calls; [`benchmarks/`](benchmarks/) holds
+the engine results.
+
+### Try it in 5 minutes
+
+1. **Solar drop:** pick the scenario **Cloudy Afternoon (-40%)** in the header, open **Live Simulation**,
+   press play; switch **View mode**: 3D Scene · Topology · Circuit.
+2. **Compare:** **Strategy Lab** → Proportional vs Essential first (clinic coverage, unserved energy).
+3. **Ask:** **AI Copilot** → _"Why does the clinic get less energy?"_ → answer with **Computed evidence**
+   and its `SIM-…` run id.
+4. **Let the AI drive:** **Dispatch mode** (header) → **Autonomous AI** → **Live Simulation** → play →
+   **Event Log** → **Take back control**.
+5. **Photo → 3D → village:** **Village editor** → **Use the sample room**, or choose the street photo
+   [`video/images/demo-photo-bourton.jpg`](video/images/demo-photo-bourton.jpg) (used in the video) → select an
+   object → **3D model** → **Configure Load & Insert** → **Insert into simulation**.
+
+Every screen is labelled `SIMULATED DATA`: no real grid is measured or controlled.
+
+### Optional services (not needed to judge)
+
+| Variable(s)                          | Without it                                        | Docs                                                       |
+| ------------------------------------ | ------------------------------------------------- | ---------------------------------------------------------- |
+| `DATABASE_URL` (Neon Postgres)       | works, but kept in server memory only (see below) | [docs/setup/env.md](docs/setup/env.md)                     |
+| `R2_*` (Cloudflare R2)               | generated images are kept in the page only        | [docs/setup/cloudflare-r2.md](docs/setup/cloudflare-r2.md) |
+| `GLIMMER_BASE_URL` (local Glimmer)   | fallback chain is Meta → mock                     | [.env.example](.env.example)                               |
+| `NEXT_PUBLIC_BRIDGE_URL`, `BRIDGE_*` | the physical scale-model panel stays hidden       | [docs/bridge.md](docs/bridge.md)                           |
+
+**Database (optional, Neon Postgres).** It stores the copilot chat sessions and their summaries, the
+custom multi-day scenarios (**My Custom Scenarios**, drafted in chat or imported), and the Autonomous AI
+**Event Log** with its narrations. Without `DATABASE_URL` all of it still works for the whole demo, held in the
+server's memory: it is lost when the server restarts (`pnpm dev` / `docker compose` restart), and on a
+serverless host each instance has its own memory — so the deployed site uses Neon. To keep data locally, put a
+Neon (or any Postgres) URL in the root `.env`:
+
+```ini
+DATABASE_URL=postgresql://<user>:<password>@<host>/<db>?sslmode=require        # pooled, read by the app
+DATABASE_URL_UNPOOLED=postgresql://<user>:<password>@<host>/<db>?sslmode=require # direct, preferred by make db-migrate
+```
+
+Tables are created automatically on the first database call (or `make db-migrate`). The other `PG*` /
+`POSTGRES_*` lines of `.env.example` come from the Vercel–Neon integration and are not read by the app.
+
+Every variable, with what reads it and its allowed values: [.env.example](.env.example). Local vs Vercel
+checklist: [docs/setup/env.md](docs/setup/env.md). `.env` (root) and `apps/web/.env.local` are both read;
+`apps/web/.env.local` wins, and a shell variable wins over both.
+
+### Troubleshooting
+
+- **Port already in use:** `PORT=3005 pnpm dev` (Option B) or `HOST_PORT=8080 …` (Option A).
+- **Copilot answers look scripted:** `LLM_PROVIDER` is not `meta`, the key is empty or invalid, or the spend
+  cap is reached — check the server log (`[copilot:meta] …` lines mean live calls).
+- **Changed `.env` but nothing changed:** restart `pnpm dev`; with Docker, rerun `docker compose up -d --build`.
+- **No 3D (old GPU / no WebGL):** the app shows the 2D schematic instead; everything else works.
+- **`pnpm: command not found`:** run `corepack enable` (ships with Node), or `npm i -g pnpm@10.29.3`.
 
 ### Benchmarks
 
@@ -218,7 +298,9 @@ Results and how to read them: [benchmarks/README.md](benchmarks/README.md). A fu
 0.5 ms and a three-strategy comparison stays under 4 ms p95. Under Severe Weather Stress, essential-first
 serves the health clinic 75.5 % of its demand, against 71.9 % with proportional shedding.
 
-### Development & Testing
+### For developers
+
+`make help` lists every command.
 
 ```bash
 # Start development server on http://localhost:$PORT (PORT in .env, default 3000)
@@ -271,20 +353,74 @@ NEXT_PUBLIC_BRIDGE_URL=ws://localhost:8787 make dev-mock   # /simulation → Con
 
 ## 9. Environment Variables
 
-Create `.env` at repo root or `apps/web/.env.local` (see [.env.example](.env.example); local vs Vercel checklist: [docs/setup/env.md](docs/setup/env.md)):
+All variables live in **one root `.env`** (`cp .env.example .env`); `apps/web/.env.local` also works and wins,
+a shell variable wins over both. Every one is optional: with an empty `.env` the app runs fully offline.
+**Judges need at most two:** `LLM_PROVIDER=meta` and `META_API_KEY` (§ 8). Never commit `.env`.
+Template with comments: [.env.example](.env.example) · local vs Vercel: [docs/setup/env.md](docs/setup/env.md).
 
-```ini
-# LLM Provider: 'mock' (default, offline, zero-credential) or 'meta'
-LLM_PROVIDER=mock
+### Web server
 
-# Meta AI API Configuration (required when LLM_PROVIDER=meta)
-META_API_KEY=your_meta_api_key_here
-META_MODEL=muse-spark-v1
-META_BASE_URL=https://api.meta.ai/v1
+| Variable    | Needed for | Default | Meaning                                                                |
+| ----------- | ---------- | ------- | ---------------------------------------------------------------------- |
+| `PORT`      | —          | `3000`  | `pnpm dev` / `make dev` port, also used by Playwright and `make shots` |
+| `HOST_PORT` | Docker     | `3000`  | host port mapped to the container's 3000 (`PORT` is ignored in Docker) |
 
-# Optional Stitch MCP / design tooling key
-STITCH_API_KEY=
-```
+### Copilot and Meta models (server-only)
+
+| Variable                  | Needed for  | Default                     | Meaning                                                                                             |
+| ------------------------- | ----------- | --------------------------- | --------------------------------------------------------------------------------------------------- |
+| `LLM_PROVIDER`            | live AI     | `mock`                      | `mock` (offline, scripted) · `meta` (Meta Model API) · `glimmer` (local model first)                |
+| `META_API_KEY`            | live AI     | empty                       | your key from [dev.meta.ai](https://dev.meta.ai); empty → mock. **Secret**                          |
+| `META_BASE_URL`           | —           | `https://api.meta.ai/v1`    | Meta Model API base URL                                                                             |
+| `META_MODEL`              | —           | `muse-spark-1.3`            | copilot chat + tool calling (Muse Spark)                                                            |
+| `META_VOICE_MODEL`        | —           | `muse-voice-transcribe-1.0` | voice input transcription (WAV)                                                                     |
+| `META_VISION_MODEL`       | —           | `muse-spark-1.3`            | reads photos: names appliances / buildings, 3D parts and stages                                     |
+| `META_SEGMENT_MODEL`      | —           | `sam-3.1`                   | outlines each detected object (SAM)                                                                 |
+| `META_IMAGE_MODEL`        | —           | `muse-image-1.0`            | 2D facade drawings, shedding posters                                                                |
+| `META_REFINE_MODEL`       | —           | `muse-wonder-1.0`           | final check + re-refinement of the 3D model (falls back to `META_VISION_MODEL`)                     |
+| `META_SPEND_CAP_USD`      | —           | `15`                        | estimated Meta spend allowed per chat session; over it → mock; `0` = no paid call                   |
+| `META_PREFER_CONTRIBUTOR` | —           | `true`                      | prefer Spark `*-contributor` ids (≈ 12× cheaper, Meta trains on them); `false` for real user data   |
+| `GLIMMER_BASE_URL`        | local model | empty                       | OpenAI-compatible URL (Ollama `http://localhost:11434/v1`, vLLM); set → chain Meta → Glimmer → mock |
+| `GLIMMER_MODEL`           | local model | `muse-glimmer-30b`          | model id served locally                                                                             |
+| `GLIMMER_API_KEY`         | local model | empty                       | only if the local server asks for one. **Secret**                                                   |
+
+### Database — Neon Postgres (optional, details in § 8)
+
+| Variable                                                                             | Needed for                | Default | Meaning                                                                                            |
+| ------------------------------------------------------------------------------------ | ------------------------- | ------- | -------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                                       | data kept across restarts | empty   | pooled URL read by the app (chats, custom scenarios, Event Log); empty → server memory. **Secret** |
+| `DATABASE_URL_UNPOOLED`                                                              | `make db-migrate`         | empty   | direct URL, preferred for migrations. **Secret**                                                   |
+| `PGHOST` `PGHOST_UNPOOLED` `PGUSER` `PGDATABASE` `PGPASSWORD`, `POSTGRES_*` (8 vars) | —                         | empty   | written by the Vercel–Neon integration; **not read by the app**                                    |
+
+### Media storage — Cloudflare R2 (optional)
+
+| Variable                                                      | Needed for               | Default               | Meaning                                                                                                                                                         |
+| ------------------------------------------------------------- | ------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `R2_ACCOUNT_ID` · `R2_ACCESS_KEY_ID` · `R2_SECRET_ACCESS_KEY` | keeping generated images | empty (all 3 or none) | saves facades / posters with the session; empty → images stay in the page only. **Secrets** — guide: [docs/setup/cloudflare-r2.md](docs/setup/cloudflare-r2.md) |
+| `R2_BUCKET_NAME`                                              | R2                       | `mitsinjo-grid-media` | bucket name                                                                                                                                                     |
+| `R2_PUBLIC_URL`                                               | R2                       | empty                 | public bucket URL (r2.dev or custom domain)                                                                                                                     |
+
+### Physical scale model — `make bridge` (optional, local only; details: [docs/bridge.md](docs/bridge.md))
+
+| Variable                                               | Default                                | Meaning                                                                              |
+| ------------------------------------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_BRIDGE_URL`                               | empty                                  | browser → bridge WebSocket (`ws://localhost:8787`); empty → scale-model panel hidden |
+| `BRIDGE_MODE`                                          | `twin`                                 | `replay` (engine drives the model) · `twin` (model sensors feed the engine)          |
+| `BRIDGE_SCENARIO` · `BRIDGE_STRATEGY`                  | `cloudy_afternoon` · `essential_first` | scenario and strategy the bridge runs                                                |
+| `BRIDGE_WS_PORT`                                       | `8787`                                 | bridge WebSocket port                                                                |
+| `BRIDGE_EMBEDDED_BROKER`                               | `true`                                 | in-process MQTT broker; `false` → use `MQTT_URL`                                     |
+| `MQTT_PORT` · `MQTT_URL`                               | `1883` · empty                         | broker port / external broker URL                                                    |
+| `MQTT_USERNAME` · `MQTT_PASSWORD`                      | empty                                  | MQTT login (both or none, same in the firmware). **Secrets**                         |
+| `BRIDGE_TOKEN`                                         | empty                                  | ≥ 16 chars; set → only `?bridgeToken=` browsers may send commands. **Secret**        |
+| `HW_POWER_SCALE` · `HW_TIME_SCALE` · `HW_LUX_FULL_SUN` | `4000` · `20` · `20000`                | 1 W model = 4 kW simulated · 1 simulated hour = 20 s · lux under the lamp            |
+
+### Tooling (not the app)
+
+| Variable                   | Read by                        | Meaning                                                      |
+| -------------------------- | ------------------------------ | ------------------------------------------------------------ |
+| `BENCH_OUT` · `BENCH_RUNS` | `make bench`                   | report path (set by the Makefile) · runs per measure (`200`) |
+| `STITCH_API_KEY`           | Stitch MCP (Claude Code)       | design-tool key, exported by `make claude`. **Secret**       |
+| `VERCEL_OIDC_TOKEN`        | Vercel CLI (`vercel env pull`) | written by Vercel; not read by the app. **Secret**           |
 
 ---
 
@@ -339,4 +475,4 @@ make deploy        # Manual production deployment from clean origin/main
 - **Hackathon**: Meta AI Hackathon (Solo Project)
 - **Tag**: `v1.0.0`
 - **License**: [MIT](LICENSE) © 2026 Tokiarivelo
-- **Video credits**: background music « Passion » by Luke Bergs & AgusAlvarez (publisher: Free To Use Music, 2025), free to use with no license or rights required; file in [`video/audio/music/`](video/audio/music/). Sound effects are generated with ffmpeg; all footage is the running app. Plan: [`video/VIDEO_PLAN.md`](video/VIDEO_PLAN.md).
+- **Video credits**: background music « Passion » by Luke Bergs & AgusAlvarez (publisher: Free To Use Music, 2025), free to use with no license or rights required; file in [`video/audio/music/`](video/audio/music/). Demo photo [`video/images/demo-photo-bourton.jpg`](video/images/demo-photo-bourton.jpg): « Bourton-on-the-Water » by Bin im Garten, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Bourton-on-the-Water_2010_PD_09.JPG), [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) (resized; the 2D facade and 3D model made from it are shared under the same license). Sound effects are generated with ffmpeg; all footage is the running app. Plan: [`video/VIDEO_PLAN.md`](video/VIDEO_PLAN.md).
