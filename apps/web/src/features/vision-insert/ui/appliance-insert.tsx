@@ -30,15 +30,20 @@ export function ApplianceInsert({ detection, name, photo, recipe }: ApplianceIns
   const handleInsert = () => {
     if (!draft.appliance) return;
     const ok = upsert(draft.appliance);
-    if (ok && recipe) {
+    if (ok) {
+      const existingModel = usePlacedModelsStore.getState().models[id];
+      const modelRecipe = recipe ?? existingModel?.recipe ?? { primitives: [] };
       const archetype = defaultArchetype(detection.category, detection.scenery, detection.label);
-      const scale = sceneScale(archetype, recipe.proportions);
+      const scale = recipe
+        ? sceneScale(archetype, recipe.proportions)
+        : (existingModel?.scale ?? 1);
       usePlacedModelsStore.getState().upsert({
         applianceId: id,
-        recipe,
-        yaw: recipe.yaw,
+        recipe: modelRecipe,
+        yaw: recipe?.yaw ?? existingModel?.yaw,
         scale,
-        archetype,
+        archetype: existingModel?.archetype ?? archetype,
+        connectionMode: draft.draft.connectionMode ?? 'branch',
       });
     }
   };

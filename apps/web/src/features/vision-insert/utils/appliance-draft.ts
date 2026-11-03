@@ -10,11 +10,16 @@ import {
 import { isAppliance, type ApplianceDetection } from '@/lib/vision';
 import { nearestSector } from '@/features/microgrid-3d/utils/placement';
 
+import type { ConnectionMode } from '@/stores/placed-models.store';
+
+export type { ConnectionMode };
+
 /**
  * Line the operator is about to insert (PV-T11). Power comes from the engine catalog (AI estimate) or
  * from the operator (manual), always inside the catalog bounds of the category. Never from a model.
  * `position` (PP-T4) = free placement on the village map, null = the ring around the building;
- * `feederAuto` = the feeder (sector) follows the nearest building to the position.
+ * `feederAuto` = the feeder (sector) follows the nearest building to the position;
+ * `connectionMode` (PI-T8) = 'branch' (default) or 'ems' (direct to Dispatch EMS).
  */
 export interface ApplianceDraft {
   name: string;
@@ -24,6 +29,7 @@ export interface ApplianceDraft {
   quantity: number;
   position: AppliancePosition | null;
   feederAuto: boolean;
+  connectionMode?: ConnectionMode;
 }
 
 export const MAX_QUANTITY = 50;
@@ -81,6 +87,7 @@ export function aiDraft(
     quantity: 1,
     position: null,
     feederAuto: true,
+    connectionMode: 'branch',
   };
 }
 
@@ -92,6 +99,7 @@ export const sameDraft = (a: ApplianceDraft, b: ApplianceDraft) =>
   a.watts === b.watts &&
   a.quantity === b.quantity &&
   a.feederAuto === b.feederAuto &&
+  (a.connectionMode ?? 'branch') === (b.connectionMode ?? 'branch') &&
   a.position?.x === b.position?.x &&
   a.position?.z === b.position?.z;
 
@@ -110,14 +118,10 @@ export function toAppliance(id: string, draft: ApplianceDraft): Appliance | null
 }
 
 /** Engine line → draft (reopening an object already in the simulation). */
-export const fromAppliance = ({
-  name,
-  category,
-  sector,
-  watts,
-  quantity,
-  position,
-}: Appliance): ApplianceDraft => ({
+export const fromAppliance = (
+  { name, category, sector, watts, quantity, position }: Appliance,
+  connectionMode: ConnectionMode = 'branch'
+): ApplianceDraft => ({
   name,
   category,
   sector,
@@ -125,6 +129,7 @@ export const fromAppliance = ({
   quantity,
   position: position ?? null,
   feederAuto: !position || nearestSector(position) === sector,
+  connectionMode,
 });
 
 /**

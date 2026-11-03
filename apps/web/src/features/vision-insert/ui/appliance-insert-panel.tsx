@@ -205,6 +205,46 @@ export function ApplianceInsertPanel({
             )}
           </p>
         )}
+        <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1 xl:col-span-2">
+          <span className="text-xs text-text-secondary">{t('insertConnection')}</span>
+          <div
+            role="group"
+            aria-label={t('insertConnection')}
+            className="grid grid-cols-1 gap-1.5 sm:grid-cols-2"
+          >
+            <button
+              type="button"
+              aria-pressed={d.connectionMode !== 'ems'}
+              onClick={() => draft.setConnectionMode('branch')}
+              className={cn(
+                BUTTON,
+                'border px-2 text-xs text-center min-h-11',
+                d.connectionMode !== 'ems'
+                  ? 'border-energy-cyan/60 bg-energy-cyan/15 text-text-primary'
+                  : 'border-border bg-surface-elevated text-text-secondary hover:bg-surface-hover'
+              )}
+            >
+              {t('connectionBranch')}
+            </button>
+            <button
+              type="button"
+              aria-pressed={d.connectionMode === 'ems'}
+              onClick={() => draft.setConnectionMode('ems')}
+              className={cn(
+                BUTTON,
+                'border px-2 text-xs text-center min-h-11',
+                d.connectionMode === 'ems'
+                  ? 'border-energy-cyan/60 bg-energy-cyan/15 text-text-primary'
+                  : 'border-border bg-surface-elevated text-text-secondary hover:bg-surface-hover'
+              )}
+            >
+              {t('connectionEms')}
+            </button>
+          </div>
+          <p className="text-[11px] text-text-muted">
+            {t('connectionNote', { sector: tSector(d.sector) })}
+          </p>
+        </div>
         <div className="flex flex-col gap-1">
           <label className="flex flex-col gap-1 text-xs text-text-secondary">
             {t('insertWatts')}

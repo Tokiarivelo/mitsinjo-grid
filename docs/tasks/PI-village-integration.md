@@ -89,10 +89,11 @@ proportions)` (une maison ≈ une maison du village, un frigo ≈ 1 m) ; `footpr
       Les électrons (`electron-flow`) suivent la dérivation quand l'objet consomme.
       **Done when:** test (poteaux tous les ≤ 4,5, rattachés au bon départ) ; budgets tenus ; capture jour / nuit.
       **Done:** `buildApplianceDerivations` in `tap-point.ts`, integrated into `toSceneModel`, `DistributionLines`, `ElectronFlow`, and `mapPolesToSectors`. Catenary cables with sag, intermediate poles spaced ≤ 4.5 attributed to the appliance sector with street lamp lighting following feeder status, straight wire removed (`showStraightFeederLinks: false`), and electrons traveling along active derivations. 17/17 tests passing across `appliance-derivations.test.ts` and `appliance-markers-ui.test.tsx`.
-- [ ] **PI-T8 Choix du raccordement dans l'interface.** Dans le formulaire d'insertion : « Raccordement : sur sa ramification
+- [x] **PI-T8 Choix du raccordement dans l'interface.** Dans le formulaire d'insertion : « Raccordement : sur sa ramification
       (recommandé) · direct au Dispatch EMS » + rappel du départ qui porte la charge (D1). i18n en / fr / mg, thème clair /
       sombre, ≥ 44 px, 320 px. Le glisser 3D (PP-T5) recalcule clairière, sol et poteaux au relâchement.
       **Done when:** tests composant ; `/design-check` ; le copilote ne décrit que le départ, jamais des coordonnées (PP-T7).
+      **Done:** `connectionMode: 'branch' | 'ems'` added to `PlacedModelSchema`, `ApplianceDraft`, and `useApplianceDraft`. Connection selector wired to `ApplianceInsertPanel` with accessible toggle buttons (`role="group"`, `aria-pressed`, `min-h-11`), D1 sector attribution reminder, 100% key parity across `en.json`, `fr.json`, `mg.json`. 17/17 tests passing in `appliance-insert.test.tsx` and `appliance-draft.test.ts`.
 
 ### I3 Fin
 
