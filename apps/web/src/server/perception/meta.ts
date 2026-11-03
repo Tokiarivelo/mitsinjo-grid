@@ -26,6 +26,7 @@ import {
   visibilityFromCoverage,
 } from './free-recipe';
 import { maskToOutline } from './mask-outline';
+import { timeoutSignal } from './abort';
 import { VIEWS_CHECK_JSON_SCHEMA, VIEWS_CHECK_SYSTEM_PROMPT, parseViewsCheck } from './views-check';
 import { REGION_SYSTEM_PROMPT, regionQuestion } from './region-prompt';
 import { defaultArchetype, kitToRecipe } from '@/lib/object-kit';
@@ -115,6 +116,12 @@ const TranscribePayloadSchema = z.object({
 interface ResponsesPayload {
   output?: Array<{ type: string; content?: Array<{ type: string; text?: string }> }>;
 }
+
+/**
+ * Hard cap on one vision call, whatever the caller's budget: a stalled answer is aborted (the
+ * caller falls back) instead of holding the request until Vercel's 300 s kill.
+ */
+export const VISION_CALL_MAX_MS = 150_000;
 
 /** Perception through the Meta Model API (same key and base URL as the chat). */
 export class MetaPerceptionBackend implements PerceptionBackend {
@@ -247,7 +254,7 @@ export class MetaPerceptionBackend implements PerceptionBackend {
       (m) => JSON.stringify(body(m)),
       baseModel,
       { 'Content-Type': 'application/json' },
-      signal,
+      timeoutSignal(VISION_CALL_MAX_MS, signal),
       allowContributor
     );
     const data = sent.data as {

@@ -13,6 +13,7 @@ import {
 } from '@/lib/object-shape';
 import { pathToRings, polygonPath, type NormBox } from '@/lib/vision';
 import sharp from 'sharp';
+import { timeoutSignal } from './abort';
 import type { PerceptionClient } from './client';
 import { compactDataUrl, imagineSideView } from './facade-views';
 import { renderFlat, type FlatView } from './flat-render';
@@ -979,6 +980,9 @@ export async function checkViewsModel(
     const sheet = await viewsSheet(best.recipe, best.views, signal);
     if (!sheet) break;
     let check: ViewsCheck | null = null;
+    // The deadline also bounds the call itself: a stalled Spark answer once ran into Vercel's
+    // 300 s kill (live 2026-11-03). Aborted = no answer, the model is kept.
+    const callSignal = timeoutSignal(deadline - Date.now(), signal);
     try {
       const out = await perception.checkViews(
         sheet,
@@ -986,7 +990,7 @@ export async function checkViewsModel(
           front: viewIou(best.recipe, best.views.front, 'front'),
           side: best.views.side ? viewIou(best.recipe, best.views.side, 'side') : null,
         }),
-        signal
+        callSignal
       );
       check = out.source === 'meta' ? out.check : null;
     } catch (err) {
