@@ -9,7 +9,6 @@ import {
   Building2,
   Check,
   ChevronDown,
-  ChevronUp,
   Copy,
   Download,
   Factory,
@@ -66,6 +65,7 @@ import { SectorLoadPanel } from './sector-load-panel';
 import { ApplianceList } from '@/features/vision-insert';
 import { VillageViewport } from './village-viewport';
 import { PlaybackActions } from './playback-actions';
+import { DeckFocusHeader } from './deck-focus-header';
 import { ReportFireControl, useActiveFires } from '@/features/fire-alert';
 import {
   AutopilotPanel,
@@ -352,133 +352,58 @@ export function SimulationPage() {
               aria-label={tSim('deckTitle')}
               className="lg:col-span-5 xl:col-span-4 flex flex-col rounded-card bg-surface border border-border shadow-md overflow-hidden lg:sticky lg:top-2 lg:max-h-[calc(100vh-80px)]"
             >
-              {/* ACCORDION: Top Section (either compact strip when tabs are focused, or expanded) */}
-              {deckFocus === 'tabs' ? (
-                /* TOP COMPACT ACCORDION BAR (Click to expand controls, shrink tabs) */
-                <div
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={false}
-                  onClick={() => setDeckFocus('top')}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setDeckFocus('top');
-                    }
-                  }}
-                  className="flex items-center justify-between px-3 py-2 border-b border-border bg-surface-elevated/50 hover:bg-surface-elevated/80 transition-colors cursor-pointer select-none group shrink-0"
-                  title={tSim('expandTopControls')}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="p-1 rounded-md bg-energy-cyan/10 text-energy-cyan shrink-0">
-                      <Sliders className="h-3.5 w-3.5" aria-hidden="true" />
-                    </div>
-                    <span className="text-xs font-display font-semibold uppercase tracking-wider text-text-primary group-hover:text-energy-cyan transition-colors truncate">
-                      {tSim('controlsOverview')}
-                    </span>
-                    {/* Status Badge */}
-                    <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono bg-surface border border-border text-text-muted shrink-0">
-                      {dispatchMode === 'autonomous' ? (
-                        <>
-                          <Bot
-                            className="h-3 w-3 text-ai-violet animate-pulse"
+              {/* ACCORDION: top controls open, or a compact strip while a tab is focused */}
+              <DeckFocusHeader
+                expanded={deckFocus === 'top'}
+                title={deckFocus === 'top' ? tSim('deckTitle') : tSim('controlsOverview')}
+                onToggle={() => setDeckFocus(deckFocus === 'top' ? 'tabs' : 'top')}
+                onClose={() => setIsPanelOpen(false)}
+                badges={
+                  deckFocus === 'tabs' && (
+                    <>
+                      <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono bg-surface border border-border text-text-muted shrink-0">
+                        {dispatchMode === 'autonomous' ? (
+                          <>
+                            <Bot
+                              className="h-3 w-3 text-ai-violet animate-pulse"
+                              aria-hidden="true"
+                            />
+                            <span className="text-ai-violet font-semibold">
+                              {tDispatch('modeAutonomous')}
+                            </span>
+                          </>
+                        ) : dispatchMode === 'assisted' ? (
+                          <>
+                            <Sliders className="h-3 w-3 text-energy-cyan" aria-hidden="true" />
+                            <span className="text-energy-cyan font-semibold">
+                              {tDispatch('modeAssisted')}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span
+                              className="h-1.5 w-1.5 rounded-full bg-text-muted"
+                              aria-hidden="true"
+                            />
+                            <span>{tDispatch('modeManual')}</span>
+                          </>
+                        )}
+                      </span>
+                      {activeFires.length > 0 && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-critical-red/10 border border-critical-red/40 text-critical-red shrink-0">
+                          <Flame
+                            className="h-3 w-3 motion-safe:animate-bounce"
                             aria-hidden="true"
                           />
-                          <span className="text-ai-violet font-semibold">
-                            {tDispatch('modeAutonomous')}
-                          </span>
-                        </>
-                      ) : dispatchMode === 'assisted' ? (
-                        <>
-                          <Sliders className="h-3 w-3 text-energy-cyan" aria-hidden="true" />
-                          <span className="text-energy-cyan font-semibold">
-                            {tDispatch('modeAssisted')}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span
-                            className="h-1.5 w-1.5 rounded-full bg-slate-400"
-                            aria-hidden="true"
-                          />
-                          <span>{tDispatch('modeManual')}</span>
-                        </>
+                          <span>{activeFires.length}</span>
+                        </span>
                       )}
-                    </span>
-                    {activeFires.length > 0 && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-critical-red/10 border border-critical-red/40 text-critical-red shrink-0">
-                        <Flame className="h-3 w-3 animate-bounce" aria-hidden="true" />
-                        <span>{activeFires.length}</span>
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {/* HIGHLIGHTED EXPAND BUTTON WITH INDICATIVE ICONS */}
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-energy-cyan/15 text-energy-cyan border border-energy-cyan/40 shadow-xs group-hover:bg-energy-cyan/25 group-hover:border-energy-cyan transition-all">
-                      <Sliders className="h-3 w-3 shrink-0" aria-hidden="true" />
-                      <span>{tSim('expandTopControls')}</span>
-                      <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsPanelOpen(false);
-                      }}
-                      aria-label={tCommon('close')}
-                      title={tSim('hideDeck')}
-                      className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface border border-transparent hover:border-border transition-colors cursor-pointer"
-                    >
-                      <PanelRightClose className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* TOP EXPANDED ACCORDION (Click header to collapse controls, expand tabs) */
+                    </>
+                  )
+                }
+              />
+              {deckFocus === 'top' && (
                 <div className="flex flex-col border-b border-border bg-surface shrink-0">
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    aria-expanded={true}
-                    onClick={() => setDeckFocus('tabs')}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setDeckFocus('tabs');
-                      }
-                    }}
-                    className="flex items-center justify-between px-3.5 py-2.5 border-b border-border bg-surface-elevated/40 hover:bg-surface-elevated/70 transition-colors cursor-pointer select-none group"
-                    title={tSim('collapseTopControls')}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="p-1 rounded-md bg-energy-cyan/10 text-energy-cyan shrink-0">
-                        <Sliders className="h-3.5 w-3.5" aria-hidden="true" />
-                      </div>
-                      <h2 className="text-xs font-display font-semibold uppercase tracking-wider text-text-primary group-hover:text-energy-cyan transition-colors">
-                        {tSim('deckTitle')}
-                      </h2>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-surface border border-border group-hover:border-energy-cyan/50 text-text-secondary group-hover:text-text-primary transition-all">
-                        <span>{tSim('collapseTopControls')}</span>
-                        <ChevronUp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsPanelOpen(false);
-                        }}
-                        aria-label={tCommon('close')}
-                        title={tSim('hideDeck')}
-                        className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface border border-transparent hover:border-border transition-colors cursor-pointer"
-                      >
-                        <PanelRightClose className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                    </div>
-                  </div>
-
                   {/* Safety: report a fire from the deck, whatever tab is open (M2-T2) */}
                   <div className="px-4 py-2.5 border-b border-border">
                     <ReportFireControl variant="panel" />

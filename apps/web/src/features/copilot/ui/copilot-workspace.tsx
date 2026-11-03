@@ -438,21 +438,27 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
                   <div className="w-full max-w-lg mt-5 p-3 rounded-xl border border-border/70 bg-surface/70 backdrop-blur-xs flex flex-wrap items-center justify-around gap-2 text-xs font-mono">
                     <div className="flex items-center gap-1.5 text-text-secondary">
                       <span className="w-2 h-2 rounded-full bg-energy-cyan animate-pulse" />
-                      <span className="text-[10px] text-text-muted uppercase">Scenario:</span>
+                      <span className="text-[10px] text-text-muted uppercase">
+                        {tCopilot('starterScenarioLabel')}
+                      </span>
                       <span className="font-semibold text-text-primary">{scenarioTitle}</span>
                     </div>
                     <div className="h-3 w-px bg-border/80 hidden sm:block" />
                     <div className="flex items-center gap-1.5 text-text-secondary">
-                      <span className="text-[10px] text-text-muted uppercase">Strategy:</span>
+                      <span className="text-[10px] text-text-muted uppercase">
+                        {tCopilot('starterStrategyLabel')}
+                      </span>
                       <span className="font-semibold text-energy-cyan">
                         {strategyInfo?.label || activeStrategy}
                       </span>
                     </div>
                     <div className="h-3 w-px bg-border/80 hidden sm:block" />
                     <div className="flex items-center gap-2 text-text-muted text-[11px]">
-                      <span>{fmtKw(input.solar.peakKw)} PV</span>
+                      <span>{tCopilot('starterPv', { value: fmtKw(input.solar.peakKw) })}</span>
                       <span>•</span>
-                      <span>{fmtKwh(input.battery.capacityKwh)} BESS</span>
+                      <span>
+                        {tCopilot('starterBess', { value: fmtKwh(input.battery.capacityKwh) })}
+                      </span>
                     </div>
                   </div>
 

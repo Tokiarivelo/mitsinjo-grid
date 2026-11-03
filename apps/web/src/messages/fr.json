@@ -234,7 +234,6 @@
       "expandTopControls": "Agrandir les contrôles",
       "collapseTopControls": "Réduire les contrôles",
       "expandTabs": "Agrandir le contenu de l'onglet",
-      "collapseTabs": "Réduire le contenu de l'onglet",
       "deckSubtitle": "Paramètres en direct et répartition des charges",
       "togglePanelCollapse": "Masquer le panneau",
       "togglePanelExpand": "Afficher le panneau",
@@ -755,7 +754,11 @@
         "restart": "Lecture relancée depuis 00:00",
         "seek": "Curseur placé à {hour}"
       },
-      "findAppliances": "Trouver les appareils sur cette photo"
+      "findAppliances": "Trouver les appareils sur cette photo",
+      "starterScenarioLabel": "Scénario :",
+      "starterStrategyLabel": "Stratégie :",
+      "starterPv": "{value} PV",
+      "starterBess": "{value} BESS"
     },
     "gridDiagram": {
       "topologyLabel": "Plan du village : flux d'énergie du hub solaire vers chaque secteur",
@@ -1155,7 +1158,7 @@
       "resumeAutonomous": "Reprendre la simulation en mode IA",
       "activeAutonomousHint": "L'IA autonome régule le microréseau heure par heure selon la constitution du village.",
       "viewLogDecisions": "Suivre les décisions en direct dans le Journal →",
-      "decisionsCount": "{count} décision(s) IA enregistrée(s)",
+      "decisionsCount": "{count, plural, one {# décision IA enregistrée} other {# décisions IA enregistrées}}",
       "takeBackControl": "Reprendre la main",
       "takeBackControlHint": "Rétablir le contrôle manuel immédiat",
       "eventLog": "Journal des événements",

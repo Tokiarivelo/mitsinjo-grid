@@ -308,25 +308,11 @@ export function DispatchModeToggle({
     (e) => e.mode === 'autonomous' && Boolean(e.action)
   ).length;
 
+  // play() runs the engine first when the result is stale, then starts the hour ticker.
+  const handleResumePlayback = () => useSimulationStore.getState().play();
   const handleLaunchAi = () => {
     setDispatchMode('autonomous');
-    const s = useSimulationStore.getState();
-    if (!s.isPlaying) {
-      if (s.status === 'ready' || s.status === 'modified') {
-        s.run();
-      }
-      s.togglePlay();
-    }
-  };
-
-  const handleResumePlayback = () => {
-    const s = useSimulationStore.getState();
-    if (!s.isPlaying) {
-      if (s.status === 'ready' || s.status === 'modified') {
-        s.run();
-      }
-      s.togglePlay();
-    }
+    handleResumePlayback();
   };
 
   const labelId = `dispatch-label-${groupId}`;
