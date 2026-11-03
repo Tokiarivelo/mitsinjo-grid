@@ -42,8 +42,8 @@ test.describe('PA-T7 Autonomous AI Dispatch & Chat Scenario E2E', () => {
     // Red fire alert appears without human confirmation
     await expect(
       page
-        .locator('main')
-        .getByText(/market|marché|fire/i)
+        .getByRole('alert')
+        .filter({ hasText: /market|marché/i })
         .first()
     ).toBeVisible({ timeout: 10_000 });
 

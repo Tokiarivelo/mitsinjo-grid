@@ -43,8 +43,9 @@ test.describe('M6-T2 Copilot flows E2E (mock LLM)', () => {
     const input = page.getByRole('textbox', { name: /ask copilot a question/i });
     await input.fill('The school is burning, what happens?');
     await page.getByRole('button', { name: /^send$/i }).click();
-    await expect(page.getByText(/what happened/i).first()).toBeVisible({ timeout: 20_000 });
-    await expect(page.locator('main')).toContainText(/safety cut|fire cut|isolated/i);
-    await expect(page.locator('main')).toContainText(/school/i);
+    await expect(page.getByText('A fire cut power automatically (safety)').first()).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.getByText(/school: cut \d+:\d+ → \d+:\d+/).first()).toBeVisible();
   });
 });
