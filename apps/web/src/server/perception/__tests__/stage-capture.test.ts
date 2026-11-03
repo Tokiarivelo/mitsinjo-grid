@@ -18,6 +18,7 @@ import {
   type StageAnswer,
 } from '../stage-capture';
 import { HOUSE_STAGES } from '../shape-stages';
+import { SHAPE_SCRIPT_PROMPT_VERSION } from '../shape-script-prompt';
 import { THATCHED_FRONT } from '../__fixtures__/elevation';
 
 const g = THATCHED_FRONT;
@@ -89,6 +90,6 @@ describe('stage capture (PG-T22 replay)', () => {
     expect(a.row.stages.every((s) => s.stop !== 'timeout')).toBe(true);
     const md = stageReplayMarkdown([a.row]);
     expect(md).toMatch(/^\| capture \| prompt \| massing \| roof \| openings \| accessories \|/);
-    expect(md).toContain('| thatched | v1 |');
+    expect(md).toContain(`| thatched | v${SHAPE_SCRIPT_PROMPT_VERSION} |`);
   });
 });

@@ -39,7 +39,12 @@ import { withLatheBody } from './lathe-body';
 import { fetchFacadeMasks, type FacadeMasks } from './facade-masks';
 import { depthRatio, facadeHouseRecipe, type Elevation } from './facade-house';
 import { STAGE_SAFETY_MS } from './shape-stages';
-import { facadeStageLoop, type StageProgress, type StagesContinuation } from './shape-stages-spark';
+import {
+  facadeStageLoop,
+  viewStageLoop,
+  type StageProgress,
+  type StagesContinuation,
+} from './shape-stages-spark';
 import { formatElevationScore, scoreElevation, type ScoredElevation } from './elevation-score';
 import { ELEVATION_ARCHETYPES, measureFacadeElevations } from './facade-views';
 import { fetchPartMasks } from './part-masks';
@@ -191,6 +196,56 @@ export async function runObjectShape(
     onStagesLeft,
   }: ObjectShapeOptions = {}
 ): Promise<ObjectShape> {
+  /** Logs each ended stage (first answer and background). */
+  const logStage = (e: StageProgress) => {
+    if (e.state === 'done')
+      console.info(
+        `[vision] 3D stage ${e.index}/${e.total} ${e.stage} (${e.phase}) for "${target.label}": ${e.before?.toFixed(2)}→${e.after?.toFixed(2)} (${e.stop}${e.recipe ? ', model updated' : ''})`
+      );
+  };
+  /** First-answer stage events: logged and streamed (PG-T17). */
+  const stageProgress = (e: StageProgress) => {
+    logStage(e);
+    onStage?.(e);
+  };
+  /**
+   * Runs a staged loop (PG-T16…T20): the first answer's stages now, the rest handed to the
+   * caller for the background (`onStagesLeft`, logged the same way). Never worse than `seed`.
+   */
+  const followStages = async (
+    start: () => Promise<{ recipe: ObjectRecipe; rest: StagesContinuation | null }> | null,
+    seed: ObjectRecipe
+  ): Promise<ObjectRecipe> => {
+    try {
+      const loop = await start();
+      if (!loop) return seed;
+      if (loop.rest) {
+        console.info(
+          `[vision] 3D stages left for the background for "${target.label}": ${loop.rest.stages.join(', ')}`
+        );
+        const rest = loop.rest;
+        onStagesLeft?.({
+          ...rest,
+          run: (o) =>
+            rest.run({
+              ...o,
+              onProgress: (e) => {
+                logStage(e);
+                o.onProgress(e);
+              },
+            }),
+        });
+      }
+      return loop.recipe;
+    } catch (err) {
+      console.warn(
+        '[vision] 3D stages failed, keeping the seed:',
+        err instanceof Error ? err.message : err
+      );
+      return seed;
+    }
+  };
+
   const base = { detectionId: target.id };
   const silhouette = (
     reason: NonNullable<ObjectShape['reason']>,
@@ -414,55 +469,25 @@ export async function runObjectShape(
         // background (`onStagesLeft`). The seed is today's builder, so never worse.
         if (perception.proposeShapeOps) {
           const proposeShapeOps = perception.proposeShapeOps.bind(perception);
-          const logStage = (e: StageProgress) => {
-            if (e.state === 'done')
-              console.info(
-                `[vision] 3D stage ${e.index}/${e.total} ${e.stage} (${e.phase}) for "${target.label}": ${e.before?.toFixed(2)}→${e.after?.toFixed(2)} (${e.stop}${e.recipe ? ', model updated' : ''})`
-              );
-          };
           onStageSeed?.(recipe, front);
-          try {
-            const loop = await facadeStageLoop({
-              recipe,
-              front,
-              ...(front.roofRings ? { roofRings: front.roofRings } : {}),
-              label: target.label,
-              proposeShapeOps: async (img, q, sig) => ({
-                result: await proposeShapeOps(img, q, sig),
+          recipe = await followStages(
+            () =>
+              facadeStageLoop({
+                recipe,
+                front,
+                ...(front.roofRings ? { roofRings: front.roofRings } : {}),
+                label: target.label,
+                proposeShapeOps: async (img, q, sig) => ({
+                  result: await proposeShapeOps(img, q, sig),
+                }),
+                drawing: () =>
+                  target.facadeUrl ? imageBytes(target.facadeUrl, signal) : Promise.resolve(null),
+                firstBudgetMs: started + timeoutMs - STAGE_SAFETY_MS - Date.now(),
+                ...(signal ? { signal } : {}),
+                onProgress: stageProgress,
               }),
-              drawing: () =>
-                target.facadeUrl ? imageBytes(target.facadeUrl, signal) : Promise.resolve(null),
-              firstBudgetMs: started + timeoutMs - STAGE_SAFETY_MS - Date.now(),
-              ...(signal ? { signal } : {}),
-              onProgress: (e) => {
-                logStage(e);
-                onStage?.(e);
-              },
-            });
-            recipe = loop.recipe;
-            if (loop.rest) {
-              console.info(
-                `[vision] 3D stages left for the background for "${target.label}": ${loop.rest.stages.join(', ')}`
-              );
-              const rest = loop.rest;
-              onStagesLeft?.({
-                ...rest,
-                run: (o) =>
-                  rest.run({
-                    ...o,
-                    onProgress: (e) => {
-                      logStage(e);
-                      o.onProgress(e);
-                    },
-                  }),
-              });
-            }
-          } catch (err) {
-            console.warn(
-              '[vision] 3D stages failed, keeping the seed:',
-              err instanceof Error ? err.message : err
-            );
-          }
+            recipe
+          );
         }
         // PG-T2: the model against the drawing it was built from (the staged loop's yardstick).
         const elevScore = scoreElevation(recipe, front, {
@@ -507,6 +532,27 @@ export async function runObjectShape(
           recipe = checked.recipe;
           seen.front = checked.views.front;
           seen.side = checked.views.side;
+        }
+        // PG-T20: the archetype's stages, scored part by part on the views.
+        if (perception.proposeShapeOps) {
+          const proposeShapeOps = perception.proposeShapeOps.bind(perception);
+          const seed = recipe;
+          recipe = await followStages(
+            () =>
+              viewStageLoop({
+                recipe: seed,
+                archetype: kit.archetype,
+                views: seen,
+                label: target.label,
+                proposeShapeOps: async (img, q, sig, sheet) => ({
+                  result: await proposeShapeOps(img, q, sig, sheet),
+                }),
+                firstBudgetMs: started + VIEWS_TOTAL_MS - STAGE_SAFETY_MS - Date.now(),
+                ...(signal ? { signal } : {}),
+                onProgress: stageProgress,
+              }),
+            seed
+          );
         }
         const iou = {
           front: viewIou(recipe, seen.front, 'front'),

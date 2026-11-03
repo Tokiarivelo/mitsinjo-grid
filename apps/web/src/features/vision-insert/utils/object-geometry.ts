@@ -8,6 +8,7 @@ import { SURFACE_LOOK, SURFACES, surfaceIndex } from './surface-look';
 import { holedBox } from './holed-wall';
 import { type AssemblyDetail, layoutOpenings } from './openings';
 import { expandChimneyCaps, expandRoofTrim } from './roof-trim';
+import { expandViewAssemblies } from './view-assemblies';
 import { timberBeams } from './timber';
 import { planarUvs } from './surface-maps';
 import { type ApplianceDetection, type NormBox, type SceneryType } from '@/lib/vision';
@@ -349,10 +350,14 @@ function buildMesh(recipe: ObjectRecipe, detail: AssemblyDetail): THREE.BufferGe
   const { parts: laid, holes } = layoutOpenings(recipe, detail);
   // Roofs with a bulge end in a rounded eave roll (PG-T12), chimneys may wear a cap (PG-T10);
   // half-timbered walls get their beams.
+  // Objects from their 2D view: wheel rims, solar cell lines (PG-T21).
   const sorted = [
-    ...expandChimneyCaps(
-      expandRoofTrim(laid, recipe.proportions, ROOF_OVERHANG),
-      recipe.proportions
+    ...expandViewAssemblies(
+      expandChimneyCaps(
+        expandRoofTrim(laid, recipe.proportions, ROOF_OVERHANG),
+        recipe.proportions
+      ),
+      detail
     ),
     ...timberBeams(recipe),
   ]

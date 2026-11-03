@@ -68,6 +68,18 @@ export const PART_KINDS = [
   'plinth',
   'step',
   'frame',
+  // PG-T20: parts of objects built from their 2D view (stages per archetype).
+  'body',
+  'wheel',
+  'light',
+  'bumper',
+  'grille',
+  'handle',
+  'display',
+  'cell',
+  'trunk',
+  'crown',
+  'head',
 ] as const;
 export const PartKindSchema = z.enum(PART_KINDS);
 /** Most timber posts or rails on one wall (PV-G). */
@@ -166,7 +178,10 @@ export const RecipePartSchema = z
         rails: z.array(z.number().min(0).max(1)).max(MAX_TIMBER),
       })
       .optional(),
-    /** Window / door only (PG-T8): glass panes across × down, read on the drawing; the 3D view adds the bars. */
+    /**
+     * Window / door (PG-T8): glass panes across × down, read on the drawing; the 3D view adds the
+     * bars. Solar cells (`kind: 'cell'`, PG-T21): cell columns × rows, drawn as thin grid lines.
+     */
     grid: z
       .tuple([z.number().int().min(1).max(MAX_PANES), z.number().int().min(1).max(MAX_PANES)])
       .optional(),
@@ -175,6 +190,7 @@ export const RecipePartSchema = z
      * Door: `leaves` (1 | 2), `glazed` top share with `grid` panes, `panels` per leaf below it.
      * Window / door: `sill` (window default on), `lintel` above. Chimney: `cap` slab on top.
      * Roof: `bulge` = eave roll radius, share of the roof height (thatch default 0.08, 0 = none).
+     * Wheel (PG-T21): `rim` = a metal rim disc on its outer face.
      */
     leaves: z.number().int().min(1).max(2).optional(),
     glazed: z.number().min(0).max(MAX_DOOR_GLAZED).optional(),
@@ -183,6 +199,7 @@ export const RecipePartSchema = z
     lintel: z.boolean().optional(),
     cap: z.boolean().optional(),
     bulge: z.number().min(0).max(MAX_ROOF_BULGE).optional(),
+    rim: z.boolean().optional(),
   })
   .superRefine((p, ctx) => {
     if ((p.shape === 'extrude' || p.shape === 'hull') && !p.points)
@@ -345,10 +362,25 @@ export const ShapeStepEventSchema = z.object({ step: z.enum(SHAPE_STEPS) });
 
 /**
  * Staged improvement of the model (PG-T17/T18): stage ids of the loop (house: massing → roof →
- * openings → accessories). The first answer runs the stages that fit its budget; the rest go on
- * in the background on the same stream (`shape_stage` events), resumable by job id.
+ * openings → accessories; objects from their 2D view, PG-T20: body, glass, wheels, doors, cells,
+ * trunk, crown, head, details). The first answer runs the stages that fit its budget; the rest go
+ * on in the background on the same stream (`shape_stage` events), resumable by job id.
  */
-export const SHAPE_STAGE_IDS = ['massing', 'roof', 'openings', 'accessories'] as const;
+export const SHAPE_STAGE_IDS = [
+  'massing',
+  'roof',
+  'openings',
+  'accessories',
+  'body',
+  'glass',
+  'wheels',
+  'doors',
+  'cells',
+  'trunk',
+  'crown',
+  'head',
+  'details',
+] as const;
 export type ShapeStageId = (typeof SHAPE_STAGE_IDS)[number];
 /** Background stages stop after this (the plan's « background stages finish ≤ 3 min »). */
 export const SHAPE_STAGES_BACKGROUND_MS = 180_000;
