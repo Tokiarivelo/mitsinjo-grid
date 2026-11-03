@@ -14,7 +14,7 @@
 
 ## Next
 
-- P9-T5 (human): record the 3-min video; link in README line 15. P9-T6 (human): submit before Wed Nov 4 21:00 EST.
+- P9-T5: video = `docs/tasks/PD-demo-video.md` (spec `video/VIDEO_PLAN.md`: rules, storyboard, voice-over, shots, pipeline); link in README line 15. P9-T6 (human): submit before Wed Nov 4 21:00 EST.
 - PI I1: PI-T3 `siteZones(placed)`, PI-T4 tree clearing, PI-T5 laterite yard (`docs/tasks/PI-village-integration.md`).
 - Follow-up done: placed models pruned on every input change except those undo can restore (`liveApplianceIds`);
   golden-shape budget uses best of 3 runs (full-suite CPU contention made it flaky); PI-T2 gate-out shots taken.

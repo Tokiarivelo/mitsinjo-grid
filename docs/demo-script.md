@@ -1,5 +1,7 @@
 # 3-Minute Demo Video Script — Mitsinjo Grid
 
+> **Superseded** for the submission video by [`video/VIDEO_PLAN.md`](../video/VIDEO_PLAN.md) (7-day village + Autonomous AI, photo → 3D → village). Kept as a live-demo walkthrough.
+
 > **Target Duration**: Exactly 3 minutes (180 seconds).  
 > **Key Hackathon Narrative**: How AI-assisted decision support protects vital life-saving infrastructure in an off-grid solar microgrid during unpredictable weather shocks.  
 > **Canonical Demo Path**: `Voice/photo cloud alert` → `Solar drop + strategy comparison` → `Read-aloud explanation with evidence` → `Cut order + approval` → `FR/MG shedding poster` → `Fire report + automatic cut`.

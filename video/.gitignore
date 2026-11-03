@@ -1,0 +1,9 @@
+# Local-only video files (see VIDEO_PLAN.md § 3)
+audio/music/*.mp3
+audio/voice/*.wav
+audio/sfx/*.wav
+captures/raw/
+captures/clips/
+frames/
+output/
+reference/
