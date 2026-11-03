@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CalendarRange,
@@ -15,6 +15,7 @@ import {
   Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { fmtKwh } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
 import { WEATHER_VISUALS } from '@/features/simulation/utils/weather';
 import { useSimulationStore } from '@/stores';
@@ -22,9 +23,11 @@ import {
   type ScenarioDraft,
   type ScenarioDraftPayload,
   type MissingSlot,
+  type MissingSlotOption,
   applyDraftDefaults,
+  applySlotAnswer,
+  missingSlots,
 } from '@/lib/scenario-draft';
-import { extractScenarioDraft } from '@/lib/scenario-extractor';
 
 export interface ScenarioDraftCardProps {
   payload: ScenarioDraftPayload;
@@ -34,7 +37,7 @@ export interface ScenarioDraftCardProps {
 
 export function ScenarioDraftCard({ payload, onUpdateDraft, className }: ScenarioDraftCardProps) {
   const t = useTranslations('features.copilot.scenarioDraft');
-  const tWeather = useTranslations('features.simulation.weather');
+  const tWeather = useTranslations('features.simulation.workflow.weather');
   const tSectors = useTranslations('sectors');
   const router = useRouter();
 
@@ -44,23 +47,30 @@ export function ScenarioDraftCard({ payload, onUpdateDraft, className }: Scenari
 
   const loadDraftToStore = useSimulationStore((s) => s.loadDraft);
 
-  const isComplete = payload.missingSlots.length === 0;
+  // Slots follow the local draft so a pill answer clears its warning at once.
+  const slots = useMemo(() => missingSlots(draft), [draft]);
+  const isComplete = slots.length === 0;
+  // The engine preview belongs to the drafted version only; a local edit invalidates it.
+  const preview = draft === payload.draft ? payload.preview : undefined;
+
+  const optionLabel = (slot: MissingSlot, opt: MissingSlotOption): string => {
+    const value = String(opt.value);
+    switch (slot.kind) {
+      case 'missing_weather':
+      case 'duplicate_weather':
+        return tWeather(value);
+      case 'missing_fire_sector':
+      case 'missing_spike_sector':
+        return value === 'all' ? t('all') : tSectors(value);
+      case 'day_out_of_bounds':
+        return t('dayLabel', { day: value });
+      default:
+        return opt.label;
+    }
+  };
 
   const handleApplySlotAnswer = (slot: MissingSlot, value: string | number) => {
-    let updateText = '';
-    if (slot.kind === 'missing_fire_hour' || slot.kind === 'missing_drop_hour') {
-      updateText = `jour ${slot.day} à ${value}h`;
-    } else if (slot.kind === 'missing_weather') {
-      updateText = `jour ${slot.day} ${value}`;
-    } else if (slot.kind === 'missing_fire_sector') {
-      updateText = `jour ${slot.day} au ${value}`;
-    } else if (slot.kind === 'missing_spike_factor') {
-      updateText = `jour ${slot.day} x${value}`;
-    } else {
-      updateText = `jour ${slot.day} ${value}`;
-    }
-
-    const nextDraft = extractScenarioDraft(updateText, draft);
+    const nextDraft = applySlotAnswer(draft, slot, value);
     setDraft(nextDraft);
     onUpdateDraft?.(nextDraft);
   };
@@ -78,9 +88,9 @@ export function ScenarioDraftCard({ payload, onUpdateDraft, className }: Scenari
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: draft.title || `Scenario (${draft.days.length} days)`,
+          title: draft.title || t('title', { days: draft.days.length }),
           draft,
-          summary: payload.preview,
+          summary: preview,
         }),
       });
       if (res.ok) {
@@ -132,9 +142,7 @@ export function ScenarioDraftCard({ payload, onUpdateDraft, className }: Scenari
               {draft.title || t('title', { days: draft.days.length })}
             </h4>
             <p className="text-[11px] text-text-muted">
-              {isComplete
-                ? t('statusComplete')
-                : t('statusIncomplete', { count: payload.missingSlots.length })}
+              {isComplete ? t('statusComplete') : t('statusIncomplete', { count: slots.length })}
             </p>
           </div>
         </div>
@@ -164,7 +172,7 @@ export function ScenarioDraftCard({ payload, onUpdateDraft, className }: Scenari
         {draft.days.map((d) => {
           const weatherVisual = d.weather ? WEATHER_VISUALS[d.weather] : null;
           const WeatherIcon = weatherVisual?.icon;
-          const dayMissingSlots = payload.missingSlots.filter((s) => s.day === d.day);
+          const dayMissingSlots = slots.filter((s) => s.day === d.day);
 
           return (
             <div
@@ -263,7 +271,7 @@ export function ScenarioDraftCard({ payload, onUpdateDraft, className }: Scenari
                             onClick={() => handleApplySlotAnswer(slot, opt.value)}
                             className="inline-flex items-center min-h-11 px-2.5 py-1 text-xs font-mono font-medium rounded-control border border-solar-amber/40 bg-surface hover:bg-solar-amber/20 hover:border-solar-amber text-text-primary transition-colors cursor-pointer"
                           >
-                            {opt.label}
+                            {optionLabel(slot, opt)}
                           </button>
                         ))}
                       </div>
@@ -277,12 +285,12 @@ export function ScenarioDraftCard({ payload, onUpdateDraft, className }: Scenari
       </div>
 
       {/* Engine Computed Preview (when complete) */}
-      {isComplete && payload.preview && (
+      {isComplete && preview && (
         <div className="mt-4 rounded-control border border-energy-cyan/30 bg-energy-cyan/5 p-3">
           <div className="text-xs font-mono font-semibold uppercase tracking-wider text-energy-cyan flex items-center justify-between">
             <span>{t('previewTitle')}</span>
             <span className="text-[10px] text-text-muted">
-              {t('worstDayLabel', { day: payload.preview.worstDay })}
+              {t('worstDayLabel', { day: preview.worstDay })}
             </span>
           </div>
 
@@ -290,19 +298,19 @@ export function ScenarioDraftCard({ payload, onUpdateDraft, className }: Scenari
             <div className="rounded-control bg-surface/80 p-2 border border-border/50">
               <div className="text-[10px] text-text-muted">{t('totalDeficit')}</div>
               <div className="text-sm font-mono font-bold text-text-primary">
-                {payload.preview.totalDeficitKwh} kWh
+                {fmtKwh(preview.totalDeficitKwh)}
               </div>
             </div>
             <div className="rounded-control bg-surface/80 p-2 border border-border/50">
               <div className="text-[10px] text-text-muted">{t('criticalUnserved')}</div>
               <div className="text-sm font-mono font-bold text-critical-red">
-                {payload.preview.criticalUnservedKwh} kWh
+                {fmtKwh(preview.criticalUnservedKwh)}
               </div>
             </div>
             <div className="col-span-2 sm:col-span-1 rounded-control bg-surface/80 p-2 border border-border/50">
               <div className="text-[10px] text-text-muted">{t('worstDay')}</div>
               <div className="text-sm font-mono font-bold text-solar-amber">
-                {t('dayLabel', { day: payload.preview.worstDay })}
+                {t('dayLabel', { day: preview.worstDay })}
               </div>
             </div>
           </div>

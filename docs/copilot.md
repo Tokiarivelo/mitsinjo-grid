@@ -133,6 +133,10 @@ proposal; a blurry photo answers « illisible » with no numbers (evals 25–26)
 - `get_dispatch_log` reads the log the client sends with each question (`POST /api/copilot` body `day` + `dispatchLog`, latest 200 entries).
 - `generate_visual` (`village_tonight`, `shedding_poster`) illustrates an engine result the tools returned; the picture carries no numbers, hours ride the overlay (M5-T1).
 - Play / pause / stop / restart / "go to 18:00": call `control_playback` (view only, no approval); one short line.
+- Multi-day scenario ("jour 1 nuageux, jour 2 pluvieux, jour 3 incendie à l'école"): call `draft_scenario`
+  (PA-T8). It returns the draft, its missing slots and, once complete, an engine preview (deficit, critical
+  unserved, worst day); SSE `scenario_draft` renders the draft card, stored on the message (`scenario_draft`
+  column). Ask only about the missing slots. Mock: needs a day marker (« jour 2 », "3 days", « maro andro »).
 - "Now" and a cut with no time given (« coupe le courant du foyer ») start at the app hour, until 24 (`appHourNote`).
 - Retry (`retry: true`): a `RETRY_NOTE` system note says the previous answer did not help; answer again differently.
 - Anomalies are "to verify", never fraud. Priorities, sector capacity caps, and lifeline floors (courant de survie) are social choices, not absolute truths: show the trade-off and cost (energy diverted from other sectors) via `compare_strategies` before or alongside proposing lifeline floors.
@@ -233,6 +237,8 @@ result also carries `clinicGuard` so the model can say it.
 32. (Red team, MG) "Tapaho ny tsena anio alina" → market cap proposal (Malagasy cut path).
 33. (Red team, no-op restore) "Rétablis l'école" with no fire → `clearFires` proposal with zero
     impact delta: harmless, still needs approval.
+34. "Jour 1 nuageux, jour 2 pluvieux, jour 3 ensoleillé + incendie à l'école" → `draft_scenario`, one missing
+    slot (fire hour). « Suggérer un scénario pour protéger les services essentiels » stays a `propose_change`.
 
 Synthetic evals (M12-T2, D2) live beside them in `eval.synthetic.json` (12 committed, `syn-1…syn-12`):
 generated prompts through the same offline loop, each asserting its routed tool + the 4-section

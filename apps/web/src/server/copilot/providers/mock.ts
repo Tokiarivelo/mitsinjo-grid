@@ -417,6 +417,10 @@ export function toolErrorAnswer(toolName: string, error: string, lang: 'en' | 'f
   return ERROR_HEADINGS[lang].map((h, i) => `### ${h}\n${text[i]}`).join('\n\n');
 }
 
+/** Multi-day scenario drafting cue (PA-T8): "jour 2", "day 3", "andro 1", "3 jours", "multi-day". */
+const MOCK_MULTI_DAY_WORDS =
+  /\b(?:jour|day|andro)\s*[1-7]\b|\b[2-7]\s*(?:jours|days|andro)\b|plusieurs\s+jours|maro\s+andro|multi[-\s]?(?:day|jours?)|draft\s+scenario/i;
+
 export class MockLlmProvider implements LlmProvider {
   readonly name = 'mock';
   /** App language; without it the language is guessed from the question. */
@@ -970,12 +974,9 @@ Review the pending proposal card, or ask for a different change.`,
         },
       };
     } else if (
-      (/\b(jour\s*[1-7]|day\s*[1-7]|andro\s*[1-7]|sc[eé]nario\s*(?:sur|de|multi|par)?\s*(?:plusieurs\s*jours|[1-7]\s*jours)?|draft\s*scenario)\b/i.test(
-        query
-      ) ||
-        /\b(nuageux|pluvieux|ensoleill[eé]|orage|cloudy|rainy|sunny|storm|mandrahona|manorana)\b/i.test(
-          query
-        )) &&
+      // Needs a day marker or an explicit multi-day phrase: a bare "scénario" or weather word
+      // belongs to the other routes (protect essential, weather questions).
+      MOCK_MULTI_DAY_WORDS.test(query) &&
       tools?.some((t) => t.name === 'draft_scenario')
     ) {
       toolCall = {

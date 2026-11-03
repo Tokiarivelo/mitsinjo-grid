@@ -323,7 +323,10 @@
         "launchAutonomous": "Alefaso amin'ny fomba IA mahaleotena",
         "launch": "Alefaso",
         "exportJson": "Hamoaka JSON",
-        "delete": "Fafao"
+        "delete": "Fafao",
+        "ai": "AI",
+        "dayShort": "A{day}",
+        "dayWeather": "Andro {day}: {weather}"
       },
       "syntheticNoticeBadge": "Modely Namboarina Voamarina",
       "syntheticNoticeDescription": "Ny scénario rehetra dia mampiasa kajy modely matematika namboarina ho an ny tambajotra madinika any ambanivohitra Madagasikara. Tsy fandrefesana mivantana avy amin ny tanàna tena misy.",

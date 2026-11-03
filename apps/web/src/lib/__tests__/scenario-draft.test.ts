@@ -5,6 +5,7 @@ import {
   applyDraftDefaults,
   draftToWorkflow,
   ScenarioDraftSchema,
+  applySlotAnswer,
 } from '../scenario-draft';
 
 describe('ScenarioDraft (PA-T8b)', () => {
@@ -178,5 +179,77 @@ describe('ScenarioDraft (PA-T8b)', () => {
     expect(startSocPct).toBe(60);
     expect(strategy).toBe('proportional');
     expect(dispatchMode).toBe('manual');
+  });
+});
+
+describe('applySlotAnswer (PR #44 review)', () => {
+  const base: ScenarioDraft = {
+    days: [
+      { day: 1, weather: 'cloudy' },
+      { day: 2 },
+      { day: 3, weather: 'sunny', events: [{ type: 'fire', sector: 'school' }] },
+    ],
+  };
+
+  it('fills missing weather and fire hour until the draft is complete', () => {
+    let draft = base;
+    for (const slot of missingSlots(draft)) {
+      const value = slot.suggestedResponses[0]!.value;
+      draft = applySlotAnswer(draft, slot, value);
+    }
+    expect(missingSlots(draft)).toHaveLength(0);
+    expect(draft.days[1]!.weather).toBe('sunny');
+    expect(draft.days[2]!.events![0]).toMatchObject({ type: 'fire', startHour: 8 });
+  });
+
+  it('answers every suggested pill of every slot kind', () => {
+    const draft: ScenarioDraft = {
+      days: [
+        {
+          day: 1,
+          weather: 'sunny',
+          events: [{ type: 'fire' }, { type: 'demand_spike' }, { type: 'solar_drop' }],
+        },
+      ],
+    };
+    const slots = missingSlots(draft);
+    expect(slots.map((s) => s.kind)).toEqual([
+      'missing_fire_sector',
+      'missing_fire_hour',
+      'missing_spike_sector',
+      'missing_spike_factor',
+      'missing_drop_pct',
+      'missing_drop_hour',
+    ]);
+    const done = slots.reduce(
+      (d, s) => applySlotAnswer(d, s, s.suggestedResponses[0]!.value),
+      draft
+    );
+    expect(missingSlots(done)).toHaveLength(0);
+  });
+
+  it('merges a duplicate day and moves an out-of-range day', () => {
+    const dup: ScenarioDraft = {
+      days: [
+        { day: 1, weather: 'sunny' },
+        { day: 1, weather: 'rainy', events: [{ type: 'fire', sector: 'market', startHour: 9 }] },
+      ],
+    };
+    const slot = missingSlots(dup).find((s) => s.kind === 'duplicate_weather')!;
+    const merged = applySlotAnswer(dup, slot, 'cloudy');
+    expect(merged.days).toHaveLength(1);
+    expect(merged.days[0]).toMatchObject({ day: 1, weather: 'cloudy' });
+    expect(merged.days[0]!.events).toHaveLength(1);
+
+    const oob: ScenarioDraft = { days: [{ day: 9, weather: 'sunny' }] };
+    const moved = applySlotAnswer(oob, missingSlots(oob)[0]!, 2);
+    expect(moved.days[0]!.day).toBe(2);
+  });
+
+  it('ignores an invalid value', () => {
+    const slot = missingSlots(base).find((s) => s.kind === 'missing_fire_hour')!;
+    expect(applySlotAnswer(base, slot, 99)).toBe(base);
+    const wSlot = missingSlots(base).find((s) => s.kind === 'missing_weather')!;
+    expect(applySlotAnswer(base, wSlot, 'snow')).toBe(base);
   });
 });

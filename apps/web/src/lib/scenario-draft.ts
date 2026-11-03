@@ -405,3 +405,102 @@ export function draftToWorkflow(draft: ScenarioDraft): {
     dispatchMode: filled.dispatchMode ?? 'manual',
   };
 }
+
+/**
+ * Applies one missing-slot answer (a suggestion pill) to the draft, structurally.
+ * Pure: returns a new draft; unknown or mismatched values leave the draft unchanged.
+ */
+export function applySlotAnswer(
+  draft: ScenarioDraft,
+  slot: MissingSlot,
+  value: string | number
+): ScenarioDraft {
+  if (slot.kind === 'day_out_of_bounds') {
+    const day = Number(value);
+    if (!Number.isInteger(day) || day < 1 || day > MAX_WORKFLOW_DAYS) return draft;
+    return {
+      ...draft,
+      days: draft.days.map((d) => (d.day === slot.day ? { ...d, day } : d)),
+    };
+  }
+
+  if (slot.kind === 'missing_weather' || slot.kind === 'duplicate_weather') {
+    const weather = WeatherIdSchema.safeParse(value);
+    if (!weather.success) return draft;
+    if (slot.kind === 'duplicate_weather') {
+      // Keep the first entry of that day with the chosen weather; merge the duplicates' events.
+      const same = draft.days.filter((d) => d.day === slot.day);
+      const merged: ScenarioDraftDay = {
+        day: slot.day,
+        weather: weather.data,
+        events: same.flatMap((d) => d.events ?? []),
+      };
+      const firstIdx = draft.days.findIndex((d) => d.day === slot.day);
+      return {
+        ...draft,
+        days: draft.days
+          .map((d, i) => (i === firstIdx ? merged : d))
+          .filter((d, i) => i === firstIdx || d.day !== slot.day),
+      };
+    }
+    return {
+      ...draft,
+      days: draft.days.map((d) => (d.day === slot.day ? { ...d, weather: weather.data } : d)),
+    };
+  }
+
+  const patchEvent = (patch: (ev: ScenarioDraftEvent) => ScenarioDraftEvent | null) => {
+    let changed = false;
+    const days = draft.days.map((d) => {
+      if (d.day !== slot.day || slot.eventIndex === undefined || !d.events?.[slot.eventIndex]) {
+        return d;
+      }
+      const next = patch(d.events[slot.eventIndex]!);
+      if (!next) return d;
+      changed = true;
+      return { ...d, events: d.events.map((ev, i) => (i === slot.eventIndex ? next : ev)) };
+    });
+    return changed ? { ...draft, days } : draft;
+  };
+
+  const hour = Number(value);
+  const validHour = Number.isInteger(hour) && hour >= 0 && hour <= 23;
+  const num = Number(value);
+
+  switch (slot.kind) {
+    case 'missing_fire_hour':
+      return patchEvent((ev) =>
+        ev.type === 'fire' && validHour ? { ...ev, startHour: hour } : null
+      );
+    case 'missing_drop_hour':
+      return patchEvent((ev) =>
+        ev.type === 'solar_drop' && validHour ? { ...ev, startHour: hour } : null
+      );
+    case 'missing_fire_sector': {
+      const sector = SectorIdSchema.safeParse(value);
+      return patchEvent((ev) =>
+        ev.type === 'fire' && sector.success ? { ...ev, sector: sector.data } : null
+      );
+    }
+    case 'missing_spike_sector': {
+      const sector = z.union([SectorIdSchema, z.literal('all')]).safeParse(value);
+      return patchEvent((ev) =>
+        ev.type === 'demand_spike' && sector.success ? { ...ev, sector: sector.data } : null
+      );
+    }
+    case 'missing_spike_factor':
+      return patchEvent((ev) =>
+        ev.type === 'demand_spike' && Number.isFinite(num) && num >= 0.5 && num <= 3
+          ? { ...ev, factor: num }
+          : null
+      );
+    case 'missing_drop_pct':
+      return patchEvent((ev) =>
+        ev.type === 'solar_drop' && Number.isFinite(num) && num >= 0 && num <= 90
+          ? { ...ev, dropPct: num }
+          : null
+      );
+    default:
+      return draft;
+  }
+}

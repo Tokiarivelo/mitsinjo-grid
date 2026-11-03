@@ -323,7 +323,10 @@
         "launchAutonomous": "Lancer en mode IA autonome",
         "launch": "Lancer",
         "exportJson": "Exporter JSON",
-        "delete": "Supprimer"
+        "delete": "Supprimer",
+        "ai": "IA",
+        "dayShort": "J{day}",
+        "dayWeather": "Jour {day} : {weather}"
       },
       "syntheticNoticeBadge": "Modèle Synthétique Étalonné",
       "syntheticNoticeDescription": "Tous les scénarios utilisent des modèles mathématiques synthétiques étalonnés pour les micro-réseaux ruraux à Madagascar. Pas de télémétrie en temps réel.",

@@ -117,4 +117,29 @@ describe('ScenarioDraftCard (PA-T8e)', () => {
     expect(store.workflow).toHaveLength(3);
     expect(mockPush).toHaveBeenCalledWith('/simulation');
   });
+
+  it('answering the last missing slot clears it and shows the launch buttons (PR #44 review)', () => {
+    const payload: ScenarioDraftPayload = {
+      draft: {
+        days: [
+          { day: 1 },
+          { day: 2, weather: 'sunny', events: [{ type: 'fire', sector: 'school' }] },
+        ],
+      },
+      missingSlots: [],
+      isComplete: false,
+    };
+    render(<ScenarioDraftCard payload={payload} />);
+
+    expect(screen.getByText('2 missing item(s)')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Launch Simulation/i })).toBeNull();
+
+    // Weather pills use the localized weather names.
+    fireEvent.click(screen.getByRole('button', { name: 'Cloudy' }));
+    expect(screen.getByText('1 missing item(s)')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '12:00' }));
+    expect(screen.getByText('Ready')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Launch Simulation/i })).toBeInTheDocument();
+  });
 });

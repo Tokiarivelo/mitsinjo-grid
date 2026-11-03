@@ -323,7 +323,10 @@
         "launchAutonomous": "Launch in autonomous AI mode",
         "launch": "Launch",
         "exportJson": "Export JSON",
-        "delete": "Delete"
+        "delete": "Delete",
+        "ai": "AI",
+        "dayShort": "D{day}",
+        "dayWeather": "Day {day}: {weather}"
       },
       "syntheticNoticeBadge": "Calibrated Synthetic Model",
       "syntheticNoticeDescription": "All scenarios use synthetic mathematical models calibrated for solar microgrids in rural Madagascar. Not real-time telemetry from an operating village.",

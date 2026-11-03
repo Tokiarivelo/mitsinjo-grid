@@ -8,6 +8,7 @@ import { useSimulationStore } from '@/stores';
 import { type ScenarioDraft, applyDraftDefaults, ScenarioDraftSchema } from '@/lib/scenario-draft';
 import { WEATHER_VISUALS } from '@/features/simulation/utils/weather';
 import { cn } from '@/lib/utils';
+import { fmtKwh } from '@/lib/format';
 
 export interface SavedDraftRow {
   id: string;
@@ -24,6 +25,7 @@ export interface SavedDraftRow {
 
 export function CustomScenariosPanel() {
   const t = useTranslations('features.scenarios.custom');
+  const tWeather = useTranslations('features.simulation.workflow.weather');
   const router = useRouter();
 
   const [drafts, setDrafts] = useState<SavedDraftRow[]>([]);
@@ -75,7 +77,7 @@ export function CustomScenariosPanel() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`/api/scenarios/drafts?id=${id}`, {
+      const res = await fetch(`/api/scenarios/drafts?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
       if (res.ok) {
@@ -195,11 +197,14 @@ export function CustomScenariosPanel() {
                     return (
                       <span
                         key={d.day}
-                        title={`Day ${d.day}: ${d.weather || 'sunny'}`}
+                        title={t('dayWeather', {
+                          day: d.day,
+                          weather: tWeather(d.weather ?? 'sunny'),
+                        })}
                         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-control-sm bg-surface border border-border/60 text-[10px] font-mono text-text-secondary"
                       >
                         {Icon && <Icon className={cn('h-3 w-3', visual.tone)} />}
-                        <span>D{d.day}</span>
+                        <span>{t('dayShort', { day: d.day })}</span>
                       </span>
                     );
                   })}
@@ -211,13 +216,13 @@ export function CustomScenariosPanel() {
                     <div>
                       {t('deficit')}:{' '}
                       <span className="font-bold text-text-primary">
-                        {item.summary.totalDeficitKwh ?? 0} kWh
+                        {fmtKwh(item.summary.totalDeficitKwh)}
                       </span>
                     </div>
                     <div>
                       {t('critical')}:{' '}
                       <span className="font-bold text-critical-red">
-                        {item.summary.criticalUnservedKwh ?? 0} kWh
+                        {fmtKwh(item.summary.criticalUnservedKwh)}
                       </span>
                     </div>
                   </div>
@@ -241,10 +246,11 @@ export function CustomScenariosPanel() {
                     type="button"
                     onClick={() => handleLaunch(item.draft, 'autonomous')}
                     title={t('launchAutonomous')}
+                    aria-label={t('launchAutonomous')}
                     className="inline-flex items-center gap-1 min-h-11 px-2.5 py-1 text-xs font-semibold rounded-control bg-ai-violet/20 border border-ai-violet/40 text-ai-violet hover:bg-ai-violet/30 transition-colors cursor-pointer"
                   >
                     <Bot className="h-3 w-3" />
-                    <span>IA</span>
+                    <span>{t('ai')}</span>
                   </button>
                 </div>
 
@@ -253,7 +259,8 @@ export function CustomScenariosPanel() {
                     type="button"
                     onClick={() => handleExport(item)}
                     title={t('exportJson')}
-                    className="p-1.5 rounded-control text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer"
+                    aria-label={t('exportJson')}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-control text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer"
                   >
                     <Download className="h-3.5 w-3.5" />
                   </button>
@@ -261,7 +268,8 @@ export function CustomScenariosPanel() {
                     type="button"
                     onClick={() => handleDelete(item.id)}
                     title={t('delete')}
-                    className="p-1.5 rounded-control text-text-muted hover:text-critical-red hover:bg-surface transition-colors cursor-pointer"
+                    aria-label={t('delete')}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-control text-text-muted hover:text-critical-red hover:bg-surface transition-colors cursor-pointer"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>

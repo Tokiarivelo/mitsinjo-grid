@@ -122,6 +122,7 @@ export async function getSession(id: string): Promise<ChatSessionDetail | null> 
       evidence,
       proposal,
       decision,
+      scenario_draft as "scenarioDraft",
       detected_model as "detectedModel",
       created_at as "timestamp"
     FROM copilot_messages
@@ -210,6 +211,7 @@ export async function saveMessage(sessionId: string, message: ChatMessageData): 
       evidence,
       proposal,
       decision,
+      scenario_draft,
       detected_model,
       created_at
     ) VALUES (
@@ -223,6 +225,7 @@ export async function saveMessage(sessionId: string, message: ChatMessageData): 
       ${message.evidence ? JSON.stringify(message.evidence) : null},
       ${message.proposal ? JSON.stringify(message.proposal) : null},
       ${message.decision ? JSON.stringify(message.decision) : null},
+      ${message.scenarioDraft ? JSON.stringify(message.scenarioDraft) : null},
       ${message.detectedModel || null},
       ${now}
     )
@@ -231,7 +234,8 @@ export async function saveMessage(sessionId: string, message: ChatMessageData): 
       sections = ${message.sections ? JSON.stringify(message.sections) : null},
       evidence = ${message.evidence ? JSON.stringify(message.evidence) : null},
       proposal = ${message.proposal ? JSON.stringify(message.proposal) : null},
-      chart = ${message.chart ? JSON.stringify(message.chart) : null};
+      chart = ${message.chart ? JSON.stringify(message.chart) : null},
+      scenario_draft = ${message.scenarioDraft ? JSON.stringify(message.scenarioDraft) : null};
   `;
 }
 
