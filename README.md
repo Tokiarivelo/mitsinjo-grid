@@ -253,12 +253,27 @@ Every screen is labelled `SIMULATED DATA`: no real grid is measured or controlle
 
 ### Optional services (not needed to judge)
 
-| Variable(s)                          | Without it                                  | Docs                                                       |
-| ------------------------------------ | ------------------------------------------- | ---------------------------------------------------------- |
-| `DATABASE_URL` (Neon Postgres)       | chat history is not kept between reloads    | [docs/setup/env.md](docs/setup/env.md)                     |
-| `R2_*` (Cloudflare R2)               | generated images are kept in the page only  | [docs/setup/cloudflare-r2.md](docs/setup/cloudflare-r2.md) |
-| `GLIMMER_BASE_URL` (local Glimmer)   | fallback chain is Meta → mock               | [.env.example](.env.example)                               |
-| `NEXT_PUBLIC_BRIDGE_URL`, `BRIDGE_*` | the physical scale-model panel stays hidden | [docs/bridge.md](docs/bridge.md)                           |
+| Variable(s)                          | Without it                                        | Docs                                                       |
+| ------------------------------------ | ------------------------------------------------- | ---------------------------------------------------------- |
+| `DATABASE_URL` (Neon Postgres)       | works, but kept in server memory only (see below) | [docs/setup/env.md](docs/setup/env.md)                     |
+| `R2_*` (Cloudflare R2)               | generated images are kept in the page only        | [docs/setup/cloudflare-r2.md](docs/setup/cloudflare-r2.md) |
+| `GLIMMER_BASE_URL` (local Glimmer)   | fallback chain is Meta → mock                     | [.env.example](.env.example)                               |
+| `NEXT_PUBLIC_BRIDGE_URL`, `BRIDGE_*` | the physical scale-model panel stays hidden       | [docs/bridge.md](docs/bridge.md)                           |
+
+**Database (optional, Neon Postgres).** It stores the copilot chat sessions and their summaries, the
+custom multi-day scenarios (**My Custom Scenarios**, drafted in chat or imported), and the Autonomous AI
+**Event Log** with its narrations. Without `DATABASE_URL` all of it still works for the whole demo, held in the
+server's memory: it is lost when the server restarts (`pnpm dev` / `docker compose` restart), and on a
+serverless host each instance has its own memory — so the deployed site uses Neon. To keep data locally, put a
+Neon (or any Postgres) URL in the root `.env`:
+
+```ini
+DATABASE_URL=postgresql://<user>:<password>@<host>/<db>?sslmode=require        # pooled, read by the app
+DATABASE_URL_UNPOOLED=postgresql://<user>:<password>@<host>/<db>?sslmode=require # direct, preferred by make db-migrate
+```
+
+Tables are created automatically on the first database call (or `make db-migrate`). The other `PG*` /
+`POSTGRES_*` lines of `.env.example` come from the Vercel–Neon integration and are not read by the app.
 
 Every variable, with what reads it and its allowed values: [.env.example](.env.example). Local vs Vercel
 checklist: [docs/setup/env.md](docs/setup/env.md). `.env` (root) and `apps/web/.env.local` are both read;
