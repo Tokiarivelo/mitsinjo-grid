@@ -480,8 +480,8 @@ export async function runObjectShape(
                 front,
                 ...(front.roofRings ? { roofRings: front.roofRings } : {}),
                 label: target.label,
-                proposeShapeOps: async (img, q, sig) => ({
-                  result: await proposeShapeOps(img, q, sig),
+                proposeShapeOps: async (img, q, sig, opts) => ({
+                  result: await proposeShapeOps(img, q, sig, 'elevation', opts),
                 }),
                 drawing: () =>
                   target.facadeUrl ? imageBytes(target.facadeUrl, signal) : Promise.resolve(null),
@@ -547,8 +547,8 @@ export async function runObjectShape(
                 archetype: kit.archetype,
                 views: seen,
                 label: target.label,
-                proposeShapeOps: async (img, q, sig, sheet) => ({
-                  result: await proposeShapeOps(img, q, sig, sheet),
+                proposeShapeOps: async (img, q, sig, sheet, opts) => ({
+                  result: await proposeShapeOps(img, q, sig, sheet, opts),
                 }),
                 firstBudgetMs: started + VIEWS_TOTAL_MS - STAGE_SAFETY_MS - Date.now(),
                 ...(signal ? { signal } : {}),

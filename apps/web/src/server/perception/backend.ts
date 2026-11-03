@@ -92,13 +92,21 @@ export interface PerceptionBackend {
   /**
    * Shape loop stage (PG-T15): `imageUrl` is drawing | model | diff, `question` the stage, its
    * scores and the components. One vision call; null ops when unusable. Optional: no loop without it.
+   * `refine` = the final check stage: asked of the deep-reasoning model (Muse Wonder).
    */
   proposeShapeOps?(
     imageUrl: string,
     question: string,
     signal?: AbortSignal,
-    sheet?: StageSheet
+    sheet?: StageSheet,
+    opts?: ShapeOpsOptions
   ): Promise<PerceptionCall<ShapeOpsResult>>;
+}
+
+/** Options of one stage call. */
+export interface ShapeOpsOptions {
+  /** Final check and re-refinement: deep-reasoning model instead of the standard vision one. */
+  refine?: boolean;
 }
 
 /** What `describeShape` is told about the object. */

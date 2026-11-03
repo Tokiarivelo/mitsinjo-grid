@@ -5,7 +5,13 @@ import { env } from '@/lib/env';
 import { DEFAULT_META_BASE_URL } from '@/server/copilot/providers/meta';
 import { fetchPreferringContributor } from '@/server/copilot/providers/contributor';
 import type { UsageSample } from '@/server/spend';
-import type { PartsSubject, PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
+import type {
+  PartsSubject,
+  PerceptionBackend,
+  PerceptionCall,
+  ShapeOpsOptions,
+  ShapeSubject,
+} from './backend';
 import {
   DETECT_JSON_SCHEMA,
   DETECT_QUESTION,
@@ -208,7 +214,8 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     /** Full request + result lines for the 3D calls (images logged as placeholders only). */
     log?: VisionCallLog,
     /** Reference images sent after the main one (the validated 2D facade). */
-    extraImages: ReadonlyArray<string> = []
+    extraImages: ReadonlyArray<string> = [],
+    baseModel: string = env.META_VISION_MODEL
   ): Promise<{ content: string; model: string; usage: UsageSample }> {
     if (log) {
       const schema = (jsonSchema as { name?: unknown }).name;
@@ -238,7 +245,7 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     const sent = await this.postWithModel(
       '/chat/completions',
       (m) => JSON.stringify(body(m)),
-      env.META_VISION_MODEL,
+      baseModel,
       { 'Content-Type': 'application/json' },
       signal,
       allowContributor
@@ -430,17 +437,41 @@ export class MetaPerceptionBackend implements PerceptionBackend {
     imageUrl: string,
     question: string,
     signal?: AbortSignal,
-    sheet: StageSheet = 'elevation'
+    sheet: StageSheet = 'elevation',
+    opts: ShapeOpsOptions = {}
   ): Promise<PerceptionCall<ShapeOpsResult>> {
-    const { content, model, usage } = await this.visionJson(
-      shapeScriptSystemPrompt(sheet),
-      question,
-      imageUrl,
-      SHAPE_SCRIPT_JSON_SCHEMA,
-      signal,
-      false,
-      { kind: 'proposeShapeOps', params: { promptVersion: SHAPE_SCRIPT_PROMPT_VERSION, sheet } }
-    );
+    const ask = (baseModel: string) =>
+      this.visionJson(
+        shapeScriptSystemPrompt(sheet),
+        question,
+        imageUrl,
+        SHAPE_SCRIPT_JSON_SCHEMA,
+        signal,
+        false,
+        {
+          kind: 'proposeShapeOps',
+          params: { promptVersion: SHAPE_SCRIPT_PROMPT_VERSION, sheet, refine: !!opts.refine },
+        },
+        [],
+        baseModel
+      );
+    let answer: Awaited<ReturnType<typeof ask>>;
+    if (opts.refine && env.META_REFINE_MODEL !== env.META_VISION_MODEL) {
+      // Final check on Wonder; one retry on the standard model when Wonder is not served.
+      try {
+        answer = await ask(env.META_REFINE_MODEL);
+      } catch (err) {
+        if (signal?.aborted) throw err;
+        console.warn(
+          `[vision] 3D final check on ${env.META_REFINE_MODEL} failed, retrying on ${env.META_VISION_MODEL}:`,
+          err instanceof Error ? err.message : err
+        );
+        answer = await ask(env.META_VISION_MODEL);
+      }
+    } else {
+      answer = await ask(env.META_VISION_MODEL);
+    }
+    const { content, model, usage } = answer;
     const ops = parseStageOps(content);
     console.info(
       `[vision] 3D stage ops from ${model} (prompt v${SHAPE_SCRIPT_PROMPT_VERSION}): ${ops ? ops.map((o) => `${(o as { op: string }).op} ${(o as { id?: string }).id ?? ''}`.trim()).join(', ') || 'none' : 'unusable'}`

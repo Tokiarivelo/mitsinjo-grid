@@ -1050,7 +1050,8 @@
           "trunk": "Trunk",
           "crown": "Crown",
           "head": "Head",
-          "details": "Details"
+          "details": "Details",
+          "final": "Final check (Muse Wonder)"
         },
         "cause": {
           "timeout": "time is up",

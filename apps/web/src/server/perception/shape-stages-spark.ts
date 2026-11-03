@@ -10,6 +10,8 @@ import {
 import type { Elevation } from './facade-house';
 import { stageQuestion } from './shape-script-prompt';
 import {
+  FINAL_STAGE,
+  type FinalStage,
   HOUSE_STAGES,
   STAGE_MIN_MS,
   type Proposer,
@@ -19,7 +21,9 @@ import {
   houseCanEdit,
   houseStageScorer,
   runShapeStages,
+  withFinalStage,
 } from './shape-stages';
+import type { ShapeOpsOptions } from './backend';
 import type { KitArchetype } from '@/lib/object-kit';
 import type { Component } from '@/lib/shape-script';
 import { viewsSheet, type ObjectViews } from './object-views';
@@ -35,7 +39,12 @@ import {
 /**
  * Spark as the stage proposer (PG-T15): builds the stage sheet (drawing | model | diff), asks
  * `proposeShapeOps`, and hands the raw ops to the runner (which compiles and scores them).
+ * Every loop ends with the `final` stage: the whole model checked and re-refined by Muse Wonder
+ * (`refine`), in the background only, kept only when the whole-model score rises.
  */
+
+/** Stage call options: the final stage asks the deep-reasoning model. */
+const callOptions = (stage: string): ShapeOpsOptions => ({ refine: stage === FINAL_STAGE });
 
 type Ring = ReadonlyArray<readonly [number, number]>;
 
@@ -106,7 +115,8 @@ export interface SparkStageInput {
   proposeShapeOps: (
     imageUrl: string,
     question: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    opts?: ShapeOpsOptions
   ) => Promise<{ result: { ops: unknown[] | null } }>;
   front: Elevation;
   roofRings?: ReadonlyArray<Ring>;
@@ -116,7 +126,7 @@ export interface SparkStageInput {
 }
 
 /** A runner proposer that asks Spark for each stage round; empty patch when unusable. */
-export function sparkStageProposer(input: SparkStageInput): Proposer<ElevationStage> {
+export function sparkStageProposer(input: SparkStageInput): Proposer<ElevationStage | FinalStage> {
   return async (ctx) => {
     const scored = scoreElevation(
       ctx.recipe,
@@ -134,7 +144,12 @@ export function sparkStageProposer(input: SparkStageInput): Proposer<ElevationSt
       editable: ctx.editable,
       notes: stageNotes(scored),
     });
-    const { result } = await input.proposeShapeOps(sheet, question, ctx.signal);
+    const { result } = await input.proposeShapeOps(
+      sheet,
+      question,
+      ctx.signal,
+      callOptions(ctx.stage.id)
+    );
     return result.ops ?? [];
   };
 }
@@ -209,20 +224,26 @@ export async function stagedLoop<S extends ShapeStageId>(
   };
   let recipe = input.recipe;
   let remaining: ReadonlyArray<StageSpec<S>> = input.stages;
-  if (input.firstBudgetMs >= STAGE_MIN_MS) {
+  // The final check (Wonder, slow) never holds the first answer: it always runs in the background.
+  const now = input.stages.filter((st) => st.id !== FINAL_STAGE);
+  const final = input.stages.filter((st) => st.id === FINAL_STAGE);
+  if (input.firstBudgetMs >= STAGE_MIN_MS && now.length) {
     const first = await runShapeStages({
       ...common,
       seed: recipeToScript(recipe),
-      stages: input.stages,
+      stages: now,
       budgetMs: input.firstBudgetMs,
       ...(input.signal ? { signal: input.signal } : {}),
       ...stream('first', input.onProgress),
     });
     recipe = keep(first.recipe);
-    remaining = input.stages.filter((_, i) => {
-      const stop = first.stages[i]?.stop;
-      return stop === 'timeout' || stop === 'skipped';
-    });
+    remaining = [
+      ...now.filter((_, i) => {
+        const stop = first.stages[i]?.stop;
+        return stop === 'timeout' || stop === 'skipped';
+      }),
+      ...final,
+    ];
   }
   if (!remaining.length) return { recipe, rest: null };
   const seed = recipe;
@@ -274,12 +295,11 @@ export interface FacadeLoopInput extends Omit<SparkStageInput, 'drawing'>, LoopT
 /** The facade house loop (PG-T16…T18): elevation stages, side-wall openings locked. */
 export function facadeStageLoop(input: FacadeLoopInput) {
   const drawing = lazyDrawing(input.drawing);
-  const propose: Proposer<ElevationStage> = async (ctx) =>
+  const propose: Proposer<ElevationStage | FinalStage> = async (ctx) =>
     sparkStageProposer({ ...input, drawing: await drawing() })(ctx);
   return stagedLoop({
     ...input,
-    stages: HOUSE_STAGES,
-    score: houseStageScorer(input.front, input.roofRings),
+    ...withFinalStage(HOUSE_STAGES, houseStageScorer(input.front, input.roofRings)),
     propose,
     canEdit: houseCanEdit,
   });
@@ -295,7 +315,8 @@ export interface ViewLoopInput extends LoopTiming {
     imageUrl: string,
     question: string,
     signal?: AbortSignal,
-    sheet?: StageSheet
+    sheet?: StageSheet,
+    opts?: ShapeOpsOptions
   ) => Promise<{ result: { ops: unknown[] | null } }>;
 }
 
@@ -312,8 +333,8 @@ export function viewStageLoop(input: ViewLoopInput) {
   // Only the body and the stages with drawn parts can be judged.
   const judged = stages.filter((st) => st.id === 'body' || first.measured.includes(st.id));
   if (!judged.length) return null;
-  const score = viewStageScorer(views, judged);
-  const propose: Proposer<ViewStage> = async (ctx) => {
+  const looped = withFinalStage(judged, viewStageScorer(views, judged));
+  const propose: Proposer<ViewStage | FinalStage> = async (ctx) => {
     const sheet = await viewsSheet(ctx.recipe, input.views, ctx.signal);
     if (!sheet) return [];
     const question = stageQuestion({
@@ -325,10 +346,16 @@ export function viewStageLoop(input: ViewLoopInput) {
       editable: ctx.editable,
       notes: viewStageNotes(scoreViews(ctx.recipe, views, judged)),
     });
-    const { result } = await input.proposeShapeOps(sheet, question, ctx.signal, 'views');
+    const { result } = await input.proposeShapeOps(
+      sheet,
+      question,
+      ctx.signal,
+      'views',
+      callOptions(ctx.stage.id)
+    );
     return result.ops ?? [];
   };
-  return stagedLoop({ ...input, stages: judged, score, propose });
+  return stagedLoop({ ...input, ...looped, propose });
 }
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, Number.isFinite(v) ? v : 0));

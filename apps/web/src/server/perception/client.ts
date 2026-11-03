@@ -3,7 +3,13 @@ import 'server-only';
 import { env } from '@/lib/env';
 import { errorWithCause, isTransientProviderError } from '@/server/copilot/providers/transient';
 import { spendGuard, type SpendGuard } from '@/server/spend';
-import type { PartsSubject, PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
+import type {
+  PartsSubject,
+  PerceptionBackend,
+  PerceptionCall,
+  ShapeOpsOptions,
+  ShapeSubject,
+} from './backend';
 import { MetaPerceptionBackend } from './meta';
 import { MockPerceptionBackend } from './mock';
 import type { StageSheet } from './shape-script-prompt';
@@ -152,11 +158,12 @@ export class PerceptionClient {
     imageUrl: string,
     question: string,
     signal?: AbortSignal,
-    sheet?: StageSheet
+    sheet?: StageSheet,
+    opts?: ShapeOpsOptions
   ): Promise<ShapeOpsResult> {
     return this.run('proposeShapeOps', (b) =>
       b.proposeShapeOps
-        ? b.proposeShapeOps(imageUrl, question, signal, sheet)
+        ? b.proposeShapeOps(imageUrl, question, signal, sheet, opts)
         : Promise.resolve({ model: b.name, usage: {}, result: { ops: [] } })
     );
   }

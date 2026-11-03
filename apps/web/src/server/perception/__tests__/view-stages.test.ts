@@ -160,11 +160,12 @@ describe('viewStageLoop (PG-T20)', () => {
       proposeShapeOps,
       onProgress: (e) => events.push(e),
     })!;
-    expect(out.rest).toBeNull();
+    // The final Wonder check never runs in the first answer.
+    expect(out.rest!.stages).toEqual(['final']);
     expect(out.recipe.parts).toEqual(car.parts);
     const done = events.filter((e) => e.state === 'done').map((e) => e.stage);
     expect(done).toEqual(expect.arrayContaining(['body', 'glass', 'wheels', 'details']));
-  }, 30_000);
+  }, 60_000);
 
   it('keeps a patch that brings a missing part back', async () => {
     const noLights: ObjectRecipe = { ...car, parts: car.parts.filter((p) => p.kind !== 'light') };
@@ -189,5 +190,5 @@ describe('viewStageLoop (PG-T20)', () => {
       }),
     })!;
     expect(out.recipe.parts.filter((p) => p.kind === 'light').length).toBe(2);
-  }, 30_000);
+  }, 60_000);
 });

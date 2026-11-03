@@ -169,17 +169,24 @@ describe('facadeStageLoop (PG-T18)', () => {
     });
     expect(out.recipe).toBe(base.recipe);
     expect(first).not.toHaveBeenCalled();
-    expect(out.rest!.stages).toEqual(['massing', 'roof', 'openings', 'accessories']);
-    expect(out.rest!.total).toBe(4);
+    expect(out.rest!.stages).toEqual(['massing', 'roof', 'openings', 'accessories', 'final']);
+    expect(out.rest!.total).toBe(5);
     const events: Array<{ phase: string; state: string; index: number }> = [];
     const done = await out.rest!.run({ budgetMs: 10_000, onProgress: (e) => events.push(e) });
     expect(done.cause).toBeUndefined();
     expect(done.recipe.swatches).toEqual(base.recipe.swatches);
     expect(events.every((e) => e.phase === 'background')).toBe(true);
-    expect(events.filter((e) => e.state === 'done').length).toBe(4);
+    expect(events.filter((e) => e.state === 'done').length).toBe(5);
+    // Only the final check asks the deep-reasoning model.
+    const refined = proposeShapeOps.mock.calls.filter(
+      (c) => (c as unknown[])[3] && ((c as unknown[])[3] as { refine?: boolean }).refine
+    );
+    expect(refined.length).toBe(1);
+    expect(String((refined[0] as unknown[])[1])).toContain('Stage: final (round 1)');
+    expect(String((refined[0] as unknown[])[1])).toContain('Final check');
   });
 
-  it('with time: stages run in the first answer, nothing left', async () => {
+  it('with time: stages run in the first answer, only the final check is left', async () => {
     const proposeShapeOps = vi.fn(async () => ({ result: { ops: [] } }));
     const events: Array<{ phase: string }> = [];
     const out = await facadeStageLoop({
@@ -188,9 +195,10 @@ describe('facadeStageLoop (PG-T18)', () => {
       firstBudgetMs: 30_000,
       onProgress: (e) => events.push(e),
     });
-    expect(out.rest).toBeNull();
+    expect(out.rest!.stages).toEqual(['final']);
     expect(events.length).toBeGreaterThan(0);
     expect(events.every((e) => e.phase === 'first')).toBe(true);
+    expect(events.some((e) => (e as { stage?: string }).stage === 'final')).toBe(false);
     expect(out.recipe.swatches).toEqual(base.recipe.swatches);
   });
 
