@@ -1,6 +1,6 @@
 import type { ObjectRecipe, PartKind } from '@/lib/object-shape';
 type Ring = ReadonlyArray<readonly [number, number]>;
-import { type ElevationStage, scoreElevation } from './elevation-score';
+import { type ElevationStage, scoreElevation, sideFacing } from './elevation-score';
 import type { Elevation } from './facade-house';
 import {
   type Component,
@@ -86,6 +86,8 @@ export interface RunStagesOptions<S extends string = string> {
   onStageStart?: (stage: StageSpec<S>, index: number) => void;
   /** Called after each stage ends, with the model at that point (progressive build, PG-T17). */
   onStage?: (result: StageResult<S>, recipe: ObjectRecipe, index: number) => void;
+  /** Components the stage may edit beyond its kinds (default all): what the score cannot see stays locked. */
+  canEdit?: (c: Component) => boolean;
 }
 
 /** Most rounds per stage. */
@@ -165,6 +167,7 @@ export async function runShapeStages<S extends string>({
   signal,
   onStageStart,
   onStage,
+  canEdit = () => true,
 }: RunStagesOptions<S>): Promise<StagesResult<S>> {
   const deadline = now() + budgetMs;
   const first = compileScript(seed);
@@ -205,7 +208,7 @@ export async function runShapeStages<S extends string>({
             break;
           }
           const editable = components
-            .filter((c) => c.part.kind && stage.kinds.includes(c.part.kind))
+            .filter((c) => c.part.kind && stage.kinds.includes(c.part.kind) && canEdit(c))
             .map((c) => c.id);
           const locked = components.map((c) => c.id).filter((id) => !editable.includes(id));
           result.rounds = round;
@@ -278,6 +281,9 @@ export async function runShapeStages<S extends string>({
 
 const countPatchDrops = (dropped: ReadonlyArray<OpIssue>, from: number) =>
   dropped.filter((d) => d.index >= from).length;
+
+/** House stages see the front only: side-wall openings stay as built (locked). */
+export const houseCanEdit = (c: Component) => !sideFacing(c.part);
 
 /**
  * House stage scorer: the recipe's front elevation against the measured drawing (PG-T2), stage

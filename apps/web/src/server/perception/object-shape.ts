@@ -153,6 +153,8 @@ export interface ObjectShapeOptions {
   onElevation?: (front: Elevation, score: ScoredElevation) => void;
   /** Facade house loop progress (PG-T17, SSE `shape_stage`). */
   onStage?: (e: StageProgress) => void;
+  /** Gets the staged loop's seed model and measured drawing (stage capture, eval only). */
+  onStageSeed?: (seed: ObjectRecipe, front: Elevation) => void;
   /** Stages that did not fit the first answer: the caller runs them in the background (PG-T18). */
   onStagesLeft?: (rest: StagesContinuation) => void;
 }
@@ -185,6 +187,7 @@ export async function runObjectShape(
     onSideView,
     onElevation,
     onStage,
+    onStageSeed,
     onStagesLeft,
   }: ObjectShapeOptions = {}
 ): Promise<ObjectShape> {
@@ -417,6 +420,7 @@ export async function runObjectShape(
                 `[vision] 3D stage ${e.index}/${e.total} ${e.stage} (${e.phase}) for "${target.label}": ${e.before?.toFixed(2)}→${e.after?.toFixed(2)} (${e.stop}${e.recipe ? ', model updated' : ''})`
               );
           };
+          onStageSeed?.(recipe, front);
           try {
             const loop = await facadeStageLoop({
               recipe,

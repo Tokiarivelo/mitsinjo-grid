@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
+import { env } from '@/lib/env';
 import type { ObjectRecipe, ShapeTarget } from '@/lib/object-shape';
 import { getPerceptionClient } from '../client';
 import { buildFacadePrompt, museImage } from '../facade-specialist';
@@ -14,6 +15,15 @@ import { runObjectShape } from '../object-shape';
 import { elevationDiff, formatElevationScore, type ScoredElevation } from '../elevation-score';
 import type { Elevation } from '../facade-house';
 import { conceptOf, samBoxToNorm } from '../outline';
+import type { StagesContinuation } from '../shape-stages-spark';
+import {
+  newStageCapture,
+  recordingProposeShapeOps,
+  replayStageCapture,
+  stageReplayMarkdown,
+  writeStageCapture,
+  type StageAnswer,
+} from '../stage-capture';
 
 /**
  * Facade → 3D end to end on the live Meta models (`make facade-e2e FRONT=… OUT=…`, costs API
@@ -77,7 +87,12 @@ describe.skipIf(!FRONT)('facade → 3D end to end (live)', () => {
     const meta = await sharp(buffer).metadata();
     const photo = { buffer, width: meta.width!, height: meta.height! };
     const photoUrl = `data:image/jpeg;base64,${buffer.toString('base64')}`;
-    const client = getPerceptionClient('facade-e2e');
+    const live = getPerceptionClient('facade-e2e');
+    // PG-T22: every stage answer is recorded (replayed offline by `make eval-stages`).
+    const answers: StageAnswer[] = [];
+    const client = Object.assign(Object.create(live) as typeof live, {
+      proposeShapeOps: recordingProposeShapeOps(live.proposeShapeOps.bind(live), answers),
+    });
     const seg = await client.segmentImage(photoUrl, conceptOf({ label: LABEL }));
     const inst = [...seg.instances].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
     const box = inst && samBoxToNorm(inst.box, seg.imageWidth, seg.imageHeight);
@@ -93,6 +108,8 @@ describe.skipIf(!FRONT)('facade → 3D end to end (live)', () => {
     };
     let side: Buffer | null = null;
     let elevation: { front: Elevation; score: ScoredElevation } | null = null;
+    let stageSeed: { seed: ObjectRecipe; front: Elevation } | null = null;
+    let rest: StagesContinuation | null = null;
     const t0 = Date.now();
     const shape = await runObjectShape(client, photo, photoUrl, target, {
       timeoutMs: 120_000,
@@ -102,12 +119,44 @@ describe.skipIf(!FRONT)('facade → 3D end to end (live)', () => {
       onElevation: (f, score) => {
         elevation = { front: f, score };
       },
+      onStageSeed: (seed, f) => {
+        stageSeed = { seed, front: f };
+      },
+      onStagesLeft: (r) => {
+        rest = r;
+      },
     });
     console.log(
       `shape in ${((Date.now() - t0) / 1000).toFixed(1)} s: ${shape.mode} ${shape.reason ?? ''}`
     );
     expect(shape.mode).toBe('recipe');
-    const recipe = shape.recipe!;
+    let recipe = shape.recipe!;
+    // PG-T18: the stages left after the first answer, run to the end as the route's job would.
+    const left = rest as StagesContinuation | null;
+    if (left) {
+      const t1 = Date.now();
+      const done = await left.run({ budgetMs: 180_000, onProgress: () => {} });
+      recipe = done.recipe;
+      console.log(
+        `background stages (${left.stages.join(', ')}) in ${((Date.now() - t1) / 1000).toFixed(1)} s${done.cause ? `: ${done.cause}` : ''}`
+      );
+    }
+    const seeded = stageSeed as { seed: ObjectRecipe; front: Elevation } | null;
+    if (seeded) {
+      const capture = newStageCapture({
+        id: process.env.FACADE_E2E_ID ?? 'facade-e2e',
+        model: env.LLM_PROVIDER === 'meta' ? env.META_VISION_MODEL : 'mock',
+        label: LABEL,
+        front: seeded.front,
+        seed: seeded.seed,
+        answers,
+      });
+      console.log(`stage capture: ${writeStageCapture(OUT, capture)} (${answers.length} answers)`);
+      const keepDir = process.env.FACADE_E2E_CAPTURE_DIR;
+      if (keepDir && process.env.FACADE_E2E_ID)
+        console.log(`kept for make eval-stages: ${writeStageCapture(keepDir, capture)}`);
+      console.log(stageReplayMarkdown([(await replayStageCapture(capture)).row]));
+    }
     writeFileSync(
       join(OUT, 'recipe.json'),
       JSON.stringify({ ...recipe, swatches: undefined }, null, 2)

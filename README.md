@@ -199,6 +199,9 @@ make shape-report
 # Facade → 3D on live Meta (front + side, sheet.png in OUT); any object with LABEL/SCENERY
 make facade-e2e FRONT=front.png OUT=test-results/facade
 make facade-e2e FRONT=car.png OUT=test-results/car LABEL='purple vintage car' SCENERY=vehicle
+# Same, keeping the stage loop's Spark answers, then replay them offline (no API cost)
+make facade-e2e FRONT=front.png OUT=test-results/facade ID=thatched
+make eval-stages
 
 # Real 3D viewer shots of those recipes, dark + light (dev server running, API stubbed)
 make shape-shots

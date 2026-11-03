@@ -7,7 +7,7 @@ not faithful to the imagined 2D elevation. Example: « rural thatched house » (
 same blotchy photo texture**, three dark rectangles for windows and door. Ask: Spark writes a **generation
 script**, builds the model **piece by piece**, and an agent loop renders → compares → corrects each piece until
 the render matches; same for every kind of object.
-**Status:** 🟡 G0 + G1 + G2 done (2026-11-02); live Meta run on the thatched-house drawing: facade path, elevation 87–91/100, IoU 0.98, first model in 48–68 s (chimney accessory score 0.44–0.71: roof hides its foot). G3 done (PG-T13–T18) + PG-T19 + PG-T23. Open: PG-T20/T21 (per-archetype stages need a per-part metric on the views), PG-T22 (live loop pass + designer review). **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
+**Status:** 🟡 G0 + G1 + G2 done (2026-11-02); live Meta run on the thatched-house drawing: facade path, elevation 87–91/100, IoU 0.98, first model in 48–68 s (chimney accessory score 0.44–0.71: roof hides its foot). G3 done (PG-T13–T18) + PG-T19 + PG-T23. Live loop pass 2026-11-03 (PG-T22, below): a scorer bug fixed, the seed now scores 95/100 on a new thatched drawing. Open: PG-T20/T21, PG-T22 designer ≥ 4/5. **Rules kept:** Meta models only (Spark / Wonder, Muse Image, SAM 3.1); the LLM never
 writes vertices or runnable code (it writes Zod-checked ops, the engine builds); pure, seeded, tested geometry;
 never paste the photo on the model (small tileable swatches OK); ≤ 5 k triangles per object.
 **Skills:** `/shape-3d` (vocabulary, files) · `/shape-loop` (scores, log) · `/facade-2d` (target image).
@@ -121,7 +121,7 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
       the stage's scores, the locked components (read-only) and the stage's components (editable). It answers
       patch ops for this stage only. Prompt versioned (`SHAPE_SCRIPT_PROMPT_VERSION`). Eval on captures
       (`make eval-shape`), keeping the wording that raises the scores.
-      **Done:** `shape-script-prompt.ts` (prompt v1, `ShapeStagePatch` schema, `stageQuestion`, `parseStageOps`: box adds only, ≤ 12 ops), `proposeShapeOps` on Meta / mock / client, `shape-stages-spark.ts` `stageSheet` + `sparkStageProposer`; wired into the facade path within the 60 s budget (≥ 15 s left). **Deviation:** no `make eval-shape` stage replay yet — it needs live captures of stage answers (next live run).
+      **Done:** `shape-script-prompt.ts` (prompt v1, `ShapeStagePatch` schema, `stageQuestion`, `parseStageOps`: box adds only, ≤ 12 ops), `proposeShapeOps` on Meta / mock / client, `shape-stages-spark.ts` `stageSheet` + `sparkStageProposer`; wired into the facade path within the 60 s budget (≥ 15 s left). Stage replay: `make facade-e2e … ID=` records each Spark answer (`stage-capture.ts`), `make eval-stages` (also run by `make eval-shape`) replays them offline.
 - [x] **PG-T16 Loop runner.** `runShapeStages(seed, target, budget)`: S1…S7, ≤ 3 rounds per stage, keep a patch
       only if the stage score rises, stop a stage at its gate. The time budget is shared. Out of time → the rest
       keeps the seed. Deterministic given the same Spark answers (fixtures). Tests with a fake Spark: the score
@@ -161,6 +161,17 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
 
 - [ ] **PG-T22 Loop pass.** `/shape-loop` on the golden set + the user's thatched house. Stop criteria below.
       `/designer-3d` review on the ¾ sheet.
+      **Live pass 2026-11-03** (`make facade-e2e … ID=thatched`, Muse Image front « rural thatched house » + ¾ photo, Spark 1.3):
+      first model 66 s; massing 0.98, roof 0.95 at the gate; Spark's openings patch (remove `window.3`, `window.4`,
+      door glazed 0.5, window grids 4 × 4) kept 0.74 → 0.99, elevation 89 → 95. **Bug found:** `window.3/.4` were the
+      side-wall windows; their 0.005 lip showed on the front render as extra openings, so the loop deleted real
+      windows. Fixed: `sideFacing` counts them as wall, `houseCanEdit` locks what the front cannot see (regression
+      tests in `elevation-score` / `shape-stages`). Replay of the capture after the fix: seed 95, every stage at its
+      gate, nothing removed. Goldens mean 93 unchanged. **Designer (¾ sheet) ≈ 3/5:** walls read tan (photo colour
+      averaged over plaster + timber + shadow; the drawing and the photo say white plaster), the roof ends are fully
+      hipped where the side drawing shows a gable with a small hip, flat render has no thatch / opening detail
+      (viewer-only). Chimneys, door, windows and plinth match. Open: wall colour from the plaster only when a timber
+      frame is drawn, half-hip from the side drawing.
 - [x] **PG-T23 Docs + scenarios.** `docs/contracts.md` (ShapeScript, components, SSE stage), `docs/copilot.md`
       (stage prompt), `/shape-3d` skill (vocabulary), README limits, `test-scenarios/06-village.md` (V96+).
       **Done:** contracts (assemblies, ShapeScript, runner, `proposeShapeOps`, SSE stage events + stages route), copilot (staged loop, round objects), `/shape-3d` map, README feature line, scenarios V109–V118.
