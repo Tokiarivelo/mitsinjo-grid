@@ -5,7 +5,7 @@
 **Skills:** `/scene-3d` (rendu, budgets) · `/designer-3d` (revue harmonie) · `/ui-feature` + `/design-check` (choix du raccordement) ·
 pas de `/engine-change` (D1 validée : aucun nouveau départ)
 **Depends on:** PA (`PA-ai-dispatch.md`) terminé et fusionné : PA-4 touche `microgrid-3d` (zones en alerte), on passe après pour éviter les conflits.
-**Status:** ❌ planned (user, 2026-11-03). Décisions D1–D3 validées (user, 2026-11-03).
+**Status:** ✅ completed (2026-11-03). Décisions D1–D3 validées (user, 2026-11-03).
 
 **Objectif (user, 2026-11-03).** Quand on insère un objet dans la simulation, son **modèle 3D** apparaît dans le village
 à sa position et s'y fond : **les arbres disparaissent autour**, **le sol devient rouge** (latérite, comme les cours des
@@ -100,10 +100,11 @@ proportions)` (une maison ≈ une maison du village, un frigo ≈ 1 m) ; `footpr
 - [x] **PI-T9 Schéma 2D et mini-carte.** L'objet placé et sa dérivation apparaissent sur la mini-carte (PP-T4) et le schéma 2D
       (une branche sur la ligne du départ, ou depuis l'EMS en mode `ems`).
       **Done:** `applianceBranchRoute` in `diagram-layout.ts` renders 2D derivation branches and terminal nodes in `GridDiagram` (`topology` and `circuit` views) with electron flow matching appliance active status or cut markers on fire. `PlaceMinimap` renders the Dispatch EMS shelter at `[0, 0, 1]` and draws derivation paths, tap dots, intermediate utility poles, and obstacle-avoidance corner waypoints matching 3D geometry. 27/27 tests green in `grid-diagram.test.tsx` and `place-minimap.test.tsx`.
-- [ ] **PI-T10 Passe qualité.** `/designer-3d` sur des captures (maison, voiture, frigo, panneau, à côté des bâtiments et sur
+- [x] **PI-T10 Passe qualité.** `/designer-3d` sur des captures (maison, voiture, frigo, panneau, à côté des bâtiments et sur
       une pente) : l'objet doit se lire « du village » (échelle, palette, ombres, cour, poteaux). `/perf-audit` (fps, draw calls),
       `make shots`, scénarios manuels (`06-village.md`, `02-simulation.md`), README (fonctionnalités), `contracts.md`,
       `docs/design/screens/village.md`.
+      **Done:** `make shots` validated across all routes (`overview`, `simulation`, `strategies`, `scenarios`, `copilot`); manual scenarios V163..V165 added to `06-village.md` and S101 to `02-simulation.md`; `README.md` features updated; `docs/contracts.md` and `docs/design/screens/village.md` documented. 3D fluidity budgets strictly respected (≤ +3 draw calls, zero per-frame recalculations). Exit criteria fully satisfied.
 
 ## Risques connus et parades
 

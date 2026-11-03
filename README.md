@@ -52,6 +52,7 @@ Under proportional shedding, a severe deficit reduces power to the **Health Clin
 4. **3D Village Digital Twin & Dispatch Controller**: Interactive spatial visualization of power flows, battery states, and infrastructure health. Golden-hour stylized village with an EMS dispatch controller shelter, real-time feeder breakers, continuous intensity-scaled lighting (street lamps, market garlands, window glow ∝ served kW), electron particle flow speeds ∝ power, and a fullscreen interactive 2D topology/circuit diagram with 100–400% zoom.
 5. **Lifeline Survival Power (Courant de survie)**: Prevents total blackout across connected village sectors during supply deficits by guaranteeing minimum essential power floors (health 0.3 kW, water 0.2 kW, households 0.4 kW, school 0.1 kW, market 0.1 kW) with emergency failover prioritizing healthcare refrigeration and drinking water pumping.
 6. **Complete Localization**: Zero static text, featuring full English, French, and native Malagasy (`MG`) translations with 100% key parity.
+7. **Spatial Equipment Integration & Grid Derivations**: Add and position custom appliances or infrastructure into the 3D digital twin. Equipment blends organically with the village through automated tree clearings, draped red laterite yards, and catenary cable derivations supported by wooden utility poles (spaced $\le 4.5\text{ m}$) routing to branch lines or directly to the Central Dispatch EMS, complete with 2D schematic branches and animated electron particle flows.
 
 ---
 

@@ -32,12 +32,18 @@ the engine catalog gives power (never the AI). Sidebar + MobileNav entry « Vill
   mobile and lg aside, 2 on sm / xl), engine preview line, cyan « Insert into simulation » (« Update » + « Remove » once in),
   green status « In the simulation: strategies re-computed. ». Scenery: note « no load by default ». List row chip « In simulation ».
   Engine preview line + 24 h load-curve bars (PV-T11b, engine values, text summary for screen readers).
-  Free placement (PV-P): position = « Ring around the building » by default or « Place on the map » (`PlaceMinimap`,
-  components.md); feeder line = the sector select, preset to the nearest building (« Nearest: … », « Auto » to follow again) —
-  the load always goes to one of the 6 feeders while the marker draws anywhere on the terrain.
-- Inserted markers (live preview, /simulation too): plinth + body by the ring or at the placed spot, thin cable line to
-  the feeder building, tag « name · qty × W ». Click = select (ground ring + cyan tag border); press + drag moves the marker
-  on the terrain (ghost preview, orbit frozen, commit on release); the feeder follows the nearest building unless overridden.
+  Free placement (PV-P, PI): position = « Ring around the building » by default or « Place on the map » (`PlaceMinimap`,
+  components.md); feeder line = the sector select, preset to the nearest building (« Nearest: … », « Auto » to follow again).
+  Grid connection (PI-T8): choice between « On feeder branch (recommended) » and « Direct to Dispatch EMS » with D1 load reminder.
+  The minimap displays the central Dispatch EMS shelter, placed object keep-out clearings, and catenary derivation lines.
+- Inserted 3D models & derivations (PI-T1..T10, live preview and /simulation):
+  3D models merged into a single BufferGeometry (≤ +2 draw calls); each placed object rests in an automatic tree clearing (PI-T4)
+  with a draped red laterite yard (`GROUND_HEX.yard`, irregular border via `fbm2d`, draped at `terrainHeight + 0.03`, PI-T5).
+  Realistic catenary derivation cables with wooden utility poles (spaced ≤ 4.5 m, PI-T7) connect the object to its branch line or
+  directly to the Dispatch EMS shelter (`BUS_POSITION`), avoiding obstacles (buildings, pond, other models) via corner waypoints (PI-T6).
+  On 2D topology and circuit diagrams (PI-T9), the derivation branches cleanly with animated electron flow matching active power.
+  Press + drag moves the marker on the terrain (ghost preview, orbit frozen, commit on release); tree clearing, yard, and derivation
+  poles recalculate smoothly on commit (`pointerup`). Removing an object restores the trees and terrain immediately.
 - Right column (lg 460–540 px, under on mobile): tabbed Studio Inspector (`[Active Object]`, `[Installed Appliances]`, `[Microgrid Twin]`) so the current village state stays instantly accessible without infinite scrolling.
 - Every object has its own outline colour, repeated as its row border in « Objects found »; scenery (house, car, tree…) has a lighter
   fill and a « No load » chip; selected = thicker outline.
