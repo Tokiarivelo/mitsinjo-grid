@@ -36,7 +36,8 @@ export interface ObjectShapeState {
 export interface ShapeImprove {
   /** `running` while stages go on, then `done` (« Modèle finalisé ») or `stopped` + cause. */
   status: 'running' | 'done' | 'stopped';
-  cause?: 'timeout' | 'error' | 'aborted';
+  /** `lost` = the server no longer knows the job (restarted): the last model shown is kept. */
+  cause?: 'timeout' | 'error' | 'aborted' | 'lost';
   /** Current (or last) stage, 1-based of `total`. */
   index: number;
   total: number;
@@ -317,12 +318,15 @@ export function useObjectShape() {
       if (controller.signal.aborted) return;
       if (!finalized) finalize(offlineSilhouette(target.id, detail));
       // Background stages: a dropped stream resumes from the last event seen.
+      let lost = false;
       for (let tries = 0; job.id && !job.done && tries < STAGE_RESUME_TRIES; tries++) {
         try {
           const res = await fetch(
             `/api/vision/shape/stages?job=${encodeURIComponent(job.id)}&from=${job.seq + 1}`,
             { signal: controller.signal }
           );
+          // 404: the job is gone (server restarted or job expired), nothing to resume.
+          lost = res.status === 404;
           if (!res.ok || !res.body) break;
           await readSseStream(res.body, onEvent);
         } catch (err) {
@@ -334,7 +338,9 @@ export function useObjectShape() {
       if (job.id && !job.done) {
         jobRef.current = null;
         setState((s) =>
-          s.improve ? { ...s, improve: { ...s.improve, status: 'stopped', cause: 'error' } } : s
+          s.improve
+            ? { ...s, improve: { ...s.improve, status: 'stopped', cause: lost ? 'lost' : 'error' } }
+            : s
         );
       }
     },

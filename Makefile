@@ -90,6 +90,10 @@ shape-shots: ## Real 3D viewer shots of the shape-report recipes, dark + light (
 	$(need_ws)
 	@$(PNPM) --filter $(WEB) exec node scripts/object-viewer-shot.mjs $(URL) $(CURDIR)/test-results/shape-report
 
+improve-shot: ## Improvement chip shots (running + finalised), desktop + mobile, dark + light (dev server; stubbed API)
+	$(need_ws)
+	@$(PNPM) --filter $(WEB) exec node scripts/improve-chip-shot.mjs $(URL) $(CURDIR)/test-results/shape-report
+
 shape-capture: ## Capture one live 3D run → offline fixtures (PHOTO=… ID=…, PR-0.4)
 	$(need_ws)
 	@test -n "$(PHOTO)" -a -n "$(ID)" || { echo "Usage: make shape-capture PHOTO=path/to/photo.jpg ID=car1"; exit 1; }
@@ -237,5 +241,5 @@ clean: ## Remove build/test output (keeps node_modules)
 clean-all: clean ## Also remove node_modules
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
 
-.PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-shape shape-capture facade-e2e shape-report shape-shots test-watch coverage e2e \
+.PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-shape shape-capture facade-e2e shape-report shape-shots improve-shot test-watch coverage e2e \
         typecheck lint bridge bridge-sim test-bridge format format-check format-changed git-hooks check ci shots mockups analyze scene-audit scene-audit-gpu lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all
