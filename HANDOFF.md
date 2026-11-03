@@ -29,5 +29,7 @@
 
 ## Decisions
 
+- PR #52 review: site zones are now live everywhere a spot is chosen (drag `useMoveMarker`, insert `setPosition`, minimap) via `hooks/use-site-zones` (`readSiteZones`, `useSiteZones`, `usePlacedClearings`), own zone excluded by id. `snapAwayFromBuildings(pos, clearance, options)` takes only `SnapOptions`.
+
 - Tree clearing masks instances via `clearingItemScale` to scale 0 in-place: zero forest regeneration, 0 fps impact.
 - Placed yards are draped over the terrain relief (+3 cm) and merged into a single BufferGeometry (1 draw call).

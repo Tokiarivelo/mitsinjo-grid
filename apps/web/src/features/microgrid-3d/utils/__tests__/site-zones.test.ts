@@ -10,7 +10,13 @@ import {
 } from '../landscape';
 import { SECTOR_POSITIONS } from '../site-positions';
 import { PLACEMENT_CLEARANCE, snapAwayFromBuildings } from '../placement';
-import { placedItemZone, siteZones, type PlacedZoneItem } from '../site-zones';
+import {
+  applianceZoneItems,
+  dynamicPlacedZones,
+  placedItemZone,
+  siteZones,
+  type PlacedZoneItem,
+} from '../site-zones';
 import type { ObjectRecipe } from '@/lib/object-shape';
 
 describe('siteZones (PI-T3)', () => {
@@ -153,5 +159,40 @@ describe('collision tests (PI-T3)', () => {
     const distAtoB = Math.hypot(snappedB.x - 22, snappedB.z - 18);
     expect(distAtoB).toBeGreaterThanOrEqual(1.8 + PLACEMENT_CLEARANCE - 1e-9);
     expect(isBlocked(snappedB.x, snappedB.z, 0, zones, 'appliance-b')).toBe(false);
+  });
+});
+
+describe('applianceZoneItems (PI-T3)', () => {
+  const line = {
+    id: 'a1',
+    name: 'Pump',
+    category: 'water_pump' as const,
+    sector: 'water' as const,
+    watts: 750,
+    quantity: 1,
+  };
+
+  it('keeps positioned lines only, with their 3D model when there is one', () => {
+    const recipe: ObjectRecipe = {
+      proportions: { w: 1, h: 1, d: 1 },
+      parts: [{ shape: 'box', at: [0, 0, 0], size: [1, 1, 1], color: '#888888' }],
+    };
+    const items = applianceZoneItems(
+      [
+        { ...line, position: { x: 20, z: 20 } },
+        { ...line, id: 'a2' },
+      ],
+      { a1: { applianceId: 'a1', recipe, scale: 2, archetype: 'machine' } }
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ id: 'a1', recipe, scale: 2, archetype: 'machine' });
+    expect(applianceZoneItems(undefined)).toEqual([]);
+  });
+
+  it('scene markers ([x, y, z]) give a zone at their rendered spot', () => {
+    const [zone] = dynamicPlacedZones(
+      applianceZoneItems([{ id: 'm1', category: 'fridge', position: [12, 0.4, -9] }])
+    );
+    expect(zone).toMatchObject({ id: 'm1', x: 12, z: -9 });
   });
 });

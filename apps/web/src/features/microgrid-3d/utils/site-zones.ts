@@ -1,7 +1,7 @@
-import type { ApplianceCategory, AppliancePosition } from '@mitsinjo/engine';
+import type { Appliance, ApplianceCategory, AppliancePosition } from '@mitsinjo/engine';
 import { KIT_ARCHETYPES, type KitArchetype, defaultArchetype } from '@/lib/object-kit';
 import type { ObjectRecipe } from '@/lib/object-shape';
-import { footprint, sceneScale } from '@/stores/placed-models.store';
+import { footprint, sceneScale, type PlacedModel } from '@/stores/placed-models.store';
 import { KEEP_OUT_ZONES, type KeepOutZone } from './landscape';
 
 export { type KeepOutZone } from './landscape';
@@ -140,6 +140,36 @@ export function dynamicPlacedZones(placed?: readonly PlacedZoneItem[] | null): K
     if (zone) list.push(zone);
   });
   return list;
+}
+
+/** An engine line or a scene marker (whose position is the rendered `[x, y, z]`). */
+export type ZoneSource = Pick<Appliance, 'id' | 'category'> & {
+  position?: PlacedZoneItem['position'];
+};
+
+/**
+ * Positioned engine lines + their 3D models (if any) → zone inputs. Lines still on the default ring
+ * (no position) take no zone; scene markers always have one. Shared by the scene (clearings, yards) and placement (drag, insert, map).
+ */
+export function applianceZoneItems(
+  appliances: readonly ZoneSource[] | undefined,
+  models: Readonly<Record<string, PlacedModel>> = {}
+): PlacedZoneItem[] {
+  if (!appliances?.length) return [];
+  return appliances
+    .filter((a) => a.position)
+    .map((a) => {
+      const m = models[a.id];
+      return {
+        id: a.id,
+        position: a.position,
+        recipe: m?.recipe,
+        scale: m?.scale,
+        yaw: m?.yaw,
+        archetype: m?.archetype,
+        category: a.category,
+      };
+    });
 }
 
 /**

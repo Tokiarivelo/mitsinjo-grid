@@ -5,16 +5,12 @@ import { SECTOR_IDS, type AppliancePosition, type SectorId } from '@mitsinjo/eng
 import { useTranslations } from '@/lib/i18n';
 import {
   isBlocked,
+  KEEP_OUT_ZONES,
   POND_CENTER,
   POND_RADIUS,
   VILLAGE_PATHS,
   type KeepOutZone,
 } from '@/features/microgrid-3d/utils/landscape';
-import {
-  PLACEMENT_CLEARANCE,
-  snapAwayFromBuildings,
-} from '@/features/microgrid-3d/utils/placement';
-import { siteZones, type PlacedZoneItem } from '@/features/microgrid-3d/utils/site-zones';
 import { SECTOR_POSITIONS } from '@/features/microgrid-3d/utils/site-positions';
 
 export interface PlaceMinimapProps {
@@ -23,18 +19,19 @@ export interface PlaceMinimapProps {
   /** Cursor start when nothing is placed yet. */
   sector: SectorId;
   onPlace: (pos: AppliancePosition) => void;
-  /** Existing placed objects or keep-out zones to display and respect (PI-T3). */
-  placed?: readonly PlacedZoneItem[] | null;
-  zones?: readonly KeepOutZone[] | null;
+  /** Site zones to show and test the cursor against (PI-T3, `siteZones`); default = static village. */
+  zones?: readonly KeepOutZone[];
+  /** Zone of the object being placed: not drawn, never blocks itself. */
   excludeId?: string;
-  /** Whether to snap the position inside the minimap before calling onPlace. */
-  snapOnPlace?: boolean;
 }
 
 /** Half-side of the square map (scene units): the terrain disc plus a margin. */
 export const MINIMAP_HALF = 115;
 /** Cursor step (Shift = ×5). */
 export const MINIMAP_STEP = 2;
+
+/** Ids of the fixed village zones (`KEEP_OUT_ZONES`). */
+const STATIC_ZONE_IDS = new Set(KEEP_OUT_ZONES.map((k) => k.id));
 
 const clampMap = (v: number) => Math.min(MINIMAP_HALF - 2, Math.max(-(MINIMAP_HALF - 2), v));
 
@@ -46,10 +43,8 @@ export function PlaceMinimap({
   value,
   sector,
   onPlace,
-  placed,
-  zones,
+  zones = KEEP_OUT_ZONES,
   excludeId,
-  snapOnPlace = false,
 }: PlaceMinimapProps) {
   const t = useTranslations('features.visionInsert');
   const [bx, , bz] = SECTOR_POSITIONS[sector];
@@ -57,15 +52,16 @@ export function PlaceMinimap({
     value ? { ...value } : { x: bx, z: bz }
   );
 
-  const activeZones = useMemo(() => zones ?? siteZones(placed), [zones, placed]);
-  const isCursorBlocked = isBlocked(cursor.x, cursor.z, 0, activeZones, excludeId);
+  // Placed objects only: static zones are drawn as buildings and the pond.
+  const objects = useMemo(
+    () => zones.filter((k) => k.id && k.id !== excludeId && !STATIC_ZONE_IDS.has(k.id)),
+    [zones, excludeId]
+  );
+  const blocked = isBlocked(cursor.x, cursor.z, 0, zones, excludeId);
 
   const place = (pos: AppliancePosition) => {
-    const target = snapOnPlace
-      ? snapAwayFromBuildings(pos, PLACEMENT_CLEARANCE, { zones: activeZones, excludeId })
-      : pos;
-    setCursor(target);
-    onPlace(target);
+    setCursor(pos);
+    onPlace(pos);
   };
 
   const fromEvent = (e: MouseEvent<SVGSVGElement>): AppliancePosition => {
@@ -130,7 +126,7 @@ export function PlaceMinimap({
           cy={POND_CENTER[1]}
           rx={POND_RADIUS + 0.8}
           ry={POND_RADIUS + 0.8}
-          className="fill-sky-800/30 stroke-sky-700/50"
+          className="fill-network-blue/25 stroke-network-blue/60"
           strokeWidth={1}
         />
         {SECTOR_IDS.map((s) => {
@@ -150,27 +146,16 @@ export function PlaceMinimap({
             />
           );
         })}
-        {activeZones
-          .filter(
-            (k) =>
-              k.id &&
-              (!excludeId || k.id !== excludeId) &&
-              !k.id.startsWith('sector:') &&
-              k.id !== 'solar' &&
-              k.id !== 'battery' &&
-              k.id !== 'bus' &&
-              k.id !== 'pond'
-          )
-          .map((k) => (
-            <circle
-              key={k.id}
-              cx={k.x}
-              cy={k.z}
-              r={Math.max(2, k.r * 0.8)}
-              className="fill-energy-amber/40 stroke-energy-amber"
-              strokeWidth={1}
-            />
-          ))}
+        {objects.map((k) => (
+          <circle
+            key={k.id}
+            cx={k.x}
+            cy={k.z}
+            r={k.r}
+            className="fill-warning-amber/30 stroke-warning-amber"
+            strokeWidth={1}
+          />
+        ))}
         {value && (
           <circle
             cx={value.x}
@@ -181,7 +166,7 @@ export function PlaceMinimap({
           />
         )}
         <g
-          className={isCursorBlocked ? 'stroke-energy-amber' : 'stroke-energy-cyan'}
+          className={blocked ? 'stroke-warning-amber' : 'stroke-energy-cyan'}
           strokeWidth={1.4}
           aria-hidden="true"
           transform={`translate(${cursor.x} ${cursor.z})`}
@@ -194,6 +179,7 @@ export function PlaceMinimap({
       <p id="place-minimap-help" className="text-[11px] text-text-muted">
         {t('minimapHelp')}
       </p>
+      {blocked && <p className="text-[11px] text-warning-amber">{t('minimapBlocked')}</p>}
       <p aria-live="polite" className="sr-only">
         {t('cursorAt', { x: cursor.x.toFixed(1), z: cursor.z.toFixed(1) })}
       </p>

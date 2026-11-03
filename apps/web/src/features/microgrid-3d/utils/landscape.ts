@@ -114,17 +114,18 @@ export const VILLAGE_PATHS: [number, number][][] = [
 
 export const PATH_HALF_WIDTH = 0.8;
 
-export function distToSegment(
+/** Closest point to (px, pz) on segment a→b. */
+function projectOnSegment(
   px: number,
   pz: number,
   a: [number, number],
   b: [number, number]
-): number {
+): [number, number] {
   const dx = b[0] - a[0];
   const dz = b[1] - a[1];
   const len2 = dx * dx + dz * dz;
   const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - a[0]) * dx + (pz - a[1]) * dz) / len2));
-  return Math.hypot(px - (a[0] + t * dx), pz - (a[1] + t * dz));
+  return [a[0] + t * dx, a[1] + t * dz];
 }
 
 export interface ClosestPathSegment {
@@ -150,13 +151,7 @@ export function closestPathSegment(
       const a = line[i];
       const b = line[i + 1];
       if (!a || !b) continue;
-      const dx = b[0] - a[0];
-      const dz = b[1] - a[1];
-      const len2 = dx * dx + dz * dz;
-      const t =
-        len2 === 0 ? 0 : Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / len2));
-      const cx = a[0] + t * dx;
-      const cz = a[1] + t * dz;
+      const [cx, cz] = projectOnSegment(x, z, a, b);
       const d = Math.hypot(x - cx, z - cz);
       if (d < best) {
         best = d;

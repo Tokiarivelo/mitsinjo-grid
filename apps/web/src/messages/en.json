@@ -1021,6 +1021,7 @@
       "feederAuto": "Auto",
       "minimapLabel": "Village map",
       "minimapHelp": "Arrows move the cursor. Enter places.",
+      "minimapBlocked": "Spot taken (building, path, pond or object): it will move to the nearest free edge.",
       "insertWatts": "Power per unit (W)",
       "insertWattsRange": "Catalog range: {min}–{max} W",
       "insertQuantity": "Quantity",

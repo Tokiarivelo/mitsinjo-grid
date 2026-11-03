@@ -132,6 +132,27 @@ function circleIntersections(
 }
 
 /**
+ * Exit points off the nearest path corridor for (x, z): straight away from the centre line, then
+ * both normals of the segment. Empty when (x, z) already clears every path.
+ */
+function pathExits(x: number, z: number, clearance: number): [number, number][] {
+  const hit = closestPathSegment(x, z);
+  const rMin = PATH_HALF_WIDTH + clearance;
+  if (!hit || hit.distance >= rMin) return [];
+  const [c0, c1] = hit.closestPoint;
+  const [a, b] = hit.segment;
+  const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+  const nx = -(b[1] - a[1]) / L;
+  const nz = (b[0] - a[0]) / L;
+  const exits: [number, number][] = [];
+  if (hit.distance > 1e-6) {
+    exits.push([c0 + ((x - c0) / hit.distance) * rMin, c1 + ((z - c1) / hit.distance) * rMin]);
+  }
+  exits.push([c0 + nx * rMin, c1 + nz * rMin], [c0 - nx * rMin, c1 - nz * rMin]);
+  return exits;
+}
+
+/**
  * Push a map position out of every obstacle (buildings, pads, pond, paths, and placed objects, PI-T3):
  * no object placed inside a footprint or on a path. Nearest clean exit wins: radial push-outs first,
  * perpendicular path pushes, pairwise intersections, then cross-pushes.
@@ -140,101 +161,42 @@ function circleIntersections(
 export function snapAwayFromBuildings(
   pos: AppliancePosition,
   clearance = PLACEMENT_CLEARANCE,
-  optionsOrZones?: SnapOptions | readonly KeepOutZone[] | readonly PlacedZoneItem[],
-  excludeIdArg?: string
+  options: SnapOptions = {}
 ): AppliancePosition {
-  let zones: readonly KeepOutZone[] = KEEP_OUT_ZONES;
-  let excludeId = excludeIdArg;
-  let checkPaths = true;
-
-  if (Array.isArray(optionsOrZones)) {
-    if (optionsOrZones.length > 0 && typeof (optionsOrZones[0] as KeepOutZone).r === 'number') {
-      zones = optionsOrZones as readonly KeepOutZone[];
-    } else {
-      zones = siteZones(optionsOrZones as readonly PlacedZoneItem[]);
-    }
-  } else if (optionsOrZones) {
-    const opts = optionsOrZones as SnapOptions;
-    if (opts.zones) {
-      zones = opts.zones;
-    } else if (opts.placed) {
-      zones = siteZones(opts.placed);
-    }
-    if (opts.excludeId) excludeId = opts.excludeId;
-    if (typeof opts.checkPaths === 'boolean') checkPaths = opts.checkPaths;
-  }
+  const zones = options.zones ?? (options.placed ? siteZones(options.placed) : KEEP_OUT_ZONES);
+  const { excludeId, checkPaths = true } = options;
+  const clean = (p: [number, number]) =>
+    clearsAll(p[0], p[1], clearance, zones, excludeId, checkPaths);
 
   // Already clean: no movement needed.
-  if (clearsAll(pos.x, pos.z, clearance, zones, excludeId, checkPaths)) {
-    return { x: pos.x, z: pos.z };
-  }
+  if (clean([pos.x, pos.z])) return { x: pos.x, z: pos.z };
 
   const violated = zones.filter(
     (k) =>
       (!excludeId || k.id !== excludeId) && Math.hypot(pos.x - k.x, pos.z - k.z) < k.r + clearance
   );
-  const closest = checkPaths ? closestPathSegment(pos.x, pos.z) : null;
-  const pathViolated = !!closest && closest.distance < PATH_HALF_WIDTH + clearance;
-
   const candidates: [number, number][] = [];
+  const keepClean = (p: [number, number]) => {
+    if (clean(p)) candidates.push(p);
+  };
 
-  // Helper to add candidate and its cross-relaxed points.
+  // A candidate that is still blocked gets one relaxation: off the path, then out of each circle.
   const tryCandidate = (p: [number, number]) => {
-    if (clearsAll(p[0], p[1], clearance, zones, excludeId, checkPaths)) {
+    if (clean(p)) {
       candidates.push(p);
       return;
     }
-    // If blocked only by a path, push off the path.
-    if (checkPaths) {
-      const hit = closestPathSegment(p[0], p[1]);
-      if (hit && hit.distance < PATH_HALF_WIDTH + clearance) {
-        const seg = hit.segment;
-        const dx = seg[1][0] - seg[0][0];
-        const dz = seg[1][1] - seg[0][1];
-        const L = Math.hypot(dx, dz) || 1;
-        const n1: [number, number] = [-dz / L, dx / L];
-        const n2: [number, number] = [dz / L, -dx / L];
-        const dHit = Math.hypot(p[0] - hit.closestPoint[0], p[1] - hit.closestPoint[1]);
-        const rMin = PATH_HALF_WIDTH + clearance;
-        if (dHit > 1e-6) {
-          const ux = (p[0] - hit.closestPoint[0]) / dHit;
-          const uz = (p[1] - hit.closestPoint[1]) / dHit;
-          const pPath: [number, number] = [
-            hit.closestPoint[0] + ux * rMin,
-            hit.closestPoint[1] + uz * rMin,
-          ];
-          if (clearsAll(pPath[0], pPath[1], clearance, zones, excludeId, checkPaths)) {
-            candidates.push(pPath);
-          }
-        }
-        for (const norm of [n1, n2]) {
-          const pPath: [number, number] = [
-            hit.closestPoint[0] + norm[0] * rMin,
-            hit.closestPoint[1] + norm[1] * rMin,
-          ];
-          if (clearsAll(pPath[0], pPath[1], clearance, zones, excludeId, checkPaths)) {
-            candidates.push(pPath);
-          }
-        }
-      }
-    }
-    // If blocked by a circle, push out of the circle.
+    if (checkPaths) pathExits(p[0], p[1], clearance).forEach(keepClean);
     for (const k of zones) {
       if (excludeId && k.id === excludeId) continue;
       if (Math.hypot(p[0] - k.x, p[1] - k.z) < k.r + clearance) {
-        const pCircle = radialOut(p[0], p[1], k, clearance);
-        if (clearsAll(pCircle[0], pCircle[1], clearance, zones, excludeId, checkPaths)) {
-          candidates.push(pCircle);
-        }
+        keepClean(radialOut(p[0], p[1], k, clearance));
       }
     }
   };
 
   // 1. Circle radial push-outs
-  for (const k of violated) {
-    const p = radialOut(pos.x, pos.z, k, clearance);
-    tryCandidate(p);
-  }
+  for (const k of violated) tryCandidate(radialOut(pos.x, pos.z, k, clearance));
 
   // 2. Pairwise circle intersections
   for (let i = 0; i < violated.length; i++) {
@@ -245,29 +207,8 @@ export function snapAwayFromBuildings(
     }
   }
 
-  // 3. Path perpendicular pushes
-  if (pathViolated && closest) {
-    const [a, b] = closest.segment;
-    const dx = b[0] - a[0];
-    const dz = b[1] - a[1];
-    const L = Math.hypot(dx, dz) || 1;
-    const n1: [number, number] = [-dz / L, dx / L];
-    const n2: [number, number] = [dz / L, -dx / L];
-    const rMin = PATH_HALF_WIDTH + clearance;
-
-    const dHit = Math.hypot(pos.x - closest.closestPoint[0], pos.z - closest.closestPoint[1]);
-    if (dHit > 1e-6) {
-      const ux = (pos.x - closest.closestPoint[0]) / dHit;
-      const uz = (pos.z - closest.closestPoint[1]) / dHit;
-      tryCandidate([closest.closestPoint[0] + ux * rMin, closest.closestPoint[1] + uz * rMin]);
-    }
-    for (const norm of [n1, n2]) {
-      tryCandidate([
-        closest.closestPoint[0] + norm[0] * rMin,
-        closest.closestPoint[1] + norm[1] * rMin,
-      ]);
-    }
-  }
+  // 3. Path pushes (away from the centre line, then both normals)
+  if (checkPaths) pathExits(pos.x, pos.z, clearance).forEach(tryCandidate);
 
   // 4. Fallback search if no candidate was completely clean
   if (candidates.length === 0) {
@@ -340,7 +281,7 @@ export function defaultPosition(sector: SectorId, k: number): [number, number, n
 export function moveAppliance(
   line: Appliance,
   pos: AppliancePosition,
-  options?: SnapOptions | readonly KeepOutZone[] | readonly PlacedZoneItem[]
+  options?: SnapOptions
 ): Appliance {
   const position = snapAwayFromBuildings(clampToTerrain(pos), PLACEMENT_CLEARANCE, options);
   const overridden = !!line.position && nearestSector(line.position) !== line.sector;

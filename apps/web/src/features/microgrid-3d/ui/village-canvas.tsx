@@ -5,7 +5,7 @@ import { Canvas } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
 import { SECTOR_IDS, type Priority, type SectorId } from '@mitsinjo/engine';
 import { useTranslations } from '@/lib/i18n';
-import { usePlacedModelsStore, useSimulationStore } from '@/stores';
+import { useSimulationStore } from '@/stores';
 import { fmtKw } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type {
@@ -29,7 +29,7 @@ import { applyOvercast, skyPalette } from '../utils/sky-palette';
 import { WEATHER_ATMOSPHERE } from '../utils/weather-atmosphere';
 import { SUN_AZIMUTH_RAD } from '../utils/landscape';
 import type { SectorStateOverride } from '../utils/placed-models-geometry';
-import { dynamicPlacedZones, type PlacedZoneItem } from '../utils/site-zones';
+import { usePlacedClearings } from '../hooks/use-site-zones';
 import { SceneStatsProbe } from './scene-stats-probe';
 import { VillageTerrain } from './terrain';
 import { PlacedYards } from './placed-yards';
@@ -151,25 +151,7 @@ export function VillageCanvas({
     return map;
   }, [model.buildings]);
 
-  const placedModels = usePlacedModelsStore((s) => s.models);
-  const clearings = useMemo(() => {
-    if (!model.appliances?.length) return [];
-    const placedItems: PlacedZoneItem[] = model.appliances
-      .filter((a) => a.position)
-      .map((a) => {
-        const m = placedModels[a.id];
-        return {
-          id: a.id,
-          position: a.position,
-          recipe: m?.recipe,
-          scale: m?.scale,
-          yaw: m?.yaw,
-          archetype: m?.archetype,
-          category: a.category,
-        };
-      });
-    return dynamicPlacedZones(placedItems);
-  }, [model.appliances, placedModels]);
+  const clearings = usePlacedClearings(model.appliances);
 
   const sectorNames = Object.fromEntries(SECTOR_IDS.map((id) => [id, tSectors(id)])) as Record<
     SectorId,
