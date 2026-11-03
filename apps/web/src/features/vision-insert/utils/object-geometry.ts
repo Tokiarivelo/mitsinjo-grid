@@ -2,7 +2,12 @@ import type { ApplianceCategory } from '@mitsinjo/engine';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { MAX_TRIANGLES, type ObjectRecipe, type RecipePart } from '@/lib/object-shape';
+import {
+  HIP_CLIP_MAX,
+  MAX_TRIANGLES,
+  type ObjectRecipe,
+  type RecipePart,
+} from '@/lib/object-shape';
 import { HULL_LEVELS, HULL_SLICES, hullLoops } from '@/lib/hull';
 import { SURFACE_LOOK, SURFACES, surfaceIndex } from './surface-look';
 import { holedBox } from './holed-wall';
@@ -111,45 +116,67 @@ export function unitPrism(apex = 0.5): THREE.BufferGeometry {
   return g;
 }
 
+/** Twice the area of a triangle (zero for the collapsed faces of a full hip or a gable). */
+function triArea(a: number[], b: number[], c: number[]): number {
+  const u = [b[0]! - a[0]!, b[1]! - a[1]!, b[2]! - a[2]!];
+  const v = [c[0]! - a[0]!, c[1]! - a[1]!, c[2]! - a[2]!];
+  return Math.hypot(
+    u[1]! * v[2]! - u[2]! * v[1]!,
+    u[2]! * v[0]! - u[0]! * v[2]!,
+    u[0]! * v[1]! - u[1]! * v[0]!
+  );
+}
+
 /**
  * Unit hipped roof (2D facade, user 2026-11-02): base 1 × 1 at y −0.5, ridge along x at y 0.5, z 0,
- * `ridge` × the width long (0 = pyramid, 1 = side gable). Front / back slopes are trapezoids, the
- * hip ends triangles. Non-indexed, flat normals, empty UVs like `unitPrism`.
+ * `ridge` × the width long (0 = pyramid, 1 = side gable). Front / back slopes, hip ends to the ridge
+ * tips. `clip` > 0 (PG-T22 half-hip): each end is a vertical gable up to `clip` of the height, the
+ * hip triangle above it. Non-indexed, flat normals, empty UVs like `unitPrism`.
  */
-export function unitHip(ridge = 0.5): THREE.BufferGeometry {
+export function unitHip(ridge = 0.5, clip = 0): THREE.BufferGeometry {
   const r = Math.min(1, Math.max(0, ridge)) / 2;
+  const c = Math.min(HIP_CLIP_MAX, Math.max(0, clip));
+  const yc = -0.5 + c;
+  const zc = 0.5 * (1 - c);
   const A = [-0.5, -0.5, 0.5];
   const B = [0.5, -0.5, 0.5];
   const C = [0.5, -0.5, -0.5];
   const D = [-0.5, -0.5, -0.5];
   const R1 = [-r, 0.5, 0];
   const R2 = [r, 0.5, 0];
-  const positions = [
-    ...A,
-    ...B,
-    ...R2,
-    ...A,
-    ...R2,
-    ...R1, // front slope (+z)
-    ...C,
-    ...D,
-    ...R1,
-    ...C,
-    ...R1,
-    ...R2, // back slope (−z)
-    ...B,
-    ...C,
-    ...R2, // right hip
-    ...D,
-    ...A,
-    ...R1, // left hip
-    ...A,
-    ...D,
-    ...C,
-    ...A,
-    ...C,
-    ...B, // bottom
+  // Gable shoulders (equal to the base corners when c = 0).
+  const BF = [0.5, yc, zc];
+  const BB = [0.5, yc, -zc];
+  const AF = [-0.5, yc, zc];
+  const AB = [-0.5, yc, -zc];
+  const tris = [
+    // front slope (+z): A B BF R2 R1 AF
+    [A, B, BF],
+    [A, BF, R2],
+    [A, R2, R1],
+    [A, R1, AF],
+    // back slope (−z): C D AB R1 R2 BB
+    [C, D, AB],
+    [C, AB, R1],
+    [C, R1, R2],
+    [C, R2, BB],
+    // hip ends
+    [BF, BB, R2],
+    [AB, AF, R1],
+    // gable ends (zero area when c = 0)
+    ...(c > 0
+      ? [
+          [B, C, BB],
+          [B, BB, BF],
+          [D, A, AF],
+          [D, AF, AB],
+        ]
+      : []),
+    // bottom
+    [A, D, C],
+    [A, C, B],
   ];
+  const positions = tris.filter(([p, q, w]) => triArea(p!, q!, w!) > 1e-9).flat(2);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   g.setAttribute(
@@ -302,7 +329,8 @@ function unitPart(
   profile?: RecipePart['profile'],
   ridge?: number,
   section?: RecipePart['section'],
-  body = true
+  body = true,
+  clip?: number
 ): THREE.BufferGeometry {
   switch (shape) {
     case 'hull':
@@ -313,7 +341,7 @@ function unitPart(
     case 'prism':
       return unitPrism(apex);
     case 'hip':
-      return unitHip(ridge);
+      return unitHip(ridge, clip);
     case 'extrude':
       return unitExtrude(points ?? []);
     case 'lathe':
@@ -372,7 +400,7 @@ function buildMesh(recipe: ObjectRecipe, detail: AssemblyDetail): THREE.BufferGe
     } else if (p.shape === 'box') {
       g = roundedBox(sx, sy, sz, SURFACE_LOOK[SURFACES[surface]!].radius);
     } else {
-      g = unitPart(p.shape, p.apex, p.points, p.profile, p.ridge, p.section, !!p.front);
+      g = unitPart(p.shape, p.apex, p.points, p.profile, p.ridge, p.section, !!p.front, p.clip);
       // Round parts turn to their axis before taking the part's own x / y / z extent.
       if (p.axis === 'x') g.rotateZ(Math.PI / 2);
       else if (p.axis === 'z') g.rotateX(Math.PI / 2);

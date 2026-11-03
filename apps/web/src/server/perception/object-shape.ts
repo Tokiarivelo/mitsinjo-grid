@@ -37,7 +37,7 @@ import { cropForShape, cropRectForShape } from './shape-crop';
 import { extractSwatches } from './photo-swatches';
 import { withLatheBody } from './lathe-body';
 import { fetchFacadeMasks, type FacadeMasks } from './facade-masks';
-import { depthRatio, facadeHouseRecipe, type Elevation } from './facade-house';
+import { depthRatio, facadeHouseRecipe, wallTimber, type Elevation } from './facade-house';
 import { STAGE_SAFETY_MS } from './shape-stages';
 import {
   facadeStageLoop,
@@ -401,7 +401,12 @@ export async function runObjectShape(
       let built = freeRecipe ?? found.recipe;
       let finalKit = found.kit;
       const px = found.kit ? await pixels : null;
-      const measuredColors = found.kit && px ? measureKitColors(px, found.kit.archetype) : null;
+      const elev =
+        found.kit && ELEVATION_ARCHETYPES.includes(found.kit.archetype) ? await elevations : null;
+      // PG-T22: half-timbered walls take their plaster colour, not plaster + beams averaged.
+      const plaster = !!elev && !!wallTimber(elev.front, found.kit?.details);
+      const measuredColors =
+        found.kit && px ? measureKitColors(px, found.kit.archetype, { plaster }) : null;
       const conf = {
         colors: px ? confidence.colors(px.y.length, !!shaped.outline) : 0,
         yaw: 0,
@@ -417,8 +422,6 @@ export async function runObjectShape(
           `[vision] 3D colours measured for "${target.label}" (${px!.y.length} px${target.outline ? ', outline' : ''}): ${colors.main} ${colors.secondary} ${colors.accent}`
         );
       }
-      const elev =
-        found.kit && ELEVATION_ARCHETYPES.includes(found.kit.archetype) ? await elevations : null;
       if (found.kit && elev) {
         const kit = colors ? { ...found.kit, colors } : found.kit;
         const { front, side } = elev;
@@ -497,7 +500,7 @@ export async function runObjectShape(
         console.info(`[vision] 3D ${formatElevationScore(elevScore)} for "${target.label}"`);
         const roofPart = recipe.parts.find((p) => p.shape === 'hip' || p.shape === 'prism');
         console.info(
-          `[vision] 3D facade house for "${target.label}": ${recipe.parts.length} parts, roof ${roofPart ? `${roofPart.shape}${roofPart.shape === 'hip' ? ` ridge ${roofPart.ridge?.toFixed(2)}` : ''}` : 'flat'}, ${front.windows.length} windows, ${front.doors.length} door(s), ${front.chimneys.length} chimney(s), side ${side ? `${side.windows.length} windows, depth ${depthRatio(front, side)?.toFixed(2)}` : 'none'} vs Spark ${(kit.proportions.d / kit.proportions.w).toFixed(2)}, w:h:d ${[recipe.proportions.w, recipe.proportions.h, recipe.proportions.d].map((v) => v.toFixed(2)).join(':')}, yaw ${Math.round((yaw0 * 180) / Math.PI)}° (${seconds} s Spark)`
+          `[vision] 3D facade house for "${target.label}": ${recipe.parts.length} parts, roof ${roofPart ? `${roofPart.shape}${roofPart.shape === 'hip' ? ` ridge ${roofPart.ridge?.toFixed(2)}${roofPart.clip ? ` half-hip ${roofPart.clip.toFixed(2)}` : ''}` : ''}` : 'flat'}, ${front.windows.length} windows, ${front.doors.length} door(s), ${front.chimneys.length} chimney(s), side ${side ? `${side.windows.length} windows, depth ${depthRatio(front, side)?.toFixed(2)}` : 'none'} vs Spark ${(kit.proportions.d / kit.proportions.w).toFixed(2)}, w:h:d ${[recipe.proportions.w, recipe.proportions.h, recipe.proportions.d].map((v) => v.toFixed(2)).join(':')}, yaw ${Math.round((yaw0 * 180) / Math.PI)}° (${seconds} s Spark)`
         );
         return {
           ...base,

@@ -10,7 +10,7 @@ import { FACES, MAX_REPEAT, WALL_FACES, type Component } from '@/lib/shape-scrip
  */
 
 /** Bump when the wording changes; logged with every stage call (eval keeps the best). */
-export const SHAPE_SCRIPT_PROMPT_VERSION = 2;
+export const SHAPE_SCRIPT_PROMPT_VERSION = 3;
 /** Most ops kept from one answer. */
 export const MAX_STAGE_OPS = 12;
 /** Ops Spark may use; `add` only for boxes (no rings, no lathe profiles). */
@@ -49,8 +49,8 @@ const promptLines = (sheet: StageSheet) => [
   ...SHEET_LINES[sheet],
   'You answer a list of edit ops on NAMED components of the current stage only. Locked components are read-only: never name them.',
   'Units: positions `at` and sizes `size` are [x, y, z] fractions of the whole object (x right, y up, z toward the viewer, centre 0). For `cut` and `attach`, u and v are 0–1 across the parent face (u left → right as seen from outside, v ground → top).',
-  `Ops: set {id, at?, size?, grid?, leaves?, glazed?, panels?, sill?, lintel?, cap?, bulge?, ridge?, apex?} · cut {id, wall, kind: window|door, face (${WALL_FACES.join('|')}), u, v, w, h} = new opening on a wall · remove {id} · repeat {id, count 2–${MAX_REPEAT}, axis, step} · material {id, material, color?} · attach {id, parent, face (${FACES.join('|')}), u, v} · add {id, part: box only}.`,
-  `grid = glass panes [across, down], 1–${MAX_PANES} each; leaves 1|2; glazed = share of a door glazed from its top (0–0.8); bulge = rounded eave of a thatch roof (0–0.3 of the roof height); ridge = hip ridge length share (0 pyramid, 1 gable).`,
+  `Ops: set {id, at?, size?, grid?, leaves?, glazed?, panels?, sill?, lintel?, cap?, bulge?, ridge?, clip?, apex?} · cut {id, wall, kind: window|door, face (${WALL_FACES.join('|')}), u, v, w, h} = new opening on a wall · remove {id} · repeat {id, count 2–${MAX_REPEAT}, axis, step} · material {id, material, color?} · attach {id, parent, face (${FACES.join('|')}), u, v} · add {id, part: box only}.`,
+  `grid = glass panes [across, down], 1–${MAX_PANES} each; leaves 1|2; glazed = share of a door glazed from its top (0–0.8); bulge = rounded eave of a thatch roof (0–0.3 of the roof height); ridge = hip ridge length share (0 pyramid, 1 gable); clip = half-hip: vertical gable at each end up to this share of the roof height (0 full hip, ≤ 0.9).`,
   `material = one of: ${RECIPE_MATERIALS.join(', ')}.`,
   'Fix the largest red and blue areas first. Small steps: a patch is kept only if the stage score rises. Empty list when the stage already matches.',
   'Answer ONLY JSON. Never give metres, watts or any energy value.',
@@ -115,6 +115,7 @@ export const SHAPE_SCRIPT_JSON_SCHEMA = {
             cap: { type: 'boolean' },
             bulge: num,
             ridge: num,
+            clip: num,
             apex: num,
           },
           required: ['op', 'id'],
@@ -136,6 +137,7 @@ const OPTION_KEYS = [
   'cap',
   'bulge',
   'ridge',
+  'clip',
   'apex',
 ] as const;
 

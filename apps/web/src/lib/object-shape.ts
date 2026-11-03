@@ -18,7 +18,8 @@ import {
 
 /**
  * `prism` = triangle extruded along z (gable roof, PF-T3), apex at `apex` of its width.
- * `hip` = hipped roof, ridge along x of `ridge` × its width (0 = pyramid, 1 = side gable).
+ * `hip` = hipped roof, ridge along x of `ridge` × its width (0 = pyramid, 1 = side gable); `clip` > 0
+ * = half-hip: the ends stand as vertical gables up to that share of the roof height, hipped above.
  * `hull` = visual hull (PV-H): front ring `points` (x, y) extruded along z ∩ side ring `section`
  * (z toward the front, y) extruded along x, both measured on the validated 2D view and its side.
  */
@@ -38,6 +39,8 @@ export const EXTRUDE_POINTS_MAX = 64;
 /** Profile points of a `lathe` part (PR-2.3): radius-vs-height, non-decreasing y. */
 export const LATHE_PROFILE_MAX = 32;
 export const MAX_RECIPE_PARTS = 12;
+/** Highest half-hip gable share: above it the end is a plain gable (ridge 1). */
+export const HIP_CLIP_MAX = 0.9;
 /**
  * Components of a recipe the server builds from measured views (PV-H: body, wheels, glass and lamp
  * skin patches, the AI check's additions; PG-T10: facade house assemblies). A component may be an
@@ -155,6 +158,8 @@ export const RecipePartSchema = z
     apex: z.number().min(0).max(1).optional(),
     /** Hip only: ridge length, share of the part width (default 0.5). Measured on the 2D facade. */
     ridge: z.number().min(0).max(1).optional(),
+    /** Hip only (PG-T22): half-hip gable height, share of the roof height from the eave (0 = full hip). */
+    clip: z.number().min(0).max(HIP_CLIP_MAX).optional(),
     /** Extrude only (PR-2.1): the profile ring, 3–64 points, built server-side (never from Spark). */
     points: z.array(unitPoint).min(3).max(EXTRUDE_POINTS_MAX).optional(),
     /** Hull only (PV-H): side silhouette ring [z, y] in unit space (z + = front), 3–64 points. */

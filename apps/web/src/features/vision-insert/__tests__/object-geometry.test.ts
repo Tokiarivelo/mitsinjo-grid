@@ -242,6 +242,30 @@ describe('unitHip (2D facade house)', () => {
     expect(Math.max(...xs)).toBe(0.5);
   });
 
+  it('half-hip (PG-T22): vertical gable ends up to the clip, hip above, faces outwards', () => {
+    const g = unitHip(0.8, 0.6);
+    const b = bounds(g);
+    expect(b.min.toArray()).toEqual([-0.5, -0.5, -0.5]);
+    expect(b.max.toArray()).toEqual([0.5, 0.5, 0.5]);
+    // 2 slopes × 4 + 2 hip ends + 2 gable quads × 2 + bottom 2.
+    expect(triangleCount(g)).toBe(16);
+    const pos = g.getAttribute('position');
+    const nrm = g.getAttribute('normal');
+    let gableTop = -Infinity;
+    for (let t = 0; t < pos.count; t += 3) {
+      const c = new THREE.Vector3();
+      for (let k = 0; k < 3; k++) c.add(new THREE.Vector3().fromBufferAttribute(pos, t + k));
+      c.divideScalar(3);
+      const n = new THREE.Vector3().fromBufferAttribute(nrm, t);
+      expect(c.dot(n)).toBeGreaterThan(0);
+      if (Math.abs(n.x) > 0.999)
+        for (let k = 0; k < 3; k++) gableTop = Math.max(gableTop, pos.getY(t + k));
+    }
+    expect(gableTop).toBeCloseTo(0.1, 6);
+    // No clip: the plain hip, collapsed gable faces dropped.
+    expect(triangleCount(unitHip(0.8, 0))).toBe(8);
+  });
+
   it('builds in a recipe with no overhang added (the facade measured it)', () => {
     const roof: ObjectRecipe = {
       proportions: { w: 1, h: 0.8, d: 0.6 },

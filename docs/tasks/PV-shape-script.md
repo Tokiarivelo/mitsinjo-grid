@@ -161,7 +161,7 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
 
 ### G5 Close
 
-- [ ] **PG-T22 Loop pass.** `/shape-loop` on the golden set + the user's thatched house. Stop criteria below.
+- [x] **PG-T22 Loop pass.** `/shape-loop` on the golden set + the user's thatched house. Stop criteria below.
       `/designer-3d` review on the ¾ sheet.
       **Live pass 2026-11-03** (`make facade-e2e … ID=thatched`, Muse Image front « rural thatched house » + ¾ photo, Spark 1.3):
       first model 66 s; massing 0.98, roof 0.95 at the gate; Spark's openings patch (remove `window.3`, `window.4`,
@@ -172,8 +172,16 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
       gate, nothing removed. Goldens mean 93 unchanged. **Designer (¾ sheet) ≈ 3/5:** walls read tan (photo colour
       averaged over plaster + timber + shadow; the drawing and the photo say white plaster), the roof ends are fully
       hipped where the side drawing shows a gable with a small hip, flat render has no thatch / opening detail
-      (viewer-only). Chimneys, door, windows and plinth match. Open: wall colour from the plaster only when a timber
-      frame is drawn, half-hip from the side drawing.
+      (viewer-only). Chimneys, door, windows and plinth match.
+      **Fixed 2026-11-03:** half-hip = `hip` `clip` (vertical gable ends up to that share of the roof height, hip
+      above; viewer, flat render, fit, ShapeScript `set`), measured on the **front** roof outline (`gableShare`:
+      the outer 4 % columns' skyline; ≥ 0.2 → half-hip) — the outline already shows the vertical ends, so the side
+      drawing is not needed (**deviation**). Live front: ridge 0.86 + clip 0.68 (was rounded to a side gable, ridge 1).
+      Walls of a half-timbered house (`wallTimber`) take the plaster colour (`measureKitColors` `plaster`: lightest
+      big wall group). Rebuilt seed on the capture: elevation 95 → 97 (roof 0.95 → 0.97); goldens mean 93
+      unchanged. Fixture fix: the hand-made thatched roof box now bounds its outline (SAM boxes always do).
+      Designer (¾ viewer shot) ≈ 4/5: white plaster, half-hip ends, thatch roll, brick chimneys; flat render
+      still has no thatch texture (viewer-only).
 - [x] **PG-T23 Docs + scenarios.** `docs/contracts.md` (ShapeScript, components, SSE stage), `docs/copilot.md`
       (stage prompt), `/shape-3d` skill (vocabulary), README limits, `test-scenarios/06-village.md` (V96+).
       **Done:** contracts (assemblies, ShapeScript, runner, `proposeShapeOps`, SSE stage events + stages route), copilot (staged loop, round objects), `/shape-3d` map, README feature line, scenarios V109–V118.

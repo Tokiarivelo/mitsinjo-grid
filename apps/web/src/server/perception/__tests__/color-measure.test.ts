@@ -88,6 +88,21 @@ describe('measureKitColors (PF-T2)', () => {
     });
   });
 
+  it('half-timbered walls (PG-T22): plaster wins over beams + shadow, without the option the biggest group', () => {
+    const PLASTER: Rgb = [235, 230, 220];
+    const BEAM: Rgb = [70, 50, 35];
+    const SHADE: Rgb = [140, 120, 100];
+    const wall = [
+      { rgb: SHADE, share: 0.4 },
+      { rgb: PLASTER, share: 0.35 },
+      { rgb: BEAM, share: 0.25 },
+    ];
+    const px = bands([[{ rgb: ROOF, share: 1 }], [{ rgb: ROOF, share: 1 }], wall, wall, wall]);
+    expect(measureKitColors(px, 'house')!.main).toBe('#8c7864');
+    expect(measureKitColors(px, 'house', { plaster: true })!.main).toBe('#ebe6dc');
+    expect(measureKitColors(px, 'house', { plaster: true })!.secondary).toBe('#6e5f55');
+  });
+
   it('tree: crown is main, the trunk below is secondary', () => {
     const LEAF: Rgb = [60, 120, 50];
     const BARK: Rgb = [90, 60, 40];

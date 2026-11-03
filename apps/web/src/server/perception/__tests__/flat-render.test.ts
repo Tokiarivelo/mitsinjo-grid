@@ -143,6 +143,26 @@ describe('hip roof (2D facade house)', () => {
       }
   });
 
+  it('half-hip (PG-T22): matches the fit silhouette; head-on the sides stand vertical up to the clip', () => {
+    for (const yaw of [0, 0.5]) {
+      const rec = recipe([part({ shape: 'hip', ridge: 0.6, clip: 0.5 })], yaw);
+      expect(iou(renderFlat(rec, 1, 96, 96).mask, renderRecipe(rec, 1, 96, 96))).toBeGreaterThan(
+        0.95
+      );
+    }
+    const n = 100;
+    const flat = renderFlat(recipe([part({ shape: 'hip', ridge: 0.6, clip: 0.5 })]), 1, n, n);
+    const width = (row: number) => {
+      let c = 0;
+      for (let x = 0; x < n; x++) c += flat.mask.data[row * n + x]!;
+      return c;
+    };
+    // Rows from the top: the hip above mid-height narrows, the gable below is full width.
+    expect(width(Math.round(0.6 * n))).toBeGreaterThan(0.95 * n);
+    expect(width(Math.round(0.3 * n))).toBeLessThan(0.95 * n);
+    expect(width(Math.round(0.3 * n))).toBeGreaterThan(0.6 * n);
+  });
+
   it('head-on it is a trapezoid: the top row as wide as the ridge', () => {
     const n = 100;
     const flat = renderFlat(recipe([part({ shape: 'hip', ridge: 0.5 })]), 1, n, n);
