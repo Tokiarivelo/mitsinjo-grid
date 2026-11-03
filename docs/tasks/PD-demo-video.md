@@ -32,7 +32,7 @@ All work in `video/` (layout: plan § 3). New commands → Makefile targets in a
 
 - [ ] **PD-T6** `video/scripts/capture.spec.ts` (headed Chromium + GPU, viewport 1280 × 720 at DPR 1.5,
       big-cursor overlay, `markers.json`) + `record-region.sh` (x11grab, NVENC, `-draw_mouse 0`) +
-      `make video-capture`. Shots H1, L1–L3, R1, A1–A10, B1–B9 (plan § 6). **Done when** one dry run with
+      `make video-capture`. Shots H1, L1–L3, R1, A1–A10, V1–V3, B1–B9 (plan § 6). **Done when** one dry run with
       `make dev-mock` gives every shot id in `markers.json`.
 - [ ] **PD-T7** (human) Live take with `LLM_PROVIDER=meta` (+ backup take); check no mock text, no key on screen;
       fill `video/output/values.md` with every number used in overlays and the voice-over.
@@ -48,6 +48,6 @@ All work in `video/` (layout: plan § 3). New commands → Makefile targets in a
       the one X post for Most Viral).
 
 **Exit criteria:** a ≤ 3:00 720p video that opens with the provenance line, is ≥ 90 % live footage with live
-Meta calls visible, shows both features (7-day village + Autonomous AI; photo → 3D → village), credits its
+Meta calls visible, shows both features (7-day village in the 3D, Topology and Circuit views + Autonomous AI; photo → 3D → village), credits its
 music, names each Meta model with its job while it runs (plan § 4b), and is linked from the README before
 the deadline.
