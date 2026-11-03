@@ -302,7 +302,11 @@
         "toggle": "Fanaraha-maso",
         "open": "Asehoy ny fanaraha-maso ny simulation",
         "close": "Afeno ny fanaraha-maso ny simulation"
-      }
+      },
+      "panMode": "Fitaovana tanana: sintony hamindrana ny fijery",
+      "panModeOff": "Miverina amin’ny fihodinana: sintony hampihodina ny fijery",
+      "focusAppliance": "Asehoy ao amin’ny fijery 3D ny {name}",
+      "hint3dPan": "Tsindrio ny trano iray hijerena azy · Sintony hamindrana ny fijery · Ahodino ny kodiarana hanakaikezana"
     },
     "strategyLab": {
       "title": "Paikady fizarana",

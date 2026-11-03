@@ -38,6 +38,8 @@ Reference visuals: `design/reference/Mitsinjo Grid_ Village at Sunset.png` (mast
 - Default front three-quarter view (village in front, hills, lake and sunset behind); smooth orbit; limited zoom range; reset-camera button (aria-label "Reset camera").
 - Presets: `Village` (default), `Solar Array`, `Battery`, `EMS Controller`, `Essential Services`. Transitions short and interruptible; never auto-move while user is exploring.
 - Selecting a building (3D badge, viewport chips or inspector list) flies the camera to it, then slowly orbits it (`utils/camera-focus`). A drag stops the orbit; deselecting returns to the current preset. Reduced motion: instant jump, no orbit; no GPU: no orbit.
+- Inserted appliances get their own chip (plug icon, name) after the sector chips; the bar wraps instead of scrolling. A chip flies the camera closer to the object (`APPLIANCE_FOCUS_SCALE`); a sector chip, a building click or a preset takes it back.
+- Hand tool (hand icon next to reset, `aria-pressed`): left drag / one finger pans along the ground instead of orbiting (right drag still orbits). Without it, right drag / two fingers pan. Pan stays on the ground plane (`screenSpacePanning={false}`).
 
 ## Energy visual mapping (render only; never compute flows here)
 

@@ -30,6 +30,7 @@ import { WEATHER_ATMOSPHERE } from '../utils/weather-atmosphere';
 import { SUN_AZIMUTH_RAD } from '../utils/landscape';
 import type { SectorStateOverride } from '../utils/placed-models-geometry';
 import { usePlacedClearings } from '../hooks/use-site-zones';
+import { accessPathClearings, accessPaths } from '../utils/access-paths';
 import { SceneStatsProbe } from './scene-stats-probe';
 import { VillageTerrain } from './terrain';
 import { PlacedYards } from './placed-yards';
@@ -94,6 +95,10 @@ function DraggableApplianceMarkers({
 }
 
 const KEY_LIGHT_DISTANCE = 70;
+/** Trees are cleared a bit past the yard so their canopies don't hang over it. */
+const TREE_CANOPY_MARGIN = 0.8;
+/** Smallest drawn yard (scene units): the red ground must show around a small object. */
+const MIN_YARD_RADIUS = 2;
 
 export interface VillageCanvasProps {
   model: SceneModel;
@@ -104,6 +109,10 @@ export interface VillageCanvasProps {
   onSelectPreset?: (preset: CameraPreset) => void;
   /** Bump to re-apply the current preset (reset camera after the user orbits). */
   cameraResetKey?: number;
+  /** Inserted appliance to fly the camera to (bottom bar chip). */
+  focusApplianceId?: string | null;
+  /** Hand tool: drag pans the view instead of orbiting. */
+  panMode?: boolean;
   /** Render tier override. Default: the shared tier from `useSceneQuality` (toggle + auto-downgrade). */
   quality?: SceneQuality;
   className?: string;
@@ -116,6 +125,8 @@ export function VillageCanvas({
   cameraPreset = 'village',
   onSelectPreset,
   cameraResetKey = 0,
+  focusApplianceId = null,
+  panMode = false,
   quality: qualityOverride,
   className,
 }: VillageCanvasProps) {
@@ -152,6 +163,20 @@ export function VillageCanvas({
   }, [model.buildings]);
 
   const clearings = usePlacedClearings(model.appliances);
+  // Bare laterite yard big enough to read around small objects, plus a red track to the village
+  // paths; trees on both are cleared.
+  const yards = useMemo(
+    () => clearings.map((k) => ({ ...k, r: Math.max(k.r, MIN_YARD_RADIUS) })),
+    [clearings]
+  );
+  const tracks = useMemo(() => accessPaths(yards), [yards]);
+  const treeClearings = useMemo(
+    () => [
+      ...yards.map((k) => ({ ...k, r: k.r + TREE_CANOPY_MARGIN })),
+      ...accessPathClearings(tracks),
+    ],
+    [yards, tracks]
+  );
 
   const sectorNames = Object.fromEntries(SECTOR_IDS.map((id) => [id, tSectors(id)])) as Record<
     SectorId,
@@ -303,9 +328,9 @@ export function VillageCanvas({
         </Suspense>
 
         <VillageTerrain quality={quality} />
-        <PlacedYards clearings={clearings} />
+        <PlacedYards clearings={yards} paths={tracks} />
         <Suspense fallback={null}>
-          <Vegetation quality={quality} clearings={clearings} />
+          <Vegetation quality={quality} clearings={treeClearings} />
           <Vehicles />
           {/* Inside the casters' Suspense so the first bake includes the loaded trees. */}
           {high && <ShadowBake bakeKey={shadowBakeKey} />}
@@ -390,6 +415,8 @@ export function VillageCanvas({
           preset={cameraPreset}
           resetKey={cameraResetKey}
           focusSector={selectedSector}
+          focusPoint={model.appliances.find((a) => a.id === focusApplianceId)?.position ?? null}
+          panMode={panMode}
           autoRotate={!softwareGl}
           reducedMotion={reducedMotion}
           damping={high && !reducedMotion}

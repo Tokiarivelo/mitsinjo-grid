@@ -154,7 +154,8 @@ function circuitLayout(): DiagramLayout {
   const feederTags = {} as Record<SectorId, Box>;
   DIAGRAM_SECTORS.forEach((id, i) => {
     const y = firstY + i * rowH;
-    sectors[id] = { x: cardX, y: y - 14, w: 108, h: 28 };
+    // Narrow enough to leave a column on the right for inserted appliances.
+    sectors[id] = { x: cardX, y: y - 14, w: 72, h: 28 };
     breakers[id] = [166, y];
     // Just outside the switchboard, above the outgoing feeder.
     feederTags[id] = { x: 182, y: y - 11, w: 22, h: 9 };
