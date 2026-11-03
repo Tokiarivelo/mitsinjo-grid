@@ -138,7 +138,7 @@ export function SimulationPage() {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<SimulationTab>('metrics');
   const [isPanelOpen, setIsPanelOpen] = useState(true);
-  const [deckFocus, setDeckFocus] = useState<'tabs' | 'top'>('tabs');
+  const [deckFocus, setDeckFocus] = useState<'tabs' | 'top'>('top');
   const dispatchMode = useSimulationStore((s) => s.dispatchMode);
   const activeFires = useActiveFires();
 
@@ -543,278 +543,278 @@ export function SimulationPage() {
                 })}
               </div>
 
-              {/* Tab Panels Container: expanded when deckFocus === 'tabs' */}
-              {deckFocus === 'tabs' ? (
+              {/* Tab Panels Container: expanded when deckFocus === 'tabs', hidden when collapsed */}
+              <div
+                hidden={deckFocus !== 'tabs'}
+                className={cn(
+                  'flex-1 min-h-0',
+                  deckFocus !== 'tabs' && 'hidden',
+                  activeTab === 'copilot'
+                    ? 'flex flex-col p-2 sm:p-2.5 overflow-hidden h-[560px] lg:h-auto'
+                    : 'p-4 overflow-y-auto'
+                )}
+              >
+                {/* TAB 1: METRICS & CHARTS */}
                 <div
-                  className={cn(
-                    'flex-1 min-h-0',
-                    activeTab === 'copilot'
-                      ? 'flex flex-col p-2 sm:p-2.5 overflow-hidden h-[560px] lg:h-auto'
-                      : 'p-4 overflow-y-auto'
-                  )}
+                  id="panel-metrics"
+                  role="tabpanel"
+                  aria-labelledby="tab-metrics"
+                  hidden={activeTab !== 'metrics'}
+                  className={cn('space-y-4', activeTab !== 'metrics' && 'hidden')}
                 >
-                  {/* TAB 1: METRICS & CHARTS */}
-                  <div
-                    id="panel-metrics"
-                    role="tabpanel"
-                    aria-labelledby="tab-metrics"
-                    hidden={activeTab !== 'metrics'}
-                    className={cn('space-y-4', activeTab !== 'metrics' && 'hidden')}
-                  >
-                    {/* 4 Metric Cards in 2x2 grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* Solar PV Card */}
-                      <MetricCard
-                        variant="solar"
-                        label={tOverview('solarPeak')}
-                        value={hasResults ? fmtNum(peakSolarKw) : fmtNum(null)}
-                        unit="kW"
-                        empty={!hasResults}
-                        loading={isRunning}
-                        caption={
-                          hasResults && metrics
-                            ? tOverview('solarCaption', { kwh: fmtKwh(metrics.solarKwh) })
-                            : undefined
-                        }
-                        icon={<Sun className="h-4 w-4 text-solar-amber" aria-hidden="true" />}
-                      />
-
-                      {/* Battery SoC Card */}
-                      <MetricCard
-                        variant="battery"
-                        label={tOverview('batterySoc')}
-                        value={fmtNum(hasResults ? metrics?.socEndPct : null, 0)}
-                        unit="%"
-                        empty={!hasResults}
-                        loading={isRunning}
-                        caption={
-                          hasResults && metrics
-                            ? tOverview('batteryCaption', {
-                                min: fmtPct(metrics.socMinPct, 0),
-                                kwh: fmtKwh(input.battery.capacityKwh, 0),
-                              })
-                            : undefined
-                        }
-                        status={
-                          metrics && metrics.socEndPct < input.battery.minSocPct + 5
-                            ? 'warning'
-                            : 'normal'
-                        }
-                        icon={
-                          <BatteryCharging
-                            className="h-4 w-4 text-battery-green"
-                            aria-hidden="true"
-                          />
-                        }
-                      />
-
-                      {/* Total Demand Card */}
-                      <MetricCard
-                        variant="demand"
-                        label={tOverview('totalDemand')}
-                        value={fmtNum(hasResults ? metrics?.demandKwh : null)}
-                        unit="kWh"
-                        empty={!hasResults}
-                        loading={isRunning}
-                        caption={
-                          hasResults && metrics
-                            ? tOverview('unservedEnergy', {
-                                kwh: fmtKwh(metrics.unservedKwh),
-                              })
-                            : undefined
-                        }
-                        status={metrics && metrics.unservedKwh > 0.1 ? 'warning' : 'normal'}
-                        icon={<Factory className="h-4 w-4 text-energy-cyan" aria-hidden="true" />}
-                      />
-
-                      {/* Essential Services Coverage Card */}
-                      <MetricCard
-                        variant="essential"
-                        label={tOverview('essentialServices')}
-                        value={fmtNum(hasResults ? metrics?.criticalCoveragePct : null)}
-                        unit="%"
-                        empty={!hasResults}
-                        loading={isRunning}
-                        status={
-                          metrics && metrics.criticalUnservedKwh > 0.05 ? 'critical' : 'normal'
-                        }
-                        caption={
-                          hasResults && metrics
-                            ? metrics.criticalUnservedKwh > 0.05
-                              ? tOverview('criticalDeficitWarning', {
-                                  kwh: fmtKwh(metrics.criticalUnservedKwh),
-                                  hours: metrics.criticalUnmetHours,
-                                })
-                              : tOverview('criticalProtected')
-                            : undefined
-                        }
-                        icon={<Activity className="h-4 w-4 text-critical-red" aria-hidden="true" />}
-                      />
-                    </div>
-
-                    {/* 24h Generation vs Demand Chart */}
-                    <ChartCard
-                      title={tOverview('chartTitle')}
-                      subtitle={tOverview('chartSubtitle')}
-                      summary={tOverview('energyOverTimeSummary')}
+                  {/* 4 Metric Cards in 2x2 grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Solar PV Card */}
+                    <MetricCard
+                      variant="solar"
+                      label={tOverview('solarPeak')}
+                      value={hasResults ? fmtNum(peakSolarKw) : fmtNum(null)}
+                      unit="kW"
                       empty={!hasResults}
-                      legend={
-                        <span className="text-[10px] font-mono text-text-muted px-2 py-0.5 rounded-control-sm bg-surface-elevated border border-border">
-                          {tSim('cursorAt', { hour: timeIndex })}
-                        </span>
+                      loading={isRunning}
+                      caption={
+                        hasResults && metrics
+                          ? tOverview('solarCaption', { kwh: fmtKwh(metrics.solarKwh) })
+                          : undefined
                       }
-                    >
-                      {/* Recharts can't measure a hidden tab (0×0): mount only when shown. */}
-                      {activeTab === 'metrics' && (
-                        <EnergyOverTimeChart
-                          steps={steps}
-                          cursorHour={hasResults ? timeIndex : undefined}
-                          height={220}
+                      icon={<Sun className="h-4 w-4 text-solar-amber" aria-hidden="true" />}
+                    />
+
+                    {/* Battery SoC Card */}
+                    <MetricCard
+                      variant="battery"
+                      label={tOverview('batterySoc')}
+                      value={fmtNum(hasResults ? metrics?.socEndPct : null, 0)}
+                      unit="%"
+                      empty={!hasResults}
+                      loading={isRunning}
+                      caption={
+                        hasResults && metrics
+                          ? tOverview('batteryCaption', {
+                              min: fmtPct(metrics.socMinPct, 0),
+                              kwh: fmtKwh(input.battery.capacityKwh, 0),
+                            })
+                          : undefined
+                      }
+                      status={
+                        metrics && metrics.socEndPct < input.battery.minSocPct + 5
+                          ? 'warning'
+                          : 'normal'
+                      }
+                      icon={
+                        <BatteryCharging
+                          className="h-4 w-4 text-battery-green"
+                          aria-hidden="true"
                         />
-                      )}
-                    </ChartCard>
-
-                    {/* Service Allocation Breakdown */}
-                    <div className="p-4 rounded-card bg-surface-elevated/40 border border-border">
-                      <div className="flex items-center justify-between pb-3 border-b border-border/60">
-                        <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-text-primary">
-                          {tOverview('serviceAllocationTitle')}
-                        </h3>
-                        <span className="text-[10px] font-mono text-text-muted">
-                          {tOverview('sectorsCount', { count: sectorsOrder.length })}
-                        </span>
-                      </div>
-
-                      <div className="mt-3 flex flex-col gap-2.5">
-                        {sectorsOrder.map((sec) => {
-                          const secMetrics = metrics?.perSector[sec];
-                          const priority = input.sectors.find((s) => s.id === sec)?.priority;
-
-                          return (
-                            <EnergyBar
-                              key={sec}
-                              sectorId={sec}
-                              label={tSectors(sec)}
-                              valuePct={secMetrics?.coveragePct ?? 0}
-                              empty={!hasResults || !secMetrics}
-                              demandKwh={secMetrics?.demandKwh}
-                              servedKwh={secMetrics?.servedKwh}
-                              priority={priority}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* TAB 2: CONTROLS & PARAMETERS */}
-                  <div
-                    id="panel-controls"
-                    role="tabpanel"
-                    aria-labelledby="tab-controls"
-                    hidden={activeTab !== 'controls'}
-                    className={cn('space-y-4', activeTab !== 'controls' && 'hidden')}
-                  >
-                    {controlsPanel}
-                    <WeatherWorkflowPanel
-                      workflow={workflow}
-                      dayIndex={dayIndex}
-                      workflowResult={hasResults ? workflowResult : undefined}
-                      onAddDay={() => addWorkflowDay()}
-                      onRemoveDay={removeWorkflowDay}
-                      onSetWeather={setDayWeather}
-                      onSelectDay={handleSelectDay}
-                      onLoadChaos={() => loadChaosWorkflow()}
+                      }
                     />
-                    <HardwareLinkSection />
-                  </div>
 
-                  {/* TAB 3: BUILDING INSPECTOR */}
-                  <div
-                    id="panel-buildings"
-                    role="tabpanel"
-                    aria-labelledby="tab-buildings"
-                    hidden={activeTab !== 'buildings'}
-                    className={cn('space-y-4', activeTab !== 'buildings' && 'hidden')}
-                  >
-                    <SectorLoadPanel />
-                    <ApplianceList editorHref="/village" />
-                    <BuildingInspectorPanel
-                      selectedSector={selectedSector}
-                      onSelectSector={handleSelectSector}
-                      result={result}
-                      input={input}
-                      timeIndex={timeIndex}
+                    {/* Total Demand Card */}
+                    <MetricCard
+                      variant="demand"
+                      label={tOverview('totalDemand')}
+                      value={fmtNum(hasResults ? metrics?.demandKwh : null)}
+                      unit="kWh"
+                      empty={!hasResults}
+                      loading={isRunning}
+                      caption={
+                        hasResults && metrics
+                          ? tOverview('unservedEnergy', {
+                              kwh: fmtKwh(metrics.unservedKwh),
+                            })
+                          : undefined
+                      }
+                      status={metrics && metrics.unservedKwh > 0.1 ? 'warning' : 'normal'}
+                      icon={<Factory className="h-4 w-4 text-energy-cyan" aria-hidden="true" />}
                     />
-                  </div>
 
-                  {/* TAB 4: AI COPILOT */}
-                  <div
-                    id="panel-copilot"
-                    role="tabpanel"
-                    aria-labelledby="tab-copilot"
-                    hidden={activeTab !== 'copilot'}
-                    className={cn(
-                      'flex-1 min-h-0 flex flex-col',
-                      activeTab !== 'copilot' && 'hidden'
-                    )}
-                  >
-                    {/* Impact Alerts Banner if active warnings exist */}
-                    {result && result.warnings.length > 0 && (
-                      <div className="shrink-0 mb-2">
-                        <ImpactBanner warnings={result.warnings} />
-                      </div>
-                    )}
-
-                    {/* Copilot conversational workspace in panel mode */}
-                    <div className="flex-1 min-h-0 flex flex-col rounded-card bg-surface-elevated/30 border border-border overflow-hidden">
-                      <CopilotWorkspace mode="panel" />
-                    </div>
-                  </div>
-
-                  {/* TAB 5: DISPATCH EVENT LOG (PA-T4b) */}
-                  <div
-                    id="panel-log"
-                    role="tabpanel"
-                    aria-labelledby="tab-log"
-                    hidden={activeTab !== 'log'}
-                    className={cn('space-y-4', activeTab !== 'log' && 'hidden')}
-                  >
-                    <DispatchLogPanel
-                      onAskWhy={(entry) => {
-                        setActiveTab('copilot');
-                        setDeckFocus('tabs');
-                        const sec = entry.incident?.sector ?? entry.action?.sector;
-                        const targetSector = sec ? tSectors(sec) : '';
-                        const actionDesc = entry.action
-                          ? tDispatch(`actions.${entry.action.kind}` as never)
-                          : entry.incident
-                            ? tDispatch(`incidents.${entry.incident.kind}` as never)
-                            : '';
-                        fillCopilotPrompt(
-                          targetSector
-                            ? tDispatch('askWhyPromptSector', {
-                                action: actionDesc,
-                                sector: targetSector,
-                                hour: entry.hour,
+                    {/* Essential Services Coverage Card */}
+                    <MetricCard
+                      variant="essential"
+                      label={tOverview('essentialServices')}
+                      value={fmtNum(hasResults ? metrics?.criticalCoveragePct : null)}
+                      unit="%"
+                      empty={!hasResults}
+                      loading={isRunning}
+                      status={metrics && metrics.criticalUnservedKwh > 0.05 ? 'critical' : 'normal'}
+                      caption={
+                        hasResults && metrics
+                          ? metrics.criticalUnservedKwh > 0.05
+                            ? tOverview('criticalDeficitWarning', {
+                                kwh: fmtKwh(metrics.criticalUnservedKwh),
+                                hours: metrics.criticalUnmetHours,
                               })
-                            : tDispatch('askWhyPrompt', { action: actionDesc, hour: entry.hour })
-                        );
-                      }}
-                      onAskCopilot={(prompt) => {
-                        setActiveTab('copilot');
-                        setDeckFocus('tabs');
-                        fillCopilotPrompt(prompt);
-                      }}
+                            : tOverview('criticalProtected')
+                          : undefined
+                      }
+                      icon={<Activity className="h-4 w-4 text-critical-red" aria-hidden="true" />}
                     />
+                  </div>
+
+                  {/* 24h Generation vs Demand Chart */}
+                  <ChartCard
+                    title={tOverview('chartTitle')}
+                    subtitle={tOverview('chartSubtitle')}
+                    summary={tOverview('energyOverTimeSummary')}
+                    empty={!hasResults}
+                    legend={
+                      <span className="text-[10px] font-mono text-text-muted px-2 py-0.5 rounded-control-sm bg-surface-elevated border border-border">
+                        {tSim('cursorAt', { hour: timeIndex })}
+                      </span>
+                    }
+                  >
+                    {/* Recharts can't measure a hidden tab (0×0): mount only when shown. */}
+                    {activeTab === 'metrics' && (
+                      <EnergyOverTimeChart
+                        steps={steps}
+                        cursorHour={hasResults ? timeIndex : undefined}
+                        height={220}
+                      />
+                    )}
+                  </ChartCard>
+
+                  {/* Service Allocation Breakdown */}
+                  <div className="p-4 rounded-card bg-surface-elevated/40 border border-border">
+                    <div className="flex items-center justify-between pb-3 border-b border-border/60">
+                      <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-text-primary">
+                        {tOverview('serviceAllocationTitle')}
+                      </h3>
+                      <span className="text-[10px] font-mono text-text-muted">
+                        {tOverview('sectorsCount', { count: sectorsOrder.length })}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 flex flex-col gap-2.5">
+                      {sectorsOrder.map((sec) => {
+                        const secMetrics = metrics?.perSector[sec];
+                        const priority = input.sectors.find((s) => s.id === sec)?.priority;
+
+                        return (
+                          <EnergyBar
+                            key={sec}
+                            sectorId={sec}
+                            label={tSectors(sec)}
+                            valuePct={secMetrics?.coveragePct ?? 0}
+                            empty={!hasResults || !secMetrics}
+                            demandKwh={secMetrics?.demandKwh}
+                            servedKwh={secMetrics?.servedKwh}
+                            priority={priority}
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              ) : (
+
+                {/* TAB 2: CONTROLS & PARAMETERS */}
+                <div
+                  id="panel-controls"
+                  role="tabpanel"
+                  aria-labelledby="tab-controls"
+                  hidden={activeTab !== 'controls'}
+                  className={cn('space-y-4', activeTab !== 'controls' && 'hidden')}
+                >
+                  {controlsPanel}
+                  <WeatherWorkflowPanel
+                    workflow={workflow}
+                    dayIndex={dayIndex}
+                    workflowResult={hasResults ? workflowResult : undefined}
+                    onAddDay={() => addWorkflowDay()}
+                    onRemoveDay={removeWorkflowDay}
+                    onSetWeather={setDayWeather}
+                    onSelectDay={handleSelectDay}
+                    onLoadChaos={() => loadChaosWorkflow()}
+                  />
+                  <HardwareLinkSection />
+                </div>
+
+                {/* TAB 3: BUILDING INSPECTOR */}
+                <div
+                  id="panel-buildings"
+                  role="tabpanel"
+                  aria-labelledby="tab-buildings"
+                  hidden={activeTab !== 'buildings'}
+                  className={cn('space-y-4', activeTab !== 'buildings' && 'hidden')}
+                >
+                  <SectorLoadPanel />
+                  <ApplianceList editorHref="/village" />
+                  <BuildingInspectorPanel
+                    selectedSector={selectedSector}
+                    onSelectSector={handleSelectSector}
+                    result={result}
+                    input={input}
+                    timeIndex={timeIndex}
+                  />
+                </div>
+
+                {/* TAB 4: AI COPILOT */}
+                <div
+                  id="panel-copilot"
+                  role="tabpanel"
+                  aria-labelledby="tab-copilot"
+                  hidden={activeTab !== 'copilot'}
+                  className={cn(
+                    'flex-1 min-h-0 flex flex-col',
+                    activeTab !== 'copilot' && 'hidden'
+                  )}
+                >
+                  {/* Impact Alerts Banner if active warnings exist */}
+                  {result && result.warnings.length > 0 && (
+                    <div className="shrink-0 mb-2">
+                      <ImpactBanner warnings={result.warnings} />
+                    </div>
+                  )}
+
+                  {/* Copilot conversational workspace in panel mode */}
+                  <div className="flex-1 min-h-0 flex flex-col rounded-card bg-surface-elevated/30 border border-border overflow-hidden">
+                    <CopilotWorkspace mode="panel" />
+                  </div>
+                </div>
+
+                {/* TAB 5: DISPATCH EVENT LOG (PA-T4b) */}
+                <div
+                  id="panel-log"
+                  role="tabpanel"
+                  aria-labelledby="tab-log"
+                  hidden={activeTab !== 'log'}
+                  className={cn('space-y-4', activeTab !== 'log' && 'hidden')}
+                >
+                  <DispatchLogPanel
+                    onAskWhy={(entry) => {
+                      setActiveTab('copilot');
+                      setDeckFocus('tabs');
+                      const sec = entry.incident?.sector ?? entry.action?.sector;
+                      const targetSector = sec ? tSectors(sec) : '';
+                      const actionDesc = entry.action
+                        ? tDispatch(`actions.${entry.action.kind}` as never)
+                        : entry.incident
+                          ? tDispatch(`incidents.${entry.incident.kind}` as never)
+                          : '';
+                      fillCopilotPrompt(
+                        targetSector
+                          ? tDispatch('askWhyPromptSector', {
+                              action: actionDesc,
+                              sector: targetSector,
+                              hour: entry.hour,
+                            })
+                          : tDispatch('askWhyPrompt', { action: actionDesc, hour: entry.hour })
+                      );
+                    }}
+                    onAskCopilot={(prompt) => {
+                      setActiveTab('copilot');
+                      setDeckFocus('tabs');
+                      fillCopilotPrompt(prompt);
+                    }}
+                  />
+                </div>
+              </div>
+
+              {deckFocus === 'top' && (
                 /* Collapsed tab hint when deckFocus === 'top' */
                 <button
                   type="button"
                   onClick={() => setDeckFocus('tabs')}
-                  className="p-3 text-xs font-semibold text-energy-cyan bg-energy-cyan/5 hover:bg-energy-cyan/10 border-t border-energy-cyan/20 flex items-center justify-center gap-2 cursor-pointer transition-colors group"
+                  className="p-3 text-xs font-semibold text-energy-cyan bg-energy-cyan/5 hover:bg-energy-cyan/10 border-t border-energy-cyan/20 flex items-center justify-center gap-2 cursor-pointer transition-colors group shrink-0"
                 >
                   <Layers
                     className="h-4 w-4 text-energy-cyan group-hover:scale-110 transition-transform shrink-0"
