@@ -12,6 +12,7 @@ import {
   DIFF_COLORS,
   elevationDiff,
   formatElevationScore,
+  sideFacing,
 } from '../elevation-score';
 import { DOOR_COLOR, facadeHouseRecipe, measureElevation } from '../facade-house';
 import { THATCHED_FRONT } from '../__fixtures__/elevation';
@@ -210,5 +211,25 @@ describe('inferred base on a drawing without one (live 2026-11-02)', () => {
     const s = scoreElevation(withBase, e);
     expect(s.concepts.plinth).toBeUndefined();
     expect(s.stages.massing).toBeGreaterThan(0.85);
+  });
+});
+
+describe('side-wall openings on the front elevation', () => {
+  it('count as wall, never as built openings (before: the loop removed side windows, 2026-11-03)', () => {
+    const base = built();
+    // A side window as the builder places it: thin along x, just proud of the right wall.
+    const wallPart = base.parts.find((p) => p.kind === 'wall')!;
+    const sideWin = {
+      ...base.parts.find((p) => p.kind === 'window')!,
+      at: [wallPart.at[0] + wallPart.size[0] / 2 + 0.005, -0.27, 0] as [number, number, number],
+      size: [0.01, 0.14, 0.13] as [number, number, number],
+    };
+    expect(sideFacing(sideWin)).toBe(true);
+    expect(sideFacing(base.parts.find((p) => p.kind === 'window')!)).toBe(false);
+    const opts = { roofRings: [ROOF_RING] };
+    const without = scoreElevation(base, front(), opts);
+    const withSide = scoreElevation({ ...base, parts: [...base.parts, sideWin] }, front(), opts);
+    expect(withSide.openings.render).toBe(without.openings.render);
+    expect(withSide.stages.openings).toBeCloseTo(without.stages.openings, 2);
   });
 });

@@ -102,11 +102,16 @@ shape-capture: ## Capture one live 3D run → offline fixtures (PHOTO=… ID=…
 eval-shape: ## Kit eval on live Spark over the real captures (MODEL=…, PR-3.1, on demand, costs API calls)
 	$(need_ws)
 	eval "$$(make -s env-export)" && EVAL_SHAPE=1 EVAL_SHAPE_DIR="$(CURDIR)/apps/web/src/server/perception/__fixtures__/shape/real" $(if $(MODEL),META_VISION_MODEL="$(MODEL)") $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/eval-shape.test.ts -t "make eval-shape"
+	@$(MAKE) -s eval-stages
 
-facade-e2e: ## Facade → 3D end to end on live Meta (FRONT=view.png OUT=dir [LABEL='purple vintage car' SCENERY=vehicle] [PROMPT=…], costs API calls)
+eval-stages: ## Replay recorded stage loops offline (shape/real/*.stages.json from facade-e2e ID=…), no API cost
+	$(need_ws)
+	EVAL_STAGES_DIR="$(CURDIR)/apps/web/src/server/perception/__fixtures__/shape/real" $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/eval-stages.test.ts
+
+facade-e2e: ## Facade → 3D end to end on live Meta, stage loop included (FRONT=view.png OUT=dir [ID=name → stage capture kept] [LABEL=… SCENERY=…] [PROMPT=…], costs API calls)
 	$(need_ws)
 	@test -n "$(FRONT)" -a -n "$(OUT)" || { echo "Usage: make facade-e2e FRONT=path/front.png OUT=dir [PROMPT='cottage with a red tin roof' to draw FRONT first]"; exit 1; }
-	eval "$$(make -s env-export)" && FACADE_E2E_FRONT="$(abspath $(FRONT))" FACADE_E2E_OUT="$(abspath $(OUT))" $(if $(PROMPT),FACADE_E2E_FRONT_PROMPT="$(PROMPT)") $(if $(LABEL),FACADE_E2E_LABEL="$(LABEL)") $(if $(SCENERY),FACADE_E2E_SCENERY="$(SCENERY)") $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/facade-e2e.test.ts
+	eval "$$(make -s env-export)" && FACADE_E2E_FRONT="$(abspath $(FRONT))" FACADE_E2E_OUT="$(abspath $(OUT))" $(if $(PROMPT),FACADE_E2E_FRONT_PROMPT="$(PROMPT)") $(if $(LABEL),FACADE_E2E_LABEL="$(LABEL)") $(if $(SCENERY),FACADE_E2E_SCENERY="$(SCENERY)") $(if $(ID),FACADE_E2E_ID="$(ID)" FACADE_E2E_CAPTURE_DIR="$(CURDIR)/apps/web/src/server/perception/__fixtures__/shape/real") $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/facade-e2e.test.ts
 
 shape-report: ## 3D shape report: scores + contact sheet → test-results/shape-report/ (/shape-loop)
 	$(need_ws)
@@ -241,5 +246,5 @@ clean: ## Remove build/test output (keeps node_modules)
 clean-all: clean ## Also remove node_modules
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
 
-.PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-shape shape-capture facade-e2e shape-report shape-shots improve-shot test-watch coverage e2e \
+.PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-shape shape-capture facade-e2e eval-stages shape-report shape-shots improve-shot test-watch coverage e2e \
         typecheck lint bridge bridge-sim test-bridge format format-check format-changed git-hooks check ci shots mockups analyze scene-audit scene-audit-gpu lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all

@@ -76,6 +76,16 @@ export function partConcept(p: RecipePart): ElevationConcept | null {
   return null;
 }
 
+/**
+ * A window or door on a side wall (its thin axis is x): the front elevation only sees its edge,
+ * so it counts as wall there and is never a built opening (regression: the live loop removed
+ * the side windows to « fix » the front score, 2026-11-03).
+ */
+export function sideFacing(p: RecipePart): boolean {
+  const c = partConcept(p);
+  return (c === 'window' || c === 'door') && p.size[0] < p.size[2];
+}
+
 export interface ElevationRender extends FlatRender {
   cols: number;
   rows: number;
@@ -181,7 +191,7 @@ export function elevationTarget(
 /** Concept label per render pixel (−1 = background or an unscored part). */
 export function renderLabels(recipe: ObjectRecipe, render: FlatRender): Int8Array {
   const byPart = recipe.parts.map((p) => {
-    const c = partConcept(p);
+    const c = sideFacing(p) ? 'wall' : partConcept(p);
     return c ? ELEVATION_CONCEPTS.indexOf(c) : -1;
   });
   const out = new Int8Array(render.part.length).fill(-1);
@@ -232,7 +242,7 @@ function renderOpenings(
   const out: Array<{ concept: 'window' | 'door'; box: NormBox }> = [];
   recipe.parts.forEach((p, k) => {
     const concept = partConcept(p);
-    if (concept !== 'window' && concept !== 'door') return;
+    if ((concept !== 'window' && concept !== 'door') || sideFacing(p)) return;
     let [c0, c1, r0, r1] = [Infinity, -Infinity, Infinity, -Infinity];
     for (let i = 0; i < render.part.length; i++) {
       if (render.part[i] !== k) continue;
