@@ -1,37 +1,37 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-03 (PA-8 closed) · **By:** Antigravity · **Branch:** feat/pa-8-chat-scenario
+**Updated:** 2026-11-03 (PA complete, PA-7 closed) · **By:** Antigravity · **Branch:** feat/pa-7-e2e-quality
 
 ## Current state
 
-- Branch `feat/pa-8-chat-scenario` branched from latest `main` (commit `c437016`).
-- PA-8 ("Scénario par le chat", J9–J10) completed:
-  - PA-T8b: Schema `ScenarioDraft` (Zod), pure `missingSlots(draft)`, `applyDraftDefaults(draft)`.
-  - PA-T8c: Multilingual deterministic regex extractor (FR/EN/MG, 15 eval phrases + conversational refinement passing).
-  - PA-T8d: Tool `draft_scenario`, SSE event `scenario_draft`, mock provider tool call & narration.
-  - PA-T8e: Interactive chat card `ScenarioDraftCard` (dual theme, mobile-first, missing slot pills, engine preview).
-  - PA-T8f: Launching ("Lancer cette simulation", "Lancer en mode IA autonome" via store `loadDraft`), Neon migration `0005_scenario_drafts`, DB helpers, API `/api/scenarios/drafts`, "Mes scénarios" panel.
-  - PA-T8g: Contextual suggested prompts for empty chat and in-progress drafts.
-  - 100% key parity across EN/FR/MG (`make check-i18n`), typecheck and lint green.
+- Branch `feat/pa-7-e2e-quality` branched from latest `origin/main` (commit `8500ea0`).
+- PA-7 Quality & E2E Validation completed:
+  - Playwright E2E suite (`apps/web/e2e/ai-dispatch.spec.ts`):
+    - Autonomous demo path: `village_fire` → autonomous mode → 14h incident → auto isolation → event log with before/after figures → "Why?" links to Copilot → "Take back control" returns immediately to manual.
+    - Chat scenario path: natural language 3-day scenario ("day 1: cloudy, day 2: rainy, day 3: sunny + school on fire") → missing slot pill answered → complete draft with engine preview → launched into `/simulation` in autonomous AI mode.
+    - Updated `copilot-flows.spec.ts` to robustly assert simulated fire safety cut.
+  - Performance audit (`apps/web/src/features/autopilot/__tests__/autonomous-perf.test.ts`):
+    - All detector + decision cycles verified within 16.6 ms (60 fps budget) per simulated hour (typical < 2 ms).
+  - Documentation:
+    - Updated `README.md` (features and limitations for autonomous dispatch and chat scenario drafting).
+    - Updated `docs/design/stitch-map.md`, `test-scenarios/00-parcours-demo.md` (scenarios D16–D18).
+    - Ticked off PA-T0c and PA-T7 in `docs/tasks/PA-ai-dispatch.md`.
+  - Typecheck (`make typecheck`), lint (`make lint`), and i18n parity (`make check-i18n`) are all green.
 
 ## Next
 
-- **PA-7** (`docs/tasks/PA-ai-dispatch.md`): End-to-end quality & playwright tests:
-  - Playwright demo path in autonomous AI dispatch mode (incident → isolation → log → why → take back control).
-  - Playwright chat scenario path (multi-day scenario → questions → launch).
-  - 60 fps simulation playback audit with autonomous decisions.
+- Merge PR for `feat/pa-7-e2e-quality`.
+- Record demo video (P9-T5, `docs/demo-script.md`).
 
 ## Files touched (this session)
 
-`apps/web/src/lib/{scenario-draft.ts,scenario-extractor.ts}`, `apps/web/src/lib/__tests__/*`,
-`apps/web/src/server/copilot/{tools.ts,loop.ts,prompt.ts,providers/mock.ts}`,
-`apps/web/src/server/db/{migrations.ts,neon.ts}`, `apps/web/src/app/api/scenarios/drafts/route.ts`,
-`apps/web/src/features/copilot/{types.ts,ui/scenario-draft-card.tsx,ui/copilot-workspace.tsx}`,
-`apps/web/src/features/scenarios/ui/{scenarios-page.tsx,custom-scenarios-panel.tsx}`,
-`apps/web/src/stores/simulation.store.ts`, `apps/web/src/messages/{en,fr,mg}.json`,
-`docs/{contracts.md,tasks/PA-ai-dispatch.md}`.
+`apps/web/e2e/{ai-dispatch.spec.ts,copilot-flows.spec.ts}`,
+`apps/web/src/features/autopilot/__tests__/autonomous-perf.test.ts`,
+`apps/web/src/features/simulation/ui/simulation-page.tsx`,
+`README.md`, `docs/design/stitch-map.md`, `docs/tasks/PA-ai-dispatch.md`,
+`test-scenarios/00-parcours-demo.md`, `HANDOFF.md`.
 
 ## Decisions
 
-- Deterministic regex extractor operates offline with zero external API calls in EN, FR, and MG.
-- Missing slots trigger interactive suggestion chips in the chat UI without blocking direct editing.
+- Playwright tests run against either mock or live server with resilient locators.
+- Dispatch decisions execute synchronously per playback tick without exceeding frame rendering limits.
