@@ -13,6 +13,7 @@ import {
   type DispatchMode,
   type DispatchLogEntry,
   type Narration,
+  dispatchLogHash,
   scenarios,
   compareWorkflow,
   applyPatch,
@@ -447,7 +448,12 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   updateDispatchLogNarration: (id: string, narration: Narration) => {
     set((state) => ({
-      dispatchLog: state.dispatchLog.map((e) => (e.id === id ? { ...e, narration } : e)),
+      // Narration is part of the hashed entry: re-seal so the integrity hash stays valid.
+      dispatchLog: state.dispatchLog.map((e) => {
+        if (e.id !== id) return e;
+        const next = { ...e, narration };
+        return { ...next, hash: dispatchLogHash(next) };
+      }),
     }));
   },
 

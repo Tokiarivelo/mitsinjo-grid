@@ -11,6 +11,14 @@ vi.mock('@/server/db/neon', () => ({
   isNeonConfigured: vi.fn().mockReturnValue(false),
 }));
 
+// Mock spend guard (cap open unless a test closes it)
+const canSpend = vi.fn().mockReturnValue(true);
+const recordSpend = vi.fn();
+vi.mock('@/server/spend', () => ({
+  spendGuard: { canSpend: () => canSpend(), record: (...a: unknown[]) => recordSpend(...a) },
+  estimateTokens: (text: string) => Math.ceil(text.length / 4),
+}));
+
 // Mock Meta provider
 const mockChat = vi.fn();
 vi.mock('@/server/copilot/providers/meta', () => {
@@ -85,6 +93,18 @@ describe('POST /api/dispatch/narrate (PA-T5a)', () => {
     vi.clearAllMocks();
     (env as unknown as { LLM_PROVIDER: string; META_API_KEY: string }).LLM_PROVIDER = 'mock';
     (env as unknown as { LLM_PROVIDER: string; META_API_KEY: string }).META_API_KEY = '';
+    canSpend.mockReturnValue(true);
+  });
+
+  it('skips the LLM and uses the template when the spend cap is reached', async () => {
+    (env as unknown as { LLM_PROVIDER: string; META_API_KEY: string }).LLM_PROVIDER = 'meta';
+    (env as unknown as { LLM_PROVIDER: string; META_API_KEY: string }).META_API_KEY = 'valid-key';
+    canSpend.mockReturnValue(false);
+
+    const res = await POST(mockRequest({ entry: sampleFireEntry(), locale: 'en' }));
+    const data = await res.json();
+    expect(mockChat).not.toHaveBeenCalled();
+    expect(data.narration.source).toBe('template');
   });
 
   it('rejects invalid body with 400', async () => {
@@ -130,6 +150,11 @@ describe('POST /api/dispatch/narrate (PA-T5a)', () => {
     const data = await res.json();
     expect(data.narration.source).toBe('llm');
     expect(data.narration.text).toContain('20 kWh');
+    expect(recordSpend).toHaveBeenCalledWith(
+      'dispatch-narrate',
+      'muse-spark-1.3',
+      expect.objectContaining({ inputTokens: expect.any(Number) })
+    );
   });
 
   it('falls back to template if LLM outputs hallucinated numbers', async () => {

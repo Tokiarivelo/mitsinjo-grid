@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import { COPILOT_FILL_EVENT, type CopilotFillDetail } from '@/lib/copilot-fill';
 import {
   Sparkles,
   AlertTriangle,
@@ -131,7 +132,7 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
 
   useEffect(() => {
     const handleFill = (e: Event) => {
-      const detail = (e as CustomEvent<{ prompt: string; autoSend?: boolean }>).detail;
+      const detail = (e as CustomEvent<CopilotFillDetail>).detail;
       if (detail?.prompt) {
         if (detail.autoSend) {
           send(detail.prompt);
@@ -140,8 +141,8 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
         }
       }
     };
-    window.addEventListener('mitsinjo:copilot:fill', handleFill);
-    return () => window.removeEventListener('mitsinjo:copilot:fill', handleFill);
+    window.addEventListener(COPILOT_FILL_EVENT, handleFill);
+    return () => window.removeEventListener(COPILOT_FILL_EVENT, handleFill);
   }, [composer, send]);
 
   const isFull = mode === 'full';

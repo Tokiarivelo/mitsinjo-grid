@@ -1147,7 +1147,12 @@
       "copySummary": "Copier le résumé",
       "copied": "Copié !",
       "discussWithCopilot": "Discuter avec le copilote",
-      "close": "Fermer"
+      "close": "Fermer",
+      "askWhyPrompt": "Pourquoi avoir appliqué l'action {action} à {hour}:00 ?",
+      "askWhyPromptSector": "Pourquoi avoir appliqué l'action {action} sur le secteur {sector} à {hour}:00 ?",
+      "discussPrompt": "Peux-tu analyser en détail le rapport de quart du jour {day} ({criticalKwh} critiques préservés, {count} interventions) ?",
+      "socMin": "Min {pct}",
+      "socStable": "Stable"
     }
   },
   "copilot": {

@@ -75,6 +75,6 @@ describe('ShiftReportDialog (PA-T5c)', () => {
     const discussBtn = screen.getByRole('button', { name: /discuss with copilot/i });
     fireEvent.click(discussBtn);
     expect(onClose).toHaveBeenCalled();
-    expect(onAskCopilot).toHaveBeenCalledWith(expect.stringContaining('rapport de quart'));
+    expect(onAskCopilot).toHaveBeenCalledWith(expect.stringContaining('day 1 shift report'));
   });
 });

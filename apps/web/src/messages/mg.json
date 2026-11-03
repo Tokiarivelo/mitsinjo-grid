@@ -1147,7 +1147,12 @@
       "copySummary": "Adikao ny famintinana",
       "copied": "Voadika!",
       "discussWithCopilot": "Hiresaka amin'ny mpanampy",
-      "close": "Akatona"
+      "close": "Akatona",
+      "askWhyPrompt": "Nahoana no nampiharina ny {action} tamin'ny {hour}:00?",
+      "askWhyPromptSector": "Nahoana no nampiharina ny {action} teo amin'ny {sector} tamin'ny {hour}:00?",
+      "discussPrompt": "Azonao atao ve ny mamakafaka amin'ny antsipiriany ny tatitry ny andro {day} ({criticalKwh} herinaratra tena ilaina voatahiry, hetsika {count})?",
+      "socMin": "Farany ambany {pct}",
+      "socStable": "Milamina"
     }
   },
   "copilot": {

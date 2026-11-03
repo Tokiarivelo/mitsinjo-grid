@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { entrySavedKwh } from '@/lib/dispatch-log';
 import { z } from 'zod';
 import {
   type SimulationInput,
@@ -1270,8 +1271,7 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
         if (e.action) {
           actionsCount++;
         }
-        const saved =
-          e.before && e.after ? Math.max(0, e.before.unservedKwh - e.after.unservedKwh) : 0;
+        const saved = entrySavedKwh(e);
         totalSavedKwh += saved;
 
         return {

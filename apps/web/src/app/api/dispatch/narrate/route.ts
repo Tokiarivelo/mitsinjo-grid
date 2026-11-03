@@ -7,6 +7,11 @@ import { env } from '@/lib/env';
 import { entrySavedKwh, formatTemplateNarration, isNarrationFactual } from '@/lib/dispatch-log';
 import { MetaLlmProvider } from '@/server/copilot/providers/meta';
 import { saveDispatchLogEntries } from '@/server/db/neon';
+import { spendGuard, estimateTokens } from '@/server/spend';
+
+const NARRATION_MODEL = 'muse-spark-1.3';
+/** Spend-cap key shared by every narration call (the route has no session). */
+const NARRATION_BUDGET_KEY = 'dispatch-narrate';
 
 const NarrateBodySchema = z.object({
   entry: DispatchLogEntrySchema,
@@ -70,11 +75,14 @@ export async function POST(req: NextRequest) {
     };
 
     // 4. If Meta LLM (Muse Spark) is configured, invoke it with grounding prompt
-    const isMetaConfigured = env.LLM_PROVIDER === 'meta' && Boolean(env.META_API_KEY);
+    const isMetaConfigured =
+      env.LLM_PROVIDER === 'meta' &&
+      Boolean(env.META_API_KEY) &&
+      spendGuard.canSpend(NARRATION_BUDGET_KEY);
 
     if (isMetaConfigured) {
       try {
-        const provider = new MetaLlmProvider({ model: 'muse-spark-1.3' });
+        const provider = new MetaLlmProvider({ model: NARRATION_MODEL });
         const savedKwh = entrySavedKwh(entry);
 
         const langName = locale === 'en' ? 'English' : locale === 'mg' ? 'Malagasy' : 'French';
@@ -106,6 +114,11 @@ export async function POST(req: NextRequest) {
           ],
           []
         );
+
+        spendGuard.record(NARRATION_BUDGET_KEY, NARRATION_MODEL, {
+          inputTokens: estimateTokens(systemPrompt + userPrompt),
+          outputTokens: estimateTokens(response.content ?? ''),
+        });
 
         const text = response.content?.trim();
         if (text && text.length > 0 && text.length <= 400 && isNarrationFactual(text, entry)) {

@@ -44,7 +44,8 @@ import {
   generateSummaryMarkdown,
   type Translate,
 } from '@/lib/export';
-import { useTranslations } from '@/lib/i18n';
+import { useAppLocale, useTranslations } from '@/lib/i18n';
+import { fillCopilotPrompt } from '@/lib/copilot-fill';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
@@ -112,7 +113,8 @@ export function SimulationPage() {
   const workflowResult = useSimulationStore(selectActiveWorkflowResult);
 
   // Autonomous dispatch loop, mounted once here so it runs even when the deck is hidden (PA-T3b)
-  useAutonomousDispatch();
+  const { locale } = useAppLocale();
+  useAutonomousDispatch(locale);
 
   const patchInput = useSimulationStore((s) => s.patchInput);
   const resetScenario = useSimulationStore((s) => s.reset);
@@ -642,24 +644,19 @@ export function SimulationPage() {
                       const actionDesc = entry.action
                         ? tDispatch(`actions.${entry.action.kind}` as never)
                         : '';
-                      const prompt = `Pourquoi avoir appliqué l'action ${actionDesc}${targetSector ? ` sur le secteur ${targetSector}` : ''} à ${entry.hour}:00 ?`;
-                      if (typeof window !== 'undefined') {
-                        window.dispatchEvent(
-                          new CustomEvent('mitsinjo:copilot:fill', {
-                            detail: { prompt },
-                          })
-                        );
-                      }
+                      fillCopilotPrompt(
+                        targetSector
+                          ? tDispatch('askWhyPromptSector', {
+                              action: actionDesc,
+                              sector: targetSector,
+                              hour: entry.hour,
+                            })
+                          : tDispatch('askWhyPrompt', { action: actionDesc, hour: entry.hour })
+                      );
                     }}
                     onAskCopilot={(prompt) => {
                       setActiveTab('copilot');
-                      if (typeof window !== 'undefined') {
-                        window.dispatchEvent(
-                          new CustomEvent('mitsinjo:copilot:fill', {
-                            detail: { prompt },
-                          })
-                        );
-                      }
+                      fillCopilotPrompt(prompt);
                     }}
                   />
                 </div>

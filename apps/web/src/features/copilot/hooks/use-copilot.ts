@@ -52,6 +52,9 @@ export function isPayloadMessage(m: ChatMessageData): boolean {
  * Payload messages before the first one sent: those in the summary plus any beyond
  * `COPILOT_PAYLOAD_MAX` (sent to the server, which reports the new total after a compaction).
  */
+/** Dispatch log entries sent with each question (route schema max). */
+export const DISPATCH_LOG_PAYLOAD_MAX = 200;
+
 export function payloadBaseCount(messages: ChatMessageData[], summarizedCount = 0): number {
   const unsent = messages.filter(isPayloadMessage).length - summarizedCount;
   return summarizedCount + Math.max(0, unsent - COPILOT_PAYLOAD_MAX);
@@ -309,6 +312,11 @@ export function useCopilot() {
             input: store.input,
             strategy: store.activeStrategy,
             hour: store.timeIndex,
+            day: store.dayIndex,
+            // get_dispatch_log reads this; the route accepts the latest 200 entries.
+            ...(store.dispatchLog.length > 0 && {
+              dispatchLog: store.dispatchLog.slice(-DISPATCH_LOG_PAYLOAD_MAX),
+            }),
             ...(retryOf && { retry: true }),
             ...(summary && { summary }),
             ...(baseCount > 0 && { summarizedCount: baseCount }),

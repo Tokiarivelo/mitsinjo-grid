@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { SimulationInput } from '@mitsinjo/engine';
+import { dispatchLogHash, type SimulationInput } from '@mitsinjo/engine';
 import { resetSimulationStore, useSimulationStore } from '../simulation.store';
 import {
   selectActiveMetrics,
@@ -335,6 +335,25 @@ describe('useSimulationStore & selectors (P4-T1)', () => {
       store.reset();
       expect(selectDispatchMode(useSimulationStore.getState())).toBe('manual');
       expect(selectDispatchLog(useSimulationStore.getState())).toHaveLength(0);
+    });
+
+    it('updateDispatchLogNarration sets the narration and re-seals the hash (PA-T5a)', () => {
+      const store = useSimulationStore.getState();
+      const draft = {
+        id: 'narr-1',
+        day: 0,
+        hour: 14,
+        mode: 'autonomous' as const,
+        origin: 'ai' as const,
+        action: { kind: 'alert_only' as const },
+      };
+      store.appendDispatchLog({ ...draft, hash: dispatchLogHash(draft) });
+
+      store.updateDispatchLogNarration('narr-1', { text: 'Alert at 14:00.', source: 'llm' });
+      const [entry] = selectDispatchLog(useSimulationStore.getState());
+      expect(entry?.narration?.text).toBe('Alert at 14:00.');
+      expect(entry?.hash).toBe(dispatchLogHash(entry!));
+      expect(entry?.hash).not.toBe(dispatchLogHash(draft));
     });
   });
 });

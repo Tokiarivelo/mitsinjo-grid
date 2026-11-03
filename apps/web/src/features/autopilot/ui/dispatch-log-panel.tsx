@@ -28,6 +28,7 @@ import {
   entrySector,
 } from '@/lib/dispatch-log';
 import { downloadJsonFile, downloadTextFile } from '@/lib/export';
+import { fillCopilotPrompt } from '@/lib/copilot-fill';
 import { cn } from '@/lib/utils';
 import { useSimulationStore } from '@/stores';
 import { ShiftReportDialog } from './shift-report-dialog';
@@ -479,17 +480,7 @@ export function DispatchLogPanel({
         isOpen={showShiftReport}
         onClose={() => setShowShiftReport(false)}
         report={shiftReport}
-        onAskCopilot={(prompt) => {
-          if (onAskCopilot) {
-            onAskCopilot(prompt);
-          } else if (typeof window !== 'undefined') {
-            window.dispatchEvent(
-              new CustomEvent('mitsinjo:copilot:fill', {
-                detail: { prompt },
-              })
-            );
-          }
-        }}
+        onAskCopilot={onAskCopilot ?? fillCopilotPrompt}
       />
     </div>
   );

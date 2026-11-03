@@ -72,7 +72,11 @@ export function ShiftReportDialog({
   const handleDiscuss = () => {
     onClose();
     onAskCopilot?.(
-      `Peux-tu me faire une analyse détaillée du rapport de quart du jour ${report.day + 1} (${report.criticalSavedKwh.toFixed(1)} kWh critiques préservés, ${report.totalActions} interventions) ?`
+      t('discussPrompt', {
+        day: report.day + 1,
+        criticalKwh: fmtKwh(report.criticalSavedKwh),
+        count: report.totalActions,
+      })
     );
   };
 
@@ -181,7 +185,9 @@ export function ShiftReportDialog({
               </span>
               <span className="text-[10px] text-text-muted mt-1 flex items-center gap-1">
                 <Battery className="h-2.5 w-2.5" />
-                {report.minSocPct !== undefined ? `Min ${fmtPct(report.minSocPct, 0)}` : 'Stable'}
+                {report.minSocPct !== undefined
+                  ? t('socMin', { pct: fmtPct(report.minSocPct, 0) })
+                  : t('socStable')}
               </span>
             </div>
           </div>

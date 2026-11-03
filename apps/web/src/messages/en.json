@@ -1147,7 +1147,12 @@
       "copySummary": "Copy summary",
       "copied": "Copied!",
       "discussWithCopilot": "Discuss with copilot",
-      "close": "Close"
+      "close": "Close",
+      "askWhyPrompt": "Why did you apply {action} at {hour}:00?",
+      "askWhyPromptSector": "Why did you apply {action} on {sector} at {hour}:00?",
+      "discussPrompt": "Can you analyze the day {day} shift report in detail ({criticalKwh} critical energy preserved, {count} interventions)?",
+      "socMin": "Min {pct}",
+      "socStable": "Stable"
     }
   },
   "copilot": {

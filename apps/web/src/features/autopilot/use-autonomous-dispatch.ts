@@ -8,7 +8,8 @@ import {
   simulate,
   type DispatchLogEntry,
 } from '@mitsinjo/engine';
-import { sealLogEntry, formatTemplateNarration } from '@/lib/dispatch-log';
+import { sealLogEntry } from '@/lib/dispatch-log';
+import type { Locale } from '@/lib/i18n';
 import { useSimulationStore } from '@/stores';
 
 /**
@@ -16,7 +17,7 @@ import { useSimulationStore } from '@/stores';
  * decision policy, applies the action alone and logs it with engine figures before/after.
  * Mount it **once** per page (it writes to the store; two mounts would apply every action twice).
  */
-export function useAutonomousDispatch(): void {
+export function useAutonomousDispatch(locale: Locale = 'en'): void {
   const dispatchMode = useSimulationStore((s) => s.dispatchMode);
   const timeIndex = useSimulationStore((s) => s.timeIndex);
   const dayIndex = useSimulationStore((s) => s.dayIndex);
@@ -44,20 +45,14 @@ export function useAutonomousDispatch(): void {
       mode: 'autonomous' as const,
       origin: 'ai' as const,
     };
-    const newEntries: DispatchLogEntry[] = incidents.map((incident, i) => {
-      const draft = {
+    // No narration baked in: the log panel shows its localized fallback until the LLM one arrives.
+    const newEntries: DispatchLogEntry[] = incidents.map((incident, i) =>
+      sealLogEntry({
         ...base,
         id: `inc-d${dayIndex}-h${timeIndex}-${incident.kind}-${i}-${stamp}`,
         incident,
-      };
-      return sealLogEntry({
-        ...draft,
-        narration: {
-          text: formatTemplateNarration(draft as DispatchLogEntry),
-          source: 'template' as const,
-        },
-      });
-    });
+      })
+    );
 
     const decision = decideDispatch(
       input,
@@ -78,19 +73,12 @@ export function useAutonomousDispatch(): void {
           action.strategy
         );
       }
-      const draft = {
-        ...base,
-        id: `act-d${dayIndex}-h${timeIndex}-${action.kind}-${stamp}`,
-        action,
-        ...(applies ? { before: decision.before, after: decision.after } : {}),
-      };
       newEntries.push(
         sealLogEntry({
-          ...draft,
-          narration: {
-            text: formatTemplateNarration(draft as DispatchLogEntry),
-            source: 'template' as const,
-          },
+          ...base,
+          id: `act-d${dayIndex}-h${timeIndex}-${action.kind}-${stamp}`,
+          action,
+          ...(applies ? { before: decision.before, after: decision.after } : {}),
         })
       );
     }
@@ -102,7 +90,7 @@ export function useAutonomousDispatch(): void {
         fetch('/api/dispatch/narrate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ entry, locale: 'fr' }),
+          body: JSON.stringify({ entry, locale }),
         })
           .then((res) => (res.ok ? res.json() : null))
           .then((data) => {
@@ -113,7 +101,7 @@ export function useAutonomousDispatch(): void {
           .catch(() => {});
       }
     }
-  }, [dispatchMode, timeIndex, dayIndex]);
+  }, [dispatchMode, timeIndex, dayIndex, locale]);
   // Back to manual: the next autonomous run starts fresh on the current hour.
   useEffect(() => {
     if (dispatchMode !== 'autonomous') lastProcessed.current = null;
