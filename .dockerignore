@@ -1,0 +1,15 @@
+**/node_modules
+**/.next
+**/.turbo
+**/*.tsbuildinfo
+**/test-results
+**/playwright-report
+**/.env
+**/.env.*
+!.env.example
+.git
+.vercel
+design
+generated_images
+test-scenarios
+apps/web/src/server/perception/__fixtures__/shape/real

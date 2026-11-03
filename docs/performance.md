@@ -27,7 +27,7 @@ React re-renders, chart redraws, 3D, or bundle size. Fix those before optimising
   Optional live preview: throttle `run()` with `requestAnimationFrame` (one run per frame max).
 - Wrap `run()` result commit in `startTransition` so input stays responsive while charts/3D update.
 - No fake loading spinner: the engine is synchronous and instant; show `SIMULATION COMPLETE` directly.
-- Engine stays on the main thread. Move it to a Web Worker only if the bench test exceeds 16 ms.
+- Engine stays on the main thread. Move it to a Web Worker only if the bench test exceeds 16 ms (`make bench` → `benchmarks/engine.json`; today < 4 ms p95 for 3 strategies).
 
 ## 3. React rendering
 
@@ -114,3 +114,4 @@ them after mount (re-targeting races React root unmounts and can leave a label e
 - `next build` with Turbopack dev; `transpilePackages: ['@mitsinjo/engine']`; `optimizePackageImports: ['lucide-react','recharts','@react-three/drei']`.
 - Static generation for every route (no request-time data except `/api/copilot`).
 - Vercel: copilot route `runtime = 'nodejs'`, `maxDuration = 30`.
+- Docker (`Dockerfile`, `make docker-build` / `make docker-run`): one image, `pnpm install --frozen-lockfile` → `next build` → `next start` on :3000, `LLM_PROVIDER=mock` unless an env file is passed.

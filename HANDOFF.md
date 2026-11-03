@@ -1,37 +1,33 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-03 (PA complete, PA-7 closed) · **By:** Antigravity · **Branch:** feat/pa-7-e2e-quality
+**Updated:** 2026-11-03 (P9-T7 submission readiness) · **By:** Claude Code · **Branch:** feat/submission-readiness
 
 ## Current state
 
-- Branch `feat/pa-7-e2e-quality` branched from latest `origin/main` (commit `8500ea0`).
-- PA-7 Quality & E2E Validation completed:
-  - Playwright E2E suite (`apps/web/e2e/ai-dispatch.spec.ts`):
-    - Autonomous demo path: `village_fire` → autonomous mode → 14h incident → auto isolation → event log with before/after figures → "Why?" links to Copilot → "Take back control" returns immediately to manual.
-    - Chat scenario path: natural language 3-day scenario ("day 1: cloudy, day 2: rainy, day 3: sunny + school on fire") → missing slot pill answered → complete draft with engine preview → launched into `/simulation` in autonomous AI mode.
-    - Updated `copilot-flows.spec.ts` to robustly assert simulated fire safety cut.
-  - Performance audit (`apps/web/src/features/autopilot/__tests__/autonomous-perf.test.ts`):
-    - All detector + decision cycles verified within 16.6 ms (60 fps budget) per simulated hour (typical < 2 ms).
-  - Documentation:
-    - Updated `README.md` (features and limitations for autonomous dispatch and chat scenario drafting).
-    - Updated `docs/design/stitch-map.md`, `test-scenarios/00-parcours-demo.md` (scenarios D16–D18).
-    - Ticked off PA-T0c and PA-T7 in `docs/tasks/PA-ai-dispatch.md`.
-  - Typecheck (`make typecheck`), lint (`make lint`), and i18n parity (`make check-i18n`) are all green.
+- Branch `feat/submission-readiness` from `origin/main` (`a558cef`). PR #49 (`feat/pi-0-placed-model`) is separate, not merged here.
+- Done against the community checklist (artifacts.watt-mind.com/meta-hackathon-2026/checklist), video excluded:
+  - README top: provenance (built from scratch from Oct 26), track (Build for Your World, Indie), bonus targets
+    (Best Agentic, Best Creative), "not a 1-prompt wrapper" paragraph, Meta models table (Spark, SAM 3.1, Muse Image,
+    Muse Wonder, Muse Voice, optional Glimmer). Quickstart gained Docker + Benchmarks sections.
+  - `benchmarks/` (README + `engine.json`) from `make bench` (`packages/engine/src/__tests__/benchmark.test.ts`).
+  - `Dockerfile` + `.dockerignore`, `make docker-build` / `make docker-run` (keyless mock; image builds and serves).
+  - GitHub repo homepage set to `https://mitsinjo-grid.vercel.app` (same as README; `-fqfg` is the auto alias).
 
 ## Next
 
-- Merge PR for `feat/pa-7-e2e-quality`.
-- Record demo video (P9-T5, `docs/demo-script.md`).
+- P9-T5 (human): record the 3-min video (provenance line in first 10 s, live Meta calls on screen, 2+ metrics
+  before 2:55, e.g. `benchmarks/README.md` clinic 71.9 → 75.5 %); put the link in README line 15.
+- P9-T6 (human): submit before Wed Nov 4 21:00 EST; no pushes after the freeze.
+- Not done (out of reach): partner inference / fine-tuned open weights / HF publish (Open Weight bonus).
 
 ## Files touched (this session)
 
-`apps/web/e2e/{ai-dispatch.spec.ts,copilot-flows.spec.ts}`,
-`apps/web/src/features/autopilot/__tests__/autonomous-perf.test.ts`,
-`apps/web/src/features/simulation/ui/simulation-page.tsx`,
-`README.md`, `docs/design/stitch-map.md`, `docs/tasks/PA-ai-dispatch.md`,
-`test-scenarios/00-parcours-demo.md`, `HANDOFF.md`.
+`README.md`, `Dockerfile`, `.dockerignore`, `Makefile`, `.env.example`, `benchmarks/{README.md,engine.json}`,
+`packages/engine/src/__tests__/benchmark.test.ts`, `docs/performance.md`, `docs/tasks/P9-ship.md`, `HANDOFF.md`.
 
 ## Decisions
 
-- Playwright tests run against either mock or live server with resilient locators.
-- Dispatch decisions execute synchronously per playback tick without exceeding frame rendering limits.
+- Benchmark asserts the health clinic is never served worse by essential-first than proportional. It does **not**
+  assert all critical loads: under `essential_stress` essential-first covers critical loads 73.3 % vs 73.7 %
+  (proportional) — reported as a trade-off in `benchmarks/README.md`, not hidden.
+- Docker image is single-stage-on-deps (≈1.2 GB) for simplicity; `next start`, port forced to 3000.

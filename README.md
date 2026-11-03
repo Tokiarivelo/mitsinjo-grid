@@ -13,7 +13,26 @@
 
 **Public Production Deployment**: [https://mitsinjo-grid.vercel.app](https://mitsinjo-grid.vercel.app)  
 **Demo Video (3 Minutes)**: _Pending recording (P9-T5) — script in [docs/demo-script.md](docs/demo-script.md)_  
-**Documentation**: [docs/](docs/) · [docs/assumptions.md](docs/assumptions.md) · [docs/demo-script.md](docs/demo-script.md) · [docs/known-limitations.md](docs/known-limitations.md)
+**Documentation**: [docs/](docs/) · [docs/assumptions.md](docs/assumptions.md) · [docs/demo-script.md](docs/demo-script.md) · [docs/known-limitations.md](docs/known-limitations.md) · [benchmarks/](benchmarks/)
+
+### Hackathon submission at a glance
+
+- **Provenance**: built 100 % from scratch during the Meta Global AI Hackathon 2026 window (first commit Oct 26, 2026); no pre-existing code.
+- **Track**: Build for Your World · **Team**: solo (Indie Developer).
+- **Bonus prizes targeted**: Best Agentic Use-Case (copilot tool loop + Autonomous AI dispatch mode with a guarded, logged, undoable action loop) · Best Creative Build (photo → SAM outlines → 3D village objects refined stage by stage by Muse Spark).
+- **Not a 1-prompt wrapper**: every number comes from a deterministic TypeScript energy engine (1-hour steps, invariant checks, 3 shedding strategies); the LLM can only call engine tools, must cite the simulation run ID of each figure it quotes, and any grid action needs human approval (or the guarded autonomous mode). See [benchmarks/](benchmarks/) for the strategy A/B results.
+- **Use of Meta products** (all at runtime, server-side):
+
+  | Model                                         | Role                                                                                                         |
+  | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+  | **Muse Spark** (Meta Model API)               | Copilot: tool calling over the engine, grounded explanations, scenario drafting, photo → appliance detection |
+  | **SAM 3.1**                                   | Outlines each detected appliance and scenery object on the uploaded photo                                    |
+  | **Muse Image**                                | 2D facade drawings that seed the 3D models; illustrated FR/MG load-shedding posters                          |
+  | **Muse Wonder**                               | Final check and re-refinement stage of the 3D model loop                                                     |
+  | **Muse Voice**                                | Chat voice input transcription (EN / FR / MG)                                                                |
+  | **Muse Glimmer 30B** (open weights, optional) | Local step in the fallback chain Meta → Glimmer → offline mock (`GLIMMER_BASE_URL`, vLLM / Ollama)           |
+
+- **Judges without keys**: `LLM_PROVIDER=mock` (default) runs the whole demo path offline and deterministically; `make docker-build && make docker-run` or `make install && make dev-mock`.
 
 ---
 
@@ -175,6 +194,24 @@ make install
 # Configure environment variables
 make env
 ```
+
+### Docker (no Node or pnpm needed)
+
+```bash
+make docker-build                 # docker build -t mitsinjo-grid .
+make docker-run                   # http://localhost:3000, offline mock copilot, no key needed
+make docker-run ENV_FILE=.env     # live Meta models with your own keys
+```
+
+### Benchmarks
+
+```bash
+make bench   # engine latency + strategy A/B on all 8 scenarios → benchmarks/engine.json
+```
+
+Results and how to read them: [benchmarks/README.md](benchmarks/README.md). A full 24 h day runs in about
+0.5 ms and a three-strategy comparison stays under 4 ms p95. Under Severe Weather Stress, essential-first
+serves the health clinic 75.5 % of its demand, against 71.9 % with proportional shedding.
 
 ### Development & Testing
 
