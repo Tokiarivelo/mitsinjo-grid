@@ -5,7 +5,12 @@ import { useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import type { SectorId } from '@mitsinjo/engine';
 import { cameraLerpFactor, cameraTweenExpired } from '../utils/camera-tween';
-import { focusCameraFor, focusOrbitAngle, type Vec3 } from '../utils/camera-focus';
+import {
+  APPLIANCE_FOCUS_SCALE,
+  focusCameraFor,
+  focusOrbitAngle,
+  type Vec3,
+} from '../utils/camera-focus';
 import { SECTOR_POSITIONS } from '../utils/to-scene-model';
 import * as THREE from 'three';
 import type { CameraPreset } from '../types';
@@ -43,6 +48,10 @@ export interface CameraControllerProps {
   resetKey?: number;
   /** Selected building: the camera flies to it; clearing it returns to `preset`. */
   focusSector?: SectorId | null;
+  /** Selected appliance (ground position): the camera flies to it, ahead of `focusSector`. */
+  focusPoint?: Vec3 | null;
+  /** Hand tool: one-finger / left-button drag pans the view instead of orbiting. */
+  panMode?: boolean;
   /** Slowly orbit the focused building once the camera arrives (off without a GPU). */
   autoRotate?: boolean;
   reducedMotion?: boolean;
@@ -57,6 +66,8 @@ export function CameraController({
   preset,
   resetKey = 0,
   focusSector = null,
+  focusPoint = null,
+  panMode = false,
   autoRotate = true,
   reducedMotion = false,
   damping = true,
@@ -74,7 +85,7 @@ export function CameraController({
   const tweenStart = useRef(0);
   const hasMounted = useRef(false);
   const presetRef = useRef(preset);
-  const prevFocus = useRef<SectorId | null>(null);
+  const prevFocus = useRef<string | null>(null);
   const orbitOffset = useRef(new THREE.Vector3());
 
   const startOrbit = useCallback(() => {
@@ -118,15 +129,24 @@ export function CameraController({
     moveTo(CAMERA_PRESETS[preset] ?? CAMERA_PRESETS.village, false);
   }, [preset, resetKey, moveTo]);
 
+  // One focus target: the selected appliance first, else the selected building.
+  const focusKey = focusPoint
+    ? `p:${focusPoint.map((v) => v.toFixed(2)).join(',')}`
+    : focusSector
+      ? `s:${focusSector}`
+      : null;
   useEffect(() => {
     const previous = prevFocus.current;
-    prevFocus.current = focusSector;
-    if (focusSector) {
-      moveTo(focusCameraFor(SECTOR_POSITIONS[focusSector]), autoRotate);
+    prevFocus.current = focusKey;
+    if (focusKey?.startsWith('p:')) {
+      const p = focusKey.slice(2).split(',').map(Number) as Vec3;
+      moveTo(focusCameraFor(p, APPLIANCE_FOCUS_SCALE), autoRotate);
+    } else if (focusKey) {
+      moveTo(focusCameraFor(SECTOR_POSITIONS[focusKey.slice(2) as SectorId]), autoRotate);
     } else if (previous) {
       moveTo(CAMERA_PRESETS[presetRef.current] ?? CAMERA_PRESETS.village, false);
     }
-  }, [focusSector, autoRotate, moveTo]);
+  }, [focusKey, autoRotate, moveTo]);
 
   useFrame((state, delta) => {
     if (reducedMotion) return;
@@ -174,8 +194,20 @@ export function CameraController({
       enableDamping={damping}
       dampingFactor={0.05}
       maxPolarAngle={Math.PI / 2.15}
-      minDistance={6}
+      minDistance={panMode ? 3 : 6}
       maxDistance={70}
+      // Pan along the ground (not the screen) so the view never dives under the terrain.
+      screenSpacePanning={false}
+      mouseButtons={
+        panMode
+          ? { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
+          : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }
+      }
+      touches={
+        panMode
+          ? { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE }
+          : { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }
+      }
       onStart={() => {
         // The user takes over: stop any tween or orbit.
         isTransitioning.current = false;

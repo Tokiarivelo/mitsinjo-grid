@@ -34,7 +34,8 @@ import { STATUS_BG_CLASS, STATUS_HEX, STATUS_TEXT_CLASS } from '../utils/scene-p
 import { derivationSpeed } from '../utils/tap-point';
 import { NO_LOAD_KW } from '../utils/feeder-tone';
 import { useFeederLabels } from '../hooks/use-feeder-labels';
-import { appliancesPerSector } from '../utils/appliance-markers';
+import { appliancesPerSector, type ApplianceMarkerSceneModel } from '../utils/appliance-markers';
+import { PILL_H, appliancePills } from '../utils/appliance-pills';
 import { FlowWire, type WireState } from './flow-wire';
 import { DispatchShareBar, FeederChip, type DispatchSegment } from './dispatch-share-bar';
 
@@ -88,6 +89,28 @@ export function GridDiagram({
   const branchSlots = useMemo(
     () => applianceBranchSlots(model.appliances ?? []),
     [model.appliances]
+  );
+  // Placement depends only on which lines exist, not on the hour: recompute on that key alone.
+  const pillKey = (model.appliances ?? [])
+    .map((a) => `${a.id}|${a.sector}|${a.connectionMode ?? 'branch'}`)
+    .join(',');
+  const pills = useMemo(
+    () =>
+      appliancePills(
+        pillKey
+          ? pillKey.split(',').map((row) => {
+              const [id, sector, mode] = row.split('|');
+              return {
+                id: id!,
+                sector: sector as SectorId,
+                connectionMode: mode as 'branch' | 'ems',
+              };
+            })
+          : [],
+        variant,
+        layout
+      ),
+    [pillKey, variant, layout]
   );
   const feederOn = lines.batteryToBus.active;
 
@@ -222,13 +245,16 @@ export function GridDiagram({
               {/* Inserted appliance branch lines & nodes (PI-T9) */}
               {model.appliances?.map((appliance) => {
                 const mode = appliance.connectionMode ?? 'branch';
-                const route = applianceBranchRoute(
-                  appliance.sector,
-                  mode,
-                  variant,
-                  layout,
-                  branchSlots[appliance.id]
-                );
+                const pill = pills[appliance.id];
+                const route = pill
+                  ? { points: pill.route, node: pill.route.at(-1)! }
+                  : applianceBranchRoute(
+                      appliance.sector,
+                      mode,
+                      variant,
+                      layout,
+                      branchSlots[appliance.id]
+                    );
                 const b = buildings[appliance.sector];
                 const isCut = b.onFire;
                 const lineState = sectorWireState(b, appliance.running && b.connected);
@@ -259,6 +285,7 @@ export function GridDiagram({
                       data-testid={`diagram-appliance-${appliance.id}`}
                       data-connection-mode={mode}
                       data-sector={appliance.sector}
+                      opacity={pill ? 0 : undefined}
                     >
                       <circle
                         cx={route.node[0]}
@@ -401,6 +428,37 @@ export function GridDiagram({
                 />
               </Slot>
             ))}
+
+            {/* Inserted appliances: named card at the end of their branch */}
+            {model.appliances?.map((appliance) => {
+              const pill = pills[appliance.id];
+              if (!pill) return null;
+              const mode = appliance.connectionMode ?? 'branch';
+              return (
+                <Slot key={`pill-${appliance.id}`} box={pill.box}>
+                  <AppliancePillCard
+                    appliance={appliance}
+                    compact={pill.box.h < PILL_H}
+                    onFire={buildings[appliance.sector].onFire}
+                    title={t('applianceTitle', {
+                      name: appliance.name,
+                      kw: fmtKw(appliance.kwNow),
+                      feed:
+                        mode === 'ems' ? t('controller.shortTitle') : tSectors(appliance.sector),
+                    })}
+                    selected={selectedSector === appliance.sector}
+                    onSelect={
+                      onSelectSector
+                        ? () =>
+                            onSelectSector(
+                              selectedSector === appliance.sector ? null : appliance.sector
+                            )
+                        : undefined
+                    }
+                  />
+                </Slot>
+              );
+            })}
           </div>
         </div>
         <ZoomControls scale={zoom.scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={reset} />
@@ -408,6 +466,60 @@ export function GridDiagram({
 
       <DiagramLegend />
     </div>
+  );
+}
+
+/** Inserted appliance on the diagram: status dot, name and its engine kW this hour. */
+function AppliancePillCard({
+  appliance,
+  compact,
+  onFire,
+  title,
+  selected,
+  onSelect,
+}: {
+  appliance: ApplianceMarkerSceneModel;
+  /** One line: name only (kW stays in the tooltip). */
+  compact: boolean;
+  onFire: boolean;
+  title: string;
+  selected: boolean;
+  onSelect?: () => void;
+}) {
+  const tone = onFire ? 'critical-red' : appliance.running ? 'battery-green' : 'idle';
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={!onSelect}
+      title={title}
+      aria-label={title}
+      data-testid={`diagram-appliance-pill-${appliance.id}`}
+      className={cn(
+        'flex h-full w-full flex-col justify-center gap-[0.3cqw] overflow-hidden rounded-[0.9cqw] border bg-surface-elevated px-[0.8cqw] text-left leading-none transition-colors',
+        onFire
+          ? 'border-critical-red text-critical-red'
+          : selected
+            ? 'border-energy-cyan text-energy-cyan'
+            : appliance.running
+              ? 'border-energy-cyan/50 text-text-primary'
+              : 'border-border text-text-secondary',
+        onSelect && 'cursor-pointer hover:border-text-secondary'
+      )}
+    >
+      <span className="flex min-w-0 items-center gap-[0.5cqw] text-[1.3cqw] font-medium">
+        <span
+          className={cn('h-[0.9cqw] w-[0.9cqw] shrink-0 rounded-full', STATUS_BG_CLASS[tone])}
+          aria-hidden="true"
+        />
+        <span className="truncate">{appliance.name}</span>
+      </span>
+      {!compact && (
+        <span className="truncate font-mono text-[1.15cqw] text-text-muted">
+          {fmtKw(appliance.kwNow)}
+        </span>
+      )}
+    </button>
   );
 }
 

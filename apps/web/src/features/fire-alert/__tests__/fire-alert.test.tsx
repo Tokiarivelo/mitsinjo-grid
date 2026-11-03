@@ -6,6 +6,7 @@ import {
   FIRE_SNACKBAR_MS,
   FireAlertLayer,
   ReportFireControl,
+  useActiveFires,
   useFireSnackbars,
   type FireAlert,
 } from '../index';
@@ -41,6 +42,68 @@ describe('reportFire (store, M2-T2)', () => {
     expect(
       useSimulationStore.getState().input.events.filter((e) => e.type === 'fire')
     ).toHaveLength(1);
+  });
+});
+
+describe('reportFire on a multi-day run (regression: fire gone each night)', () => {
+  beforeEach(() => resetSimulationStore());
+
+  it('keeps burning on the next day from midnight, and a restore puts it out', () => {
+    const store = useSimulationStore.getState();
+    store.addWorkflowDay('sunny');
+    store.addWorkflowDay('sunny');
+    store.run();
+    useSimulationStore.getState().setDayIndex(0);
+    useSimulationStore.setState({ timeIndex: 14 });
+    useSimulationStore.getState().reportFire('school');
+
+    let s = useSimulationStore.getState();
+    // Not an every-day input event any more: it lives on the days.
+    expect(s.input.events.some((e) => e.type === 'fire')).toBe(false);
+    const school = (day: number, hour: number) =>
+      s.workflowResults[s.activeStrategy]?.days[day]?.result.steps[hour]?.sectors.school?.servedKw;
+    expect(school(0, 13)).toBeGreaterThan(0);
+    expect(school(0, 14)).toBe(0);
+    expect(school(1, 0)).toBe(0);
+    expect(school(2, 9)).toBe(0);
+
+    // The alert follows the day shown: still burning at 03:00 on day 2.
+    useSimulationStore.getState().setDayIndex(1);
+    useSimulationStore.setState({ timeIndex: 3 });
+    const { result } = renderHook(() => useActiveFires());
+    expect(result.current.map((f) => f.sector)).toEqual(['school']);
+    // Same fire across midnight: same key, so no new snackbar each day.
+    expect(result.current[0]?.key).toBe('fire:school');
+
+    act(() => useSimulationStore.getState().applyProposal({ clearFires: ['school'] }));
+    s = useSimulationStore.getState();
+    expect(school(2, 9)).toBeGreaterThan(0);
+  });
+});
+
+describe('a fire keeps burning past midnight on the playback (regression)', () => {
+  beforeEach(() => resetSimulationStore());
+
+  it('single day: after 23 h → 0 h the sector still burns at every hour until restored', () => {
+    useSimulationStore.getState().run();
+    useSimulationStore.setState({ timeIndex: 14 });
+    useSimulationStore.getState().reportFire('market');
+    useSimulationStore.setState({ timeIndex: 23 });
+    useSimulationStore.getState().advancePlayback();
+
+    const s = useSimulationStore.getState();
+    expect(s.timeIndex).toBe(0);
+    const steps = s.results[s.activeStrategy]!.steps;
+    // Before: served again from 0 h to 13 h, then cut again at 14 h.
+    for (const step of steps) expect(step.sectors.market?.servedKw).toBe(0);
+    const { result } = renderHook(() => useActiveFires());
+    expect(result.current.map((f) => f.sector)).toEqual(['market']);
+
+    act(() => useSimulationStore.getState().applyProposal({ clearFires: ['market'] }));
+    const after = useSimulationStore.getState();
+    expect(
+      after.results[after.activeStrategy]!.steps[12]!.sectors.market?.servedKw
+    ).toBeGreaterThan(0);
   });
 });
 

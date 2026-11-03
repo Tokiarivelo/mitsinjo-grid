@@ -10,6 +10,7 @@ import {
   type SimulationResult,
   type StrategyId,
   type WeatherId,
+  type ScenarioEvent,
 } from '@mitsinjo/engine';
 import { criticalSectorIncidents } from '@/lib/dispatch-log';
 import type {
@@ -66,6 +67,11 @@ export interface ToSceneModelOptions {
   /** Weather of the day shown. Default sunny (plain 24 h run). */
   weather?: WeatherId;
   placedModels?: Readonly<Record<string, { connectionMode?: TapMode }>>;
+  /**
+   * Events of the day shown (input events + that workflow day's). Default `input.events`.
+   * Fires reported on a multi-day run live on the days, not on the input.
+   */
+  events?: readonly ScenarioEvent[];
 }
 
 /**
@@ -156,7 +162,9 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     : 0;
 
   // Sectors burning at this hour (F1): engine fire events, shown as fire in 3D / 2D / circuit.
-  const burning = new Set(activeFires(input.events, validTime).map((f) => f.sector));
+  const burning = new Set(
+    activeFires(options.events ?? input.events, validTime).map((f) => f.sector)
+  );
 
   // Critical alerts at this hour (PA-T4c): active fires and critical forecasted deficits
   const inAlertSectors = new Set<SectorId>([

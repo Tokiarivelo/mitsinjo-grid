@@ -302,7 +302,11 @@
         "toggle": "Contrôles",
         "open": "Afficher les contrôles de simulation",
         "close": "Masquer les contrôles de simulation"
-      }
+      },
+      "panMode": "Outil main : glissez pour déplacer la vue",
+      "panModeOff": "Revenir à la rotation : glissez pour pivoter la vue",
+      "focusAppliance": "Montrer {name} dans la vue 3D",
+      "hint3dPan": "Cliquez sur un bâtiment pour l’inspecter · Glissez pour déplacer la vue · Molette pour zoomer"
     },
     "strategyLab": {
       "title": "Labo Stratégies",

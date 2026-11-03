@@ -9,11 +9,13 @@ import {
   Box,
   Camera,
   Gauge,
+  Hand,
   Maximize2,
   Minimize2,
   Sparkles,
   Zap,
   MapPin,
+  Plug,
   RotateCcw,
   Sun,
   SquareTerminal,
@@ -29,7 +31,8 @@ import { fmtHour, fmtKw, fmtPct } from '@/lib/format';
 import { SectorIcon } from '@/components/ui/sector-icon';
 import { ViewModeToggle } from '@/components/ui/view-mode-toggle';
 import { useTranslations } from '@/lib/i18n';
-import { usePlacedModelsStore } from '@/stores';
+import { usePlacedModelsStore, useSimulationStore } from '@/stores';
+import { dayEvents } from '@/lib/day-events';
 import {
   toSceneModel,
   useWebGLAvailable,
@@ -128,7 +131,11 @@ export function VillageViewport({
     setControlsOpen(!showControls);
   };
   const [cameraResetKey, setCameraResetKey] = useState(0);
+  // Inserted appliance the camera is framing (bottom bar chip); hand tool = drag pans.
+  const [focusApplianceId, setFocusApplianceId] = useState<string | null>(null);
+  const [panMode, setPanMode] = useState(false);
   const applyPreset = (preset: CameraPreset) => {
+    setFocusApplianceId(null);
     setCameraPreset(preset);
     // Re-apply even when the preset is unchanged (user orbited away).
     setCameraResetKey((k) => k + 1);
@@ -142,10 +149,18 @@ export function VillageViewport({
   // Scene model for 3D visualization (pure mapping)
   const fires = useActiveFires();
   const placedModels = usePlacedModelsStore((s) => s.models);
+  // Fires of the day shown: a multi-day run keeps reported fires on its days.
+  const workflow = useSimulationStore((s) => s.workflow);
+  const dayIndex = useSimulationStore((s) => s.dayIndex);
+  const events = useMemo(
+    () => dayEvents(input.events, workflow, dayIndex),
+    [input.events, workflow, dayIndex]
+  );
   const sceneModel = useMemo(
     () =>
       toSceneModel({
         input,
+        events,
         result,
         timeIndex,
         isModified,
@@ -153,7 +168,7 @@ export function VillageViewport({
         weather,
         placedModels,
       }),
-    [input, result, timeIndex, isModified, weather, placedModels]
+    [input, result, timeIndex, isModified, weather, placedModels, events]
   );
 
   const sectorIds = input.sectors.map((sec) => sec.id);
@@ -225,6 +240,21 @@ export function VillageViewport({
               className="p-1 rounded-control-sm text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer ml-0.5 shrink-0"
             >
               <RotateCcw className="h-3 w-3" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setPanMode((on) => !on)}
+              aria-pressed={panMode}
+              aria-label={panMode ? tSim('panModeOff') : tSim('panMode')}
+              title={panMode ? tSim('panModeOff') : tSim('panMode')}
+              className={cn(
+                'p-1 rounded-control-sm transition-colors cursor-pointer shrink-0',
+                panMode
+                  ? 'bg-energy-cyan/20 text-energy-cyan'
+                  : 'text-text-muted hover:text-text-primary hover:bg-surface'
+              )}
+            >
+              <Hand className="h-3 w-3" aria-hidden="true" />
             </button>
           </div>
         )}
@@ -344,10 +374,15 @@ export function VillageViewport({
           <LazyVillageCanvas
             model={sceneModel}
             selectedSector={selectedSector}
-            onSelectSector={onSelectSector}
+            onSelectSector={(sector) => {
+              setFocusApplianceId(null);
+              onSelectSector(sector);
+            }}
             cameraPreset={cameraPreset}
             onSelectPreset={applyPreset}
             cameraResetKey={cameraResetKey}
+            focusApplianceId={focusApplianceId}
+            panMode={panMode}
             className={cn(
               'w-full h-full absolute inset-0 transition-opacity',
               isModified && 'opacity-60'
@@ -366,7 +401,8 @@ export function VillageViewport({
           {/* Adjacent 2D Sector Selector mirror bar (bottom-left) for quick accessibility */}
           <div
             className={cn(
-              'absolute bottom-9 left-3 right-3 z-10 hidden items-center overflow-x-auto gap-1.5 bg-surface/85 backdrop-blur p-1.5 rounded-control border border-border',
+              // Wraps (no hidden scroll) so every inserted appliance stays in sight.
+              'absolute bottom-9 left-3 right-3 z-10 hidden flex-wrap items-center gap-1.5 bg-surface/85 backdrop-blur p-1.5 rounded-control border border-border',
               !isFullscreen && 'sm:flex'
             )}
           >
@@ -376,7 +412,10 @@ export function VillageViewport({
                 <button
                   key={id}
                   type="button"
-                  onClick={() => onSelectSector(isSelected ? null : id)}
+                  onClick={() => {
+                    setFocusApplianceId(null);
+                    onSelectSector(isSelected ? null : id);
+                  }}
                   aria-pressed={isSelected}
                   className={cn(
                     'px-2 py-1 rounded-control-sm text-xs font-sans flex items-center gap-1 border transition-all cursor-pointer shrink-0 whitespace-nowrap',
@@ -387,6 +426,33 @@ export function VillageViewport({
                 >
                   <SectorIcon sector={id} tinted={!isSelected} className="h-3 w-3" />
                   <span>{tSectors(id)}</span>
+                </button>
+              );
+            })}
+            {/* Inserted appliances: same chips, the camera flies to the object */}
+            {sceneModel.appliances.map((a) => {
+              const isFocused = focusApplianceId === a.id;
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => setFocusApplianceId(isFocused ? null : a.id)}
+                  aria-pressed={isFocused}
+                  aria-label={tSim('focusAppliance', { name: a.name })}
+                  title={tSim('focusAppliance', { name: a.name })}
+                  data-testid={`appliance-chip-${a.id}`}
+                  className={cn(
+                    'px-2 py-1 rounded-control-sm text-xs font-sans flex items-center gap-1 border transition-all cursor-pointer shrink-0 whitespace-nowrap',
+                    isFocused
+                      ? 'bg-surface-elevated border-energy-cyan text-energy-cyan font-semibold'
+                      : 'border-energy-cyan/30 text-text-secondary hover:text-text-primary hover:border-text-secondary'
+                  )}
+                >
+                  <Plug
+                    className={cn('h-3 w-3', !isFocused && 'text-energy-cyan')}
+                    aria-hidden="true"
+                  />
+                  <span>{a.name}</span>
                 </button>
               );
             })}
@@ -515,7 +581,9 @@ export function VillageViewport({
           isFullscreen && 'hidden'
         )}
       >
-        <span>{viewMode === '3d' ? tSim('hint3d') : tSim('clickNodeToInspect')}</span>
+        <span>
+          {viewMode === '3d' ? tSim(panMode ? 'hint3dPan' : 'hint3d') : tSim('clickNodeToInspect')}
+        </span>
         <span className="font-mono text-[10px] text-energy-cyan">{tCommon('simulatedData')}</span>
       </div>
     </div>

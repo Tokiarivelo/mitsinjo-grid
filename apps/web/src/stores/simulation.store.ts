@@ -23,6 +23,12 @@ import {
   MAX_WORKFLOW_DAYS,
 } from '@mitsinjo/engine';
 import { type ScenarioDraft, draftToWorkflow } from '@/lib/scenario-draft';
+import {
+  carryFiresOver,
+  clearWorkflowFires,
+  dayEvents,
+  reportWorkflowFire,
+} from '@/lib/day-events';
 
 export type SimStatus = 'ready' | 'running' | 'complete' | 'modified' | 'error';
 export type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'stopped';
@@ -33,7 +39,8 @@ export type InputSource = 'scenario' | 'device';
 export interface AppliedChange {
   /** Id of the approved proposal. */
   id: string;
-  before: { input: SimulationInput; strategy: StrategyId };
+  /** `workflow` too when the change touched it (a restore clears day fires). */
+  before: { input: SimulationInput; strategy: StrategyId; workflow?: Workflow };
 }
 
 /** Approved changes kept for undo (oldest dropped first). */
@@ -349,6 +356,10 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     try {
       const patched =
         patch && Object.keys(patch).length > 0 ? applyPatch(get().input, patch) : get().input;
+      // A restore also puts out the fires reported on workflow days.
+      if (patch?.clearFires?.length) {
+        set({ workflow: clearWorkflowFires(get().workflow, patch.clearFires) });
+      }
       commitInput(set, get, patched, strategy ?? get().activeStrategy);
     } catch (err) {
       failRun(set, err, 'Failed to apply proposal');
@@ -356,10 +367,23 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   reportFire: (sector: SectorId) => {
-    const { input, timeIndex, activeStrategy } = get();
-    if (activeFires(input.events, timeIndex).some((f) => f.sector === sector)) return;
-    const fire = { type: 'fire' as const, sector, startHour: timeIndex, durationH: 24 - timeIndex };
+    const { input, timeIndex, activeStrategy, workflow, dayIndex } = get();
+    const events = dayEvents(input.events, workflow, dayIndex);
+    if (activeFires(events, timeIndex).some((f) => f.sector === sector)) return;
     try {
+      if (workflow.length > 1) {
+        // Several days: the fire starts now and keeps burning on the next days (not every day
+        // from this hour, which made it vanish each night and come back at the same hour).
+        set({ workflow: reportWorkflowFire(workflow, dayIndex, sector, timeIndex) });
+        commitInput(set, get, input, activeStrategy);
+        return;
+      }
+      const fire = {
+        type: 'fire' as const,
+        sector,
+        startHour: timeIndex,
+        durationH: 24 - timeIndex,
+      };
       commitInput(set, get, { ...input, events: [...input.events, fire] }, activeStrategy);
     } catch (err) {
       failRun(set, err, 'Failed to report the fire');
@@ -367,10 +391,14 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   approveChange: (id: string, patch?: InputPatch, strategy?: StrategyId) => {
-    const { input, activeStrategy, changeHistory } = get();
+    const { input, activeStrategy, changeHistory, workflow } = get();
     const entry: AppliedChange = {
       id,
-      before: { input: cloneInput(input), strategy: activeStrategy },
+      before: {
+        input: cloneInput(input),
+        strategy: activeStrategy,
+        ...(patch?.clearFires?.length ? { workflow } : {}),
+      },
     };
     get().applyProposal(patch, strategy);
     if (get().status !== 'complete') return;
@@ -384,6 +412,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     set({
       input: cloneInput(last.before.input),
       activeStrategy: last.before.strategy,
+      ...(last.before.workflow ? { workflow: last.before.workflow } : {}),
       changeHistory: changeHistory.slice(0, -1),
     });
     get().run();
@@ -582,12 +611,24 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   advancePlayback: () => {
-    const { timeIndex, dayIndex, workflow, setDayIndex } = get();
+    const { timeIndex, dayIndex, workflow, setDayIndex, input, activeStrategy } = get();
     if (timeIndex < 23) {
       set({ timeIndex: timeIndex + 1 });
       return;
     }
-    setDayIndex(dayIndex + 1 < workflow.length ? dayIndex + 1 : 0);
+    const nextDay = dayIndex + 1 < workflow.length ? dayIndex + 1 : 0;
+    // A fire burns until the sector is restored: one still burning at 23 h goes on past midnight.
+    const carried = carryFiresOver(input, workflow, dayIndex, nextDay);
+    if (carried) {
+      try {
+        set({ workflow: carried.workflow });
+        commitInput(set, get, carried.input, activeStrategy);
+      } catch (err) {
+        failRun(set, err, 'Failed to carry the fire over midnight');
+        return;
+      }
+    }
+    setDayIndex(nextDay);
     set({ timeIndex: 0 });
   },
 

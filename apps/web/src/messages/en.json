@@ -302,7 +302,11 @@
         "toggle": "Controls",
         "open": "Show the simulation controls",
         "close": "Hide the simulation controls"
-      }
+      },
+      "panMode": "Hand tool: drag to move the view",
+      "panModeOff": "Back to orbit: drag to rotate the view",
+      "focusAppliance": "Show {name} in the 3D view",
+      "hint3dPan": "Click a building to inspect · Drag to move the view · Scroll to zoom"
     },
     "strategyLab": {
       "title": "Strategy Lab",

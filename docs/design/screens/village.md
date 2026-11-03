@@ -38,10 +38,13 @@ the engine catalog gives power (never the AI). Sidebar + MobileNav entry « Vill
   The minimap displays the central Dispatch EMS shelter, placed object keep-out clearings, and catenary derivation lines.
 - Inserted 3D models & derivations (PI-T1..T10, live preview and /simulation):
   3D models merged into a single BufferGeometry (≤ +2 draw calls); each placed object rests in an automatic tree clearing (PI-T4)
-  with a draped red laterite yard (`GROUND_HEX.yard`, irregular border via `fbm2d`, draped at `terrainHeight + 0.03`, PI-T5).
+  with a draped red laterite yard (`GROUND_HEX.laterite`, radius ≥ 2, irregular border via `fbm2d`, draped at `terrainHeight + 0.03`, faces up, PI-T5)
+  and a red laterite track from the yard to the nearest village path (`utils/access-paths`, +4 cm, same draw call); trees on both are cleared.
   Realistic catenary derivation cables with wooden utility poles (spaced ≤ 4.5 m, PI-T7) connect the object to its branch line or
   directly to the Dispatch EMS shelter (`BUS_POSITION`), avoiding obstacles (buildings, pond, other models) via corner waypoints (PI-T6).
-  On 2D topology and circuit diagrams (PI-T9), the derivation branches cleanly with animated electron flow matching active power.
+  On 2D topology and circuit diagrams (PI-T9), the derivation branches cleanly with animated electron flow matching active power,
+  ending on a named card (status dot, name, engine kW; click selects its sector). Topology places it in the nearest free spot
+  (`appliancePills`, first 12 lines); circuit cards are narrower and the appliance cards sit beside them (2 per row, EMS ones above).
   Press + drag moves the marker on the terrain (ghost preview, orbit frozen, commit on release); tree clearing, yard, and derivation
   poles recalculate smoothly on commit (`pointerup`). Removing an object restores the trees and terrain immediately.
 - Right column (lg 460–540 px, under on mobile): tabbed Studio Inspector (`[Active Object]`, `[Installed Appliances]`, `[Microgrid Twin]`) so the current village state stays instantly accessible without infinite scrolling.

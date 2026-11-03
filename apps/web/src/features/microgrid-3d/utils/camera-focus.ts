@@ -12,11 +12,19 @@ export const FOCUS_OFFSET: Vec3 = [5, 6.5, 10];
 /** Orbit speed around the focused building (rad/s): one full turn ≈ 42 s. */
 export const FOCUS_ORBIT_RAD_PER_S = 0.15;
 
-export function focusCameraFor(buildingPosition: Vec3): { position: Vec3; target: Vec3 } {
-  const [x, y, z] = buildingPosition;
+/** Appliances are small: the camera comes closer than for a building. */
+export const APPLIANCE_FOCUS_SCALE = 0.6;
+
+/** `scale` shrinks the offset and look height (1 = building framing). */
+export function focusCameraFor(position: Vec3, scale = 1): { position: Vec3; target: Vec3 } {
+  const [x, y, z] = position;
   return {
-    position: [x + FOCUS_OFFSET[0], y + FOCUS_OFFSET[1], z + FOCUS_OFFSET[2]],
-    target: [x, y + FOCUS_LOOK_HEIGHT, z],
+    position: [
+      x + FOCUS_OFFSET[0] * scale,
+      y + FOCUS_OFFSET[1] * scale,
+      z + FOCUS_OFFSET[2] * scale,
+    ],
+    target: [x, y + FOCUS_LOOK_HEIGHT * scale, z],
   };
 }
 
