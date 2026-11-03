@@ -5,7 +5,7 @@
  * their unit space, nearest hit wins (z-buffer), Lambert shade of the part colour.
  * Pure and deterministic; geometry and colours only.
  */
-import type { ObjectRecipe, RecipePart } from '@/lib/object-shape';
+import { HIP_CLIP_MAX, type ObjectRecipe, type RecipePart } from '@/lib/object-shape';
 import { hexToRgb } from './color-measure';
 import {
   applyTransform,
@@ -372,7 +372,11 @@ function intersect(p: RecipePart, o: V3, d: V3): Span | null {
       break;
     case 'hip': {
       // Front / back slopes from the base edges to the ridge, hip ends to the ridge tips (n·p ≤ c).
-      const k = H - Math.min(1, Math.max(0, p.ridge ?? 0.5)) / 2;
+      // Half-hip (PG-T22): the hip planes start at the gable shoulder y = −H + clip, not the base.
+      const r = Math.min(1, Math.max(0, p.ridge ?? 0.5)) / 2;
+      const yc = -H + Math.min(HIP_CLIP_MAX, Math.max(0, p.clip ?? 0));
+      const k = (H - r) / (H - yc);
+      const c = r + H * k;
       const unit = (n: V3): [V3, number] => {
         const l = Math.hypot(n[0], n[1], n[2]);
         return [[n[0] / l, n[1] / l, n[2] / l], l];
@@ -383,8 +387,10 @@ function intersect(p: RecipePart, o: V3, d: V3): Span | null {
       };
       plane([0, 1, 2], H);
       plane([0, 1, -2], H);
-      plane([1, k, 0], H - H * k);
-      plane([-1, k, 0], H - H * k);
+      plane([1, k, 0], c);
+      plane([-1, k, 0], c);
+      clipPlane(s, o, d, [1, 0, 0], H);
+      clipPlane(s, o, d, [-1, 0, 0], H);
       break;
     }
     case 'cylinder':

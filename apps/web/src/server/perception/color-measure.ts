@@ -17,6 +17,8 @@ export interface ObjectPixels {
 export const MIN_MEASURED_PIXELS = 64;
 /** Colour groups per object: walls, roof, glass, shadow + one spare. */
 export const COLOR_CLUSTERS = 5;
+/** A plaster group holds at least this share of the biggest wall group's pixels (not a highlight). */
+export const PLASTER_MIN_SHARE = 0.35;
 const ITERATIONS = 12;
 
 const toLinear = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -145,10 +147,13 @@ interface Group {
  * Object pixels → the kit's 3 colours (PF-T2), or null when too few pixels were measured.
  * main = biggest group outside the secondary band (walls, body, crown); secondary = biggest other group
  * inside that band (roof, trunk, stand), else the next biggest group; accent = darkest group left (glass).
+ * `plaster` (PG-T22, half-timbered walls): main = the lightest big group outside the band, so the
+ * walls read as their plaster and not as plaster, beams and shadow averaged together.
  */
 export function measureKitColors(
   px: ObjectPixels,
-  archetype: KitArchetype
+  archetype: KitArchetype,
+  { plaster = false }: { plaster?: boolean } = {}
 ): ObjectKit['colors'] | null {
   const n = px.y.length;
   if (n < MIN_MEASURED_PIXELS) return null;
@@ -181,7 +186,10 @@ export function measureKitColors(
       undefined
     );
 
-  const main = by((g) => g.count - g.inSecondary, groups)!;
+  const outside = (g: Group) => g.count - g.inSecondary;
+  const biggest = by(outside, groups)!;
+  const big = groups.filter((g) => outside(g) >= PLASTER_MIN_SHARE * outside(biggest));
+  const main = plaster ? by((g) => g.lightness, big)! : biggest;
   const rest = groups.filter((g) => g !== main);
   const bandPixels = groups.reduce((s, g) => s + g.inSecondary, 0);
   const inBandBest = by((g) => g.inSecondary, rest);

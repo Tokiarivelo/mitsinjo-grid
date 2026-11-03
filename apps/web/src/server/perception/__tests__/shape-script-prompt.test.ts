@@ -8,6 +8,7 @@ import {
   SHAPE_SCRIPT_SYSTEM_PROMPT,
   describeComponent,
   parseStageOps,
+  shapeScriptSystemPrompt,
   stageQuestion,
 } from '../shape-script-prompt';
 import { facadeStageLoop, stageNotes, stageSheet, sparkStageProposer } from '../shape-stages-spark';
@@ -31,6 +32,14 @@ describe('stage prompt (PG-T15)', () => {
       expect(SHAPE_SCRIPT_SYSTEM_PROMPT).toContain(op);
     expect(SHAPE_SCRIPT_SYSTEM_PROMPT).toMatch(/Never give metres, watts/);
     expect(SHAPE_SCRIPT_JSON_SCHEMA.schema.properties.ops.maxItems).toBe(MAX_STAGE_OPS);
+  });
+
+  it('has a views variant (PG-T20): the 2 × 2 sheet, same ops and rules', () => {
+    const views = shapeScriptSystemPrompt('views');
+    expect(views).toContain('2 × 2 sheet');
+    expect(views).not.toContain('three tiles');
+    expect(shapeScriptSystemPrompt()).toBe(SHAPE_SCRIPT_SYSTEM_PROMPT);
+    expect(views).toMatch(/Never give metres, watts/);
   });
 
   it('the question lists editable and locked components with their values', () => {

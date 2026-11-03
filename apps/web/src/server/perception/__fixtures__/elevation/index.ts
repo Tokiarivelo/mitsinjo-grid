@@ -20,7 +20,7 @@ export const THATCHED_FRONT: GoldenElevation = {
     aspect: 1920 / 1280,
     house: { x: 0.161, y: 0.119, w: 0.678, h: 0.697 },
     roof: {
-      box: { x: 0.161, y: 0.176, w: 0.678, h: 0.332 },
+      box: { x: 0.161, y: 0.23, w: 0.678, h: 0.278 },
       rings: [
         [
           [0.161, 0.508],

@@ -1040,7 +1040,16 @@
           "massing": "Endrika ankapobeny",
           "roof": "Tafo",
           "openings": "Varavarana sy varavarankely",
-          "accessories": "Kojakoja"
+          "accessories": "Kojakoja",
+          "body": "Vatana",
+          "glass": "Fitaratra",
+          "wheels": "Kodiarana",
+          "doors": "Varavarana sy takelaka",
+          "cells": "Sela masoandro",
+          "trunk": "Vatan-kazo",
+          "crown": "Ravina",
+          "head": "Loha",
+          "details": "Antsipiriany"
         },
         "cause": {
           "timeout": "lany ny fotoana",

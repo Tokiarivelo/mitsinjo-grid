@@ -4,8 +4,10 @@ import { ringRange, spanAt, type Ring } from '@/lib/hull';
 import { kitToRecipe, type KitArchetype, type ObjectKit } from '@/lib/object-kit';
 import {
   MAX_BUILT_PARTS,
+  MAX_PANES,
   fitRecipe,
   type ObjectRecipe,
+  type PartKind,
   type RecipeMaterial,
   type RecipePart,
 } from '@/lib/object-shape';
@@ -17,6 +19,7 @@ import { renderFlat, type FlatView } from './flat-render';
 import { samBoxToNorm } from './outline';
 import { fetchPartMasks } from './part-masks';
 import { withLatheBody } from './lathe-body';
+import { VIEW_STAGE_CAMERAS, renderView, tagRoundParts } from './view-stages';
 import { budgetRing } from './profile-body';
 import { MAX_MISSING, knownConcept, viewsCheckQuestion, type ViewsCheck } from './views-check';
 
@@ -68,6 +71,13 @@ export const VIEW_PART_CONCEPTS: Partial<
     front: ['headlight', 'bumper', 'wheel', 'windshield', 'grille'],
     side: ['wheel', 'window'],
   },
+  // PG-T20: the parts each archetype's stages score (`view-stages.ts` `CONCEPT_KIND`).
+  cabinet: { front: ['door', 'handle', 'display'], side: [] },
+  machine: { front: ['door', 'handle', 'display'], side: [] },
+  screen: { front: ['screen'], side: [] },
+  panel: { front: ['solar cells'], side: [] },
+  tree: { front: ['trunk', 'foliage'], side: [] },
+  lamp_post: { front: ['lamp'], side: [] },
 };
 
 /** One SAM call on a view (object or parts). */
@@ -268,7 +278,7 @@ export function roundViewRecipe(
     box: { x: 0, y: 0, w: 1, h: 1 },
     outline,
   });
-  return { ...lathed, source: 'views' };
+  return { ...tagRoundParts(kit.archetype, lathed), source: 'views' };
 }
 
 /** Depth over front width from Spark's kit when no side is drawn (a vehicle's `w` is its length). */
@@ -283,13 +293,41 @@ export const VIEW_PART_LOOK = {
   rubber: '#1d1d1f',
   chrome: '#c8cdd2',
   lamp: '#f1eee4',
+  display: '#1b2230',
+  cell: '#1f3550',
 } as const;
+
+/**
+ * Front parts placed by kind on appliances and panels (PG-T20): doors and displays as skin
+ * patches on the front face, handles as small bars proud of it, solar cells as one patch with
+ * their grid (PG-T21). Colour by role.
+ */
+const FRONT_PART_LOOK: Partial<
+  Record<string, { kind: PartKind; color?: string; material: RecipeMaterial; proud?: number }>
+> = {
+  door: { kind: 'door', material: 'metal' },
+  display: { kind: 'display', color: VIEW_PART_LOOK.display, material: 'glass' },
+  screen: { kind: 'display', color: VIEW_PART_LOOK.display, material: 'glass' },
+  handle: { kind: 'handle', color: VIEW_PART_LOOK.chrome, material: 'metal', proud: 0.03 },
+  'solar cells': { kind: 'cell', color: VIEW_PART_LOOK.cell, material: 'glass' },
+};
 
 const clampU = (v: number) => Math.min(0.5, Math.max(-0.5, v));
 const centre = (b: NormBox) => [b.x + b.w / 2, b.y + b.h / 2] as const;
 
 /** Part names placed on the back face when read on the side view. */
 const BACK_PART = /\b(rear|back|tail|taillight|taillights|taillamp)\b/;
+
+/** Wheel centres this share of the length in from each end when only the front is drawn. */
+export const FRONT_AXLE = 0.18;
+
+/** Cell columns × rows of a solar panel patch (≈ square cells, ≤ `MAX_PANES` each way). */
+export function cellGrid(box: NormBox, aspect: number): [number, number] {
+  const ratio = (box.w * aspect) / Math.max(0.01, box.h);
+  const rows = Math.min(MAX_PANES, Math.max(1, Math.round(MAX_PANES / Math.max(1, ratio))));
+  const cols = Math.min(MAX_PANES, Math.max(1, Math.round(rows * ratio)));
+  return [cols, rows];
+}
 
 /** Skin patch thickness (unit space): half inside the body, half proud of it. */
 export const SKIN = 0.012;
@@ -400,6 +438,7 @@ export function viewsRecipe(
         section,
         color: kit.colors.main,
         ...(kit.materials?.main ? { material: kit.materials.main } : {}),
+        kind: 'body',
         front: true,
         status: 'measured',
       }
@@ -410,6 +449,7 @@ export function viewsRecipe(
         points,
         color: kit.colors.main,
         ...(kit.materials?.main ? { material: kit.materials.main } : {}),
+        kind: 'body',
         front: true,
         status: 'measured',
       };
@@ -430,8 +470,38 @@ export function viewsRecipe(
         size: [tire, Math.min(1, b.h), Math.min(1, b.w)],
         color: VIEW_PART_LOOK.rubber,
         material: 'rubber',
+        kind: 'wheel',
+        rim: true,
         status,
       });
+  }
+  // No wheel read on a side (front only, or a side SAM missed them): a vehicle's wheels come
+  // from the front drawing — height and diameter as drawn, front and rear axles at the usual
+  // place along the length (live 2026-11-03: a front-only car had no wheels at all).
+  if (!wheels.length && kit.archetype === 'vehicle') {
+    const seenFront = frontParts
+      .filter((p) => p.concept === 'wheel' && p.box.h > 0.05)
+      .sort((a, b) => b.box.h - a.box.h)[0];
+    if (seenFront) {
+      const b = seenFront.box;
+      const y = 0.5 - (b.y + b.h / 2);
+      const [xl, xr] = xSpan(y);
+      const dz = Math.min(0.45, b.h / Math.max(0.1, D));
+      const axle = 0.5 - Math.max(FRONT_AXLE, dz / 2 + 0.04);
+      for (const z of [axle, -axle])
+        for (const x of [xr - tire / 2, xl + tire / 2])
+          parts.push({
+            shape: 'cylinder',
+            axis: 'x',
+            at: [x, y, z],
+            size: [tire, Math.min(1, b.h), dz],
+            color: VIEW_PART_LOOK.rubber,
+            material: 'rubber',
+            kind: 'wheel',
+            rim: true,
+            status: 'inferred',
+          });
+    }
   }
   // Side glass: one band over every window SAM found, a skin patch on each side following the
   // body's width at every height (the cabin narrows toward the roof).
@@ -471,7 +541,11 @@ export function viewsRecipe(
       { color: glass, material: 'glass' as const, kind: 'window' as const },
       RANK.glass,
     ],
-    ['grille', { color: VIEW_PART_LOOK.chrome, material: 'metal' as const }, RANK.grille],
+    [
+      'grille',
+      { color: VIEW_PART_LOOK.chrome, material: 'metal' as const, kind: 'grille' as const },
+      RANK.grille,
+    ],
   ] as const) {
     const p = frontParts
       .filter((q) => q.concept === concept && q.box.w > 0.15)
@@ -494,7 +568,7 @@ export function viewsRecipe(
     ['side', sideParts],
   ] as const) {
     for (const p of list) {
-      if (!p.look || knownConcept(p.concept)) continue;
+      if (!p.look || knownConcept(p.concept) || FRONT_PART_LOOK[p.concept]) continue;
       const y0 = 0.5 - (p.box.y + p.box.h);
       const y1 = 0.5 - p.box.y;
       const look = {
@@ -563,6 +637,7 @@ export function viewsRecipe(
         size: [Math.max(0.01, p.box.w), Math.max(0.01, p.box.h), 0.04],
         color: VIEW_PART_LOOK.lamp,
         material: 'glass',
+        kind: 'light',
         status: 'measured',
       };
     })
@@ -580,6 +655,23 @@ export function viewsRecipe(
       size: [Math.min(1, bumper.box.w), Math.max(0.01, bumper.box.h), 0.06],
       color: VIEW_PART_LOOK.chrome,
       material: 'metal',
+      kind: 'bumper',
+      status: 'measured',
+    });
+  }
+  // Appliance and panel front parts (PG-T20): doors, handles, displays, solar cells.
+  for (const p of frontParts) {
+    const look = FRONT_PART_LOOK[p.concept];
+    if (!look || p.box.w < 0.02 || p.box.h < 0.02) continue;
+    const y0 = 0.5 - (p.box.y + p.box.h);
+    const y1 = 0.5 - p.box.y;
+    const face = (y: number) => zSpan(y)[1] + (look.proud ?? 0);
+    add(RANK.detail, {
+      ...skin(rect(p.box.x - 0.5, p.box.x + p.box.w - 0.5, y0, y1), strip(face, y0, y1)),
+      color: p.look?.color ?? look.color ?? kit.colors.secondary,
+      material: p.look?.material ?? look.material,
+      kind: look.kind,
+      ...(look.kind === 'cell' ? { grid: cellGrid(p.box, W) } : {}),
       status: 'measured',
     });
   }
@@ -599,46 +691,14 @@ export function viewsRecipe(
 }
 
 /** Front and side cameras of the view score (the side camera sees +z on the left). */
-export const VIEW_CAMERAS: Record<'front' | 'side', FlatView> = {
-  front: { yaw: 0, pitch: 0 },
-  side: { yaw: -Math.PI / 2, pitch: 0 },
-};
-
-const VIEW_ROWS = 96;
-
-function insideRing(ring: Ring, x: number, y: number): boolean {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [ax, ay] = ring[j]!;
-    const [bx, by] = ring[i]!;
-    if (ay > y !== by > y && x < ((bx - ax) * (y - ay)) / (by - ay) + ax) inside = !inside;
-  }
-  return inside;
-}
+export const VIEW_CAMERAS: Record<'front' | 'side', FlatView> = VIEW_STAGE_CAMERAS;
 
 /**
  * Silhouette IoU of the model against one measured view (both framed on their own bounds): the
  * yardstick of the views path, 0–1. Pure.
  */
 export function viewIou(recipe: ObjectRecipe, view: ViewMeasure, side: 'front' | 'side'): number {
-  const rows = VIEW_ROWS;
-  const cols = Math.max(8, Math.round(rows * view.aspect));
-  const r = renderFlat({ ...recipe, yaw: 0 }, 1, cols, rows, VIEW_CAMERAS[side], (b) => ({
-    cx: (b.x0 + b.x1) / 2,
-    cy: (b.y0 + b.y1) / 2,
-    fw: b.x1 - b.x0,
-    fh: b.y1 - b.y0,
-  }));
-  let inter = 0;
-  let union = 0;
-  for (let row = 0; row < rows; row++)
-    for (let c = 0; c < cols; c++) {
-      const a = r.mask.data[row * cols + c] === 1;
-      const b = insideRing(view.ring, (c + 0.5) / cols, 1 - (row + 0.5) / rows);
-      if (a && b) inter++;
-      if (a || b) union++;
-    }
-  return union ? Math.round((inter / union) * 1000) / 1000 : 0;
+  return Math.round(renderView(recipe, view, side).silhouette * 1000) / 1000;
 }
 
 /** Pixel height of one sheet tile. */

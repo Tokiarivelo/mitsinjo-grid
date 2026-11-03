@@ -1040,7 +1040,16 @@
           "massing": "Volumes",
           "roof": "Toit",
           "openings": "Ouvertures",
-          "accessories": "Accessoires"
+          "accessories": "Accessoires",
+          "body": "Corps",
+          "glass": "Vitres",
+          "wheels": "Roues",
+          "doors": "Portes et panneaux",
+          "cells": "Cellules solaires",
+          "trunk": "Tronc",
+          "crown": "Couronne",
+          "head": "Tête",
+          "details": "Détails"
         },
         "cause": {
           "timeout": "temps écoulé",

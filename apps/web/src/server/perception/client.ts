@@ -6,6 +6,7 @@ import { spendGuard, type SpendGuard } from '@/server/spend';
 import type { PartsSubject, PerceptionBackend, PerceptionCall, ShapeSubject } from './backend';
 import { MetaPerceptionBackend } from './meta';
 import { MockPerceptionBackend } from './mock';
+import type { StageSheet } from './shape-script-prompt';
 import type {
   ShapeOpsResult,
   CriticResult,
@@ -150,11 +151,12 @@ export class PerceptionClient {
   proposeShapeOps(
     imageUrl: string,
     question: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    sheet?: StageSheet
   ): Promise<ShapeOpsResult> {
     return this.run('proposeShapeOps', (b) =>
       b.proposeShapeOps
-        ? b.proposeShapeOps(imageUrl, question, signal)
+        ? b.proposeShapeOps(imageUrl, question, signal, sheet)
         : Promise.resolve({ model: b.name, usage: {}, result: { ops: [] } })
     );
   }

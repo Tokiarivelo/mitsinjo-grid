@@ -18,7 +18,8 @@ import {
 
 /**
  * `prism` = triangle extruded along z (gable roof, PF-T3), apex at `apex` of its width.
- * `hip` = hipped roof, ridge along x of `ridge` × its width (0 = pyramid, 1 = side gable).
+ * `hip` = hipped roof, ridge along x of `ridge` × its width (0 = pyramid, 1 = side gable); `clip` > 0
+ * = half-hip: the ends stand as vertical gables up to that share of the roof height, hipped above.
  * `hull` = visual hull (PV-H): front ring `points` (x, y) extruded along z ∩ side ring `section`
  * (z toward the front, y) extruded along x, both measured on the validated 2D view and its side.
  */
@@ -38,6 +39,8 @@ export const EXTRUDE_POINTS_MAX = 64;
 /** Profile points of a `lathe` part (PR-2.3): radius-vs-height, non-decreasing y. */
 export const LATHE_PROFILE_MAX = 32;
 export const MAX_RECIPE_PARTS = 12;
+/** Highest half-hip gable share: above it the end is a plain gable (ridge 1). */
+export const HIP_CLIP_MAX = 0.9;
 /**
  * Components of a recipe the server builds from measured views (PV-H: body, wheels, glass and lamp
  * skin patches, the AI check's additions; PG-T10: facade house assemblies). A component may be an
@@ -68,6 +71,18 @@ export const PART_KINDS = [
   'plinth',
   'step',
   'frame',
+  // PG-T20: parts of objects built from their 2D view (stages per archetype).
+  'body',
+  'wheel',
+  'light',
+  'bumper',
+  'grille',
+  'handle',
+  'display',
+  'cell',
+  'trunk',
+  'crown',
+  'head',
 ] as const;
 export const PartKindSchema = z.enum(PART_KINDS);
 /** Most timber posts or rails on one wall (PV-G). */
@@ -143,6 +158,8 @@ export const RecipePartSchema = z
     apex: z.number().min(0).max(1).optional(),
     /** Hip only: ridge length, share of the part width (default 0.5). Measured on the 2D facade. */
     ridge: z.number().min(0).max(1).optional(),
+    /** Hip only (PG-T22): half-hip gable height, share of the roof height from the eave (0 = full hip). */
+    clip: z.number().min(0).max(HIP_CLIP_MAX).optional(),
     /** Extrude only (PR-2.1): the profile ring, 3–64 points, built server-side (never from Spark). */
     points: z.array(unitPoint).min(3).max(EXTRUDE_POINTS_MAX).optional(),
     /** Hull only (PV-H): side silhouette ring [z, y] in unit space (z + = front), 3–64 points. */
@@ -166,7 +183,10 @@ export const RecipePartSchema = z
         rails: z.array(z.number().min(0).max(1)).max(MAX_TIMBER),
       })
       .optional(),
-    /** Window / door only (PG-T8): glass panes across × down, read on the drawing; the 3D view adds the bars. */
+    /**
+     * Window / door (PG-T8): glass panes across × down, read on the drawing; the 3D view adds the
+     * bars. Solar cells (`kind: 'cell'`, PG-T21): cell columns × rows, drawn as thin grid lines.
+     */
     grid: z
       .tuple([z.number().int().min(1).max(MAX_PANES), z.number().int().min(1).max(MAX_PANES)])
       .optional(),
@@ -175,6 +195,7 @@ export const RecipePartSchema = z
      * Door: `leaves` (1 | 2), `glazed` top share with `grid` panes, `panels` per leaf below it.
      * Window / door: `sill` (window default on), `lintel` above. Chimney: `cap` slab on top.
      * Roof: `bulge` = eave roll radius, share of the roof height (thatch default 0.08, 0 = none).
+     * Wheel (PG-T21): `rim` = a metal rim disc on its outer face.
      */
     leaves: z.number().int().min(1).max(2).optional(),
     glazed: z.number().min(0).max(MAX_DOOR_GLAZED).optional(),
@@ -183,6 +204,7 @@ export const RecipePartSchema = z
     lintel: z.boolean().optional(),
     cap: z.boolean().optional(),
     bulge: z.number().min(0).max(MAX_ROOF_BULGE).optional(),
+    rim: z.boolean().optional(),
   })
   .superRefine((p, ctx) => {
     if ((p.shape === 'extrude' || p.shape === 'hull') && !p.points)
@@ -345,10 +367,25 @@ export const ShapeStepEventSchema = z.object({ step: z.enum(SHAPE_STEPS) });
 
 /**
  * Staged improvement of the model (PG-T17/T18): stage ids of the loop (house: massing → roof →
- * openings → accessories). The first answer runs the stages that fit its budget; the rest go on
- * in the background on the same stream (`shape_stage` events), resumable by job id.
+ * openings → accessories; objects from their 2D view, PG-T20: body, glass, wheels, doors, cells,
+ * trunk, crown, head, details). The first answer runs the stages that fit its budget; the rest go
+ * on in the background on the same stream (`shape_stage` events), resumable by job id.
  */
-export const SHAPE_STAGE_IDS = ['massing', 'roof', 'openings', 'accessories'] as const;
+export const SHAPE_STAGE_IDS = [
+  'massing',
+  'roof',
+  'openings',
+  'accessories',
+  'body',
+  'glass',
+  'wheels',
+  'doors',
+  'cells',
+  'trunk',
+  'crown',
+  'head',
+  'details',
+] as const;
 export type ShapeStageId = (typeof SHAPE_STAGE_IDS)[number];
 /** Background stages stop after this (the plan's « background stages finish ≤ 3 min »). */
 export const SHAPE_STAGES_BACKGROUND_MS = 180_000;

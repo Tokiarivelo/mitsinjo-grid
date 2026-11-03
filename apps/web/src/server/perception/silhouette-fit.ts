@@ -7,7 +7,13 @@
  */
 import { hullSamplePoints } from '@/lib/hull';
 import { kitToRecipe, uniformRoof, type ObjectKit } from '@/lib/object-kit';
-import { fitRecipe, MAX_YAW, type ObjectRecipe, type RecipePart } from '@/lib/object-shape';
+import {
+  fitRecipe,
+  HIP_CLIP_MAX,
+  MAX_YAW,
+  type ObjectRecipe,
+  type RecipePart,
+} from '@/lib/object-shape';
 import { nelderMead } from './nelder-mead';
 
 /** Columns of the fit grid (rows follow the box aspect). */
@@ -101,10 +107,17 @@ function unitPoints(p: RecipePart): Array<[number, number, number]> {
     }
     case 'hip': {
       const r = Math.min(1, Math.max(0, p.ridge ?? 0.5)) / 2;
+      // Half-hip (PG-T22): the gable shoulders stick out beyond the base-to-ridge hull.
+      const c = Math.min(HIP_CLIP_MAX, Math.max(0, p.clip ?? 0));
       return [
         ...[-0.5, 0.5].flatMap((x) =>
           [-0.5, 0.5].map((z) => [x, -0.5, z] as [number, number, number])
         ),
+        ...(c > 0
+          ? [-0.5, 0.5].flatMap((x) =>
+              [-1, 1].map((sz) => [x, -0.5 + c, (sz * (1 - c)) / 2] as [number, number, number])
+            )
+          : []),
         [-r, 0.5, 0],
         [r, 0.5, 0],
       ];
