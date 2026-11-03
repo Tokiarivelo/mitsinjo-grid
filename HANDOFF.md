@@ -1,6 +1,6 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-03 (PR #49 PI-T1/T2 reviewed + merged; P9-T7 submission readiness on main) · **By:** Claude Code
+**Updated:** 2026-11-03 (PR #49 follow-up: model pruning, flaky budget test, PI-T2 gate-out) · **By:** Claude Code · **Branch:** fix/pi-placed-models-followup
 
 ## Current state
 
@@ -16,13 +16,16 @@
 
 - P9-T5 (human): record the 3-min video; link in README line 15. P9-T6 (human): submit before Wed Nov 4 21:00 EST.
 - PI I1: PI-T3 `siteZones(placed)`, PI-T4 tree clearing, PI-T5 laterite yard (`docs/tasks/PI-village-integration.md`).
-- Open: `syncWithAppliances` is not called anywhere yet (stale localStorage entries after a scenario reset are
-  harmless: only markers with a model render it). Design gate screenshots for PI-T2 not taken.
+- Follow-up done: placed models pruned on every input change except those undo can restore (`liveApplianceIds`);
+  golden-shape budget uses best of 3 runs (full-suite CPU contention made it flaky); PI-T2 gate-out shots taken.
+- Limit: inserted appliances are not persisted, so placed models don't survive a reload (localStorage is a cache).
+  At the default ring position a small object sits among the houses; PI-T3 fixes placement.
 
 ## Files touched (this session)
 
 `apps/web/src/features/microgrid-3d/{ui/appliance-markers.tsx,ui/village-canvas.tsx,utils/placed-models-geometry.ts,__tests__/*}`,
-`apps/web/src/features/vision-insert/ui/appliance-insert.tsx`, `docs/contracts.md`, `HANDOFF.md`.
+`apps/web/src/features/vision-insert/ui/appliance-insert.tsx`, `apps/web/src/stores/{placed-models.store.ts,__tests__/placed-models.store.test.ts}`,
+`apps/web/src/server/perception/__tests__/golden-shape.test.ts`, `docs/contracts.md`, `docs/design/stitch-map.md`, `HANDOFF.md`.
 
 ## Decisions
 

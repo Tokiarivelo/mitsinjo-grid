@@ -266,6 +266,7 @@ once (safety exception: no approval, not in `changeHistory`; no-op if that secto
 Placed 3D models (PI-T1, web visual store only, zero engine change):
 `PlacedModel { applianceId: string, recipe: ObjectRecipe, yaw?: number, scale?: number, archetype?: KitArchetype }`
 in visual store `usePlacedModelsStore` (`apps/web/src/stores/placed-models.store.ts`), persisted in localStorage (`mitsinjo:placed-models`) with try/catch.
+Pruned after each simulation input change (microtask) to `liveApplianceIds(state)` = current appliances + those in `changeHistory` (undo brings the model back). Appliances themselves are not persisted, so models do not survive a reload in practice.
 Helpers:
 `sceneScale(archetype, proportions)` → target scene scale (house ≈ 3.8, vehicle ≈ 2.4, cabinet/fridge ≈ 1.0, machine/pump ≈ 0.9).
 `footprint(recipe, scale, yaw)` → `{ radius: number, box: FootprintBox }`.

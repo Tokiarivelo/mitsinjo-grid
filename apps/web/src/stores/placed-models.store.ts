@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type { ApplianceCategory } from '@mitsinjo/engine';
 import { ObjectRecipeSchema, type ObjectRecipe } from '@/lib/object-shape';
 import { KIT_ARCHETYPES, type KitArchetype, defaultArchetype } from '@/lib/object-kit';
+import { useSimulationStore, type SimulationState } from './simulation.store';
 
 /**
  * 3D placed model contract (PI-T1, visual store only, zero engine change):
@@ -216,3 +217,30 @@ export const usePlacedModelsStore = create<PlacedModelsState>((set, get) => ({
     saveStoredModels({});
   },
 }));
+
+/**
+ * Appliance ids whose 3D model must be kept: those in the current input, plus those an undo can bring back
+ * (inputs saved in `changeHistory`), so undoing a removal also brings the model back.
+ */
+export function liveApplianceIds(s: Pick<SimulationState, 'input' | 'changeHistory'>): string[] {
+  const ids = new Set((s.input.appliances ?? []).map((a) => a.id));
+  for (const c of s.changeHistory) for (const a of c.before.input.appliances ?? []) ids.add(a.id);
+  return [...ids];
+}
+
+/**
+ * Prunes models of appliances gone from the simulation (scenario load, reset, copilot change).
+ * Deferred to a microtask: actions like `approveChange` set the input before the undo history,
+ * so pruning reads the settled state once the action is done.
+ */
+let pruneQueued = false;
+useSimulationStore.subscribe((s, prev) => {
+  if (pruneQueued || (s.input === prev.input && s.changeHistory === prev.changeHistory)) return;
+  pruneQueued = true;
+  queueMicrotask(() => {
+    pruneQueued = false;
+    usePlacedModelsStore
+      .getState()
+      .syncWithAppliances(liveApplianceIds(useSimulationStore.getState()));
+  });
+});
