@@ -391,5 +391,24 @@ describe('useSimulationStore & selectors (P4-T1)', () => {
       expect(next.dayIndex).toBe(0);
       expect(next.timeIndex).toBe(0);
     });
+
+    it('loadDraft runs the engine and starts playback so the launch is visible (regression)', () => {
+      useSimulationStore.getState().loadDraft(
+        {
+          days: [
+            { day: 1, weather: 'rainy' },
+            { day: 2, weather: 'sunny' },
+          ],
+        },
+        'autonomous'
+      );
+      const next = useSimulationStore.getState();
+      expect(next.status).toBe('complete');
+      expect(next.workflow).toHaveLength(2);
+      expect(Object.keys(next.results).length).toBeGreaterThan(0);
+      expect(next.isPlaying).toBe(true);
+      expect(next.playbackStatus).toBe('playing');
+      expect(next.dispatchMode).toBe('autonomous');
+    });
   });
 });
