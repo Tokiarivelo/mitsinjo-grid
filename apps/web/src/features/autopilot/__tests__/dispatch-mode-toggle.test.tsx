@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DispatchModeToggle } from '../ui/dispatch-mode-toggle';
 import { useSimulationStore } from '@/stores';
@@ -38,6 +38,33 @@ describe('DispatchModeToggle (PA-T4a)', () => {
     expect(takeBackBtn.className).toMatch(/min-h-\[44px\]/);
 
     // Clicking takeBackControl restores manual mode
+    fireEvent.click(takeBackBtn);
+    expect(useSimulationStore.getState().dispatchMode).toBe('manual');
+  });
+
+  it('card variant renders 1-click launch button in manual mode and starts autonomous playback', () => {
+    useSimulationStore.setState({ dispatchMode: 'manual', isPlaying: false });
+    render(<DispatchModeToggle variant="card" />);
+
+    const launchBtn = screen.getByRole('button', { name: /launch ai simulation/i });
+    expect(launchBtn).toBeInTheDocument();
+
+    fireEvent.click(launchBtn);
+    expect(useSimulationStore.getState().dispatchMode).toBe('autonomous');
+    expect(useSimulationStore.getState().isPlaying).toBe(true);
+  });
+
+  it('card variant in autonomous mode shows status, view log action, and takeBackControl', () => {
+    useSimulationStore.setState({ dispatchMode: 'autonomous', isPlaying: true });
+    const onOpenLog = vi.fn();
+    render(<DispatchModeToggle variant="card" onOpenLog={onOpenLog} />);
+
+    expect(screen.getByText(/AI IN CONTROL/i)).toBeInTheDocument();
+    const logBtn = screen.getByRole('button', { name: /follow decisions live in event log/i });
+    fireEvent.click(logBtn);
+    expect(onOpenLog).toHaveBeenCalled();
+
+    const takeBackBtn = screen.getByRole('button', { name: /take back control/i });
     fireEvent.click(takeBackBtn);
     expect(useSimulationStore.getState().dispatchMode).toBe('manual');
   });

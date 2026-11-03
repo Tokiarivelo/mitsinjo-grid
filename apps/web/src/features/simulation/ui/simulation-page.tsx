@@ -371,7 +371,7 @@ export function SimulationPage() {
 
               {/* Rule-based autopilot: one suggestion per simulated hour, off by default (M10-T1) */}
               <div className="px-4 py-3 border-b border-border">
-                <AutopilotPanel />
+                <AutopilotPanel onOpenLog={() => setActiveTab('log')} />
               </div>
 
               {/* Village constitution: plain-word rules the autopilot is verified against (M10-T2) */}

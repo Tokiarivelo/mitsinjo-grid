@@ -68,8 +68,10 @@ export function AppShell({
   const sidebar = useSidebarCollapsed();
   const [copilotOpen, setCopilotOpen] = useState(false);
 
-  // On the /copilot route, the full page is the copilot workspace, so we hide the slide-out panel
+  // On /copilot and /simulation routes, the copilot workspace is in-page/deck, so we hide the header slide-out panel
   const isCopilotRoute = pathname === '/copilot';
+  const isSimulationRoute = pathname === '/simulation';
+  const showHeaderCopilot = !isCopilotRoute && !isSimulationRoute;
 
   const routeKey = pathname?.replace(/^\//, '') || 'overview';
 
@@ -109,8 +111,8 @@ export function AppShell({
           activeScenarioId={resolvedActiveScenarioId}
           onScenarioChange={resolvedOnScenarioChange}
           onReset={resolvedOnReset}
-          copilotOpen={copilotOpen && !isCopilotRoute}
-          onCopilotToggle={!isCopilotRoute ? () => setCopilotOpen((prev) => !prev) : undefined}
+          copilotOpen={copilotOpen && showHeaderCopilot}
+          onCopilotToggle={showHeaderCopilot ? () => setCopilotOpen((prev) => !prev) : undefined}
           onMenuToggle={() => setSidebarOpen(true)}
         />
 
@@ -127,8 +129,8 @@ export function AppShell({
             {children}
           </main>
 
-          {/* Right Copilot Panel (when not on /copilot page) */}
-          {!isCopilotRoute && (
+          {/* Right Copilot Panel (when not on /copilot or /simulation page) */}
+          {showHeaderCopilot && (
             <CopilotPanel open={copilotOpen} onClose={() => setCopilotOpen(false)} />
           )}
         </div>

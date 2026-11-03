@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { Bot, RotateCcw, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Bot, Play, RotateCcw, SlidersHorizontal, Sparkles } from 'lucide-react';
 import type { DispatchMode } from '@mitsinjo/engine';
 import { Button } from '@/components/ui/button';
 import { useTranslations } from '@/lib/i18n';
@@ -14,6 +14,7 @@ export interface DispatchModeToggleProps {
   variant?: DispatchModeToggleVariant;
   collapsed?: boolean;
   className?: string;
+  onOpenLog?: () => void;
 }
 
 const MODES = [
@@ -203,11 +204,14 @@ export function DispatchModeToggle({
   variant = 'header',
   collapsed = false,
   className,
+  onOpenLog,
 }: DispatchModeToggleProps) {
   const t = useTranslations('features.dispatch');
   const dispatchMode = useSimulationStore((s) => s.dispatchMode);
   const setDispatchMode = useSimulationStore((s) => s.setDispatchMode);
   const takeBackControl = useSimulationStore((s) => s.takeBackControl);
+  const isPlaying = useSimulationStore((s) => s.isPlaying);
+  const dispatchLog = useSimulationStore((s) => s.dispatchLog);
   const groupId = useId();
   const isAutonomous = dispatchMode === 'autonomous';
 
@@ -300,11 +304,36 @@ export function DispatchModeToggle({
   }
 
   // 4. CARD (deck)
+  const aiActionsCount = dispatchLog.filter(
+    (e) => e.mode === 'autonomous' && Boolean(e.action)
+  ).length;
+
+  const handleLaunchAi = () => {
+    setDispatchMode('autonomous');
+    const s = useSimulationStore.getState();
+    if (!s.isPlaying) {
+      if (s.status === 'ready' || s.status === 'modified') {
+        s.run();
+      }
+      s.togglePlay();
+    }
+  };
+
+  const handleResumePlayback = () => {
+    const s = useSimulationStore.getState();
+    if (!s.isPlaying) {
+      if (s.status === 'ready' || s.status === 'modified') {
+        s.run();
+      }
+      s.togglePlay();
+    }
+  };
+
   const labelId = `dispatch-label-${groupId}`;
   return (
     <div
       className={cn(
-        'flex flex-col gap-2 p-3 rounded-card border border-border/80 bg-surface/60',
+        'flex flex-col gap-2.5 p-3 rounded-card border border-border/80 bg-surface/60',
         className
       )}
     >
@@ -318,8 +347,73 @@ export function DispatchModeToggle({
         </span>
         {isAutonomous && <AiInControlBadge className="inline-flex px-2 py-0.5 text-[10px]" />}
       </div>
-      {isAutonomous && <TakeBackButton className="w-full justify-center text-sm" />}
+
       <ModeRadioGroup layout="stacked" labelledBy={labelId} />
+
+      {/* Autonomous Active Card or 1-Click Launch Button */}
+      {isAutonomous ? (
+        <div className="flex flex-col gap-2 pt-0.5">
+          <div className="flex flex-col gap-1.5 p-2.5 rounded-control bg-ai-violet/10 border border-ai-violet/30 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 font-semibold text-ai-violet text-[11px]">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ai-violet opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-ai-violet" />
+                </span>
+                {t('modeAutonomous')}
+              </span>
+              {aiActionsCount > 0 && (
+                <span className="text-[10px] font-mono text-text-secondary">
+                  {t('decisionsCount', { count: aiActionsCount })}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-text-secondary leading-relaxed">
+              {t('activeAutonomousHint')}
+            </p>
+            {onOpenLog && (
+              <button
+                type="button"
+                onClick={onOpenLog}
+                className="text-left text-[11px] font-medium text-energy-cyan hover:underline cursor-pointer pt-0.5"
+              >
+                {t('viewLogDecisions')}
+              </button>
+            )}
+          </div>
+
+          {!isPlaying && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleResumePlayback}
+              icon={<Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />}
+              className="w-full min-h-[44px] bg-ai-violet text-surface hover:bg-ai-violet/90 font-semibold text-xs cursor-pointer shadow-xs"
+            >
+              {t('resumeAutonomous')}
+            </Button>
+          )}
+
+          <TakeBackButton className="w-full justify-center text-sm" />
+        </div>
+      ) : (
+        <div className="pt-0.5">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleLaunchAi}
+            icon={
+              <Sparkles
+                className="h-4 w-4 text-ai-violet motion-safe:animate-pulse"
+                aria-hidden="true"
+              />
+            }
+            className="w-full min-h-[44px] bg-ai-violet/15 hover:bg-ai-violet/25 text-ai-violet border border-ai-violet/40 font-semibold text-xs cursor-pointer transition-colors shadow-xs"
+          >
+            {t('launchAutonomous')}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

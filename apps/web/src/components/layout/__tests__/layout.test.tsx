@@ -8,8 +8,9 @@ import { Sidebar } from '../sidebar';
 import { I18nProvider } from '@/lib/i18n';
 import { ThemeProvider } from '@/lib/theme';
 
+let mockPathname = '/overview';
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/overview',
+  usePathname: () => mockPathname,
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
@@ -74,5 +75,26 @@ describe('Layout Components (Mobile & Theme Responsive)', () => {
 
     const themeRadios = screen.getAllByRole('radiogroup');
     expect(themeRadios.length).toBeGreaterThanOrEqual(2); // Theme radiogroup and Language radiogroup
+  });
+
+  it('hides Header Copilot toggle on /simulation and /copilot routes, shows on /overview', () => {
+    mockPathname = '/overview';
+    const { unmount } = render(
+      <AppShell title="Overview">
+        <div>Content</div>
+      </AppShell>,
+      { wrapper }
+    );
+    expect(screen.getByRole('button', { name: /toggle ai copilot/i })).toBeInTheDocument();
+    unmount();
+
+    mockPathname = '/simulation';
+    render(
+      <AppShell title="Simulation">
+        <div>Content</div>
+      </AppShell>,
+      { wrapper }
+    );
+    expect(screen.queryByRole('button', { name: /toggle ai copilot/i })).toBeNull();
   });
 });
