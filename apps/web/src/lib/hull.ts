@@ -41,6 +41,42 @@ export function ringRange(ring: Ring, k: 0 | 1): [number, number] {
   return [lo, hi];
 }
 
+/**
+ * The part of a ring inside the box [a0, a1] × [b0, b1] (Sutherland–Hodgman: the box is convex,
+ * the ring may not be). Empty when they do not overlap. Pure.
+ */
+export function clipRing(
+  ring: Ring,
+  a0: number,
+  a1: number,
+  b0: number,
+  b1: number
+): Array<[number, number]> {
+  const edges: Array<{ k: 0 | 1; v: number; keep: 1 | -1 }> = [
+    { k: 0, v: a0, keep: 1 },
+    { k: 0, v: a1, keep: -1 },
+    { k: 1, v: b0, keep: 1 },
+    { k: 1, v: b1, keep: -1 },
+  ];
+  let out: Array<[number, number]> = ring.map(([a, b]) => [a, b]);
+  for (const { k, v, keep } of edges) {
+    const inside = (p: readonly [number, number]) => (p[k] - v) * keep >= 0;
+    const next: Array<[number, number]> = [];
+    for (let i = 0; i < out.length; i++) {
+      const p = out[i]!;
+      const q = out[(i + 1) % out.length]!;
+      if (inside(p)) next.push(p);
+      if (inside(p) !== inside(q)) {
+        const t = (v - p[k]) / (q[k] - p[k]);
+        next.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
+      }
+    }
+    out = next;
+    if (!out.length) break;
+  }
+  return out;
+}
+
 /** Slices along z and levels per slice side of the 3D view's hull mesh (≈ 1.6 k triangles). */
 export const HULL_SLICES = 28;
 export const HULL_LEVELS = 14;

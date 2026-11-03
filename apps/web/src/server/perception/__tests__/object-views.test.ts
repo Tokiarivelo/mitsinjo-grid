@@ -9,7 +9,7 @@ vi.mock('../facade-specialist', () => ({
   museImageReady: () => true,
 }));
 
-import { hullLoops, spanAt } from '@/lib/hull';
+import { clipRing, hullLoops, spanAt } from '@/lib/hull';
 import { ObjectRecipeSchema, recipeIssue } from '@/lib/object-shape';
 import { kitToRecipe } from '@/lib/object-kit';
 import sharp from 'sharp';
@@ -104,6 +104,74 @@ describe('viewsRecipe (PV-H)', () => {
     expect(
       both.parts.filter((p) => p.kind === 'wheel').every((w) => w.at[2] !== wheels[0]!.at[2])
     ).toBe(true);
+  });
+
+  it('a part box mostly off the object is dropped, the rest cut to the body (before: a topiary plinth read as bumper floated under the car, live 2026-11-03)', () => {
+    const plinth = {
+      ...front,
+      parts: [
+        ...front.parts.filter((p) => p.concept !== 'bumper'),
+        { concept: 'bumper', box: box(0.15, 0.87, 1, 0.31) },
+      ],
+    };
+    expect(viewsRecipe({ front: plinth, side }, KIT).parts.some((p) => p.kind === 'bumper')).toBe(
+      false
+    );
+    // A bumper a little wider than the body is kept, as wide as the body at its height.
+    const wide = {
+      ...front,
+      parts: [
+        ...front.parts.filter((p) => p.concept !== 'bumper'),
+        { concept: 'bumper', box: box(-0.1, 0.72, 1.2, 0.1) },
+      ],
+    };
+    const r = viewsRecipe({ front: wide, side }, KIT);
+    const body = r.parts[0]!;
+    const bump = r.parts.find((p) => p.kind === 'bumper')!;
+    expect(bump.at[0] - bump.size[0] / 2).toBeGreaterThanOrEqual(
+      body.at[0] - body.size[0] / 2 - 1e-6
+    );
+    expect(bump.at[0] + bump.size[0] / 2).toBeLessThanOrEqual(body.at[0] + body.size[0] / 2 + 1e-6);
+  });
+
+  it('skin patches stay on the body outline (before: side glass stuck out past the roof, live 2026-11-03)', () => {
+    const tall = {
+      ...side,
+      parts: [
+        ...side.parts.filter((p) => p.concept !== 'window'),
+        { concept: 'window', box: box(0.25, -0.1, 0.6, 0.5) },
+      ],
+    };
+    const r = viewsRecipe({ front, side: tall }, KIT);
+    const body = r.parts[0]!;
+    const skins = r.parts.filter((p) => p.shape === 'hull' && !p.front);
+    expect(skins.filter((p) => p.kind === 'window').length).toBeGreaterThanOrEqual(2);
+    const on = (
+      ring: ReadonlyArray<readonly [number, number]>,
+      [a, y]: readonly [number, number]
+    ) => {
+      const s = spanAt(ring, y);
+      return !!s && a >= s[0] - 1e-6 && a <= s[1] + 1e-6;
+    };
+    for (const p of skins) {
+      // The patch's cut side (front outline or side profile) lies inside the body's.
+      const frontCut = p.points!.every((q) => on(body.points!, q));
+      const sideCut = p.section!.every((q) => on(body.section!, q));
+      expect(frontCut || sideCut).toBe(true);
+    }
+  });
+
+  it('cuts a ring to a box', () => {
+    const sq: Pt[] = [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+    ];
+    const c = clipRing(sq, 0.5, 2, -1, 0.5);
+    expect(Math.min(...c.map((p) => p[0]))).toBeCloseTo(0.5);
+    expect(Math.max(...c.map((p) => p[1]))).toBeCloseTo(0.5);
+    expect(clipRing(sq, 2, 3, 0, 1)).toEqual([]);
   });
 
   it('a side that is a redrawn front is no side', () => {
