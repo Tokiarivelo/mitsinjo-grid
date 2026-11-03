@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { entrySavedKwh } from '@/lib/dispatch-log';
 import { z } from 'zod';
 import {
   type SimulationInput,
@@ -8,6 +9,7 @@ import {
   type InputPatch,
   type Appliance,
   type SectorId,
+  type DispatchLogEntry,
   InputPatchSchema,
   SECTOR_IDS,
   SectorIdSchema,
@@ -217,6 +219,15 @@ export const GetIncidentsSchema = z.object({
   hour: z.number().int().min(0).max(23).optional(),
   // Omitted → the user's active strategy (not always proportional).
   strategy: z.enum(['proportional', 'essential_first', 'balanced']).optional(),
+});
+
+export const GetDispatchLogSchema = z.object({
+  limit: z.number().int().min(1).max(100).default(20),
+  day: z.number().int().min(0).max(6).optional(),
+  hour: z.number().int().min(0).max(23).optional(),
+  sector: SectorIdSchema.optional(),
+  severity: z.enum(['critical', 'warning', 'info']).optional(),
+  origin: z.enum(['ai', 'operator']).optional(),
 });
 
 /** Playback commands the chat may run directly: they move the time cursor only, never the inputs. */
@@ -647,6 +658,50 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'get_dispatch_log',
+    description:
+      'Retrieve the autonomous dispatch event log (incidents detected, autonomous actions taken, before/after engine figures). Use this to explain autonomous decisions or answer questions like "Why did the AI isolate the market at 14h?".',
+    parameters: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 100,
+          description: 'Maximum number of entries to return (default: 20).',
+        },
+        day: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 6,
+          description: 'Filter entries by simulated day.',
+        },
+        hour: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 23,
+          description: 'Filter entries by simulated hour.',
+        },
+        sector: {
+          type: 'string',
+          enum: [...SECTOR_IDS],
+          description: 'Filter entries affecting this sector.',
+        },
+        severity: {
+          type: 'string',
+          enum: ['critical', 'warning', 'info'],
+          description: 'Filter incidents by severity level.',
+        },
+        origin: {
+          type: 'string',
+          enum: ['ai', 'operator'],
+          description: 'Filter by decision origin: ai (autonomous) or operator (chat proposal).',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ];
 
 export interface ToolContext {
@@ -654,6 +709,9 @@ export interface ToolContext {
   activeStrategy?: StrategyId;
   /** Hour shown in the app (default reference for get_incidents). */
   hour?: number;
+  day?: number;
+  /** Dispatch event log entries (PA-T5b). */
+  dispatchLog?: readonly DispatchLogEntry[];
 }
 
 export interface ToolResult {
@@ -1172,6 +1230,97 @@ export function executeTool(toolName: string, rawArgs: unknown, ctx: ToolContext
         };
       }
       return proposeFromPatch(toolName, ctx, patchCheck.data, undefined, reason);
+    }
+
+    case 'get_dispatch_log': {
+      const parsed = GetDispatchLogSchema.safeParse(rawArgs);
+      if (!parsed.success) {
+        return {
+          toolName,
+          error: invalidArgs('get_dispatch_log', parsed.error),
+        };
+      }
+      const { limit, day, hour, sector, severity, origin } = parsed.data;
+      const entries = ctx.dispatchLog ?? [];
+
+      const filtered = entries.filter((e) => {
+        if (day !== undefined && e.day !== day) return false;
+        if (hour !== undefined && e.hour !== hour) return false;
+        if (sector !== undefined && e.incident?.sector !== sector && e.action?.sector !== sector) {
+          return false;
+        }
+        if (severity !== undefined && e.incident?.severity !== severity) return false;
+        if (origin !== undefined && e.origin !== origin) return false;
+        return true;
+      });
+
+      const sliced = filtered.slice(-limit);
+
+      let criticalCount = 0;
+      let warningCount = 0;
+      let infoCount = 0;
+      let actionsCount = 0;
+      let totalSavedKwh = 0;
+
+      const formattedEntries = sliced.map((e) => {
+        if (e.incident) {
+          if (e.incident.severity === 'critical') criticalCount++;
+          else if (e.incident.severity === 'warning') warningCount++;
+          else if (e.incident.severity === 'info') infoCount++;
+        }
+        if (e.action) {
+          actionsCount++;
+        }
+        const saved = entrySavedKwh(e);
+        totalSavedKwh += saved;
+
+        return {
+          id: e.id,
+          day: e.day,
+          hour: e.hour,
+          origin: e.origin,
+          incident: e.incident
+            ? { kind: e.incident.kind, severity: e.incident.severity, sector: e.incident.sector }
+            : undefined,
+          action: e.action
+            ? { kind: e.action.kind, sector: e.action.sector, answers: e.action.answers }
+            : undefined,
+          before: e.before
+            ? {
+                unservedKwh: round2(e.before.unservedKwh),
+                criticalUnservedKwh: round2(e.before.criticalUnservedKwh),
+                socEndPct: round2(e.before.socEndPct),
+              }
+            : undefined,
+          after: e.after
+            ? {
+                unservedKwh: round2(e.after.unservedKwh),
+                criticalUnservedKwh: round2(e.after.criticalUnservedKwh),
+                socEndPct: round2(e.after.socEndPct),
+              }
+            : undefined,
+          savedKwh: round2(saved),
+          narration: e.narration?.text,
+        };
+      });
+
+      return {
+        toolName,
+        data: {
+          totalEntries: filtered.length,
+          criticalCount,
+          warningCount,
+          infoCount,
+          actionsCount,
+          totalSavedKwh: round2(totalSavedKwh),
+          entries: formattedEntries,
+        },
+        evidence: {
+          totalEntries: filtered.length,
+          actionsCount,
+          totalSavedKwh: round2(totalSavedKwh),
+        },
+      };
     }
 
     default:

@@ -44,7 +44,8 @@ import {
   generateSummaryMarkdown,
   type Translate,
 } from '@/lib/export';
-import { useTranslations } from '@/lib/i18n';
+import { useAppLocale, useTranslations } from '@/lib/i18n';
+import { fillCopilotPrompt } from '@/lib/copilot-fill';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
@@ -90,6 +91,7 @@ export function SimulationPage() {
   const tOverview = useTranslations('overview');
   const tSectors = useTranslations('sectors');
   const tActions = useTranslations('actions');
+  const tDispatch = useTranslations('features.dispatch');
   const tRootRaw = useTranslations();
   const tRoot: Translate = (key, values) => tRootRaw(key as never, values as never);
 
@@ -111,7 +113,8 @@ export function SimulationPage() {
   const workflowResult = useSimulationStore(selectActiveWorkflowResult);
 
   // Autonomous dispatch loop, mounted once here so it runs even when the deck is hidden (PA-T3b)
-  useAutonomousDispatch();
+  const { locale } = useAppLocale();
+  useAutonomousDispatch(locale);
 
   const patchInput = useSimulationStore((s) => s.patchInput);
   const resetScenario = useSimulationStore((s) => s.reset);
@@ -633,7 +636,29 @@ export function SimulationPage() {
                   hidden={activeTab !== 'log'}
                   className={cn('space-y-4', activeTab !== 'log' && 'hidden')}
                 >
-                  <DispatchLogPanel />
+                  <DispatchLogPanel
+                    onAskWhy={(entry) => {
+                      setActiveTab('copilot');
+                      const sec = entry.incident?.sector ?? entry.action?.sector;
+                      const targetSector = sec ? tSectors(sec) : '';
+                      const actionDesc = entry.action
+                        ? tDispatch(`actions.${entry.action.kind}` as never)
+                        : '';
+                      fillCopilotPrompt(
+                        targetSector
+                          ? tDispatch('askWhyPromptSector', {
+                              action: actionDesc,
+                              sector: targetSector,
+                              hour: entry.hour,
+                            })
+                          : tDispatch('askWhyPrompt', { action: actionDesc, hour: entry.hour })
+                      );
+                    }}
+                    onAskCopilot={(prompt) => {
+                      setActiveTab('copilot');
+                      fillCopilotPrompt(prompt);
+                    }}
+                  />
                 </div>
               </div>
             </aside>

@@ -3,10 +3,12 @@
 import { useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  ClipboardCheck,
   FileCode,
   FileSpreadsheet,
   Filter,
   Flame,
+  HelpCircle,
   Info,
   ScrollText,
   ShieldAlert,
@@ -19,15 +21,24 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { SectorIcon } from '@/components/ui/sector-icon';
 import { useTranslations } from '@/lib/i18n';
 import { fmtHour, fmtKwh, fmtPct } from '@/lib/format';
-import { dispatchLogToCsv, entrySavedKwh, entrySector } from '@/lib/dispatch-log';
+import {
+  computeShiftReport,
+  dispatchLogToCsv,
+  entrySavedKwh,
+  entrySector,
+} from '@/lib/dispatch-log';
 import { downloadJsonFile, downloadTextFile } from '@/lib/export';
+import { fillCopilotPrompt } from '@/lib/copilot-fill';
 import { cn } from '@/lib/utils';
 import { useSimulationStore } from '@/stores';
+import { ShiftReportDialog } from './shift-report-dialog';
 
 export interface DispatchLogPanelProps {
   compact?: boolean;
   className?: string;
   onSelectEntry?: (entry: DispatchLogEntry) => void;
+  onAskWhy?: (entry: DispatchLogEntry) => void;
+  onAskCopilot?: (prompt: string) => void;
 }
 
 type SeverityFilter = 'all' | IncidentSeverity;
@@ -62,6 +73,8 @@ export function DispatchLogPanel({
   compact = false,
   className,
   onSelectEntry,
+  onAskWhy,
+  onAskCopilot,
 }: DispatchLogPanelProps) {
   const t = useTranslations('features.dispatch');
   const tCommon = useTranslations('common');
@@ -71,10 +84,17 @@ export function DispatchLogPanel({
   const setTimeIndex = useSimulationStore((s) => s.setTimeIndex);
   const setDayIndex = useSimulationStore((s) => s.setDayIndex);
   const selectSector = useSimulationStore((s) => s.selectSector);
+  const dayIndex = useSimulationStore((s) => s.dayIndex);
 
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [sectorFilter, setSectorFilter] = useState<string>('all');
+  const [showShiftReport, setShowShiftReport] = useState(false);
+
+  const shiftReport = useMemo(
+    () => computeShiftReport(dispatchLog, dayIndex),
+    [dispatchLog, dayIndex]
+  );
 
   const filteredEntries = useMemo(() => {
     return dispatchLog.filter((entry) => {
@@ -103,6 +123,11 @@ export function DispatchLogPanel({
       selectSector(targetSector);
     }
     onSelectEntry?.(entry);
+  };
+
+  const handleAskWhy = (entry: DispatchLogEntry) => {
+    handleEntryClick(entry);
+    onAskWhy?.(entry);
   };
 
   const fileStem = () => `mitsinjo-dispatch-log-${Date.now()}`;
@@ -156,6 +181,19 @@ export function DispatchLogPanel({
             className="text-[11px] h-7 px-2 font-mono"
           >
             {t('exportCsv')}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowShiftReport(true)}
+            disabled={dispatchLog.length === 0}
+            aria-label={t('shiftReport')}
+            title={t('shiftReport')}
+            icon={<ClipboardCheck className="h-3 w-3 text-energy-cyan" aria-hidden="true" />}
+            className="text-[11px] h-7 px-2 font-mono border-energy-cyan/40 hover:bg-energy-cyan/10"
+            data-testid="shift-report-button"
+          >
+            {t('shiftReport')}
           </Button>
         </div>
       </div>
@@ -341,12 +379,28 @@ export function DispatchLogPanel({
 
                 {/* Visual Distinction: AI Text Callout */}
                 {(entry.narration || isAction) && (
-                  <div className="rounded-control-sm border border-ai-violet/30 bg-ai-violet/5 p-2 flex flex-col gap-1">
-                    <div className="flex items-center gap-1.5">
-                      <Sparkles className="h-3 w-3 text-ai-violet" aria-hidden="true" />
-                      <span className="text-[9px] font-mono uppercase tracking-wider font-semibold text-ai-violet">
-                        {tCommon('aiGenerated')}
-                      </span>
+                  <div className="rounded-control-sm border border-ai-violet/30 bg-ai-violet/5 p-2 flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles className="h-3 w-3 text-ai-violet" aria-hidden="true" />
+                        <span className="text-[9px] font-mono uppercase tracking-wider font-semibold text-ai-violet">
+                          {tCommon('aiGenerated')}
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 min-h-[36px] sm:min-h-[24px] px-2 text-[10px] font-medium text-ai-violet hover:bg-ai-violet/15 hover:text-ai-violet rounded border border-ai-violet/30 flex items-center gap-1 cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAskWhy(entry);
+                        }}
+                        data-testid={`why-button-${entry.id}`}
+                      >
+                        <HelpCircle className="h-3 w-3" aria-hidden="true" />
+                        <span>{t('askWhy')}</span>
+                      </Button>
                     </div>
                     <p className="text-xs text-text-primary italic leading-relaxed">
                       {entry.narration?.text ??
@@ -421,6 +475,13 @@ export function DispatchLogPanel({
           })
         )}
       </div>
+
+      <ShiftReportDialog
+        isOpen={showShiftReport}
+        onClose={() => setShowShiftReport(false)}
+        report={shiftReport}
+        onAskCopilot={onAskCopilot ?? fillCopilotPrompt}
+      />
     </div>
   );
 }

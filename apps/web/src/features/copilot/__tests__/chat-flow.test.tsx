@@ -243,6 +243,31 @@ describe('Copilot chat flow (decisions, fallback note)', () => {
     expect(body).toContain('"type":"fire"');
   });
 
+  it('sends the day and the dispatch log so get_dispatch_log can answer "Why?" (PA-T5b)', async () => {
+    const fetchMock = mockApi([['delta', { text: 'Log answer.' }]]);
+    const entry = {
+      id: 'act-d0-h14',
+      day: 0,
+      hour: 14,
+      mode: 'autonomous' as const,
+      origin: 'ai' as const,
+      action: { kind: 'alert_only' as const },
+      hash: 'h1',
+    };
+    useSimulationStore.setState({ dispatchLog: [entry] });
+    render(<CopilotWorkspace mode="panel" />);
+    await ask('Why did the AI act?');
+    await screen.findByText('Log answer.');
+
+    const call = fetchMock.mock.calls.find(([url]) => url === '/api/copilot');
+    const body = JSON.parse(String(call?.[1]?.body)) as {
+      day?: number;
+      dispatchLog?: { id: string }[];
+    };
+    expect(body.day).toBe(0);
+    expect(body.dispatchLog?.map((e) => e.id)).toEqual(['act-d0-h14']);
+  });
+
   it('Retry asks the same question again without the unsatisfying answer', async () => {
     const fetchMock = mockApi([['delta', { text: 'First answer.' }]]);
     render(<CopilotWorkspace mode="panel" />);

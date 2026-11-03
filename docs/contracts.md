@@ -654,6 +654,14 @@ usual Approve card: constitution violation (incl. lifeline floors), any `clearFi
 The line has `origin: 'operator'`, full-day `before`/`after` (`resultSnapshot`) and the proposal reason as
 `narration` (`source: 'llm'`, ≤ 400 chars); the UI labels operator origin via i18n.
 
+Autonomous narration & shift reporting (`lib/dispatch-log.ts`, PA-T5):
+
+- `POST /api/dispatch/narrate`: receives `{ entry: DispatchLogEntry, locale: 'fr'|'en'|'mg' }`, returns `{ narration: Narration, cached: boolean }`. Cached by `entry.hash:locale` in memory and Neon. Grounded with strict factual validation (`isNarrationFactual`: zero unproven numbers) + deterministic i18n template fallback (`formatTemplateNarration`). Spend-capped. `updateDispatchLogNarration(id, narration)` re-seals the entry hash (narration is hashed).
+- `POST /api/copilot` body also takes `day?: 0–6` and `dispatchLog?: DispatchLogEntry[]` (≤ 200) for `get_dispatch_log`.
+- `COPILOT_FILL_EVENT` (`@/lib/copilot-fill`): window event `{ prompt, autoSend? }` that fills the copilot composer; send it with `fillCopilotPrompt()`.
+- Copilot tool `get_dispatch_log`: inspects `{ limit?, day?, hour?, sector?, severity?, origin? }`, returns filtered entries, summary counts, and avoided deficit metrics (`totalSavedKwh`).
+- Shift summary report (`computeShiftReport(entries, day)`): aggregates incidents by severity, autonomous actions by kind, total and critical energy saved (`criticalSavedKwh`), final battery SoC, and notable interventions. Rendered via `ShiftReportDialog`.
+
 ## Meeting (`lib/meeting-priorities.ts`, `POST /api/meetings`, M10-T4)
 
 Village meeting recording → diarized turns → social priorities → proposed patch. The route

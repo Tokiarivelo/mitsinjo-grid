@@ -9,6 +9,7 @@ import {
   type DispatchLogEntry,
 } from '@mitsinjo/engine';
 import { sealLogEntry } from '@/lib/dispatch-log';
+import type { Locale } from '@/lib/i18n';
 import { useSimulationStore } from '@/stores';
 
 /**
@@ -16,7 +17,7 @@ import { useSimulationStore } from '@/stores';
  * decision policy, applies the action alone and logs it with engine figures before/after.
  * Mount it **once** per page (it writes to the store; two mounts would apply every action twice).
  */
-export function useAutonomousDispatch(): void {
+export function useAutonomousDispatch(locale: Locale = 'en'): void {
   const dispatchMode = useSimulationStore((s) => s.dispatchMode);
   const timeIndex = useSimulationStore((s) => s.timeIndex);
   const dayIndex = useSimulationStore((s) => s.dayIndex);
@@ -44,6 +45,7 @@ export function useAutonomousDispatch(): void {
       mode: 'autonomous' as const,
       origin: 'ai' as const,
     };
+    // No narration baked in: the log panel shows its localized fallback until the LLM one arrives.
     const newEntries: DispatchLogEntry[] = incidents.map((incident, i) =>
       sealLogEntry({
         ...base,
@@ -81,7 +83,25 @@ export function useAutonomousDispatch(): void {
       );
     }
     state.appendDispatchLog(newEntries);
-  }, [dispatchMode, timeIndex, dayIndex]);
+
+    // Asynchronously fetch LLM narration upgrade (PA-T5a)
+    if (typeof fetch === 'function') {
+      for (const entry of newEntries) {
+        fetch('/api/dispatch/narrate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entry, locale }),
+        })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => {
+            if (data?.narration?.source === 'llm') {
+              useSimulationStore.getState().updateDispatchLogNarration(entry.id, data.narration);
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, [dispatchMode, timeIndex, dayIndex, locale]);
   // Back to manual: the next autonomous run starts fresh on the current hour.
   useEffect(() => {
     if (dispatchMode !== 'autonomous') lastProcessed.current = null;

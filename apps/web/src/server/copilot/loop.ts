@@ -1,6 +1,11 @@
 import 'server-only';
 
-import { simulate, type SimulationInput, type StrategyId } from '@mitsinjo/engine';
+import {
+  simulate,
+  type SimulationInput,
+  type StrategyId,
+  type DispatchLogEntry,
+} from '@mitsinjo/engine';
 import { type LlmProvider, type ChatMessage, type LlmImageResult } from './provider';
 import { MockLlmProvider } from './providers/mock';
 import { GlimmerLlmProvider, isGlimmerConfigured } from './providers/glimmer';
@@ -67,6 +72,10 @@ export interface CopilotLoopOptions {
   summary?: string;
   /** How many payload messages come before `messages` (covered by `summary` or dropped). */
   summarizedCount?: number;
+  /** Simulated day index. */
+  day?: number;
+  /** Autonomous dispatch event log (PA-T5b). */
+  dispatchLog?: readonly DispatchLogEntry[];
 }
 
 const SPEND_CAP_MESSAGE = 'AI budget cap reached — showing deterministic explanation.';
@@ -255,6 +264,8 @@ export async function runCopilotLoop(options: CopilotLoopOptions): Promise<void>
       input,
       activeStrategy: strategy,
       hour,
+      day: options.day,
+      dispatchLog: options.dispatchLog,
     };
 
     // Auto-compaction: history over the token limit → fold older turns into the summary.

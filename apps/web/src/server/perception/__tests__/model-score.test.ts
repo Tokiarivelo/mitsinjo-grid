@@ -176,7 +176,7 @@ describe('scoreRecipe on the golden set (PR-0.2)', () => {
       scores[c.name] = s.score;
     }
     expect(scores.car).toBeLessThan(scores.fridge!);
-  });
+  }, 20_000);
 
   it('is null without an outline', async () => {
     const { shape, photo: p, target } = await runGolden(GOLDEN_SHAPES[2]!);

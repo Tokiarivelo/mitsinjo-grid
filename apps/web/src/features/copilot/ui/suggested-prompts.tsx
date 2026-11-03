@@ -2,8 +2,15 @@
 
 import { useMemo } from 'react';
 import { Sparkles, ArrowUpRight, Flame } from 'lucide-react';
-import type { SectorId, SimulationInput, SimulationResult, StrategyId } from '@mitsinjo/engine';
+import type {
+  SectorId,
+  SimulationInput,
+  SimulationResult,
+  StrategyId,
+  DispatchLogEntry,
+} from '@mitsinjo/engine';
 import { useTranslations } from '@/lib/i18n';
+import { useSimulationStore } from '@/stores';
 import { cn } from '@/lib/utils';
 import { suggestPrompts } from '../utils/suggest-prompts';
 import { RunSimulationCta } from './run-simulation-cta';
@@ -19,6 +26,8 @@ export interface SuggestedPromptsProps {
   input?: Pick<SimulationInput, 'events'>;
   /** Sectors on fire at the shown hour: their questions come first (M2). */
   fires?: readonly SectorId[];
+  /** Dispatch event log entries (PA-T5b). */
+  dispatchLog?: readonly DispatchLogEntry[];
   /** `compact`: one horizontally scrollable line (under a running chat). */
   variant?: 'full' | 'compact';
 }
@@ -32,15 +41,18 @@ export function SuggestedPrompts({
   scenarioId,
   input,
   fires,
+  dispatchLog: explicitDispatchLog,
   variant = 'full',
 }: SuggestedPromptsProps) {
+  const storeDispatchLog = useSimulationStore((s) => s.dispatchLog);
+  const dispatchLog = explicitDispatchLog ?? storeDispatchLog;
   const tCopilot = useTranslations('features.copilot');
   const tSectors = useTranslations('sectors');
   const tStrategies = useTranslations('strategies');
 
   const promptItems = useMemo(
-    () => suggestPrompts({ result, activeStrategy, scenarioId, input, fires }),
-    [result, activeStrategy, scenarioId, input, fires]
+    () => suggestPrompts({ result, activeStrategy, scenarioId, input, fires, dispatchLog }),
+    [result, activeStrategy, scenarioId, input, fires, dispatchLog]
   );
   const incident = promptItems.some((p) => p.tone === 'incident');
   const header = incident

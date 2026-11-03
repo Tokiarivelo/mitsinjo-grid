@@ -2,7 +2,7 @@ import 'server-only';
 
 import { type NextRequest } from 'next/server';
 import { z } from 'zod';
-import { SimulationInputSchema } from '@mitsinjo/engine';
+import { SimulationInputSchema, DispatchLogEntrySchema } from '@mitsinjo/engine';
 import { env } from '@/lib/env';
 import { runCopilotLoop } from '@/server/copilot/loop';
 import { MockLlmProvider, MOCK_MODEL_ID } from '@/server/copilot/providers/mock';
@@ -87,6 +87,9 @@ const RequestBodySchema = z.object({
   sessionId: z.string().max(64).optional(),
   /** Hour shown in the app (timeline or scale model), 0–23. */
   hour: z.number().int().min(0).max(23).optional(),
+  day: z.number().int().min(0).max(6).optional(),
+  /** Autonomous dispatch event log (PA-T5b). */
+  dispatchLog: z.array(DispatchLogEntrySchema).max(200).optional(),
   /** Retry: the last question again because the operator was not satisfied with the answer. */
   retry: z.boolean().optional(),
 });
@@ -231,6 +234,8 @@ export async function POST(req: NextRequest) {
           availableModels,
           budgetKey: parsed.data.sessionId,
           hour: parsed.data.hour,
+          day: parsed.data.day,
+          dispatchLog: parsed.data.dispatchLog,
           retry: parsed.data.retry,
           summary: parsed.data.summary,
           summarizedCount: parsed.data.summarizedCount,

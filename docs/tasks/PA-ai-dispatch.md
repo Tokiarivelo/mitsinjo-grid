@@ -132,11 +132,11 @@ autonome » attend PA-3.
 
 ### PA-5 — Narration IA et copilote · J7
 
-- [ ] **PA-T5a** Route serveur `/api/dispatch/narrate` (Muse Spark) : reçoit l'entrée du journal + evidence,
+- [x] **PA-T5a** Route serveur `/api/dispatch/narrate` (Muse Spark) : reçoit l'entrée du journal + evidence,
       renvoie 1–2 phrases ; repli gabarit i18n ; cache par hash. Évals : aucun chiffre hors evidence.
-- [ ] **PA-T5b** Outil copilote `get_dispatch_log` + bouton « Pourquoi ? » par ligne ; questions suggérées
+- [x] **PA-T5b** Outil copilote `get_dispatch_log` + bouton « Pourquoi ? » par ligne ; questions suggérées
       générées depuis le journal (suite de `suggestPrompts`).
-- [ ] **PA-T5c** Rapport de quart (fin de journée) : incidents, actions, énergie critique sauvée (contrefactuel).
+- [x] **PA-T5c** Rapport de quart (fin de journée) : incidents, actions, énergie critique sauvée (contrefactuel).
 
 ### PA-6 — Scénarios d'incident · J8
 

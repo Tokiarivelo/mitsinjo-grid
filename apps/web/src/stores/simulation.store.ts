@@ -12,6 +12,8 @@ import {
   type BridgeState,
   type DispatchMode,
   type DispatchLogEntry,
+  type Narration,
+  dispatchLogHash,
   scenarios,
   compareWorkflow,
   applyPatch,
@@ -93,6 +95,7 @@ export interface SimulationState {
   takeBackControl: () => void;
   appendDispatchLog: (entry: DispatchLogEntry | DispatchLogEntry[]) => void;
   clearDispatchLog: () => void;
+  updateDispatchLogNarration: (id: string, narration: Narration) => void;
 
   // Weather workflow actions
   addWorkflowDay: (weather?: WeatherId) => void;
@@ -441,6 +444,17 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     if (typeof fetch === 'function') {
       fetch('/api/dispatch/log', { method: 'DELETE' }).catch(() => {});
     }
+  },
+
+  updateDispatchLogNarration: (id: string, narration: Narration) => {
+    set((state) => ({
+      // Narration is part of the hashed entry: re-seal so the integrity hash stays valid.
+      dispatchLog: state.dispatchLog.map((e) => {
+        if (e.id !== id) return e;
+        const next = { ...e, narration };
+        return { ...next, hash: dispatchLogHash(next) };
+      }),
+    }));
   },
 
   play: () => {
