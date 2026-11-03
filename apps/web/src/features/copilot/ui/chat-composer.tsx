@@ -60,10 +60,10 @@ export function ChatComposer({
     <div
       {...composer.dropZone}
       className={cn(
-        'transition-colors',
+        'transition-colors shrink-0',
         terminal
           ? 'p-2 rounded-2xl border bg-canvas-sunken/40'
-          : 'p-3 rounded-xl bg-surface-elevated/60 border shadow-md',
+          : 'p-2.5 sm:p-3 rounded-xl bg-surface-elevated/60 border shadow-md',
         composer.isDraggingOver
           ? 'border-energy-cyan bg-energy-cyan/5 ring-2 ring-energy-cyan/30'
           : terminal

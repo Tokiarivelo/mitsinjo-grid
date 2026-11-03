@@ -291,7 +291,7 @@ export function SimulationPage() {
           {/* Left / Center: Massive 3D Village Viewport + Dedicated Curseur Temporel 24h Docked Below */}
           <div
             className={cn(
-              'flex flex-col gap-4 min-w-0 transition-all duration-300',
+              'flex flex-col gap-4 min-w-0 transition-all duration-300 lg:sticky lg:top-2 self-start',
               isPanelOpen ? 'lg:col-span-7 xl:col-span-8' : 'lg:col-span-12'
             )}
           >
@@ -342,7 +342,7 @@ export function SimulationPage() {
           {isPanelOpen && (
             <aside
               aria-label={tSim('deckTitle')}
-              className="lg:col-span-5 xl:col-span-4 flex flex-col rounded-card bg-surface border border-border shadow-md overflow-hidden"
+              className="lg:col-span-5 xl:col-span-4 flex flex-col rounded-card bg-surface border border-border shadow-md overflow-hidden lg:sticky lg:top-2 lg:max-h-[calc(100vh-80px)]"
             >
               {/* Panel Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-elevated/40">
@@ -375,8 +375,8 @@ export function SimulationPage() {
               </div>
 
               {/* Village constitution: plain-word rules the autopilot is verified against (M10-T2) */}
-              <div className="px-4 py-3 border-b border-border">
-                <ConstitutionCard />
+              <div className="px-4 py-2 border-b border-border">
+                <ConstitutionCard defaultOpen={false} />
               </div>
 
               {/* TAB NAVIGATION BAR */}
@@ -416,8 +416,15 @@ export function SimulationPage() {
                 })}
               </div>
 
-              {/* Scrollable Tab Panels Container */}
-              <div className="p-4 max-h-[calc(100vh-220px)] overflow-y-auto">
+              {/* Tab Panels Container: scrollable for content lists, flex column for chat */}
+              <div
+                className={cn(
+                  'flex-1 min-h-0',
+                  activeTab === 'copilot'
+                    ? 'flex flex-col p-2 sm:p-2.5 overflow-hidden h-[560px] lg:h-auto'
+                    : 'p-4 overflow-y-auto'
+                )}
+              >
                 {/* TAB 1: METRICS & CHARTS */}
                 <div
                   id="panel-metrics"
@@ -617,15 +624,20 @@ export function SimulationPage() {
                   role="tabpanel"
                   aria-labelledby="tab-copilot"
                   hidden={activeTab !== 'copilot'}
-                  className={cn('space-y-4', activeTab !== 'copilot' && 'hidden')}
+                  className={cn(
+                    'flex-1 min-h-0 flex flex-col',
+                    activeTab !== 'copilot' && 'hidden'
+                  )}
                 >
                   {/* Impact Alerts Banner if active warnings exist */}
                   {result && result.warnings.length > 0 && (
-                    <ImpactBanner warnings={result.warnings} />
+                    <div className="shrink-0 mb-2">
+                      <ImpactBanner warnings={result.warnings} />
+                    </div>
                   )}
 
                   {/* Copilot conversational workspace in panel mode */}
-                  <div className="rounded-card bg-surface-elevated/30 border border-border p-3">
+                  <div className="flex-1 min-h-0 flex flex-col rounded-card bg-surface-elevated/30 border border-border overflow-hidden">
                     <CopilotWorkspace mode="panel" />
                   </div>
                 </div>
