@@ -23,7 +23,12 @@ import {
   MAX_WORKFLOW_DAYS,
 } from '@mitsinjo/engine';
 import { type ScenarioDraft, draftToWorkflow } from '@/lib/scenario-draft';
-import { clearWorkflowFires, dayEvents, reportWorkflowFire } from '@/lib/day-events';
+import {
+  carryFiresOver,
+  clearWorkflowFires,
+  dayEvents,
+  reportWorkflowFire,
+} from '@/lib/day-events';
 
 export type SimStatus = 'ready' | 'running' | 'complete' | 'modified' | 'error';
 export type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'stopped';
@@ -606,12 +611,24 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   advancePlayback: () => {
-    const { timeIndex, dayIndex, workflow, setDayIndex } = get();
+    const { timeIndex, dayIndex, workflow, setDayIndex, input, activeStrategy } = get();
     if (timeIndex < 23) {
       set({ timeIndex: timeIndex + 1 });
       return;
     }
-    setDayIndex(dayIndex + 1 < workflow.length ? dayIndex + 1 : 0);
+    const nextDay = dayIndex + 1 < workflow.length ? dayIndex + 1 : 0;
+    // A fire burns until the sector is restored: one still burning at 23 h goes on past midnight.
+    const carried = carryFiresOver(input, workflow, dayIndex, nextDay);
+    if (carried) {
+      try {
+        set({ workflow: carried.workflow });
+        commitInput(set, get, carried.input, activeStrategy);
+      } catch (err) {
+        failRun(set, err, 'Failed to carry the fire over midnight');
+        return;
+      }
+    }
+    setDayIndex(nextDay);
     set({ timeIndex: 0 });
   },
 

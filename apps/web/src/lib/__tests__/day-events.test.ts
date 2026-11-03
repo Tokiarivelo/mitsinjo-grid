@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { activeFires, type Workflow } from '@mitsinjo/engine';
-import { clearWorkflowFires, dayEvents, reportWorkflowFire } from '../day-events';
+import { activeFires as fires, scenarios } from '@mitsinjo/engine';
+import { carryFiresOver, clearWorkflowFires, dayEvents, reportWorkflowFire } from '../day-events';
 
 const week: Workflow = [{ weather: 'sunny' }, { weather: 'cloudy' }, { weather: 'rainy' }];
 const burning = (wf: Workflow, day: number, hour: number) =>
@@ -34,5 +35,41 @@ describe('fires on a multi-day run', () => {
     const fire = { type: 'fire' as const, sector: 'water' as const, startHour: 0, durationH: 24 };
     expect(dayEvents([fire], week, 2)).toEqual([fire]);
     expect(dayEvents(undefined, reportWorkflowFire(week, 0, 'health', 3), 0)).toHaveLength(1);
+  });
+});
+
+describe('carryFiresOver (midnight on the playback)', () => {
+  const base = scenarios.baseline.input;
+  const one: Workflow = [{ weather: 'sunny' }];
+
+  it('single day: a fire burning at 23 h now burns from 0 h when the day loops', () => {
+    const input = {
+      ...base,
+      events: [
+        ...base.events,
+        { type: 'fire' as const, sector: 'market' as const, startHour: 14, durationH: 10 },
+      ],
+    };
+    const out = carryFiresOver(input, one, 0, 0)!;
+    const sectors = (h: number) => fires(out.input.events, h).map((f) => f.sector);
+    for (let h = 0; h < 24; h++) expect(sectors(h)).toEqual(['market']);
+    expect(out.input.events.filter((e) => e.type === 'fire')).toHaveLength(1);
+    // Already all day: nothing more to do.
+    expect(carryFiresOver(out.input, one, 0, 0)).toBeNull();
+  });
+
+  it('several days: looping from the last day back to day 1 keeps the fire', () => {
+    const wf = reportWorkflowFire(week, 2, 'school', 20);
+    const out = carryFiresOver(base, wf, 2, 0)!;
+    for (let d = 0; d < 3; d++) expect(burning(out.workflow, d, 5)).toEqual(['school']);
+  });
+
+  it('no fire at 23 h (ended or none): nothing changes', () => {
+    const input = {
+      ...base,
+      events: [{ type: 'fire' as const, sector: 'water' as const, startHour: 8, durationH: 4 }],
+    };
+    expect(carryFiresOver(input, one, 0, 0)).toBeNull();
+    expect(carryFiresOver(base, week, 0, 1)).toBeNull();
   });
 });

@@ -1,4 +1,11 @@
-import type { FireEvent, ScenarioEvent, SectorId, Workflow } from '@mitsinjo/engine';
+import {
+  activeFires,
+  type FireEvent,
+  type ScenarioEvent,
+  type SectorId,
+  type SimulationInput,
+  type Workflow,
+} from '@mitsinjo/engine';
 
 /**
  * Events the engine applies on one workflow day: the input's events (every day) plus that
@@ -42,4 +49,40 @@ export function clearWorkflowFires(workflow: Workflow, sectors: readonly SectorI
     void _drop;
     return events.length > 0 ? { ...rest, events } : rest;
   });
+}
+
+/**
+ * Midnight on the playback: every fire still burning at 23 h on `fromDay` keeps burning all day on
+ * `toDay` (the next day, or the same one when a single day loops), until the sector is restored.
+ * Single day: the input fire becomes 0–24 h. Several days: `toDay` (and the days after) get the fire.
+ * Returns null when nothing burns at 23 h or it already burns from 0 h.
+ */
+export function carryFiresOver(
+  input: SimulationInput,
+  workflow: Workflow,
+  fromDay: number,
+  toDay: number
+): { input: SimulationInput; workflow: Workflow } | null {
+  const burning = new Set(
+    activeFires(dayEvents(input.events, workflow, fromDay), 23).map((f) => f.sector)
+  );
+  const alreadyAtMidnight = new Set(
+    activeFires(dayEvents(input.events, workflow, toDay), 0).map((f) => f.sector)
+  );
+  const sectors = [...burning].filter((s) => !alreadyAtMidnight.has(s));
+  if (sectors.length === 0) return null;
+
+  if (workflow.length <= 1) {
+    const carried = new Set(sectors);
+    const events: ScenarioEvent[] = input.events.filter(
+      (e) => !(e.type === 'fire' && carried.has(e.sector))
+    );
+    for (const sector of sectors) {
+      events.push({ type: 'fire', sector, startHour: 0, durationH: 24 });
+    }
+    return { input: { ...input, events }, workflow };
+  }
+  let next = workflow;
+  for (const sector of sectors) next = reportWorkflowFire(next, toDay, sector, 0);
+  return { input, workflow: next };
 }

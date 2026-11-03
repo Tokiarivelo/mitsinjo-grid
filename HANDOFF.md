@@ -11,6 +11,7 @@
   - 3D ground: the yard under a placed object is red laterite and faces up (it was facing down → invisible),
     radius ≥ 2, plus a red track to the nearest village path (`utils/access-paths.ts`); trees cleared on both.
 - 3D hand tool (hand icon next to reset): drag pans along the ground instead of orbiting.
+- Fires last until restored: at midnight on the playback, a fire burning at 23 h burns all day after (`carryFiresOver`).
 - Multi-day fires: a fire reported on day D at hour H lives on the workflow days (D from H, later days all day)
   instead of an input event replayed every day from H (it vanished each night). `lib/day-events.ts`;
   scene, alerts and autopilot read the shown day's events; `clearFires` clears day fires too.
@@ -28,7 +29,7 @@
 utils/appliance-pills.ts,utils/access-paths.ts,utils/camera-focus.ts,utils/diagram-layout.ts,utils/placed-yards-geometry.ts,
 utils/to-scene-model.ts}` + tests, `features/simulation/ui/village-viewport.tsx` + test, `features/fire-alert/hooks/use-fire-alerts.ts`,
 `features/autopilot/use-autonomous-dispatch.ts`, `stores/simulation.store.ts`, `lib/day-events.ts` + test, `messages/{en,fr,mg}.json`,
-`docs/contracts.md`, `docs/design/3d-scene.md`, `docs/design/screens/village.md`, `test-scenarios/02-simulation.md` (S102–S106).
+`docs/contracts.md`, `docs/design/3d-scene.md`, `docs/design/screens/village.md`, `test-scenarios/02-simulation.md` (S102–S107).
 
 ## Decisions
 

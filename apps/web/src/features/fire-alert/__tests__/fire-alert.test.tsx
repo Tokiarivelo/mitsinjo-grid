@@ -75,9 +75,35 @@ describe('reportFire on a multi-day run (regression: fire gone each night)', () 
     // Same fire across midnight: same key, so no new snackbar each day.
     expect(result.current[0]?.key).toBe('fire:school');
 
-    useSimulationStore.getState().applyProposal({ clearFires: ['school'] });
+    act(() => useSimulationStore.getState().applyProposal({ clearFires: ['school'] }));
     s = useSimulationStore.getState();
     expect(school(2, 9)).toBeGreaterThan(0);
+  });
+});
+
+describe('a fire keeps burning past midnight on the playback (regression)', () => {
+  beforeEach(() => resetSimulationStore());
+
+  it('single day: after 23 h → 0 h the sector still burns at every hour until restored', () => {
+    useSimulationStore.getState().run();
+    useSimulationStore.setState({ timeIndex: 14 });
+    useSimulationStore.getState().reportFire('market');
+    useSimulationStore.setState({ timeIndex: 23 });
+    useSimulationStore.getState().advancePlayback();
+
+    const s = useSimulationStore.getState();
+    expect(s.timeIndex).toBe(0);
+    const steps = s.results[s.activeStrategy]!.steps;
+    // Before: served again from 0 h to 13 h, then cut again at 14 h.
+    for (const step of steps) expect(step.sectors.market?.servedKw).toBe(0);
+    const { result } = renderHook(() => useActiveFires());
+    expect(result.current.map((f) => f.sector)).toEqual(['market']);
+
+    act(() => useSimulationStore.getState().applyProposal({ clearFires: ['market'] }));
+    const after = useSimulationStore.getState();
+    expect(
+      after.results[after.activeStrategy]!.steps[12]!.sectors.market?.servedKw
+    ).toBeGreaterThan(0);
   });
 });
 

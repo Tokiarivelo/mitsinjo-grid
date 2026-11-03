@@ -260,6 +260,8 @@ Fire (M2): engine `activeFires(events, t): FireEvent[]`, `effectiveSectorCaps(in
 Store `reportFire(sector)` adds `{ type: 'fire', sector, startHour: timeIndex, durationH: 24 − timeIndex }` and re-runs at
 once. On a multi-day workflow the fire goes on the days instead (`reportWorkflowFire`, `lib/day-events`): shown day from
 `timeIndex`, every later day 0–24 h, earlier days untouched; `clearFires` also removes these day fires (undo restores them).
+A fire lasts until restored: at midnight on the playback (`advancePlayback`), every fire still burning at 23 h burns
+0–24 h on the next day shown (`carryFiresOver`; single day looping → the input fire becomes 0–24 h; last day → day 1 too).
 Scene, alerts and autopilot read `dayEvents(input.events, workflow, dayIndex)` (`toSceneModel({ events })`); fire alert key `fire:<sector>` (safety exception: no approval, not in `changeHistory`; no-op if that sector already burns). `BuildingSceneModel.onFire`
 = burning at the shown hour; `feederTone` → `critical-red`, 2D wire `cut`.
 
