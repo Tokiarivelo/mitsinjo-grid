@@ -77,11 +77,12 @@ proportions)` (une maison ≈ une maison du village, un frigo ≈ 1 m) ; `footpr
 
 ### I2 Poteaux vers sa ramification ou le Dispatch EMS
 
-- [ ] **PI-T6 Point de raccordement (pur, testé).** `tapPoint(position, sector, mode)` : mode `branch` (par défaut) = le
+- [x] **PI-T6 Point de raccordement (pur, testé).** `tapPoint(position, sector, mode)` : mode `branch` (par défaut) = le
       **poteau le plus proche de la ligne de son départ** (`routeCable` du départ, via `mapPolesToSectors`) ou le bâtiment du
       secteur s'il est plus près ; mode `ems` (D1) = le Dispatch EMS (`BUS_POSITION`). Jamais à travers un bâtiment, la mare ou
       un autre objet : la ligne contourne (un poteau d'angle) ou change de point de raccordement.
       **Done when:** tests (branche la plus proche, EMS, contournement, objet collé au bâtiment = pas de poteau).
+      **Done:** `tapPoint(position, sector, mode, options)` in `tap-point.ts`, handling branch (nearest pole or building), EMS (`BUS_POSITION`), obstacle detection via `segmentIntersectsObstacle` and contouring with corner pole waypoints (`contourWaypoint`), and zero intermediate poles when object is collé au bâtiment (distance ≤ 4.5). 10/10 unit tests passing in `tap-point.test.ts`.
 - [ ] **PI-T7 Poteaux et câbles.** La dérivation réutilise `routeCable` (mêmes poteaux, même flèche, même hauteur) depuis le
       point de PI-T6 jusqu'à l'objet ; poteaux instanciés avec ceux du réseau, ajoutés à `mapPolesToSectors` avec le `sector`
       de l'objet (éclairage public et couleur de départ suivent : délesté = éteint, feu = coupé). Le fil droit actuel disparaît.

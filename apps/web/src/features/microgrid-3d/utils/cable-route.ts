@@ -58,7 +58,7 @@ export function routeCable(
   const dx = to[0] - from[0];
   const dz = to[2] - from[2];
   const length = Math.hypot(dx, dz);
-  const spans = Math.max(1, Math.round(length / spacing));
+  const spans = Math.max(1, Math.ceil(length / spacing));
 
   const anchors: [number, number, number][] = [];
   const poles: [number, number][] = [];
