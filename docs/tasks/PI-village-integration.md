@@ -45,16 +45,16 @@ autres bâtiments) et des **poteaux électriques** le relient à **sa ramificati
 
 ### I0 Le modèle 3D suit l'objet dans la simulation
 
-- [ ] **PI-T1 Contrat « modèle placé ».** Type web (pas moteur) `PlacedModel { applianceId, recipe: ObjectRecipe, yaw, scale }`
+- [x] **PI-T1 Contrat « modèle placé ».** Type web (pas moteur) `PlacedModel { applianceId, recipe: ObjectRecipe, yaw, scale }`
       dans un petit store visuel (`placed-models.store.ts`), rempli par « Insérer dans la simulation » quand l'objet a un
       modèle prêt ; retiré avec l'appareil. Sauvegarde locale (D3) avec `try/catch`. Taille réelle : `sceneScale(archetype,
 proportions)` (une maison ≈ une maison du village, un frigo ≈ 1 m) ; `footprint(recipe, scale, yaw)` → rayon + boîte.
-      **Done when:** tests (store, échelle par archétype, emprise), résultat moteur identique avec / sans modèle ; `contracts.md`.
-- [ ] **PI-T2 Afficher le modèle à sa place.** Réutiliser le constructeur de géométrie de `vision-insert` (pas de copie),
+      **Done:** `placed-models.store.ts` (Zod schema, CRUD, localStorage try/catch, `sceneScale`, `footprint`), wired to `ApplianceInsert` and `useSimulationAppliances`, 12/12 unit tests + engine invariance confirmed, `docs/contracts.md` updated.
+- [x] **PI-T2 Afficher le modèle à sa place.** Réutiliser le constructeur de géométrie de `vision-insert` (pas de copie),
       posé sur `terrainHeight` (le point le plus bas de l'emprise, socle si pente), ombres comme les maisons, même palette
       de scène et mêmes réglages de matériaux (`scene-palette.ts`), états du départ (éteint si délesté, feu si secteur en feu).
       Sans modèle → le marqueur actuel. Fusion par matériau, LOD simple (boîte colorée au loin / tier `low`).
-      **Done when:** objet visible sur /village, /simulation et l'aperçu ; ≤ +2 draw calls pour 30 objets (test `scene-stats`).
+      **Done:** `buildPlacedModelsGeometry` (`placed-models-geometry.ts`), integration in `ApplianceMarkers` (`appliance-markers.tsx`) and `village-canvas.tsx`, 30 objects merged into 1 mesh (budget ≤ +2 draw calls satisfied), unit + UI tests 16/16 green.
 
 ### I1 Clairière et sol rouge
 

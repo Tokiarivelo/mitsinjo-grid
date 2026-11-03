@@ -1,34 +1,31 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-03 (P9-T7 submission readiness) · **By:** Claude Code · **Branch:** feat/submission-readiness
+**Updated:** 2026-11-03 (PR #49 PI-T1/T2 reviewed + merged; P9-T7 submission readiness on main) · **By:** Claude Code
 
 ## Current state
 
-- Branch `feat/submission-readiness` from `origin/main` (`a558cef`). PR #49 (`feat/pi-0-placed-model`) is separate, not merged here.
-- Done against the community checklist (artifacts.watt-mind.com/meta-hackathon-2026/checklist), video excluded:
-  - README top: provenance (built from scratch from Oct 26), track (Build for Your World, Indie), bonus targets
-    (Best Agentic, Best Creative), "not a 1-prompt wrapper" paragraph, Meta models table (Spark, SAM 3.1, Muse Image,
-    Muse Wonder, Muse Voice, optional Glimmer). Quickstart gained Docker Compose + Benchmarks sections.
-  - `benchmarks/` (README + `engine.json`) from `make bench` (`packages/engine/src/__tests__/benchmark.test.ts`).
-  - `Dockerfile` + `compose.yaml` + `.dockerignore`: `docker compose up -d --build` / `make docker-up|docker-down|docker-logs`
-    (keyless mock without `.env`; healthcheck on `/overview`; verified healthy).
-  - GitHub repo homepage set to `https://mitsinjo-grid.vercel.app` (same as README; `-fqfg` is the auto alias).
+- `main` has P9-T7 (README provenance, `benchmarks/`, Docker Compose `make docker-up`) and PI I0:
+  - PI-T1 `usePlacedModelsStore` (`apps/web/src/stores/placed-models.store.ts`, localStorage try/catch), `sceneScale`, `footprint`.
+  - PI-T2 `buildPlacedModelsGeometry` (`microgrid-3d/utils/placed-models-geometry.ts`): all placed models in one merged
+    mesh, slope plinths in one instanced batch, model stands on its plinth, dimmed when idle/unserved, fire tint.
+    Rebuilt only when `placedGeometryKey` changes; old geometry disposed. Engine untouched (invariance test).
+- PR #49 review fixes: plinth draw calls (was 1 mesh each), model sunk in plinth, geometry rebuilt every render +
+  GPU leak, idle appliance in served sector not dimmed, double remove, duplicated type, raw hex.
 
 ## Next
 
-- P9-T5 (human): record the 3-min video (provenance line in first 10 s, live Meta calls on screen, 2+ metrics
-  before 2:55, e.g. `benchmarks/README.md` clinic 71.9 → 75.5 %); put the link in README line 15.
-- P9-T6 (human): submit before Wed Nov 4 21:00 EST; no pushes after the freeze.
-- Not done (out of reach): partner inference / fine-tuned open weights / HF publish (Open Weight bonus).
+- P9-T5 (human): record the 3-min video; link in README line 15. P9-T6 (human): submit before Wed Nov 4 21:00 EST.
+- PI I1: PI-T3 `siteZones(placed)`, PI-T4 tree clearing, PI-T5 laterite yard (`docs/tasks/PI-village-integration.md`).
+- Open: `syncWithAppliances` is not called anywhere yet (stale localStorage entries after a scenario reset are
+  harmless: only markers with a model render it). Design gate screenshots for PI-T2 not taken.
 
 ## Files touched (this session)
 
-`README.md`, `apps/web/README.md`, `Dockerfile`, `compose.yaml`, `.dockerignore`, `Makefile`, `.env.example`, `benchmarks/{README.md,engine.json}`,
-`packages/engine/src/__tests__/benchmark.test.ts`, `docs/performance.md`, `docs/tasks/P9-ship.md`, `HANDOFF.md`.
+`apps/web/src/features/microgrid-3d/{ui/appliance-markers.tsx,ui/village-canvas.tsx,utils/placed-models-geometry.ts,__tests__/*}`,
+`apps/web/src/features/vision-insert/ui/appliance-insert.tsx`, `docs/contracts.md`, `HANDOFF.md`.
 
 ## Decisions
 
-- Benchmark asserts the health clinic is never served worse by essential-first than proportional. It does **not**
-  assert all critical loads: under `essential_stress` essential-first covers critical loads 73.3 % vs 73.7 %
-  (proportional) — reported as a trade-off in `benchmarks/README.md`, not hidden.
-- Docker image is single-stage-on-deps (≈1.2 GB) for simplicity; `next start`, port forced to 3000.
+- Benchmark: essential-first never serves the clinic worse than proportional; critical loads 73.3 % vs 73.7 % under
+  `essential_stress` is reported as a trade-off in `benchmarks/README.md`.
+- Placed models live only in a client visual store; plinth fills lowest → highest footprint point (+4 cm sink).

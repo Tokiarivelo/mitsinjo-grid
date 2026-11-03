@@ -1,7 +1,9 @@
 import * as THREE from 'three';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { Appliance } from '@mitsinjo/engine';
+import { usePlacedModelsStore } from '@/stores';
+import type { ObjectRecipe } from '@/lib/object-shape';
 import { ApplianceMarkers, MarkerDragGhost } from '../ui/appliance-markers';
 import { applianceMarkers } from '../utils/appliance-markers';
 import { SECTOR_POSITIONS } from '../utils/to-scene-model';
@@ -161,5 +163,94 @@ describe('ApplianceMarkers drag UI (PP-T5)', () => {
     const ghost = container.querySelector('group[name="appliance-drag-ghost"]')!;
     expect(ghost).not.toBeNull();
     expect(ghost.querySelectorAll(':scope > mesh')).toHaveLength(2);
+  });
+});
+
+describe('ApplianceMarkers with Placed Models (PI-T2)', () => {
+  beforeEach(() => {
+    usePlacedModelsStore.getState().clear();
+  });
+
+  const recipe: ObjectRecipe = {
+    proportions: { w: 1, h: 0.8, d: 0.6 },
+    parts: [{ shape: 'box', at: [0, 0, 0], size: [1, 1, 1], color: '#ff6600' }],
+  };
+
+  it('renders placed 3D model mesh for appliances with stored recipes and standard instances for others', () => {
+    usePlacedModelsStore.getState().upsert({
+      applianceId: 'p1',
+      recipe,
+      scale: 1.0,
+      archetype: 'machine',
+    });
+
+    const markers = applianceMarkers(
+      [pump, { ...pump, id: 'p2', position: { x: 30, z: 30 } }],
+      SECTOR_POSITIONS,
+      12
+    );
+
+    const { container } = render(
+      <ApplianceMarkers markers={markers} selectedSector={null} tagOf={(m) => m.name} />
+    );
+
+    // p1 has a placed 3D model: rendered via placed-appliance-models mesh
+    const placedMesh = container.querySelector('mesh[name="placed-appliance-models"]');
+    expect(placedMesh).not.toBeNull();
+
+    // p2 is a standard marker: 1 plinth + 1 body instance rendered
+    const instances = screen.getAllByTestId('mock-instance');
+    expect(instances).toHaveLength(2);
+  });
+
+  it('draws 30 placed objects in a single merged mesh (draw call budget: ≤ +2)', () => {
+    const thirtyPumps: Appliance[] = Array.from({ length: 30 }, (_, i) => ({
+      ...pump,
+      id: `pump-${i}`,
+      position: { x: (i % 6) * 4 - 10, z: Math.floor(i / 6) * 4 - 10 },
+    }));
+
+    for (const p of thirtyPumps) {
+      usePlacedModelsStore.getState().upsert({
+        applianceId: p.id,
+        recipe,
+        scale: 1.0,
+        archetype: 'machine',
+      });
+    }
+
+    const markers = applianceMarkers(thirtyPumps, SECTOR_POSITIONS, 12);
+    const { container } = render(
+      <ApplianceMarkers markers={markers} selectedSector={null} tagOf={(m) => m.name} />
+    );
+
+    // All 30 models merged into ONE single mesh!
+    const placedMeshes = container.querySelectorAll('mesh[name="placed-appliance-models"]');
+    expect(placedMeshes).toHaveLength(1);
+
+    // Standard instances are completely empty (0 standard markers)
+    expect(screen.queryByTestId('mock-instance')).toBeNull();
+  });
+
+  it('draws every slope plinth in one instanced batch (no mesh per plinth)', () => {
+    const hills: Appliance[] = Array.from({ length: 3 }, (_, i) => ({
+      ...pump,
+      id: `hill-${i}`,
+      position: { x: 30 + i * 3, z: 30 },
+    }));
+    for (const p of hills) {
+      usePlacedModelsStore.getState().upsert({ applianceId: p.id, recipe, scale: 2.0 });
+    }
+    const { container } = render(
+      <ApplianceMarkers
+        markers={applianceMarkers(hills, SECTOR_POSITIONS, 12)}
+        selectedSector={null}
+        tagOf={(m) => m.name}
+      />
+    );
+    const meshes = container.querySelectorAll('mesh');
+    // merged models + one invisible hit target per model; plinths are Instance children
+    expect(meshes).toHaveLength(1 + hills.length);
+    expect(screen.getAllByTestId('mock-instance').length).toBeGreaterThan(0);
   });
 });

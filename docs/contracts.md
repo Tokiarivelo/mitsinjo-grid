@@ -263,6 +263,13 @@ once (safety exception: no approval, not in `changeHistory`; no-op if that secto
 
 3D `SceneModel.appliances: ApplianceMarkerSceneModel[]` (PV-T13) `{ id, name, category, sector, quantity, watts, kwNow /*engine profile at t*/, running, position /*ground y*/, feeder /*building anchor*/ }`;
 `position` = free placement when set (clamped + snapped, PP-T3), else the building ring; `feeder` anchors the thin cable link to the sector building.
+Placed 3D models (PI-T1, web visual store only, zero engine change):
+`PlacedModel { applianceId: string, recipe: ObjectRecipe, yaw?: number, scale?: number, archetype?: KitArchetype }`
+in visual store `usePlacedModelsStore` (`apps/web/src/stores/placed-models.store.ts`), persisted in localStorage (`mitsinjo:placed-models`) with try/catch.
+Helpers:
+`sceneScale(archetype, proportions)` → target scene scale (house ≈ 3.8, vehicle ≈ 2.4, cabinet/fridge ≈ 1.0, machine/pump ≈ 0.9).
+`footprint(recipe, scale, yaw)` → `{ radius: number, box: FootprintBox }`.
+Rendering (PI-T2): `buildPlacedModelsGeometry` merges all placed models into a single `BufferGeometry` (≤ +2 draw calls budget for up to 30 objects), sits on `terrainHeight` at the footprint's lowest point; on a slope (> 0.04) it stands on a plinth (one instanced batch) reaching the highest point; reflects departure states (dimmed if unserved or not drawing power, fiery red alert if sector on fire); rebuilt only when `placedGeometryKey` changes. Un-modeled appliances fall back to standard instanced markers.
 2D diagram sector card adds « n added » when appliances feed the sector (`appliancesPerSector`).
 3D `SceneModel.weather: WeatherId` (from `toSceneModel({ weather })`, default `sunny`): drives sky, clouds and rain only.
 

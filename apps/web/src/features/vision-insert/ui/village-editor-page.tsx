@@ -495,6 +495,9 @@ export function VillageEditorPage() {
                         detection={shapeTarget}
                         name={nameOf(shapeTarget)}
                         photo={photo}
+                        recipe={
+                          objectShape.shape?.mode === 'recipe' ? objectShape.shape.recipe : null
+                        }
                       />
                     </div>
 

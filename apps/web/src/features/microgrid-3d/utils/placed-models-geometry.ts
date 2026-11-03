@@ -1,0 +1,212 @@
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import type { SectorId } from '@mitsinjo/engine';
+import type { KitArchetype } from '@/lib/object-kit';
+import type { ObjectRecipe } from '@/lib/object-shape';
+import { recipeMesh } from '@/features/vision-insert/utils/object-geometry';
+import { terrainHeight } from './landscape';
+import { TOKEN_HEX } from './scene-palette';
+import { footprint, sceneScale } from '@/stores/placed-models.store';
+
+export interface PlacedModelItem {
+  id: string;
+  sector: SectorId;
+  running: boolean;
+  position: [number, number, number];
+  recipe: ObjectRecipe;
+  scale?: number;
+  yaw?: number;
+  archetype?: KitArchetype;
+}
+
+export interface PlacedPlinth {
+  position: [number, number, number];
+  size: [number, number, number];
+}
+
+export interface PlacedModelsGeometryResult {
+  /** Single merged geometry for all placed models (1 draw call). Null if empty. */
+  modelsGeometry: THREE.BufferGeometry | null;
+  /** Concrete plinths under models on sloped ground. */
+  plinths: PlacedPlinth[];
+  /** Heights and footprint radius per model id (for tag positioning and click bounds). */
+  modelBounds: Record<string, { height: number; radius: number }>;
+}
+
+export interface SectorStateOverride {
+  unserved?: boolean;
+  onFire?: boolean;
+}
+
+const tmpColor = new THREE.Color();
+
+/** Ground height difference over the footprint above which the model stands on a plinth. */
+export const PLINTH_SLOPE_MIN = 0.04;
+/** Plinth sinks this far below the lowest ground point (no gap on the downhill side). */
+const PLINTH_SINK = 0.04;
+
+/**
+ * Builds a single merged BufferGeometry for all placed models (PI-T2):
+ * - Reuses `recipeMesh` from vision-insert (no code duplication).
+ * - Sits on `terrainHeight` at the lowest point of the footprint (plinth if slope).
+ * - Applies departure states (dimmed if unserved/delested, fiery tint if sector on fire).
+ * - Merges into ONE BufferGeometry (≤ +2 draw calls budget for up to 30 objects).
+ * - Provides simple LOD box on tier `low`.
+ */
+export function buildPlacedModelsGeometry(
+  items: readonly PlacedModelItem[],
+  sectorStatus?: Partial<Record<SectorId, SectorStateOverride>>,
+  tier: 'high' | 'low' = 'high'
+): PlacedModelsGeometryResult {
+  if (items.length === 0) {
+    return { modelsGeometry: null, plinths: [], modelBounds: {} };
+  }
+
+  const plinths: PlacedPlinth[] = [];
+  const modelBounds: Record<string, { height: number; radius: number }> = {};
+  const geometriesToMerge: THREE.BufferGeometry[] = [];
+
+  for (const item of items) {
+    const effScale = item.scale ?? sceneScale(item.archetype, item.recipe.proportions);
+    const effYaw = item.yaw ?? item.recipe.yaw ?? 0;
+    const fp = footprint(item.recipe, effScale, effYaw);
+
+    const x = item.position[0];
+    const z = item.position[2];
+
+    // Sample terrain height at center and footprint corners
+    const hCenter = terrainHeight(x, z);
+    const h1 = terrainHeight(x + fp.box.minX, z + fp.box.minZ);
+    const h2 = terrainHeight(x + fp.box.maxX, z + fp.box.minZ);
+    const h3 = terrainHeight(x + fp.box.maxX, z + fp.box.maxZ);
+    const h4 = terrainHeight(x + fp.box.minX, z + fp.box.maxZ);
+
+    const baseH = Math.min(hCenter, h1, h2, h3, h4);
+    const maxH = Math.max(hCenter, h1, h2, h3, h4);
+    const slope = maxH - baseH;
+
+    // On a slope, a plinth fills from the lowest point to the highest and the model stands on top,
+    // so the uphill ground never pokes through the model.
+    let restY = baseH;
+    if (slope > PLINTH_SLOPE_MIN) {
+      const bottom = baseH - PLINTH_SINK;
+      plinths.push({
+        position: [x, (bottom + maxH) / 2, z],
+        size: [fp.box.width + 0.1, maxH - bottom, fp.box.depth + 0.1],
+      });
+      restY = maxH;
+    }
+
+    let g: THREE.BufferGeometry;
+    if (tier === 'low') {
+      // Simple LOD box on low tier
+      const height = item.recipe.proportions.h * effScale;
+      g = new THREE.BoxGeometry(fp.box.width, height, fp.box.depth);
+      const mainColor = item.recipe.parts[0]?.color ?? TOKEN_HEX.idle;
+      tmpColor.set(mainColor);
+      const count = g.getAttribute('position').count;
+      const colors = new Float32Array(count * 3);
+      for (let c = 0; c < count; c++) tmpColor.toArray(colors, c * 3);
+      g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    } else {
+      // High tier: full recipe geometry
+      const recipeWithYaw =
+        item.yaw !== undefined && item.yaw !== item.recipe.yaw
+          ? { ...item.recipe, yaw: item.yaw }
+          : item.recipe;
+      const original = recipeMesh(recipeWithYaw);
+      g = original.clone();
+      original.dispose();
+    }
+
+    g.computeBoundingBox();
+    const bb = g.boundingBox;
+    const bottomY = bb ? bb.min.y : 0;
+    const rawHeight = bb ? bb.max.y - bb.min.y : item.recipe.proportions.h;
+    const finalHeight = rawHeight * (tier === 'low' ? 1 : effScale);
+
+    modelBounds[item.id] = {
+      height: finalHeight,
+      radius: fp.radius,
+    };
+
+    if (tier !== 'low') {
+      g.scale(effScale, effScale, effScale);
+    }
+    // Translate so the bottom of the model rests on the ground (or its plinth)
+    g.translate(x, restY - bottomY * (tier === 'low' ? 1 : effScale), z);
+
+    // Apply feeder / departure states to vertex colors
+    const sec = sectorStatus?.[item.sector];
+    const onFire = sec?.onFire ?? false;
+    // Dimmed when the sector is unserved or the appliance draws nothing now (same as the box markers).
+    const unserved = (sec?.unserved ?? false) || !item.running;
+
+    const colorAttr = g.getAttribute('color');
+    if (colorAttr) {
+      for (let j = 0; j < colorAttr.count; j++) {
+        let r = colorAttr.getX(j);
+        let gr = colorAttr.getY(j);
+        let b = colorAttr.getZ(j);
+
+        if (onFire) {
+          // Fiery / burnt amber-red alert tint
+          r = Math.min(1, r * 1.5 + 0.3);
+          gr = gr * 0.35;
+          b = b * 0.25;
+        } else if (unserved) {
+          // Unpowered / darkened lights out
+          r = r * 0.45;
+          gr = gr * 0.45;
+          b = b * 0.45;
+        }
+        colorAttr.setXYZ(j, r, gr, b);
+      }
+      colorAttr.needsUpdate = true;
+    }
+
+    geometriesToMerge.push(g);
+  }
+
+  const merged = mergeGeometries(geometriesToMerge, false) ?? null;
+  for (const g of geometriesToMerge) g.dispose();
+
+  return {
+    modelsGeometry: merged,
+    plinths,
+    modelBounds,
+  };
+}
+
+/** Stable signature of everything `buildPlacedModelsGeometry` reads (recipes are replaced, never mutated). */
+export function placedGeometryKey(
+  items: readonly PlacedModelItem[],
+  sectorStatuses: Partial<Record<SectorId, SectorStateOverride>> | undefined,
+  tier: 'high' | 'low'
+): string {
+  const sectors = new Set(items.map((i) => i.sector));
+  const status = [...sectors]
+    .sort()
+    .map(
+      (id) =>
+        `${id}:${sectorStatuses?.[id]?.unserved ? 1 : 0}${sectorStatuses?.[id]?.onFire ? 1 : 0}`
+    )
+    .join(',');
+  const parts = items.map(
+    (i) =>
+      `${i.id}@${i.position.join(',')}:${i.running ? 1 : 0}:${i.scale ?? ''}:${i.yaw ?? ''}:${i.archetype ?? ''}:${recipeId(i.recipe)}`
+  );
+  return `${tier}|${status}|${parts.join(';')}`;
+}
+
+/** Identity tag per recipe object, so a new recipe for the same appliance changes the key. */
+const recipeIdMap = new WeakMap<object, number>();
+let nextRecipeId = 0;
+function recipeId(recipe: object): number {
+  let id = recipeIdMap.get(recipe);
+  if (id === undefined) {
+    id = ++nextRecipeId;
+    recipeIdMap.set(recipe, id);
+  }
+  return id;
+}

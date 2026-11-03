@@ -1,12 +1,19 @@
 'use client';
 
-import { useMemo, type RefObject } from 'react';
+import { useEffect, useMemo, type RefObject } from 'react';
 import { Html, Instance, Instances, Line } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { MAX_APPLIANCES, type SectorId } from '@mitsinjo/engine';
+import { usePlacedModelsStore } from '@/stores';
 import type { ApplianceMarkerSceneModel } from '../types';
 import { MARKER_PLINTH_HEX, TOKEN_HEX } from '../utils/scene-palette';
+import {
+  buildPlacedModelsGeometry,
+  placedGeometryKey,
+  type PlacedModelItem,
+  type SectorStateOverride,
+} from '../utils/placed-models-geometry';
 
 /** Tags for every marker up to this count; above, only the selected sector's (scene stays readable). */
 export const MARKER_TAGS_ALL_MAX = 6;
@@ -29,12 +36,16 @@ export interface ApplianceMarkersProps {
     onClick?: (e: ThreeEvent<MouseEvent>) => void;
     onPointerDown?: (e: ThreeEvent<PointerEvent>) => void;
   };
+  tier?: 'high' | 'low';
+  sectorStatuses?: Partial<Record<SectorId, SectorStateOverride>>;
 }
 
 /**
- * Inserted appliances (PV-T13): plinth + body next to their sector building, cyan glow while the engine
- * profile draws power and the sector is served, grey otherwise. 3 instanced draw calls for up to 30
- * lines, plus one batched segment list for the feeder links (PP-T3 budget: 3–4 draw calls).
+ * Inserted appliances (PV-T13, PI-T2):
+ * - If the appliance has a 3D recipe (PI-T1), renders its real 3D model merged into ONE draw call,
+ *   sitting on terrainHeight with slope plinth if needed, reflecting departure states.
+ * - Otherwise renders standard instanced markers (plinth + cyan/idle box).
+ * - Total draw calls for 30 objects remains ≤ +2 draw calls.
  */
 export function ApplianceMarkers({
   markers,
@@ -44,23 +55,72 @@ export function ApplianceMarkers({
   selectedId = null,
   dragId = null,
   bindMarker,
+  tier = 'high',
+  sectorStatuses,
 }: ApplianceMarkersProps) {
-  const shown = dragId ? markers.filter((m) => m.id !== dragId) : markers;
+  const placedModels = usePlacedModelsStore((s) => s.models);
+  const shown = useMemo(
+    () => (dragId ? markers.filter((m) => m.id !== dragId) : markers),
+    [markers, dragId]
+  );
+
+  // Split into 3D modeled appliances and standard box markers
+  const modeledMarkers = useMemo(
+    () => shown.filter((m) => Boolean(placedModels[m.id])),
+    [shown, placedModels]
+  );
+  const standardMarkers = useMemo(
+    () => shown.filter((m) => !placedModels[m.id]),
+    [shown, placedModels]
+  );
+
+  const placedItems = useMemo<PlacedModelItem[]>(
+    () =>
+      modeledMarkers.map((m) => {
+        const p = placedModels[m.id]!;
+        return {
+          id: m.id,
+          sector: m.sector,
+          running: m.running,
+          position: m.position,
+          recipe: p.recipe,
+          scale: p.scale,
+          yaw: p.yaw,
+          archetype: p.archetype,
+        };
+      }),
+    [modeledMarkers, placedModels]
+  );
+
+  // Rebuild the merged mesh only when what it draws changes (not on every scene-model refresh).
+  const geometryKey = placedGeometryKey(placedItems, sectorStatuses, tier);
+  const { modelsGeometry, plinths, modelBounds } = useMemo(
+    () => buildPlacedModelsGeometry(placedItems, sectorStatuses, tier),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- geometryKey covers every input
+    [geometryKey]
+  );
+  useEffect(() => () => modelsGeometry?.dispose(), [modelsGeometry]);
+
   // One LineSegments2 for every marker→building link: a single draw call (PP-T3 budget).
   const feederLinks = useMemo(
     () =>
-      shown.flatMap((m) => [
-        new THREE.Vector3(m.position[0], m.position[1] + PLINTH[1] + BODY[1], m.position[2]),
-        new THREE.Vector3(m.feeder[0], m.feeder[1], m.feeder[2]),
-      ]),
-    [shown]
+      shown.flatMap((m) => {
+        const h = modelBounds[m.id]?.height ?? PLINTH[1] + BODY[1];
+        return [
+          new THREE.Vector3(m.position[0], m.position[1] + h, m.position[2]),
+          new THREE.Vector3(m.feeder[0], m.feeder[1], m.feeder[2]),
+        ];
+      }),
+    [shown, modelBounds]
   );
+
   if (markers.length === 0) return null;
-  const running = shown.filter((m) => m.running);
-  const idle = shown.filter((m) => !m.running);
+  const running = standardMarkers.filter((m) => m.running);
+  const idle = standardMarkers.filter((m) => !m.running);
   const tagged =
     shown.length <= MARKER_TAGS_ALL_MAX ? shown : shown.filter((m) => m.sector === selectedSector);
   const selected = selectedId ? shown.find((m) => m.id === selectedId) : undefined;
+  const selectedRadius = selected ? (modelBounds[selected.id]?.radius ?? 0.35) : 0.35;
 
   return (
     <group name="appliance-markers">
@@ -72,17 +132,57 @@ export function ApplianceMarkers({
         transparent
         opacity={0.55}
       />
-      <Instances limit={MAX_APPLIANCES} name="appliance-plinths" castShadow receiveShadow>
-        <boxGeometry args={PLINTH} />
-        <meshStandardMaterial color={MARKER_PLINTH_HEX} roughness={0.8} />
-        {shown.map((m) => (
-          <Instance
-            key={m.id}
-            position={[m.position[0], m.position[1] + PLINTH[1] / 2, m.position[2]]}
+
+      {/* 1. Placed 3D models (PI-T2): single merged mesh for all objects */}
+      {modelsGeometry && (
+        <mesh name="placed-appliance-models" geometry={modelsGeometry} castShadow receiveShadow>
+          <meshStandardMaterial vertexColors roughness={0.7} metalness={0.2} />
+        </mesh>
+      )}
+
+      {/* Plinths under models on sloped ground: one instanced draw call */}
+      {plinths.length > 0 && (
+        <Instances limit={MAX_APPLIANCES} name="placed-model-plinths" castShadow receiveShadow>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color={MARKER_PLINTH_HEX} roughness={0.8} />
+          {plinths.map((p, idx) => (
+            <Instance key={`plinth-${idx}`} position={p.position} scale={p.size} />
+          ))}
+        </Instances>
+      )}
+
+      {/* Invisible hit targets for placed models (click/drag support) */}
+      {modeledMarkers.map((m) => {
+        const bounds = modelBounds[m.id];
+        const h = bounds?.height ?? 1.0;
+        const r = bounds?.radius ?? 0.5;
+        return (
+          <mesh
+            key={`hit-${m.id}`}
+            position={[m.position[0], m.position[1] + h / 2, m.position[2]]}
+            visible={false}
             {...bindMarker?.(m.id)}
-          />
-        ))}
-      </Instances>
+          >
+            <cylinderGeometry args={[r, r, h, 8]} />
+            <meshBasicMaterial transparent opacity={0} />
+          </mesh>
+        );
+      })}
+
+      {/* 2. Standard box markers (for appliances without 3D recipes) */}
+      {standardMarkers.length > 0 && (
+        <Instances limit={MAX_APPLIANCES} name="appliance-plinths" castShadow receiveShadow>
+          <boxGeometry args={PLINTH} />
+          <meshStandardMaterial color={MARKER_PLINTH_HEX} roughness={0.8} />
+          {standardMarkers.map((m) => (
+            <Instance
+              key={m.id}
+              position={[m.position[0], m.position[1] + PLINTH[1] / 2, m.position[2]]}
+              {...bindMarker?.(m.id)}
+            />
+          ))}
+        </Instances>
+      )}
       {running.length > 0 && (
         <Instances limit={MAX_APPLIANCES} name="appliance-running" castShadow>
           <boxGeometry args={BODY} />
@@ -115,33 +215,40 @@ export function ApplianceMarkers({
           ))}
         </Instances>
       )}
-      {tagged.map((m) => (
-        <Html
-          key={m.id}
-          position={[m.position[0], m.position[1] + PLINTH[1] + BODY[1] + 0.35, m.position[2]]}
-          center
-          distanceFactor={18}
-          portal={htmlPortal as RefObject<HTMLElement>}
-          zIndexRange={[8, 0]}
-          className="pointer-events-none select-none"
-        >
-          <span
-            data-appliance-tag={m.id}
-            className={`whitespace-nowrap rounded-md border bg-surface/90 px-1.5 py-0.5 text-[10px] font-medium text-text-primary shadow ${
-              m.id === selectedId ? 'border-energy-cyan' : 'border-border'
-            }`}
+
+      {/* HTML tags */}
+      {tagged.map((m) => {
+        const h = modelBounds[m.id]?.height ?? PLINTH[1] + BODY[1];
+        return (
+          <Html
+            key={m.id}
+            position={[m.position[0], m.position[1] + h + 0.35, m.position[2]]}
+            center
+            distanceFactor={18}
+            portal={htmlPortal as RefObject<HTMLElement>}
+            zIndexRange={[8, 0]}
+            className="pointer-events-none select-none"
           >
-            {tagOf(m)}
-          </span>
-        </Html>
-      ))}
+            <span
+              data-appliance-tag={m.id}
+              className={`whitespace-nowrap rounded-md border bg-surface/90 px-1.5 py-0.5 text-[10px] font-medium text-text-primary shadow ${
+                m.id === selectedId ? 'border-energy-cyan' : 'border-border'
+              }`}
+            >
+              {tagOf(m)}
+            </span>
+          </Html>
+        );
+      })}
+
+      {/* Selection ring */}
       {selected && (
         <mesh
           name="appliance-selection-ring"
           rotation-x={-Math.PI / 2}
           position={[selected.position[0], selected.position[1] + 0.03, selected.position[2]]}
         >
-          <ringGeometry args={[0.34, 0.46, 40]} />
+          <ringGeometry args={[selectedRadius + 0.05, selectedRadius + 0.17, 40]} />
           <meshBasicMaterial
             color={TOKEN_HEX.energyCyan}
             toneMapped={false}
