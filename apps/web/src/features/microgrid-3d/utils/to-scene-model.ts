@@ -281,7 +281,12 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     color: TOKEN_HEX.energyCyan,
   };
 
-  const appliances = applianceMarkers(input.appliances, SECTOR_POSITIONS, validTime, result);
+  const appliances = applianceMarkers(input.appliances, SECTOR_POSITIONS, validTime, result).map(
+    (m) => {
+      const mode = options.placedModels?.[m.id]?.connectionMode;
+      return mode ? { ...m, connectionMode: mode } : m;
+    }
+  );
   const derivations = buildApplianceDerivations(appliances, buildings, {
     placedModels: options.placedModels,
   });

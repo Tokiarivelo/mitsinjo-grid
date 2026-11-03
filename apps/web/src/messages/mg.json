@@ -801,7 +801,8 @@
       "zoomControls": "Fanalehibiazana ny kisary",
       "zoomHint": "Ctrl + kodiarana na tsongoy mba hanalehibe · sintony mba hanetsika",
       "onFire": "May",
-      "applianceCount": "{count} nampiana"
+      "applianceCount": "{count} nampiana",
+      "applianceTitle": "{name} ({kw}) · {feed}"
     },
     "hardwareLink": {
       "title": "Modely ara-batana",
@@ -1128,7 +1129,8 @@
         },
         "cancel": "Foanana",
         "cancelLabel": "Foanana ny fanatsarana ny modely"
-      }
+      },
+      "minimapEms": "EMS"
     },
     "dispatch": {
       "modeLabel": "Fomba fandefasana",

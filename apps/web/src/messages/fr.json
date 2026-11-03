@@ -801,7 +801,8 @@
       "zoomControls": "Zoom du schéma",
       "zoomHint": "Ctrl + molette ou pincer pour zoomer · glisser pour déplacer",
       "onFire": "En feu",
-      "applianceCount": "{count} ajouté(s)"
+      "applianceCount": "{count} ajouté(s)",
+      "applianceTitle": "{name} ({kw}) · {feed}"
     },
     "hardwareLink": {
       "title": "Maquette physique",
@@ -1128,7 +1129,8 @@
         },
         "cancel": "Annuler",
         "cancelLabel": "Annuler l'amélioration du modèle"
-      }
+      },
+      "minimapEms": "EMS"
     },
     "dispatch": {
       "modeLabel": "Mode de dispatch",

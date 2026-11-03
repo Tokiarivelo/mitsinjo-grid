@@ -8,6 +8,9 @@ import {
   DIAGRAM_H,
   DIAGRAM_SECTORS,
   DIAGRAM_W,
+  APPLIANCE_BRANCH_SLOTS,
+  applianceBranchRoute,
+  applianceBranchSlots,
   boxesOverlap,
   diagramLayout,
   segmentCrossesBox,
@@ -229,7 +232,7 @@ describe('GridDiagram', () => {
   });
 });
 
-describe('GridDiagram appliances (PV-T13)', () => {
+describe('GridDiagram appliances (PV-T13, PI-T9)', () => {
   it('a sector fed by inserted appliances shows « n added »', () => {
     const input = {
       ...stress,
@@ -260,5 +263,100 @@ describe('GridDiagram appliances (PV-T13)', () => {
     );
     expect(screen.getByText(/2 added/)).toBeTruthy();
     expect(screen.getAllByText(/added/)).toHaveLength(1);
+  });
+
+  it('applianceBranchRoute never passes under any label box across all sectors and modes (PI-T9)', () => {
+    const variants = ['topology', 'circuit'] as const;
+    const modes = ['branch', 'ems'] as const;
+    for (const v of variants) {
+      const layout = diagramLayout(v);
+      const boxes = allBoxes(layout);
+      for (const sector of DIAGRAM_SECTORS) {
+        for (const mode of modes) {
+          // Every slot, plus one past the cap (clamped): stays clear and inside the viewBox.
+          for (let slot = 0; slot <= APPLIANCE_BRANCH_SLOTS; slot++) {
+            const route = applianceBranchRoute(sector, mode, v, layout, slot);
+            for (const [x, y] of route.points) {
+              expect(x >= 0 && x <= DIAGRAM_W && y >= 0 && y <= DIAGRAM_H).toBe(true);
+            }
+            for (let k = 1; k < route.points.length; k++) {
+              for (const b of boxes) {
+                expect(
+                  segmentCrossesBox(route.points[k - 1]!, route.points[k]!, b),
+                  `${v}/${sector}/${mode}/slot ${slot}`
+                ).toBe(false);
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('applianceBranchSlots stacks per sector (EMS shared) and caps the slot (PR #57 review)', () => {
+    const list = [
+      { id: 'w1', sector: 'water' as const },
+      { id: 'h1', sector: 'health' as const },
+      { id: 'w2', sector: 'water' as const },
+      { id: 'e1', sector: 'water' as const, connectionMode: 'ems' as const },
+      { id: 'e2', sector: 'school' as const, connectionMode: 'ems' as const },
+      ...Array.from({ length: 10 }, (_, i) => ({ id: `m${i}`, sector: 'market' as const })),
+    ];
+    const slots = applianceBranchSlots(list);
+    expect([slots.w1, slots.h1, slots.w2, slots.e1, slots.e2]).toEqual([0, 0, 1, 0, 1]);
+    expect(slots.m9).toBe(APPLIANCE_BRANCH_SLOTS - 1);
+  });
+
+  it('draws branch wire and terminal node in branch and ems modes with electrons (PI-T9)', () => {
+    const input = {
+      ...stress,
+      appliances: [
+        {
+          id: 'branch-app',
+          name: 'Vaccine fridge',
+          category: 'fridge_vaccine' as const,
+          sector: 'health' as const,
+          watts: 120,
+          quantity: 1,
+        },
+        {
+          id: 'ems-app',
+          name: 'Solar pump',
+          category: 'water_pump' as const,
+          sector: 'water' as const,
+          watts: 750,
+          quantity: 1,
+        },
+      ],
+    };
+    const placedModels = {
+      'branch-app': { connectionMode: 'branch' as const },
+      'ems-app': { connectionMode: 'ems' as const },
+    };
+    const model = toSceneModel({
+      input,
+      result: simulate(input, 'proportional'),
+      timeIndex: 12,
+      placedModels,
+    });
+    const { container } = render(
+      <I18nProvider>
+        <GridDiagram model={model} variant="topology" onSelectSector={vi.fn()} />
+      </I18nProvider>
+    );
+
+    // Both appliances are rendered on the diagram
+    const branchElem = screen.getByTestId('diagram-appliance-branch-app');
+    const emsElem = screen.getByTestId('diagram-appliance-ems-app');
+    expect(branchElem.getAttribute('data-connection-mode')).toBe('branch');
+    expect(emsElem.getAttribute('data-connection-mode')).toBe('ems');
+
+    // Wires carry electron animation when active
+    const branchWire = container.querySelector('[data-appliance-branch="branch-app"]');
+    const emsWire = container.querySelector('[data-appliance-branch="ems-app"]');
+    expect(branchWire).not.toBeNull();
+    expect(emsWire).not.toBeNull();
+    expect(branchWire?.querySelector('[data-electrons]')).not.toBeNull();
+    expect(emsWire?.querySelector('[data-electrons]')).not.toBeNull();
   });
 });

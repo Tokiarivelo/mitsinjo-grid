@@ -7,7 +7,13 @@ import { cn } from '@/lib/utils';
 import { fmtKw, fmtPct } from '@/lib/format';
 import { useTranslations } from '@/lib/i18n';
 import { SectorIcon } from '@/components/ui/sector-icon';
-import type { BreakerState, BuildingSceneModel, ControllerSceneModel, SceneModel } from '../types';
+import type {
+  BreakerState,
+  BuildingSceneModel,
+  ControllerSceneModel,
+  LineFlowSceneModel,
+  SceneModel,
+} from '../types';
 import { useReducedMotion } from '../hooks/use-reduced-motion';
 import { useZoomPan } from '../hooks/use-zoom-pan';
 import { ZOOM_MAX, ZOOM_MIN, toTransform } from '../utils/zoom-pan';
@@ -15,6 +21,8 @@ import {
   DIAGRAM_H,
   DIAGRAM_SECTORS,
   DIAGRAM_W,
+  applianceBranchRoute,
+  applianceBranchSlots,
   diagramLayout,
   type Box,
   type DiagramLayout,
@@ -22,7 +30,8 @@ import {
   type Pt,
 } from '../utils/diagram-layout';
 import { toSvgPath } from '../utils/flow-path';
-import { STATUS_BG_CLASS, STATUS_TEXT_CLASS } from '../utils/scene-palette';
+import { STATUS_BG_CLASS, STATUS_HEX, STATUS_TEXT_CLASS } from '../utils/scene-palette';
+import { derivationSpeed } from '../utils/tap-point';
 import { NO_LOAD_KW } from '../utils/feeder-tone';
 import { useFeederLabels } from '../hooks/use-feeder-labels';
 import { appliancesPerSector } from '../utils/appliance-markers';
@@ -76,6 +85,10 @@ export function GridDiagram({
   const feeders = useFeederLabels(model);
   const { lines, solar, battery, buildings } = model;
   const applianceCounts = useMemo(() => appliancesPerSector(model.appliances), [model.appliances]);
+  const branchSlots = useMemo(
+    () => applianceBranchSlots(model.appliances ?? []),
+    [model.appliances]
+  );
   const feederOn = lines.batteryToBus.active;
 
   const batteryState = !model.hasResult
@@ -203,6 +216,82 @@ export function GridDiagram({
                     animate={animate}
                     glow={glow}
                   />
+                );
+              })}
+
+              {/* Inserted appliance branch lines & nodes (PI-T9) */}
+              {model.appliances?.map((appliance) => {
+                const mode = appliance.connectionMode ?? 'branch';
+                const route = applianceBranchRoute(
+                  appliance.sector,
+                  mode,
+                  variant,
+                  layout,
+                  branchSlots[appliance.id]
+                );
+                const b = buildings[appliance.sector];
+                const isCut = b.onFire;
+                const lineState = sectorWireState(b, appliance.running && b.connected);
+                const tone = isCut ? 'critical-red' : appliance.running ? 'battery-green' : 'idle';
+                const lineFlow: LineFlowSceneModel = {
+                  from: [route.points[0]![0], 0, route.points[0]![1]],
+                  to: [route.node[0], 0, route.node[1]],
+                  active: appliance.running && !isCut,
+                  flowKw: appliance.kwNow,
+                  direction: appliance.running ? 'forward' : 'idle',
+                  speed: derivationSpeed(appliance.kwNow),
+                  color: STATUS_HEX[tone],
+                  cut: isCut,
+                };
+
+                return (
+                  <g key={`appliance-branch-${appliance.id}`} data-appliance-branch={appliance.id}>
+                    <FlowWire
+                      points={route.points}
+                      line={lineFlow}
+                      state={lineState}
+                      intensity={appliance.running ? 1 : 0}
+                      colorClass={STATUS_TEXT_CLASS[tone]}
+                      animate={animate}
+                      glow={glow}
+                    />
+                    <g
+                      data-testid={`diagram-appliance-${appliance.id}`}
+                      data-connection-mode={mode}
+                      data-sector={appliance.sector}
+                    >
+                      <circle
+                        cx={route.node[0]}
+                        cy={route.node[1]}
+                        r={2.8}
+                        className={cn(
+                          'transition-colors',
+                          isCut
+                            ? 'fill-critical-red stroke-critical-red'
+                            : appliance.running
+                              ? 'fill-energy-cyan stroke-slate-950'
+                              : 'fill-surface-elevated stroke-border'
+                        )}
+                        strokeWidth={1}
+                      />
+                      <circle
+                        cx={route.node[0]}
+                        cy={route.node[1]}
+                        r={1.2}
+                        className={appliance.running ? 'fill-slate-950' : 'fill-text-muted'}
+                      />
+                      <title>
+                        {t('applianceTitle', {
+                          name: appliance.name,
+                          kw: fmtKw(appliance.kwNow),
+                          feed:
+                            mode === 'ems'
+                              ? t('controller.shortTitle')
+                              : tSectors(appliance.sector),
+                        })}
+                      </title>
+                    </g>
+                  </g>
                 );
               })}
 

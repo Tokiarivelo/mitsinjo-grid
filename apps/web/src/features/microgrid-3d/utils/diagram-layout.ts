@@ -209,3 +209,113 @@ export function segmentCrossesBox([x1, y1]: Pt, [x2, y2]: Pt, b: Box): boolean {
   const maxY = Math.max(y1, y2);
   return minX < b.x + b.w && maxX > b.x && minY < b.y + b.h && maxY > b.y;
 }
+
+/** Stacked branch slots per sector and mode; extra appliances share the last slot. */
+export const APPLIANCE_BRANCH_SLOTS = 3;
+
+/**
+ * Slot of each appliance among those on the same sector and connection mode (PI-T9),
+ * capped so every route stays inside the diagram and clear of every label box.
+ */
+export function applianceBranchSlots(
+  appliances: readonly { id: string; sector: SectorId; connectionMode?: 'branch' | 'ems' }[]
+): Record<string, number> {
+  const seen = new Map<string, number>();
+  const slots: Record<string, number> = {};
+  for (const a of appliances) {
+    const group = a.connectionMode === 'ems' ? 'ems' : a.sector;
+    const n = seen.get(group) ?? 0;
+    seen.set(group, n + 1);
+    slots[a.id] = Math.min(n, APPLIANCE_BRANCH_SLOTS - 1);
+  }
+  return slots;
+}
+
+export interface ApplianceBranchRoute {
+  points: Pt[];
+  node: Pt;
+  tap: Pt;
+}
+
+/**
+ * 2D branch wire route for an inserted appliance (PI-T9).
+ * - Mode 'branch': branches off the feeder wire of its sector.
+ * - Mode 'ems': runs directly from the EMS controller.
+ * Positions are chosen to avoid passing through any card, tag or bus label.
+ */
+export function applianceBranchRoute(
+  sector: SectorId,
+  mode: 'branch' | 'ems',
+  variant: DiagramVariant,
+  layout: DiagramLayout,
+  slot = 0
+): ApplianceBranchRoute {
+  const index = Math.min(Math.max(0, slot), APPLIANCE_BRANCH_SLOTS - 1);
+  if (variant === 'circuit') {
+    if (mode === 'ems') {
+      const start: Pt = [181, 10];
+      const node: Pt = [194, 10 + index * 3];
+      return {
+        tap: start,
+        node,
+        points: [start, node],
+      };
+    }
+    const y = layout.wires.busToSector[sector][0]![1];
+    const tapX = 174;
+    const nodeY = y + 8 + index * 4;
+    const node: Pt = [188, nodeY];
+    return {
+      tap: [tapX, y],
+      node,
+      points: [[tapX, y], [tapX, nodeY], node],
+    };
+  }
+
+  // Topology variant
+  if (mode === 'ems') {
+    const start: Pt = [181, 110];
+    const node: Pt = [196, 108 + index * 8];
+    return {
+      tap: start,
+      node,
+      points: [start, node],
+    };
+  }
+
+  switch (sector) {
+    case 'water': {
+      const tap: Pt = [88, 128];
+      const node: Pt = [88, 146 + index * 8];
+      return { tap, node, points: [tap, node] };
+    }
+    case 'households': {
+      const tapY = 145 + index * 6;
+      const tap: Pt = [118, tapY];
+      const node: Pt = [104, tapY];
+      return { tap, node, points: [tap, node] };
+    }
+    case 'market': {
+      const tapY = 145 + index * 6;
+      const tap: Pt = [222, tapY];
+      const node: Pt = [208, tapY];
+      return { tap, node, points: [tap, node] };
+    }
+    case 'school': {
+      const tapY = 80 + index * 8;
+      const tap: Pt = [208, tapY];
+      const node: Pt = [222, tapY];
+      return { tap, node, points: [tap, node] };
+    }
+    case 'industry': {
+      const tap: Pt = [314, 118];
+      const node: Pt = [302, 118 - index * 4];
+      return { tap, node, points: [tap, node] };
+    }
+    case 'health': {
+      const tap: Pt = [272, 118];
+      const node: Pt = [286, 118 - index * 4];
+      return { tap, node, points: [tap, node] };
+    }
+  }
+}

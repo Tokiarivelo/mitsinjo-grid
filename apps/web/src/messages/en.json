@@ -801,7 +801,8 @@
       "zoomControls": "Diagram zoom",
       "zoomHint": "Ctrl + scroll or pinch to zoom · drag to pan",
       "onFire": "On fire",
-      "applianceCount": "{count} added"
+      "applianceCount": "{count} added",
+      "applianceTitle": "{name} ({kw}) · {feed}"
     },
     "hardwareLink": {
       "title": "Physical scale model",
@@ -1128,7 +1129,8 @@
         },
         "cancel": "Cancel",
         "cancelLabel": "Cancel the model improvement"
-      }
+      },
+      "minimapEms": "EMS"
     },
     "dispatch": {
       "modeLabel": "Dispatch mode",

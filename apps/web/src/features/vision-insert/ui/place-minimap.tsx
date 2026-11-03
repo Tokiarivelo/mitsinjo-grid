@@ -11,7 +11,9 @@ import {
   VILLAGE_PATHS,
   type KeepOutZone,
 } from '@/features/microgrid-3d/utils/landscape';
-import { SECTOR_POSITIONS } from '@/features/microgrid-3d/utils/site-positions';
+import { BUS_POSITION, SECTOR_POSITIONS } from '@/features/microgrid-3d/utils/site-positions';
+import { tapPoint } from '@/features/microgrid-3d/utils/tap-point';
+import type { ConnectionMode } from '@/stores/placed-models.store';
 
 export interface PlaceMinimapProps {
   /** Placed spot (normalized) or null = ring default. */
@@ -23,6 +25,8 @@ export interface PlaceMinimapProps {
   zones?: readonly KeepOutZone[];
   /** Zone of the object being placed: not drawn, never blocks itself. */
   excludeId?: string;
+  /** Grid connection mode (PI-T8/PI-T9): 'branch' (default) or 'ems'. */
+  connectionMode?: ConnectionMode;
 }
 
 /** Half-side of the square map (scene units): the terrain disc plus a margin. */
@@ -45,6 +49,7 @@ export function PlaceMinimap({
   onPlace,
   zones = KEEP_OUT_ZONES,
   excludeId,
+  connectionMode = 'branch',
 }: PlaceMinimapProps) {
   const t = useTranslations('features.visionInsert');
   const [bx, , bz] = SECTOR_POSITIONS[sector];
@@ -58,6 +63,20 @@ export function PlaceMinimap({
     [zones, excludeId]
   );
   const blocked = isBlocked(cursor.x, cursor.z, 0, zones, excludeId);
+
+  // Derivation cable for the placed spot (PI-T9)
+  const derivation = useMemo(() => {
+    if (!value) return null;
+    return tapPoint(value, sector, connectionMode, { zones, excludeId });
+  }, [value, sector, connectionMode, zones, excludeId]);
+
+  const derivationPath = useMemo(() => {
+    if (!derivation || !value) return null;
+    const pts = derivation.waypoint
+      ? [derivation.point, derivation.waypoint, [value.x, 0, value.z]]
+      : [derivation.point, [value.x, 0, value.z]];
+    return pts.reduce((acc, [x, , z], i) => (i === 0 ? `M ${x} ${z}` : `${acc} L ${x} ${z}`), '');
+  }, [derivation, value]);
 
   const place = (pos: AppliancePosition) => {
     setCursor(pos);
@@ -146,16 +165,93 @@ export function PlaceMinimap({
             />
           );
         })}
-        {objects.map((k) => (
-          <circle
-            key={k.id}
-            cx={k.x}
-            cy={k.z}
-            r={k.r}
-            className="fill-warning-amber/30 stroke-warning-amber"
+        {/* Central Dispatch EMS Shelter (BUS_POSITION [0, 0, 1]) */}
+        <g data-testid="minimap-ems">
+          <rect
+            x={BUS_POSITION[0] - 3.5}
+            y={BUS_POSITION[2] - 3}
+            width={7}
+            height={6}
+            rx={1}
+            className="fill-energy-cyan/20 stroke-energy-cyan/70"
             strokeWidth={1}
           />
+          <text
+            x={BUS_POSITION[0]}
+            y={BUS_POSITION[2] + 1.2}
+            textAnchor="middle"
+            className="text-[2.6px] font-mono fill-energy-cyan font-bold pointer-events-none select-none"
+          >
+            {t('minimapEms')}
+          </text>
+        </g>
+        {objects.map((k) => (
+          <g key={k.id} data-testid={`minimap-object-${k.id}`}>
+            <circle
+              cx={k.x}
+              cy={k.z}
+              r={k.r}
+              className="fill-warning-amber/30 stroke-warning-amber"
+              strokeWidth={1}
+            />
+            <circle
+              cx={k.x}
+              cy={k.z}
+              r={1.6}
+              className="fill-warning-amber stroke-slate-950"
+              strokeWidth={0.6}
+            />
+          </g>
         ))}
+        {/* Derivation cable & poles for placed object (PI-T9) */}
+        {derivationPath && (
+          <path
+            d={derivationPath}
+            data-testid="minimap-derivation"
+            className="stroke-energy-cyan/90 fill-none"
+            strokeWidth={1.4}
+            strokeDasharray="3 2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+        {derivation && (
+          <g data-testid="minimap-derivation-hardware">
+            <circle
+              cx={derivation.point[0]}
+              cy={derivation.point[2]}
+              r={1.6}
+              data-testid="minimap-tap"
+              className={
+                connectionMode === 'ems'
+                  ? 'fill-energy-cyan stroke-slate-950'
+                  : 'fill-energy-cyan/80 stroke-border'
+              }
+              strokeWidth={0.8}
+            />
+            {derivation.poles.map(([px, pz], i) => (
+              <circle
+                key={`pole-${i}`}
+                cx={px}
+                cy={pz}
+                r={1.1}
+                data-testid="minimap-pole"
+                className="fill-text-primary stroke-slate-950"
+                strokeWidth={0.5}
+              />
+            ))}
+            {derivation.waypoint && (
+              <circle
+                cx={derivation.waypoint[0]}
+                cy={derivation.waypoint[2]}
+                r={1.4}
+                data-testid="minimap-corner-waypoint"
+                className="fill-warning-amber stroke-slate-950"
+                strokeWidth={0.6}
+              />
+            )}
+          </g>
+        )}
         {value && (
           <circle
             cx={value.x}
