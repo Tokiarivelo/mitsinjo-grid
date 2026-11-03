@@ -22,7 +22,7 @@ All work in `video/` (layout: plan § 3). New commands → Makefile targets in a
 ## PD1 — Assets and tooling
 
 - [ ] **PD-T3** `video/canvas/`: `shared.css`, `timeline.js` (`__seek`, `__duration`), `00-splash.html`,
-      `10-outro.html`, `overlays/{chapter,lower-third,recap-card}.html`; `video/icons/*.svg` (plan § 3 list).
+      `10-outro.html`, `overlays/{chapter,lower-third,recap-card,model-chip}.html`; `video/icons/*.svg` (plan § 3 list).
       **Done when** each page renders the same frame twice for the same `__seek(t)`.
 - [ ] **PD-T4** `video/scripts/render-canvas.mjs` + `make video-canvas` → `video/frames/<page>/%05d.png`
       (overlays with alpha). **Done when** splash and outro play at 30 fps with `ffplay`.
@@ -49,4 +49,5 @@ All work in `video/` (layout: plan § 3). New commands → Makefile targets in a
 
 **Exit criteria:** a ≤ 3:00 720p video that opens with the provenance line, is ≥ 90 % live footage with live
 Meta calls visible, shows both features (7-day village + Autonomous AI; photo → 3D → village), credits its
-music, and is linked from the README before the deadline.
+music, names each Meta model with its job while it runs (plan § 4b), and is linked from the README before
+the deadline.
