@@ -1045,7 +1045,8 @@
         "cause": {
           "timeout": "lany ny fotoana",
           "error": "nisy olana",
-          "aborted": "nofoanana"
+          "aborted": "nofoanana",
+          "lost": "nisokatra indray ny mpizara, voatahiry ity modely ity"
         }
       }
     }

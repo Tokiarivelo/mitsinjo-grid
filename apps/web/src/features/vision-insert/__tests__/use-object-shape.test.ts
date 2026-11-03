@@ -365,7 +365,7 @@ describe('useObjectShape staged improvement (PG-T17/T18)', () => {
     expect(String(fetchMock.mock.calls[1]![0])).toBe(`/api/vision/shape/stages?job=${JOB}&from=1`);
   });
 
-  it('a job that cannot be resumed ends as stopped (error)', async () => {
+  it('a job the server no longer knows (restart, 404) ends as stopped (lost), model kept', async () => {
     fetchMock
       .mockResolvedValueOnce(
         new Response(
@@ -379,8 +379,26 @@ describe('useObjectShape staged improvement (PG-T17/T18)', () => {
       void result.current.requestShape('data:image/png;base64,AA', target);
     });
     await waitFor(() => expect(result.current.improve?.status).toBe('stopped'));
-    expect(result.current.improve?.cause).toBe('error');
+    expect(result.current.improve?.cause).toBe('lost');
     expect(result.current.status).toBe('ready');
+    expect(result.current.shape?.mode).toBe('recipe');
+  });
+
+  it('a job whose resume fails (500) ends as stopped (error)', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          ev('shape_result', { shape: recipeShape, jobId: JOB }) +
+            ev('shape_stage', { ...stage({}), seq: 0 })
+        )
+      )
+      .mockResolvedValue(new Response('{}', { status: 500 }));
+    const { result } = renderHook(() => useObjectShape());
+    act(() => {
+      void result.current.requestShape('data:image/png;base64,AA', target);
+    });
+    await waitFor(() => expect(result.current.improve?.status).toBe('stopped'));
+    expect(result.current.improve?.cause).toBe('error');
   });
 
   it('first-answer stages only: the model is final with the answer', async () => {

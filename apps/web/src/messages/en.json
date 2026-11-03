@@ -1045,7 +1045,8 @@
         "cause": {
           "timeout": "time is up",
           "error": "an error occurred",
-          "aborted": "cancelled"
+          "aborted": "cancelled",
+          "lost": "the server restarted, this model is kept"
         }
       }
     }

@@ -1045,7 +1045,8 @@
         "cause": {
           "timeout": "temps écoulé",
           "error": "une erreur est survenue",
-          "aborted": "annulée"
+          "aborted": "annulée",
+          "lost": "le serveur a redémarré, ce modèle est conservé"
         }
       }
     }

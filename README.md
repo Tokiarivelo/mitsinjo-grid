@@ -202,6 +202,8 @@ make facade-e2e FRONT=car.png OUT=test-results/car LABEL='purple vintage car' SC
 
 # Real 3D viewer shots of those recipes, dark + light (dev server running, API stubbed)
 make shape-shots
+# Improvement chip shots (running + finalised), desktop + mobile, dark + light
+make improve-shot
 
 # Run Playwright end-to-end test suite
 make e2e

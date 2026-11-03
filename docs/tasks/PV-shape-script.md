@@ -141,7 +141,7 @@ stage k accepted (score ≥ gate or no gain after N rounds) ──► locked ─
       out. It is announced to screen readers (`aria-live="polite"`), uses i18n en/fr/mg, theme tokens, and fits at 320 px.
       Tests: the hook follows the stage events, a dropped stream resumes from the last stage, and the chip
       reaches its final state on success and on error.
-      **Done:** `shape-jobs.ts` (in-memory job, ordered events with `seq`, 10 min TTL), route streams the job after `shape_result { jobId }`, `GET /api/vision/shape/stages?job&from` resumes, `DELETE` cancels (new request, reselect, new photo); `facadeStageLoop` splits first / background (≤ 3 min); `ImproveChip`. **Deviation:** no manual recipe edit exists in the UI yet, so « an edit cancels the stages » = a new request or reselect cancels the job; jobs live in one server process (lost on restart → chip « stopped: error »).
+      **Done:** `shape-jobs.ts` (in-memory job, ordered events with `seq`, 10 min TTL), route streams the job after `shape_result { jobId }`, `GET /api/vision/shape/stages?job&from` resumes, `DELETE` cancels (new request, reselect, new photo); `facadeStageLoop` splits first / background (≤ 3 min); `ImproveChip`. **Deviation:** no manual recipe edit exists in the UI yet, so « an edit cancels the stages » = a new request or reselect cancels the job; jobs live in one server process: after a restart the resume gets 404 and the chip reads « stopped: the server restarted, this model is kept » (cause `lost`, client-side), the last swapped-in model stays.
 
 ### G4 Every kind of object
 
