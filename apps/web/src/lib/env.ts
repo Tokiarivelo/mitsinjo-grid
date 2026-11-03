@@ -12,6 +12,8 @@ const envSchema = z.object({
   // Perception models (voice, vision, segmentation, image) and spend cap
   META_VOICE_MODEL: z.string().default('muse-voice-transcribe-1.0'),
   META_VISION_MODEL: z.string().default('muse-spark-1.3'),
+  /** Final 3D check and re-refinement stage (deep reasoning; falls back to META_VISION_MODEL). */
+  META_REFINE_MODEL: z.string().default('muse-wonder-1.0'),
   META_SEGMENT_MODEL: z.string().default('sam-3.1'),
   META_IMAGE_MODEL: z.string().default('muse-image-1.0'),
   /** Estimated Meta spend allowed per chat session (USD). Over it → deterministic mock. 0 = no paid calls. */
@@ -44,6 +46,7 @@ export const env = envSchema.parse({
   GLIMMER_API_KEY: process.env.GLIMMER_API_KEY,
   META_VOICE_MODEL: process.env.META_VOICE_MODEL || undefined,
   META_VISION_MODEL: process.env.META_VISION_MODEL || undefined,
+  META_REFINE_MODEL: process.env.META_REFINE_MODEL || undefined,
   META_SEGMENT_MODEL: process.env.META_SEGMENT_MODEL || undefined,
   META_IMAGE_MODEL: process.env.META_IMAGE_MODEL || undefined,
   META_SPEND_CAP_USD: process.env.META_SPEND_CAP_USD || undefined,

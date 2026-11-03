@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { fitRecipe, type ObjectRecipe, type RecipePart } from '@/lib/object-shape';
 import { recipeToScript } from '@/lib/shape-script';
 import {
+  FINAL_GATE,
+  FINAL_STAGE,
   HOUSE_STAGES,
   type Proposer,
   type StageScorer,
@@ -9,6 +11,7 @@ import {
   houseCanEdit,
   houseStageScorer,
   runShapeStages,
+  withFinalStage,
 } from '../shape-stages';
 import { facadeHouseRecipe, measureElevation } from '../facade-house';
 import { THATCHED_FRONT } from '../__fixtures__/elevation';
@@ -262,5 +265,64 @@ describe('houseStageScorer + HOUSE_STAGES on the thatched drawing', () => {
     });
     expect(res.stages[0]!.stop).toMatch(/no_gain|gate/);
     expect(res.recipe).toEqual(built);
+  });
+});
+
+describe('withFinalStage (final check, Muse Wonder)', () => {
+  const looped = withFinalStage(STAGES, score);
+  /** Each stage left untouched; the final round answers `final`. */
+  const finalOnly =
+    (final: unknown[]): Proposer<S | typeof FINAL_STAGE> =>
+    async ({ stage }) =>
+      stage.id === FINAL_STAGE ? final : [];
+
+  it('appends the final stage: every earlier kind editable, scored on the whole model', () => {
+    const last = looped.stages.at(-1)!;
+    expect(last).toEqual({ id: FINAL_STAGE, kinds: ['wall', 'roof'], gate: FINAL_GATE });
+    const recipe = { proportions: { w: 1, h: 0.7, d: 0.6 }, parts: [wall, roof] };
+    const whole = score(recipe, 'massing').overall;
+    expect(looped.score(recipe, FINAL_STAGE)).toEqual({ stage: whole, overall: whole });
+    expect(looped.score(recipe, 'roof')).toEqual(score(recipe, 'roof'));
+  });
+
+  it('re-refines several parts in one patch when the whole model gets better', async () => {
+    const res = await runShapeStages({
+      seed,
+      ...looped,
+      budgetMs: 5_000,
+      propose: finalOnly([
+        { op: 'set', id: 'wall', size: [0.8, 0.6, 0.6] },
+        { op: 'set', id: 'roof', ridge: 0.9 },
+      ]),
+    });
+    const final = res.stages.at(-1)!;
+    expect(final.id).toBe(FINAL_STAGE);
+    expect(final.kept).toBe(1);
+    expect(find(res.recipe, 'wall').size[0]).toBeCloseTo(0.8, 9);
+    expect(find(res.recipe, 'roof').ridge).toBeCloseTo(0.9, 9);
+  });
+
+  it('a final patch that makes the whole model worse is dropped (model kept)', async () => {
+    const res = await runShapeStages({
+      seed,
+      ...looped,
+      budgetMs: 5_000,
+      propose: finalOnly([{ op: 'set', id: 'wall', size: [0.2, 0.6, 0.6] }]),
+    });
+    expect(res.stages.at(-1)).toMatchObject({ id: FINAL_STAGE, kept: 0, stop: 'no_gain' });
+    expect(find(res.recipe, 'wall').size[0]).toBeCloseTo(0.6, 9);
+  });
+
+  it('passes without asking once the whole model is at the gate', async () => {
+    const propose = vi.fn(async () => []);
+    const perfect: StageScorer<S> = () => ({ stage: 1, overall: 1 });
+    const res = await runShapeStages({
+      seed,
+      ...withFinalStage(STAGES, perfect),
+      budgetMs: 5_000,
+      propose,
+    });
+    expect(res.stages.at(-1)).toMatchObject({ id: FINAL_STAGE, stop: 'gate' });
+    expect(propose).not.toHaveBeenCalled();
   });
 });

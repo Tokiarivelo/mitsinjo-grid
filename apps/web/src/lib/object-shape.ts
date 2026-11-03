@@ -368,7 +368,8 @@ export const ShapeStepEventSchema = z.object({ step: z.enum(SHAPE_STEPS) });
 /**
  * Staged improvement of the model (PG-T17/T18): stage ids of the loop (house: massing → roof →
  * openings → accessories; objects from their 2D view, PG-T20: body, glass, wheels, doors, cells,
- * trunk, crown, head, details). The first answer runs the stages that fit its budget; the rest go
+ * trunk, crown, head, details), then `final`: Muse Wonder checks the whole model and re-refines
+ * it (background only). The first answer runs the stages that fit its budget; the rest go
  * on in the background on the same stream (`shape_stage` events), resumable by job id.
  */
 export const SHAPE_STAGE_IDS = [
@@ -385,6 +386,7 @@ export const SHAPE_STAGE_IDS = [
   'crown',
   'head',
   'details',
+  'final',
 ] as const;
 export type ShapeStageId = (typeof SHAPE_STAGE_IDS)[number];
 /** Background stages stop after this (the plan's « background stages finish ≤ 3 min »). */

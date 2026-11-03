@@ -175,6 +175,11 @@ export function stageQuestion(q: StageQuestionInput): string {
   return [
     `Object: "${name}". Stage: ${q.stage} (round ${q.round}). Stage score ${Math.round(q.score.stage * 100)} %, whole model ${Math.round(q.score.overall * 100)} %.`,
     ...(q.notes?.length ? [`Measured: ${q.notes.join('; ')}.`] : []),
+    ...(q.stage === 'final'
+      ? [
+          'Final check: every earlier stage is done. Compare the WHOLE model with the drawing, part by part, and fix what still differs (missing, extra, misplaced or wrongly sized parts, wrong materials). Empty list when the model already matches.',
+        ]
+      : []),
     `Editable components:\n${edit.map(describeComponent).join('\n') || '(none yet — add or cut them)'}`,
     `Locked (read-only):\n${locked.map(describeComponent).join('\n') || '(none)'}`,
     'Answer only the JSON ops for this stage.',

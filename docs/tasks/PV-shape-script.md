@@ -203,3 +203,10 @@ measure and a row in `PV-shape-realism.md` « Loop log ».
 
 LLM-written JavaScript/Python executed on the server; GLB export; non-Meta image-to-3D models; pasting the
 photo or the drawing on the model.
+
+- [x] **PG-T24 Final check by Muse Wonder (user, 2026-11-03).** After the last stage, Wonder checks the whole
+      model against the drawing and re-refines it, background only, kept only when the whole-model score rises.
+      **Done:** `withFinalStage` (`shape-stages.ts`, gate 1, every earlier kind editable, stage = overall score),
+      appended by `facadeStageLoop` and `viewStageLoop`; `stagedLoop` keeps it out of the first answer;
+      `proposeShapeOps(…, { refine: true })` → `META_REFINE_MODEL` (default `muse-wonder-1.0`), Spark retry on
+      failure; « Final check » line in the stage question; chip label « Vérification finale (Muse Wonder) ».

@@ -110,6 +110,33 @@ export const HOUSE_STAGES: ReadonlyArray<
   { id: 'accessories', kinds: ['chimney', 'step'], gate: 0.8 },
 ];
 
+/** Last stage of every loop: the whole model checked and re-refined (Muse Wonder, background only). */
+export const FINAL_STAGE = 'final' as const;
+export type FinalStage = typeof FINAL_STAGE;
+/** Gate of the final check: Wonder always looks, unless the whole model already scores 100 %. */
+export const FINAL_GATE = 1;
+
+/**
+ * Appends the final stage: every kind of the earlier stages is editable, and its stage score
+ * is the whole-model score, so a patch is kept only when the whole model gets better.
+ */
+export function withFinalStage<S extends string>(
+  stages: ReadonlyArray<StageSpec<S>>,
+  score: StageScorer<S>
+): { stages: ReadonlyArray<StageSpec<S | FinalStage>>; score: StageScorer<S | FinalStage> } {
+  const kinds = [...new Set(stages.flatMap((st) => st.kinds))];
+  const first = stages[0]?.id;
+  return {
+    stages: [...stages, { id: FINAL_STAGE, kinds, gate: FINAL_GATE }],
+    score: (recipe, stage) => {
+      if (stage !== FINAL_STAGE) return score(recipe, stage as S);
+      if (first === undefined) return { stage: 1, overall: 1 };
+      const { overall } = score(recipe, first);
+      return { stage: overall, overall };
+    },
+  };
+}
+
 const kindOfOp = (op: unknown): PartKind | 'unknown' | null => {
   if (!op || typeof op !== 'object') return null;
   const o = op as { op?: unknown; kind?: unknown; part?: { kind?: unknown } };

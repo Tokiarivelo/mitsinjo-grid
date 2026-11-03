@@ -1050,7 +1050,8 @@
           "trunk": "Tronc",
           "crown": "Couronne",
           "head": "Tête",
-          "details": "Détails"
+          "details": "Détails",
+          "final": "Vérification finale (Muse Wonder)"
         },
         "cause": {
           "timeout": "temps écoulé",
