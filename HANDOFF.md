@@ -1,10 +1,10 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-03 (PI-I0 complete, PI-T1 & PI-T2 closed) · **By:** Antigravity · **Branch:** feat/pi-0-placed-model
+**Updated:** 2026-11-03 (PI-I0 complete, PR #49 open) · **By:** Antigravity · **Branch:** feat/pi-0-placed-model
 
 ## Current state
 
-- Branch `feat/pi-0-placed-model` branched from latest `origin/main` (`998a7db`).
+- Branch `feat/pi-0-placed-model` rebased on latest `origin/main` (`a558cef`), PR #49 open.
 - PI-T1 PlacedModel contract & store:
   - Visual store `usePlacedModelsStore` (`apps/web/src/stores/placed-models.store.ts`) with `localStorage` try/catch.
   - Helpers `sceneScale(archetype, proportions)` and `footprint(recipe, scale, yaw)`.
@@ -14,7 +14,7 @@
   - `buildPlacedModelsGeometry` (`placed-models-geometry.ts`) reuses `recipeMesh` without duplication, positions on `terrainHeight` at lowest footprint point with slope plinths, reflects feeder departure states (dimmed if unserved, fire alert if on fire), LOD box on tier `low`.
   - Merges up to 30 placed models into 1 mesh (budget ≤ +2 draw calls respected).
   - Integrated in `ApplianceMarkers` (`appliance-markers.tsx`) and `village-canvas.tsx` across `/village`, `/simulation`, and overview preview.
-- All checks pass: `pnpm typecheck`, `make lint`, `make check-i18n`, `make test-engine`, and `pnpm test` (258/258 test files green).
+- All checks pass: `pnpm typecheck`, `make lint`, `make check-i18n`, `make test-engine`, and tests green.
 
 ## Next
 
