@@ -3,9 +3,9 @@
 **Read first:** `docs/contracts.md` (Appliance, `position`) · `docs/tasks/PV-free-placement.md` (PP-T1…T8, base de ce plan) ·
 `docs/performance.md` (budgets 3D) · `apps/web/src/features/microgrid-3d/utils/{landscape,placement,scatter,terrain-colors,cable-route,site-positions}.ts`
 **Skills:** `/scene-3d` (rendu, budgets) · `/designer-3d` (revue harmonie) · `/ui-feature` + `/design-check` (choix du raccordement) ·
-`/engine-change` seulement si la décision D1-b est prise (nouveau départ)
+pas de `/engine-change` (D1 validée : aucun nouveau départ)
 **Depends on:** PA (`PA-ai-dispatch.md`) terminé et fusionné : PA-4 touche `microgrid-3d` (zones en alerte), on passe après pour éviter les conflits.
-**Status:** ❌ planned (user, 2026-11-03).
+**Status:** ❌ planned (user, 2026-11-03). Décisions D1–D3 validées (user, 2026-11-03).
 
 **Objectif (user, 2026-11-03).** Quand on insère un objet dans la simulation, son **modèle 3D** apparaît dans le village
 à sa position et s'y fond : **les arbres disparaissent autour**, **le sol devient rouge** (latérite, comme les cours des
@@ -24,7 +24,7 @@ autres bâtiments) et des **poteaux électriques** le relient à **sa ramificati
 
 ## Règles du plan (pour éviter les erreurs)
 
-1. **Visuel seulement.** Rien ne change dans `@mitsinjo/engine` (sauf D1-b) : même charge, même départ, même hash de
+1. **Visuel seulement.** Rien ne change dans `@mitsinjo/engine` : même charge, même départ, même hash de
    résultat. Un test le vérifie à chaque étape (résultat identique avec / sans modèle 3D).
 2. **Une source de vérité pour « où l'on ne peut pas mettre » :** une fonction pure `siteZones(placed)` = zones statiques +
    emprises des objets placés. Végétation, sol, placement et poteaux lisent **toutes** cette fonction (aucune liste en double).
@@ -33,13 +33,13 @@ autres bâtiments) et des **poteaux électriques** le relient à **sa ramificati
 5. **Budgets** (`docs/performance.md`) : ≤ +3 draw calls pour 30 objets (modèles fusionnés par matériau, sol et poteaux instanciés).
 6. Retirer l'objet = tout revient (arbres, sol vert, poteaux supprimés). Annulable avec le flux existant.
 
-## Décisions ouvertes (à valider avant PI-T6)
+## Décisions (validées par l'utilisateur, 2026-11-03)
 
-- **D1 Raccordement au Dispatch EMS.** a) _(recommandé)_ Ligne directe EMS → objet, **visuelle** : la charge reste comptée sur
+- **D1 Raccordement au Dispatch EMS — validé : a).** Ligne directe EMS → objet, **visuelle** : la charge reste comptée sur
   le départ choisi (`sector`), l'étiquette le dit (« alimenté par : Pompage d'eau, ligne directe depuis l'EMS »).
-  b) Un vrai nouveau départ « direct EMS » = changement moteur (`SECTOR_IDS`, stratégies, i18n, hash) : hors de ce plan.
-- **D2 Arbres.** _(recommandé)_ Supprimés dans la clairière (pas déplacés) : déterministe, sans coût de recalcul global.
-- **D3 Sauvegarde du modèle.** _(recommandé)_ Local d'abord (`localStorage`, par id d'appareil) ; Neon plus tard = migration.
+  Écarté : un vrai nouveau départ « direct EMS » (changement moteur : `SECTOR_IDS`, stratégies, i18n, hash).
+- **D2 Arbres — validé.** Supprimés dans la clairière (pas déplacés) : déterministe, sans coût de recalcul global.
+- **D3 Sauvegarde du modèle — validé.** Local d'abord (`localStorage`, par id d'appareil) ; Neon plus tard = migration.
 
 ## Tâches
 
@@ -76,7 +76,7 @@ proportions)` (une maison ≈ une maison du village, un frigo ≈ 1 m) ; `footpr
 
 - [ ] **PI-T6 Point de raccordement (pur, testé).** `tapPoint(position, sector, mode)` : mode `branch` (par défaut) = le
       **poteau le plus proche de la ligne de son départ** (`routeCable` du départ, via `mapPolesToSectors`) ou le bâtiment du
-      secteur s'il est plus près ; mode `ems` (D1-a) = le Dispatch EMS (`BUS_POSITION`). Jamais à travers un bâtiment, la mare ou
+      secteur s'il est plus près ; mode `ems` (D1) = le Dispatch EMS (`BUS_POSITION`). Jamais à travers un bâtiment, la mare ou
       un autre objet : la ligne contourne (un poteau d'angle) ou change de point de raccordement.
       **Done when:** tests (branche la plus proche, EMS, contournement, objet collé au bâtiment = pas de poteau).
 - [ ] **PI-T7 Poteaux et câbles.** La dérivation réutilise `routeCable` (mêmes poteaux, même flèche, même hauteur) depuis le
@@ -85,7 +85,7 @@ proportions)` (une maison ≈ une maison du village, un frigo ≈ 1 m) ; `footpr
       Les électrons (`electron-flow`) suivent la dérivation quand l'objet consomme.
       **Done when:** test (poteaux tous les ≤ 4,5, rattachés au bon départ) ; budgets tenus ; capture jour / nuit.
 - [ ] **PI-T8 Choix du raccordement dans l'interface.** Dans le formulaire d'insertion : « Raccordement : sur sa ramification
-      (recommandé) · direct au Dispatch EMS » + rappel du départ qui porte la charge (D1-a). i18n en / fr / mg, thème clair /
+      (recommandé) · direct au Dispatch EMS » + rappel du départ qui porte la charge (D1). i18n en / fr / mg, thème clair /
       sombre, ≥ 44 px, 320 px. Le glisser 3D (PP-T5) recalcule clairière, sol et poteaux au relâchement.
       **Done when:** tests composant ; `/design-check` ; le copilote ne décrit que le départ, jamais des coordonnées (PP-T7).
 
