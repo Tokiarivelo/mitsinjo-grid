@@ -166,4 +166,28 @@ describe('DispatchLogPanel (PA-T4b)', () => {
 
     clickSpy.mockRestore();
   });
+
+  it('clicking why button triggers onAskWhy callback (PA-T5b)', () => {
+    const onAskWhy = vi.fn();
+    useSimulationStore.setState({ dispatchLog: SAMPLE_ENTRIES });
+    render(<DispatchLogPanel onAskWhy={onAskWhy} />);
+
+    const whyBtn = screen.getByTestId('why-button-act-d0-h14-isolate_sector-1');
+    expect(whyBtn).toBeInTheDocument();
+    fireEvent.click(whyBtn);
+
+    expect(onAskWhy).toHaveBeenCalledWith(SAMPLE_ENTRIES[1]);
+  });
+
+  it('shift report button opens shift report modal (PA-T5c)', () => {
+    useSimulationStore.setState({ dispatchLog: SAMPLE_ENTRIES });
+    render(<DispatchLogPanel />);
+
+    const shiftReportBtn = screen.getByTestId('shift-report-button');
+    expect(shiftReportBtn).toBeInTheDocument();
+    fireEvent.click(shiftReportBtn);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText(/critical energy preserved/i)).toBeInTheDocument();
+  });
 });

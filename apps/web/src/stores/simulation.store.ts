@@ -12,6 +12,7 @@ import {
   type BridgeState,
   type DispatchMode,
   type DispatchLogEntry,
+  type Narration,
   scenarios,
   compareWorkflow,
   applyPatch,
@@ -93,6 +94,7 @@ export interface SimulationState {
   takeBackControl: () => void;
   appendDispatchLog: (entry: DispatchLogEntry | DispatchLogEntry[]) => void;
   clearDispatchLog: () => void;
+  updateDispatchLogNarration: (id: string, narration: Narration) => void;
 
   // Weather workflow actions
   addWorkflowDay: (weather?: WeatherId) => void;
@@ -441,6 +443,12 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     if (typeof fetch === 'function') {
       fetch('/api/dispatch/log', { method: 'DELETE' }).catch(() => {});
     }
+  },
+
+  updateDispatchLogNarration: (id: string, narration: Narration) => {
+    set((state) => ({
+      dispatchLog: state.dispatchLog.map((e) => (e.id === id ? { ...e, narration } : e)),
+    }));
   },
 
   play: () => {

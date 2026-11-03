@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import {
   Sparkles,
   AlertTriangle,
@@ -104,10 +104,13 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
   const chatRef = useRef<HTMLDivElement>(null);
   const chatScroll = useStickToBottom(chatRef, [messages, toolActivity, pending]);
 
-  const send = (prompt: string, media?: ChatMediaItem[]) => {
-    chatScroll.stick();
-    sendMessage(prompt, media);
-  };
+  const send = useCallback(
+    (prompt: string, media?: ChatMediaItem[]) => {
+      chatScroll.stick();
+      sendMessage(prompt, media);
+    },
+    [chatScroll, sendMessage]
+  );
   const composer = useChatComposer({ onSend: send, pending });
   // Voice urgency order (M3-T3): the text goes to the field and the fire dialog opens pre-filled.
   const [firePreset, setFirePreset] = useState<{ sector: SectorId; nonce: number } | null>(null);
@@ -125,6 +128,21 @@ function WorkspaceView({ mode = 'full', className }: CopilotWorkspaceProps) {
     onText: handleVoiceText,
     onAutoSend: (text) => send(text),
   });
+
+  useEffect(() => {
+    const handleFill = (e: Event) => {
+      const detail = (e as CustomEvent<{ prompt: string; autoSend?: boolean }>).detail;
+      if (detail?.prompt) {
+        if (detail.autoSend) {
+          send(detail.prompt);
+        } else {
+          composer.setInput(detail.prompt);
+        }
+      }
+    };
+    window.addEventListener('mitsinjo:copilot:fill', handleFill);
+    return () => window.removeEventListener('mitsinjo:copilot:fill', handleFill);
+  }, [composer, send]);
 
   const isFull = mode === 'full';
 

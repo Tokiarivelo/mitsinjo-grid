@@ -977,6 +977,23 @@ Review the pending proposal card, or ask for a different change.`,
         args: {},
       };
     } else if (
+      (/\b(dispatch|journal|autonome|autonomous|action ia)\b/i.test(query) ||
+        (/\b(pourquoi|why|nahoana)\b/i.test(query) &&
+          /\b(isol\w*|coup\w*|appliqu\w*|délest\w*|shed\w*|action|interven\w*|décid\w*)\b/i.test(
+            query
+          ))) &&
+      tools?.some((t) => t.name === 'get_dispatch_log')
+    ) {
+      const targetSector = MOCK_SECTOR_WORDS.find((s) => s.match.test(query))?.sector;
+      toolCall = {
+        id: 'call_dispatch_log',
+        name: 'get_dispatch_log',
+        args: {
+          limit: 10,
+          ...(targetSector ? { sector: targetSector } : {}),
+        },
+      };
+    } else if (
       query.includes('balanced weights') ||
       query.includes('critical share') ||
       query.includes('poids équilibré') ||
@@ -1386,6 +1403,71 @@ ${
     ? 'Ask to restore a sector once the fire is out (« restore the school ») — restoring needs your approval.'
     : 'Report a fire from /simulation to see the automatic cut, or simulate a solar drop.'
 }`,
+      };
+    }
+
+    if (toolName === 'get_dispatch_log') {
+      const entries = (Array.isArray(data.entries) ? data.entries : []) as Array<{
+        id: string;
+        hour: number;
+        origin: string;
+        action?: { kind: string; sector?: string };
+        incident?: { kind: string; sector?: string; severity: string };
+        savedKwh?: number;
+        narration?: string;
+      }>;
+      const count = Number(data.totalEntries ?? entries.length);
+      const actionsCount = Number(data.actionsCount ?? 0);
+      const savedKwh = Number(data.totalSavedKwh ?? 0);
+
+      if (fr) {
+        const lines = entries.slice(0, 5).map((e) => {
+          const target = e.action?.sector ?? e.incident?.sector ?? 'réseau';
+          const desc =
+            e.narration ?? (e.action ? `Action ${e.action.kind}` : `Incident ${e.incident?.kind}`);
+          return `- ${e.hour}h00 (${target}) : ${desc}${e.savedKwh ? ` [${e.savedKwh} kWh préservés]` : ''}`;
+        });
+
+        return {
+          content: `### Ce qui s'est passé (Journal IA)
+${
+  count > 0
+    ? `Le dispatch autonome a traité ${count} événement(s) avec ${actionsCount} intervention(s) automatique(s) pour sécuriser le village.`
+    : "Aucune intervention autonome n'est consignée pour le moment."
+}
+${lines.length ? `\n${lines.join('\n')}\n` : ''}
+### Chiffres calculés
+Événements analysés : ${count}
+Actions appliquées : ${actionsCount}
+Énergie critique préservée : ${savedKwh.toFixed(2)} kWh
+
+### Pourquoi c'est important
+Chaque décision du mode autonome applique la constitution villageoise et protège en priorité absolue le dispensaire et les infrastructures vitales.`,
+        };
+      }
+
+      const lines = entries.slice(0, 5).map((e) => {
+        const target = e.action?.sector ?? e.incident?.sector ?? 'grid';
+        const desc =
+          e.narration ?? (e.action ? `Action ${e.action.kind}` : `Incident ${e.incident?.kind}`);
+        return `- ${e.hour}:00 (${target}): ${desc}${e.savedKwh ? ` [${e.savedKwh} kWh saved]` : ''}`;
+      });
+
+      return {
+        content: `### What happened (AI Dispatch Log)
+${
+  count > 0
+    ? `Autonomous dispatch handled ${count} event(s) and applied ${actionsCount} action(s) to safeguard the microgrid.`
+    : 'No autonomous dispatch events recorded yet.'
+}
+${lines.length ? `\n${lines.join('\n')}\n` : ''}
+### Computed evidence
+Events analyzed: ${count}
+Actions executed: ${actionsCount}
+Critical energy saved: ${savedKwh.toFixed(2)} kWh
+
+### Why it matters
+Autonomous dispatch enforces the village constitution immediately, ensuring critical health and water loads remain energized.`,
       };
     }
 

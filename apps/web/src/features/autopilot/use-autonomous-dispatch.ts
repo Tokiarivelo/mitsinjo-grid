@@ -8,7 +8,7 @@ import {
   simulate,
   type DispatchLogEntry,
 } from '@mitsinjo/engine';
-import { sealLogEntry } from '@/lib/dispatch-log';
+import { sealLogEntry, formatTemplateNarration } from '@/lib/dispatch-log';
 import { useSimulationStore } from '@/stores';
 
 /**
@@ -44,13 +44,20 @@ export function useAutonomousDispatch(): void {
       mode: 'autonomous' as const,
       origin: 'ai' as const,
     };
-    const newEntries: DispatchLogEntry[] = incidents.map((incident, i) =>
-      sealLogEntry({
+    const newEntries: DispatchLogEntry[] = incidents.map((incident, i) => {
+      const draft = {
         ...base,
         id: `inc-d${dayIndex}-h${timeIndex}-${incident.kind}-${i}-${stamp}`,
         incident,
-      })
-    );
+      };
+      return sealLogEntry({
+        ...draft,
+        narration: {
+          text: formatTemplateNarration(draft as DispatchLogEntry),
+          source: 'template' as const,
+        },
+      });
+    });
 
     const decision = decideDispatch(
       input,
@@ -71,16 +78,41 @@ export function useAutonomousDispatch(): void {
           action.strategy
         );
       }
+      const draft = {
+        ...base,
+        id: `act-d${dayIndex}-h${timeIndex}-${action.kind}-${stamp}`,
+        action,
+        ...(applies ? { before: decision.before, after: decision.after } : {}),
+      };
       newEntries.push(
         sealLogEntry({
-          ...base,
-          id: `act-d${dayIndex}-h${timeIndex}-${action.kind}-${stamp}`,
-          action,
-          ...(applies ? { before: decision.before, after: decision.after } : {}),
+          ...draft,
+          narration: {
+            text: formatTemplateNarration(draft as DispatchLogEntry),
+            source: 'template' as const,
+          },
         })
       );
     }
     state.appendDispatchLog(newEntries);
+
+    // Asynchronously fetch LLM narration upgrade (PA-T5a)
+    if (typeof fetch === 'function') {
+      for (const entry of newEntries) {
+        fetch('/api/dispatch/narrate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entry, locale: 'fr' }),
+        })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => {
+            if (data?.narration?.source === 'llm') {
+              useSimulationStore.getState().updateDispatchLogNarration(entry.id, data.narration);
+            }
+          })
+          .catch(() => {});
+      }
+    }
   }, [dispatchMode, timeIndex, dayIndex]);
   // Back to manual: the next autonomous run starts fresh on the current hour.
   useEffect(() => {

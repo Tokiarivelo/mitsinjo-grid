@@ -1,4 +1,8 @@
-# Maintenance rules (always on): keep Makefile and docs in sync with the code
+# Maintenance rules (always on): keep Makefile, docs and branches in sync with the code
+
+## Task branching (always first)
+
+- Always create a new branch from latest `main` before beginning any task (`git fetch origin main && git checkout -b feat/<task-id>-<slug> origin/main`). Never start work directly on `main` or an un-rebased stale branch.
 
 ## Makefile
 

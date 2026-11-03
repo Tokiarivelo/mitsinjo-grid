@@ -4,6 +4,7 @@ import {
   type SimulationInput,
   type SimulationResult,
   type StrategyId,
+  type DispatchLogEntry,
 } from '@mitsinjo/engine';
 
 export interface SuggestedPromptItem {
@@ -21,6 +22,8 @@ export interface SuggestPromptsOptions {
   input?: Pick<SimulationInput, 'events'>;
   /** Sectors on fire at the shown hour (M2): their questions come first. */
   fires?: readonly SectorId[];
+  /** Autonomous dispatch event log (PA-T5b). */
+  dispatchLog?: readonly DispatchLogEntry[];
 }
 
 /** Questions about a fire, in order. Worded without "cut" so the offline copilot never reads a new order. */
@@ -91,6 +94,35 @@ function eventPrompts(input: Pick<SimulationInput, 'events'> | undefined): Sugge
   return out;
 }
 
+/** Questions generated from autonomous dispatch events (PA-T5b). */
+function dispatchPrompts(dispatchLog?: readonly DispatchLogEntry[]): SuggestedPromptItem[] {
+  if (!dispatchLog || dispatchLog.length === 0) return [];
+  const prompts: SuggestedPromptItem[] = [];
+
+  const actions = dispatchLog.filter((e) => e.action !== undefined);
+  const latestAction = actions[actions.length - 1];
+  if (latestAction?.action) {
+    const sec = latestAction.action.sector ?? latestAction.incident?.sector;
+    prompts.push({
+      key: 'promptWhyDispatchAction',
+      params: {
+        hour: latestAction.hour,
+        action: latestAction.action.kind,
+        ...(sec ? { sector: sec } : {}),
+      },
+      tone: 'incident',
+    });
+  }
+
+  if (actions.length > 1) {
+    prompts.push({
+      key: 'promptDispatchSummary',
+    });
+  }
+
+  return prompts;
+}
+
 /**
  * Questions generated from the simulation the operator ran (P6-T10): its fires, events, deficits,
  * warnings and battery, at most 6. No result and no fire burning → empty: the UI asks to run a
@@ -105,7 +137,7 @@ export function suggestPrompts(options?: SuggestPromptsOptions): SuggestedPrompt
   const addedKeys = new Set<string>();
 
   const pushPrompt = (item: SuggestedPromptItem) => {
-    const id = `${item.key}:${item.params?.sector ?? ''}`;
+    const id = `${item.key}:${item.params?.sector ?? ''}:${item.params?.hour ?? ''}`;
     if (!addedKeys.has(id) && dynamic.length < MAX_PROMPTS) {
       addedKeys.add(id);
       dynamic.push(item);
@@ -114,6 +146,9 @@ export function suggestPrompts(options?: SuggestPromptsOptions): SuggestedPrompt
 
   // 0. A fire burns now (M2): the incident comes first, even before a run.
   firePrompts(fires).forEach(pushPrompt);
+
+  // 0b. Autonomous dispatch events (PA-T5b)
+  dispatchPrompts(options?.dispatchLog).forEach(pushPrompt);
 
   if (!result || !result.metrics) return dynamic;
   const { metrics } = result;

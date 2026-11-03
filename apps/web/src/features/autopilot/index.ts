@@ -7,6 +7,7 @@ export {
   type DispatchModeToggleProps,
 } from './ui/dispatch-mode-toggle';
 export { DispatchLogPanel, type DispatchLogPanelProps } from './ui/dispatch-log-panel';
+export { ShiftReportDialog, type ShiftReportDialogProps } from './ui/shift-report-dialog';
 export {
   useAiDispatch,
   useAutopilot,

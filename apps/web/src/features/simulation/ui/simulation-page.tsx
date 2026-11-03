@@ -90,6 +90,7 @@ export function SimulationPage() {
   const tOverview = useTranslations('overview');
   const tSectors = useTranslations('sectors');
   const tActions = useTranslations('actions');
+  const tDispatch = useTranslations('features.dispatch');
   const tRootRaw = useTranslations();
   const tRoot: Translate = (key, values) => tRootRaw(key as never, values as never);
 
@@ -633,7 +634,34 @@ export function SimulationPage() {
                   hidden={activeTab !== 'log'}
                   className={cn('space-y-4', activeTab !== 'log' && 'hidden')}
                 >
-                  <DispatchLogPanel />
+                  <DispatchLogPanel
+                    onAskWhy={(entry) => {
+                      setActiveTab('copilot');
+                      const sec = entry.incident?.sector ?? entry.action?.sector;
+                      const targetSector = sec ? tSectors(sec) : '';
+                      const actionDesc = entry.action
+                        ? tDispatch(`actions.${entry.action.kind}` as never)
+                        : '';
+                      const prompt = `Pourquoi avoir appliqué l'action ${actionDesc}${targetSector ? ` sur le secteur ${targetSector}` : ''} à ${entry.hour}:00 ?`;
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(
+                          new CustomEvent('mitsinjo:copilot:fill', {
+                            detail: { prompt },
+                          })
+                        );
+                      }
+                    }}
+                    onAskCopilot={(prompt) => {
+                      setActiveTab('copilot');
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(
+                          new CustomEvent('mitsinjo:copilot:fill', {
+                            detail: { prompt },
+                          })
+                        );
+                      }
+                    }}
+                  />
                 </div>
               </div>
             </aside>

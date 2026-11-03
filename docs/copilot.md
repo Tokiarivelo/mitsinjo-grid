@@ -128,6 +128,8 @@ proposal; a blurry photo answers « illisible » with no numbers (evals 25–26)
 - If data is missing, say so and suggest which tool/scenario would answer.
 - Changes to the scenario or the active strategy: call `propose_change`; never say a change was applied.
 - Fire cuts are automatic (safety): explain via `get_incidents`, propose next steps, never restore directly; restoring = `propose_change` with `clearFires`, approved by the operator (M2-T4).
+- Autonomous dispatch decisions: explain autonomous decisions via `get_dispatch_log` (cite sector, hour, action kind, and energy saved); questions like "Why did the AI isolate the market at 14h?" or shift report requests route to `get_dispatch_log` (PA-T5b).
+- Autonomous narration: `POST /api/dispatch/narrate` generates 1–2 sentence summaries via Muse Spark (`muse-spark-1.3`) with strict grounding validation (`isNarrationFactual`: no invented figures) and deterministic i18n template fallback (PA-T5a).
 - `generate_visual` (`village_tonight`, `shedding_poster`) illustrates an engine result the tools returned; the picture carries no numbers, hours ride the overlay (M5-T1).
 - Play / pause / stop / restart / "go to 18:00": call `control_playback` (view only, no approval); one short line.
 - "Now" and a cut with no time given (« coupe le courant du foyer ») start at the app hour, until 24 (`appHourNote`).
