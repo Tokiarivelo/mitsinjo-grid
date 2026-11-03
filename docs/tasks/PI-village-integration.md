@@ -83,11 +83,12 @@ proportions)` (une maison ≈ une maison du village, un frigo ≈ 1 m) ; `footpr
       un autre objet : la ligne contourne (un poteau d'angle) ou change de point de raccordement.
       **Done when:** tests (branche la plus proche, EMS, contournement, objet collé au bâtiment = pas de poteau).
       **Done:** `tapPoint(position, sector, mode, options)` in `tap-point.ts`, handling branch (nearest pole or building), EMS (`BUS_POSITION`), obstacle detection via `segmentIntersectsObstacle` and contouring with corner pole waypoints (`contourWaypoint`), and zero intermediate poles when object is collé au bâtiment (distance ≤ 4.5). 10/10 unit tests passing in `tap-point.test.ts`.
-- [ ] **PI-T7 Poteaux et câbles.** La dérivation réutilise `routeCable` (mêmes poteaux, même flèche, même hauteur) depuis le
+- [x] **PI-T7 Poteaux et câbles.** La dérivation réutilise `routeCable` (mêmes poteaux, même flèche, même hauteur) depuis le
       point de PI-T6 jusqu'à l'objet ; poteaux instanciés avec ceux du réseau, ajoutés à `mapPolesToSectors` avec le `sector`
       de l'objet (éclairage public et couleur de départ suivent : délesté = éteint, feu = coupé). Le fil droit actuel disparaît.
       Les électrons (`electron-flow`) suivent la dérivation quand l'objet consomme.
       **Done when:** test (poteaux tous les ≤ 4,5, rattachés au bon départ) ; budgets tenus ; capture jour / nuit.
+      **Done:** `buildApplianceDerivations` in `tap-point.ts`, integrated into `toSceneModel`, `DistributionLines`, `ElectronFlow`, and `mapPolesToSectors`. Catenary cables with sag, intermediate poles spaced ≤ 4.5 attributed to the appliance sector with street lamp lighting following feeder status, straight wire removed (`showStraightFeederLinks: false`), and electrons traveling along active derivations. 17/17 tests passing across `appliance-derivations.test.ts` and `appliance-markers-ui.test.tsx`.
 - [ ] **PI-T8 Choix du raccordement dans l'interface.** Dans le formulaire d'insertion : « Raccordement : sur sa ramification
       (recommandé) · direct au Dispatch EMS » + rappel du départ qui porte la charge (D1). i18n en / fr / mg, thème clair /
       sombre, ≥ 44 px, 320 px. Le glisser 3D (PP-T5) recalcule clairière, sol et poteaux au relâchement.

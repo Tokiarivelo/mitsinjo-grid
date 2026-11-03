@@ -60,13 +60,45 @@ describe('ApplianceMarkers UI (PP-T3)', () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it('straight lines disappear by default (PI-T7), but render when requested', () => {
+    const markers = applianceMarkers(
+      [pump, { ...pump, id: 'p2', position: { x: 30, z: 30 } }],
+      SECTOR_POSITIONS,
+      12
+    );
+    const { rerender } = render(
+      <ApplianceMarkers markers={markers} selectedSector={null} tagOf={(m) => m.name} />
+    );
+    // By default (PI-T7), straight lines are not rendered (replaced by DistributionLines cables)
+    expect(screen.queryAllByTestId('mock-line')).toHaveLength(0);
+
+    // When explicitly enabled (legacy / preview)
+    rerender(
+      <ApplianceMarkers
+        markers={markers}
+        selectedSector={null}
+        tagOf={(m) => m.name}
+        showStraightFeederLinks
+      />
+    );
+    const lines = screen.getAllByTestId('mock-line');
+    expect(lines).toHaveLength(1);
+  });
+
   it('instances sit on the ground height; one batched Line links marker tops to feeders', () => {
     const markers = applianceMarkers(
       [pump, { ...pump, id: 'p2', position: { x: 30, z: 30 } }],
       SECTOR_POSITIONS,
       12
     );
-    render(<ApplianceMarkers markers={markers} selectedSector={null} tagOf={(m) => m.name} />);
+    render(
+      <ApplianceMarkers
+        markers={markers}
+        selectedSector={null}
+        tagOf={(m) => m.name}
+        showStraightFeederLinks
+      />
+    );
     // Plinth of the first marker: ground + half plinth height (0.12 / 2).
     const instances = screen.getAllByTestId('mock-instance');
     const y0 = (JSON.parse(instances[0]!.dataset.position!) as number[])[1]!;
@@ -127,7 +159,13 @@ describe('ApplianceMarkers drag UI (PP-T5)', () => {
 
   it('dragged marker hides: instances, tag and feeder link', () => {
     const { container } = render(
-      <ApplianceMarkers markers={markers} selectedSector={null} tagOf={(m) => m.name} dragId="p1" />
+      <ApplianceMarkers
+        markers={markers}
+        selectedSector={null}
+        tagOf={(m) => m.name}
+        dragId="p1"
+        showStraightFeederLinks
+      />
     );
     // One plinth + one body instance per marker: the dragged one is gone.
     expect(screen.getAllByTestId('mock-instance')).toHaveLength(2);

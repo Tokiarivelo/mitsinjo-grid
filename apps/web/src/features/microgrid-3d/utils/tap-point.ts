@@ -1,8 +1,11 @@
 import type { SectorId } from '@mitsinjo/engine';
+import type { BuildingSceneModel, LineFlowSceneModel, SectorPole } from '../types';
+import type { ApplianceMarkerSceneModel } from './appliance-markers';
 import { routeCable } from './cable-route';
 import { BUS_POSITION, SECTOR_POSITIONS, feederExitPosition } from './site-positions';
 import { terrainHeight, type KeepOutZone } from './landscape';
 import { siteZones } from './site-zones';
+import { STATUS_HEX, TOKEN_HEX } from './scene-palette';
 
 export type TapMode = 'branch' | 'ems';
 
@@ -328,8 +331,14 @@ export function tapPoint(
   let poles: [number, number][];
   let routePoints: [number, number, number][];
 
+  // Service drop from building: up to 6.5 scene units without an intermediate pole (PI-T6/PI-T7)
+  const effectiveSpacing =
+    chosen.kind === 'building' && chosen.distance <= 6.5 && !chosen.waypoint
+      ? Math.max(spacing, chosen.distance + 0.1)
+      : spacing;
+
   if (!chosen.waypoint) {
-    const route = routeCable(chosen.point, targetPos, { spacing });
+    const route = routeCable(chosen.point, targetPos, { spacing: effectiveSpacing });
     poles = route.poles;
     routePoints = route.points;
   } else {
@@ -357,4 +366,91 @@ export function tapPoint(
     poles,
     routePoints,
   };
+}
+
+export interface ApplianceDerivationsResult {
+  lines: LineFlowSceneModel[];
+  poles: SectorPole[];
+}
+
+/**
+ * Builds physical derivation cables and utility poles for all inserted appliances (PI-T7).
+ * Reuses routeCable for catenary sag and pole placement.
+ * Derivation poles inherit the appliance's sectorId so street lamps reflect feeder status.
+ * Derivation lines are active when the appliance draws power, allowing ElectronFlow to follow.
+ */
+export function buildApplianceDerivations(
+  appliances: readonly ApplianceMarkerSceneModel[] | undefined,
+  buildings?: Partial<Record<SectorId, Pick<BuildingSceneModel, 'statusColor' | 'onFire'>>>,
+  options: {
+    placedModels?: Readonly<Record<string, { connectionMode?: TapMode }>>;
+    zones?: readonly KeepOutZone[];
+    spacing?: number;
+  } = {}
+): ApplianceDerivationsResult {
+  if (!appliances || appliances.length === 0) {
+    return { lines: [], poles: [] };
+  }
+
+  const lines: LineFlowSceneModel[] = [];
+  const poles: SectorPole[] = [];
+
+  for (const m of appliances) {
+    const mode = options.placedModels?.[m.id]?.connectionMode ?? 'branch';
+    const tap = tapPoint(m.position, m.sector, mode, {
+      zones: options.zones,
+      excludeId: m.id,
+      spacing: options.spacing,
+    });
+
+    // 1. Add intermediate utility poles
+    for (const [px, pz] of tap.poles) {
+      poles.push({ x: px, z: pz, sectorId: m.sector });
+    }
+
+    // 2. Add cable lines (for TransmissionCable and ElectronFlow)
+    const b = buildings?.[m.sector];
+    const statusColor = b?.statusColor ?? (m.running ? 'battery-green' : 'idle');
+    const color = STATUS_HEX[statusColor] ?? TOKEN_HEX.energyCyan;
+    const cut = Boolean(b?.onFire);
+    const speed = Math.min(2.5, Math.max(0.5, m.kwNow / 2));
+
+    if (tap.waypoint) {
+      // Segment 1: tap point -> corner pole waypoint
+      lines.push({
+        from: tap.point,
+        to: tap.waypoint,
+        active: m.running,
+        flowKw: m.kwNow,
+        direction: m.running ? 'forward' : 'idle',
+        speed,
+        color,
+        cut,
+      });
+      // Segment 2: corner pole waypoint -> appliance position
+      lines.push({
+        from: tap.waypoint,
+        to: m.position,
+        active: m.running,
+        flowKw: m.kwNow,
+        direction: m.running ? 'forward' : 'idle',
+        speed,
+        color,
+        cut,
+      });
+    } else {
+      lines.push({
+        from: tap.point,
+        to: m.position,
+        active: m.running,
+        flowKw: m.kwNow,
+        direction: m.running ? 'forward' : 'idle',
+        speed,
+        color,
+        cut,
+      });
+    }
+  }
+
+  return { lines, poles };
 }

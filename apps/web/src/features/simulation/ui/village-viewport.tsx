@@ -29,6 +29,7 @@ import { fmtHour, fmtKw, fmtPct } from '@/lib/format';
 import { SectorIcon } from '@/components/ui/sector-icon';
 import { ViewModeToggle } from '@/components/ui/view-mode-toggle';
 import { useTranslations } from '@/lib/i18n';
+import { usePlacedModelsStore } from '@/stores';
 import {
   toSceneModel,
   useWebGLAvailable,
@@ -140,6 +141,7 @@ export function VillageViewport({
 
   // Scene model for 3D visualization (pure mapping)
   const fires = useActiveFires();
+  const placedModels = usePlacedModelsStore((s) => s.models);
   const sceneModel = useMemo(
     () =>
       toSceneModel({
@@ -149,8 +151,9 @@ export function VillageViewport({
         isModified,
         strategy: result?.strategy ?? 'proportional',
         weather,
+        placedModels,
       }),
-    [input, result, timeIndex, isModified, weather]
+    [input, result, timeIndex, isModified, weather, placedModels]
   );
 
   const sectorIds = input.sectors.map((sec) => sec.id);

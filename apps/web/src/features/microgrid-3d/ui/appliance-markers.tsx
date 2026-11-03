@@ -38,6 +38,11 @@ export interface ApplianceMarkersProps {
   };
   tier?: 'high' | 'low';
   sectorStatuses?: Partial<Record<SectorId, SectorStateOverride>>;
+  /**
+   * Deprecated in PI-T7: straight lines are replaced by real catenary derivation cables in DistributionLines.
+   * Only rendered if explicitly requested (defaults to false).
+   */
+  showStraightFeederLinks?: boolean;
 }
 
 /**
@@ -57,6 +62,7 @@ export function ApplianceMarkers({
   bindMarker,
   tier = 'high',
   sectorStatuses,
+  showStraightFeederLinks = false,
 }: ApplianceMarkersProps) {
   const placedModels = usePlacedModelsStore((s) => s.models);
   const shown = useMemo(
@@ -124,14 +130,16 @@ export function ApplianceMarkers({
 
   return (
     <group name="appliance-markers">
-      <Line
-        segments
-        points={feederLinks}
-        color={TOKEN_HEX.idle}
-        lineWidth={1}
-        transparent
-        opacity={0.55}
-      />
+      {showStraightFeederLinks && (
+        <Line
+          segments
+          points={feederLinks}
+          color={TOKEN_HEX.idle}
+          lineWidth={1}
+          transparent
+          opacity={0.55}
+        />
+      )}
 
       {/* 1. Placed 3D models (PI-T2): single merged mesh for all objects */}
       {modelsGeometry && (

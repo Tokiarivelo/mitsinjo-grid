@@ -24,15 +24,21 @@ export interface SectorPole {
 }
 
 /**
- * Maps each distribution pole in the scene to the sector feeder powering it (PL-T10).
+ * Maps each distribution pole in the scene to the sector feeder powering it (PL-T10, PI-T7).
  * Poles along sector lines inherit that sector ID.
  * Trunk lines (solar array to battery hub, battery to controller) have no sector feeder (null).
+ * Derivation poles to placed appliances inherit the appliance's sector ID (PI-T7).
  */
-export function mapPolesToSectors(lines: {
-  solarToBattery: LineFlowSceneModel;
-  batteryToBus: LineFlowSceneModel;
-  busToSectors: Record<string, LineFlowSceneModel>;
-}): SectorPole[] {
+export function mapPolesToSectors(
+  lines: {
+    solarToBattery: LineFlowSceneModel;
+    batteryToBus: LineFlowSceneModel;
+    busToSectors: Record<string, LineFlowSceneModel>;
+    applianceDerivations?: LineFlowSceneModel[];
+    appliancePoles?: SectorPole[];
+  },
+  extraPoles?: SectorPole[]
+): SectorPole[] {
   const result: SectorPole[] = [];
   // Trunk line poles (solarToBattery, batteryToBus)
   for (const [x, z] of routeCable(lines.solarToBattery.from, lines.solarToBattery.to).poles) {
@@ -46,6 +52,11 @@ export function mapPolesToSectors(lines: {
     for (const [x, z] of routeCable(line.from, line.to).poles) {
       result.push({ x, z, sectorId: sectorId as SectorId });
     }
+  }
+  // Appliance derivation poles (PI-T7)
+  const additional = extraPoles ?? lines.appliancePoles;
+  if (additional && additional.length > 0) {
+    result.push(...additional);
   }
   return result;
 }

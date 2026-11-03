@@ -1,4 +1,5 @@
 import { applianceMarkers } from './appliance-markers';
+import { buildApplianceDerivations, type TapMode } from './tap-point';
 import {
   activeFires,
   breakerFromMode,
@@ -64,6 +65,7 @@ export interface ToSceneModelOptions {
   strategy?: StrategyId;
   /** Weather of the day shown. Default sunny (plain 24 h run). */
   weather?: WeatherId;
+  placedModels?: Readonly<Record<string, { connectionMode?: TapMode }>>;
 }
 
 /**
@@ -279,6 +281,11 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     color: TOKEN_HEX.energyCyan,
   };
 
+  const appliances = applianceMarkers(input.appliances, SECTOR_POSITIONS, validTime, result);
+  const derivations = buildApplianceDerivations(appliances, buildings, {
+    placedModels: options.placedModels,
+  });
+
   return {
     timeIndex: validTime,
     timeLabel,
@@ -293,11 +300,13 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
     battery,
     controller,
     buildings,
-    appliances: applianceMarkers(input.appliances, SECTOR_POSITIONS, validTime, result),
+    appliances,
     lines: {
       solarToBattery,
       batteryToBus,
       busToSectors,
+      applianceDerivations: derivations.lines,
+      appliancePoles: derivations.poles,
     },
   };
 }
