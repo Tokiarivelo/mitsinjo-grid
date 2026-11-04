@@ -3,7 +3,7 @@
 **Why (user, 2026-11-04):** « how does this person get 3D so detailed and perfect? Can we transcribe it to refine
 our 3D generation? » Source studied: [elvarofficial/teardown](https://github.com/elvarofficial/teardown) (MIT, built
 on `whaleyxbt/claude-motion`). Every file was read; findings below.
-**Status:** 🟡 PT-11, PT-0, PT-1a, PT-1b, PT-1d, PT-1c, PT-3 done; PT-1e waits for PT-5 ink (2026-11-04). **Rules kept:** Meta models only; never paste the photo on a model (small swatches OK);
+**Status:** 🟡 PT-11, PT-0, PT-1a, PT-1b, PT-1d, PT-1c, PT-3, PT-2 done; PT-1e waits for PT-5 ink (2026-11-04). **Rules kept:** Meta models only; never paste the photo on a model (small swatches OK);
 ≤ 5 k triangles per object; budgets of `docs/performance.md` § 1 unchanged; dual theme; mobile; zero static text.
 **Skills:** `/shape-3d` (object geometry) · `/scene-3d` (village) · `/shape-loop` (measure) · `/designer-3d` (review).
 
@@ -73,7 +73,7 @@ surface (`SURFACE_LOOK.radius`), PMREM room light, Neutral tone mapping, baked c
         `EDGE_BEVEL × max(w, h)`, depth reduced by 2 × bevel.
   - [ ] **PT-1e** `hip` (hipped roof): no bevel geometry (clip planes make it costly); its edges are carried by the
         ink outline (PT-5). Done when a `shape-shots` check shows the ridge and hips read in both themes.
-- [ ] **PT-2** Softbox studio: pure `features/vision-insert/utils/studio-env.ts` → `buildStudioScene()` (top softbox,
+- [x] **PT-2** Softbox studio: pure `features/vision-insert/utils/studio-env.ts` → `buildStudioScene()` (top softbox,
       two side strips, low front kicker, grey floor disc; intensities as named constants), PMREM at sigma 0.02.
       Replaces `RoomEnvironment` in `StudioEnvironment` (`object-editor-3d.tsx`); dispose scene + target on unmount.
       **Done when** a test checks the mesh count and disposal; `make shape-shots` dark + light shows a clear highlight
@@ -154,11 +154,12 @@ Inside PT-1: 1a (most objects without a template) → 1b → 1d → 1c. Inside P
 
 ## Loop log
 
-| Date       | Task                   | Mean IoU | Edge F1 | Mean ΔE | Designer | Village fps (high/low)                              | Note                                                                                                          |
-| ---------- | ---------------------- | -------- | ------- | ------- | -------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| 2026-11-04 | PT-0 baseline          | 0.98     | 0.91    | 3.4     | 3/5      | 10–25 / 17–26 (dev server; 192–209 / 143–148 calls) | white fridge melts into the pale backdrop; car reads flat                                                     |
-| 2026-11-04 | PT-1a hull bevel       | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `EDGE_BEVEL` 0.06 + `edgeBevel()`; no report fixture uses a hull body → proven by tests only                  |
-| 2026-11-04 | PT-1b round rims       | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `roundProfile()` chamfer on `unitLathe` (24 seg.); axis parts (wheels, handles) bevelled too                  |
-| 2026-11-04 | PT-1d silhouette bevel | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `bevelOffset: -b` keeps the outline; b = min(EDGE_BEVEL × max(w, h), depth / 4) for thin bodies               |
-| 2026-11-04 | PT-1c prism bevel      | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | prism = `unitExtrude(triangle, inset)` (8 → 20 triangles); inset bevel keeps unit bounds, ≤ `PRISM_BEVEL_MAX` |
-| 2026-11-04 | PT-3 clearcoat         | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `surfaceMaterial()`: physical only on painted / plastic / tile / glass / metal; metal roughness 0.45          |
+| Date       | Task                   | Mean IoU | Edge F1 | Mean ΔE | Designer | Village fps (high/low)                              | Note                                                                                                                               |
+| ---------- | ---------------------- | -------- | ------- | ------- | -------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-04 | PT-0 baseline          | 0.98     | 0.91    | 3.4     | 3/5      | 10–25 / 17–26 (dev server; 192–209 / 143–148 calls) | white fridge melts into the pale backdrop; car reads flat                                                                          |
+| 2026-11-04 | PT-1a hull bevel       | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `EDGE_BEVEL` 0.06 + `edgeBevel()`; no report fixture uses a hull body → proven by tests only                                       |
+| 2026-11-04 | PT-1b round rims       | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `roundProfile()` chamfer on `unitLathe` (24 seg.); axis parts (wheels, handles) bevelled too                                       |
+| 2026-11-04 | PT-1d silhouette bevel | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `bevelOffset: -b` keeps the outline; b = min(EDGE_BEVEL × max(w, h), depth / 4) for thin bodies                                    |
+| 2026-11-04 | PT-1c prism bevel      | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | prism = `unitExtrude(triangle, inset)` (8 → 20 triangles); inset bevel keeps unit bounds, ≤ `PRISM_BEVEL_MAX`                      |
+| 2026-11-04 | PT-3 clearcoat         | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `surfaceMaterial()`: physical only on painted / plastic / tile / glass / metal; metal roughness 0.45                               |
+| 2026-11-04 | PT-2 softbox studio    | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `buildStudioScene()` replaces RoomEnvironment, sigma 0.02; first try too dark (fill 0.32), fill 0.6 + kicker 2.4 keeps white white |

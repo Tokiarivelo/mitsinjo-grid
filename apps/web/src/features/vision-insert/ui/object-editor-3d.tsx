@@ -4,7 +4,6 @@ import { Suspense, useEffect, useMemo } from 'react';
 import { Canvas, useLoader, useThree } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { TOKEN_HEX } from '@/features/microgrid-3d/utils/scene-palette';
 import { defaultArchetype, kitToRecipe, type ObjectKit } from '@/lib/object-kit';
 import {
@@ -18,6 +17,7 @@ import { useReducedMotion } from '@/features/microgrid-3d/hooks/use-reduced-moti
 import type { ShapeImprove } from '../hooks/use-object-shape';
 import { recipeMesh, silhouetteDepth, silhouetteMesh } from '../utils/object-geometry';
 import { surfaceMaterial, SURFACES } from '../utils/surface-look';
+import { buildStudioScene, STUDIO_SIGMA } from '../utils/studio-env';
 import { BuildFocus } from './build-focus-3d';
 import { SWATCH_GAIN } from '../utils/surface-maps';
 import { surfaceTextures, swatchTexture } from '../utils/surface-textures';
@@ -41,18 +41,18 @@ export interface ObjectEditor3dProps {
 const ENV_INTENSITY = 0.9;
 
 /**
- * Studio light (PR-1.1): a soft room (`RoomEnvironment`) pre-filtered once per canvas (PMREM, 256² faces)
- * as `scene.environment`, so every surface gets fill light and reflections by its roughness; disposed on
- * unmount. Replaces the hemisphere and fill lights.
+ * Studio light (PR-1.1, PT-2): the softbox studio (`buildStudioScene`) pre-filtered once per canvas
+ * (PMREM) as `scene.environment`, so every surface gets fill light and reflections by its roughness;
+ * the studio scene is freed right after the bake, the target on unmount.
  */
 function StudioEnvironment() {
   const get = useThree((s) => s.get);
   useEffect(() => {
     const { gl, scene, invalidate } = get();
     const pmrem = new THREE.PMREMGenerator(gl);
-    const room = new RoomEnvironment();
-    const target = pmrem.fromScene(room, 0.04);
-    room.dispose();
+    const studio = buildStudioScene();
+    const target = pmrem.fromScene(studio.scene, STUDIO_SIGMA);
+    studio.dispose();
     pmrem.dispose();
     scene.environment = target.texture;
     scene.environmentIntensity = ENV_INTENSITY;
