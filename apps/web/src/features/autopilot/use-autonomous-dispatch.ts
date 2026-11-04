@@ -16,6 +16,7 @@ import { dayEvents } from '@/lib/day-events';
 /**
  * Autonomous dispatch loop (PA-T3b): on each new simulated hour, runs the engine detectors and
  * decision policy, applies the action alone and logs it with engine figures before/after.
+ * Each (day, hour) is decided once per log: replaying an hour already logged adds nothing.
  * Mount it **once** per page (it writes to the store; two mounts would apply every action twice).
  */
 export function useAutonomousDispatch(locale: Locale = 'en'): void {
@@ -33,6 +34,11 @@ export function useAutonomousDispatch(locale: Locale = 'en'): void {
     lastProcessed.current = key;
 
     const state = useSimulationStore.getState();
+    // Playback loops, restarts and scrubbing revisit hours: one already in the log is not decided again.
+    const decided = state.dispatchLog.some(
+      (e) => e.mode === 'autonomous' && e.day === dayIndex && e.hour === timeIndex
+    );
+    if (decided) return;
     const { activeStrategy } = state;
     // Fires reported on a multi-day run live on the days: the AI sees the day shown.
     const input = {
