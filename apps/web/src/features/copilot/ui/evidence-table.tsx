@@ -1,5 +1,6 @@
 import { useTranslations } from '@/lib/i18n';
 import type { CopilotEvidence } from '../types';
+import { fmtEvidence } from '@/lib/format';
 import { formatTelemetryChannel } from '../utils/format-telemetry-channel';
 
 /** One engine result as a channel / value table (values as the tool returned them, already rounded). */
@@ -28,7 +29,7 @@ export function EvidenceTable({ evidence }: { evidence: CopilotEvidence }) {
                 </span>
               </td>
               <td className="py-2.5 px-3 font-semibold text-energy-cyan whitespace-nowrap">
-                {String(v)}
+                {fmtEvidence(v)}
               </td>
             </tr>
           ))}

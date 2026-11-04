@@ -105,3 +105,15 @@ export function fmtNum(
   }
   return value.toFixed(decimals);
 }
+
+/**
+ * Format a raw evidence value (number of unknown scale, or text) for display.
+ * Numbers keep at most `maxDecimals`, without trailing zeros; other values print as-is.
+ * e.g. fmtEvidence(10.640000000000002) => "10.64", fmtEvidence(3) => "3"
+ */
+export function fmtEvidence(value: unknown, maxDecimals = 2): string {
+  if (typeof value !== 'number')
+    return value === null || value === undefined ? EMPTY_PLACEHOLDER : String(value);
+  if (!Number.isFinite(value)) return EMPTY_PLACEHOLDER;
+  return String(Number(value.toFixed(maxDecimals)));
+}
