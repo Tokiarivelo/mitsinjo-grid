@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { silhouetteRings, type ObjectRecipe } from '@/lib/object-shape';
 import {
+  EDGE_BEVEL,
+  edgeBevel,
   EXTRUDE_BEVEL,
   recipeMesh,
   ROOF_OVERHANG,
@@ -475,5 +477,76 @@ describe('unitHull (PV-H)', () => {
       ],
     });
     expect(triangleCount(mesh)).toBeGreaterThan(100);
+  });
+});
+
+describe('hull soft edges (PT-1a)', () => {
+  const square: [number, number][] = [
+    [-0.5, -0.5],
+    [0.5, -0.5],
+    [0.5, 0.5],
+    [-0.5, 0.5],
+  ];
+  const bevel = [0.04, 0.04, 0.04] as const;
+  const box = (g: THREE.BufferGeometry) => {
+    g.computeBoundingBox();
+    return g.boundingBox!;
+  };
+
+  it('keeps the bounds and costs 4 × n triangles', () => {
+    const sharp = unitHull(square, square);
+    const soft = unitHull(square, square, undefined, undefined, bevel);
+    const [a, b] = [box(sharp), box(soft)];
+    for (const k of ['x', 'y', 'z'] as const) {
+      expect(Math.abs(b.min[k] - a.min[k])).toBeLessThan(1e-6);
+      expect(Math.abs(b.max[k] - a.max[k])).toBeLessThan(1e-6);
+    }
+    const n = 2 * 14; // 2 × HULL_LEVELS points per loop
+    expect(triangleCount(soft) - triangleCount(sharp)).toBe(4 * n);
+  });
+
+  it('turns the edge normals toward the cap (< 60° on the bevel ring)', () => {
+    const g = unitHull(square, square, undefined, undefined, bevel);
+    const pos = g.getAttribute('position');
+    const nor = g.getAttribute('normal');
+    const zMax = box(g).max.z;
+    let ring = 0;
+    for (let i = 0; i < pos.count; i++) {
+      // Front plane vertices on the outline (cap fans excluded: they are flat already).
+      if (pos.getZ(i) < zMax - 1e-6 || Math.abs(nor.getZ(i)) > 0.999) continue;
+      ring++;
+      expect(nor.getZ(i)).toBeGreaterThan(Math.cos(Math.PI / 3));
+    }
+    expect(ring).toBeGreaterThan(0);
+  });
+
+  it('bevel size: share of the smallest side, capped by the surface radius', () => {
+    expect(edgeBevel(1, 0.2, 0.5, 1)).toBeCloseTo(EDGE_BEVEL * 0.2);
+    expect(edgeBevel(1, 1, 1, 0.01)).toBe(0.01);
+  });
+
+  it('a hull body gets the bevel, a skin patch keeps sharp edges', () => {
+    const recipe = (front: boolean): ObjectRecipe => ({
+      proportions: { w: 1, h: 1, d: 1 },
+      parts: [
+        {
+          shape: 'hull',
+          at: [0, 0, 0],
+          size: [1, 1, 1],
+          points: square,
+          section: square,
+          color: '#5a4aca',
+          material: 'metal',
+          ...(front ? { front: true } : {}),
+        },
+      ],
+    });
+    const body = recipeMesh(recipe(true));
+    const bb = box(body);
+    expect(bb.max.x - bb.min.x).toBeCloseTo(1, 2);
+    expect(bb.max.z - bb.min.z).toBeCloseTo(1, 2);
+    const patch = recipeMesh(recipe(false));
+    const sharpPatch = unitHull(square, square, 8, 6);
+    expect(triangleCount(patch)).toBe(triangleCount(sharpPatch));
   });
 });
