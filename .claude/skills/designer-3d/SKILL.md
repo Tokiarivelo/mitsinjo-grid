@@ -19,10 +19,22 @@ references `design/reference/village-3d-2d-schema.jpg` and `design/reference/tab
 6. **Energy states are restrained.** Flow = slow dash movement on active lines only; unmet = small red ring/marker, not flashing; dimmed scene + `Scenario modified` label when results are stale. Reduced motion → static lit lines.
 7. **Budget-aware.** Each visual idea must fit < 150 draw calls and ≥ 45 fps: prefer instancing, merged geometry and emissive tricks over lights, particles or post-processing.
 
+**Render checklist** (teardown lessons, PT-9; check each on every review, both themes):
+
+- Bloom only on emissive **> 1** (`toneMapped={false}`); every other emissive stays < 1, or it blooms.
+- Near-white parts on a pale backdrop (white fridge, light theme) need the ink outline or a rim light.
+- Big metal surfaces: `roughness ≥ 0.45` (broad streaks, no mirror of the dark studio).
+- Shadow catcher / decal planes on a surface: `polygonOffset` (or a lift), never z-fighting.
+- Shaders: clamp every `pow` base (`pow(clamp(x, 0., 1.), k)`): a negative base is NaN → black pixels.
+- `smoothstep(a, b, x)` only with `a < b`: reversed edges are undefined and break on ANGLE (Windows);
+  use `1. - smoothstep(b, a, x)`.
+- Soft edges on every body (bevel / chamfer, `EDGE_BEVEL`); clearcoat only on lacquered surfaces.
+
 **Workflow**
 
 1. State the visual goal in one line (e.g. "clinic not readable at panel size").
-2. Critique the current screenshot against principles 1–7: list ≤ 6 concrete issues, most impactful first.
+2. Critique the current screenshot against principles 1–7 and the render checklist: list ≤ 6 concrete issues,
+   most impactful first.
 3. Give direction as a short spec delta: object, change (shape/size/color token/material/light/camera), why, data binding if any. No code blocks longer than a prop list.
 4. If the change alters the look contract, update `docs/design/3d-scene.md` (Style / Composition / Energy mapping) in the same commit; log mockup deviations in `docs/design/stitch-map.md` Notes.
 5. Hand implementation to `/scene-3d`; after it lands, review the new screenshot and confirm or iterate (max 2 rounds).
