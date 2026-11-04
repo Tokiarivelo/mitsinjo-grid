@@ -9,7 +9,7 @@
 - Refined cut: silent splash, no "before the hackathon / this week" lines, Essential 3D view at 0:37, map centred,
   camera flies to and orbits the inserted house, 12 s outro with sunrise end animation + chime.
 - 1:45–2:02 reframed on the facade, the 3D viewer and its "stage n/5" chip; A8–A10 re-recorded with
-  PR #63 (evidence rounding) and PR #64 (no duplicate autonomous log entries), both cherry-picked here.
+  PR #63 (evidence rounding) and PR #64 (no duplicate autonomous log entries), both merged in main.
 - Pipeline (all `make video-*`): `video-tts-setup` / `video-voice` (Kokoro TTS, voice `am_puck`),
   `video-capture PART=a|b` (records the real screen at 1080p, pauses screen lock; hands off while it runs),
   `video-canvas`, `video-sfx`, `video-build [DRAFT=1]` (reads `video/edit.json`).
@@ -35,4 +35,4 @@
 - Capture on the real display: Xvfb drops to ~10 fps at 1080p; Chromium uses `--use-angle=gl` (Vulkan has no
   WebGL on the real screen). Capture hides the Next dev badge, fire toasts and the big critical banner.
 - Final mux uses `-t <total>`, not `-shortest` (it stopped at the last caption and cut the outro).
-- App bugs seen in takes are fixed in PR #63 / #64 (open, merge before this branch).
+- App bugs seen in takes are fixed in PR #63 / #64 (merged).
