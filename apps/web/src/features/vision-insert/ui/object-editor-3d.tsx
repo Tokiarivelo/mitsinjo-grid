@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Canvas, useLoader, useThree } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
 import { EffectComposer, ToneMapping } from '@react-three/postprocessing';
@@ -17,6 +17,11 @@ import {
 import type { ApplianceDetection } from '@/lib/vision';
 import { useReducedMotion } from '@/features/microgrid-3d/hooks/use-reduced-motion';
 import { Ink } from '@/features/microgrid-3d/ui/ink';
+import {
+  useShaderWarmup,
+  type WarmupTarget,
+} from '@/features/microgrid-3d/hooks/use-shader-warmup';
+import { cn } from '@/lib/utils';
 import type { ShapeImprove } from '../hooks/use-object-shape';
 import { recipeMesh, silhouetteDepth, silhouetteMesh } from '../utils/object-geometry';
 import { surfaceMaterial, SURFACES } from '../utils/surface-look';
@@ -188,8 +193,16 @@ function ObjectModel({
  * Load with `LazyObjectEditor3d` (no SSR) behind a WebGL check.
  */
 export function ObjectEditor3d(props: ObjectEditor3dProps) {
+  // Shader warm-up (PT-7): fade in once the materials are compiled (≤ 1 s).
+  const [warmTarget, setWarmTarget] = useState<WarmupTarget | null>(null);
+  const warm = useShaderWarmup(warmTarget);
   return (
     <Canvas
+      onCreated={({ gl, scene, camera }) => setWarmTarget({ gl, scene, camera })}
+      className={cn(
+        'transition-opacity duration-300 motion-reduce:transition-none',
+        warm ? 'opacity-100' : 'opacity-0'
+      )}
       frameloop="demand"
       dpr={[1, 1.5]}
       camera={{ position: CAMERA_POSITION, fov: 35, near: 0.05, far: 20 }}
