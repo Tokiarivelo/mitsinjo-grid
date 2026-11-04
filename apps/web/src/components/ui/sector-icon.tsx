@@ -29,6 +29,16 @@ export const SECTOR_TEXT_CLASS: Record<SectorId, string> = {
   industry: 'text-network-blue',
 };
 
+/** Badge disc behind a sector glyph (same hue as `SECTOR_TEXT_CLASS`). */
+export const SECTOR_ICON_BG_CLASS: Record<SectorId, string> = {
+  health: 'bg-critical-red/20 border-critical-red/40',
+  water: 'bg-energy-cyan/20 border-energy-cyan/40',
+  school: 'bg-warning-amber/20 border-warning-amber/40',
+  households: 'bg-surface-hover border-border-strong',
+  market: 'bg-solar-amber/20 border-solar-amber/40',
+  industry: 'bg-network-blue/20 border-network-blue/40',
+};
+
 export interface SectorIconProps {
   sector: SectorId;
   /** False keeps the parent's text color (e.g. on a selected chip). */

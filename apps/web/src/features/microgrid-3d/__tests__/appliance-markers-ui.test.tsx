@@ -1,27 +1,43 @@
 import * as THREE from 'three';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { Appliance } from '@mitsinjo/engine';
 import { usePlacedModelsStore } from '@/stores';
 import type { ObjectRecipe } from '@/lib/object-shape';
 import { ApplianceMarkers, MarkerDragGhost } from '../ui/appliance-markers';
+import { BADGE_ABOVE_BEACON, BADGE_DISTANCE_FACTOR } from '../ui/scene-badge';
+import { APPLIANCE_FOCUS_SCALE } from '../utils/camera-focus';
 import { applianceMarkers } from '../utils/appliance-markers';
 import { SECTOR_POSITIONS } from '../utils/to-scene-model';
 
 vi.mock('@react-three/drei', () => ({
-  Html: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Html: ({
+    children,
+    position,
+    distanceFactor,
+  }: {
+    children: React.ReactNode;
+    position?: [number, number, number];
+    distanceFactor?: number;
+  }) => (
+    <div data-html-position={JSON.stringify(position)} data-distance-factor={distanceFactor}>
+      {children}
+    </div>
+  ),
   Instances: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   Instance: ({
     position,
     onClick,
     onPointerDown,
+    color,
   }: {
     position: [number, number, number];
     onClick?: unknown;
     onPointerDown?: unknown;
+    color?: unknown;
   }) => (
     <div
-      data-testid="mock-instance"
+      data-testid={color ? 'mock-beacon' : 'mock-instance'}
       data-position={JSON.stringify(position)}
       data-bound={onClick && onPointerDown ? '1' : ''}
     />
@@ -134,8 +150,8 @@ describe('ApplianceMarkers drag UI (PP-T5)', () => {
       />
     );
     expect(container.querySelector('mesh[name="appliance-selection-ring"]')).not.toBeNull();
-    const tag1 = container.querySelector('[data-appliance-tag="p1"]')!;
-    const tag2 = container.querySelector('[data-appliance-tag="p2"]')!;
+    const tag1 = container.querySelector('[data-scene-badge="p1"]')!;
+    const tag2 = container.querySelector('[data-scene-badge="p2"]')!;
     expect(tag1.className).toContain('border-energy-cyan');
     expect(tag2.className).toContain('border-border');
     expect(tag2.className).not.toContain('border-energy-cyan');
@@ -169,8 +185,8 @@ describe('ApplianceMarkers drag UI (PP-T5)', () => {
     );
     // One plinth + one body instance per marker: the dragged one is gone.
     expect(screen.getAllByTestId('mock-instance')).toHaveLength(2);
-    expect(container.querySelector('[data-appliance-tag="p1"]')).toBeNull();
-    expect(container.querySelector('[data-appliance-tag="p2"]')).not.toBeNull();
+    expect(container.querySelector('[data-scene-badge="p1"]')).toBeNull();
+    expect(container.querySelector('[data-scene-badge="p2"]')).not.toBeNull();
     const lines = screen.getAllByTestId('mock-line');
     expect(lines).toHaveLength(1);
     expect(Number(lines[0]!.dataset.count)).toBe(2);
@@ -290,5 +306,93 @@ describe('ApplianceMarkers with Placed Models (PI-T2)', () => {
     // merged models + one invisible hit target per model; plinths are Instance children
     expect(meshes).toHaveLength(1 + hills.length);
     expect(screen.getAllByTestId('mock-instance').length).toBeGreaterThan(0);
+  });
+});
+
+describe('ApplianceMarkers badge like the buildings (PT-11)', () => {
+  const PRIORITIES = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
+  const tagged = (priority: 'critical' | 'medium') =>
+    applianceMarkers([pump], SECTOR_POSITIONS, 12).map((m) => ({
+      ...m,
+      kwNow: 1.5,
+      tag: { priority, statusColor: 'battery-green' as const, inAlert: false },
+    }));
+
+  it('shows the category icon, the title, the priority and the kW now', () => {
+    const { container } = render(
+      <ApplianceMarkers
+        markers={tagged('medium')}
+        selectedSector={null}
+        tagOf={(m) => m.name}
+        priorityLabels={PRIORITIES}
+      />
+    );
+    const badge = container.querySelector('[data-scene-badge="p1"]')!;
+    expect(badge.querySelector('[data-appliance-icon="water_pump"]')).not.toBeNull();
+    expect(badge.textContent).toContain('Pump');
+    expect(badge.textContent).toContain('Medium');
+    expect(badge.textContent).toContain('1.50 kW');
+    expect(badge.querySelector('[data-priority="medium"]')!.className).not.toContain(
+      'text-critical-red'
+    );
+  });
+
+  it('a critical sector shows its priority in red', () => {
+    const { container } = render(
+      <ApplianceMarkers
+        markers={tagged('critical')}
+        selectedSector={null}
+        tagOf={(m) => m.name}
+        priorityLabels={PRIORITIES}
+      />
+    );
+    expect(container.querySelector('[data-priority="critical"]')!.className).toContain(
+      'text-critical-red'
+    );
+  });
+
+  it('badge click selects the marker', () => {
+    const onSelect = vi.fn();
+    const { container } = render(
+      <ApplianceMarkers
+        markers={tagged('medium')}
+        selectedSector={null}
+        tagOf={(m) => m.name}
+        onSelectMarker={onSelect}
+      />
+    );
+    fireEvent.click(container.querySelector('[data-scene-badge="p1"]')!);
+    expect(onSelect).toHaveBeenCalledWith('p1');
+  });
+
+  it('one beacon per badge, the badge at the buildings height rule above it', () => {
+    const markers = tagged('medium');
+    const { container } = render(
+      <ApplianceMarkers markers={markers} selectedSector={null} tagOf={(m) => m.name} />
+    );
+    const beacons = screen.getAllByTestId('mock-beacon');
+    expect(beacons).toHaveLength(1);
+    const beaconPos = JSON.parse(beacons[0]!.getAttribute('data-position')!) as number[];
+    const badgePos = JSON.parse(
+      container
+        .querySelector('[data-scene-badge="p1"]')!
+        .closest('[data-html-position]')!
+        .getAttribute('data-html-position')!
+    ) as number[];
+    expect(badgePos[1]! - beaconPos[1]!).toBeCloseTo(BADGE_ABOVE_BEACON, 6);
+    expect(beaconPos[1]! - markers[0]!.position[1]).toBeGreaterThan(0.62);
+  });
+
+  it('badge scale follows the camera focus scale: focused, it reads like a focused building', () => {
+    const { container } = render(
+      <ApplianceMarkers markers={tagged('medium')} selectedSector={null} tagOf={(m) => m.name} />
+    );
+    const anchor = container
+      .querySelector('[data-scene-badge="p1"]')!
+      .closest('[data-html-position]')!;
+    expect(Number(anchor.getAttribute('data-distance-factor'))).toBeCloseTo(
+      BADGE_DISTANCE_FACTOR * APPLIANCE_FOCUS_SCALE,
+      6
+    );
   });
 });

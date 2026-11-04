@@ -1,4 +1,4 @@
-import { applianceMarkers } from './appliance-markers';
+import { applianceMarkers, applianceTagState } from './appliance-markers';
 import { buildApplianceDerivations, type TapMode } from './tap-point';
 import {
   activeFires,
@@ -292,7 +292,8 @@ export function toSceneModel(options: ToSceneModelOptions): SceneModel {
   const appliances = applianceMarkers(input.appliances, SECTOR_POSITIONS, validTime, result).map(
     (m) => {
       const mode = options.placedModels?.[m.id]?.connectionMode;
-      return mode ? { ...m, connectionMode: mode } : m;
+      const tagged = { ...m, tag: applianceTagState(m, buildings[m.sector]) };
+      return mode ? { ...tagged, connectionMode: mode } : tagged;
     }
   );
   const derivations = buildApplianceDerivations(appliances, buildings, {

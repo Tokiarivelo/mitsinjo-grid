@@ -50,6 +50,14 @@ describe('useMarkerDrag (PP-T5)', () => {
     expect(result.current.selectedId).toBeNull();
   });
 
+  it('toggleSelect (badge click, PT-11e) toggles the same selection', () => {
+    const { result } = renderHook(() => useMarkerDrag({ onCommit: vi.fn() }));
+    act(() => result.current.toggleSelect('a2'));
+    expect(result.current.selectedId).toBe('a2');
+    act(() => result.current.toggleSelect('a2'));
+    expect(result.current.selectedId).toBeNull();
+  });
+
   it('drag moves the ghost imperatively, disables orbit, commits on release', () => {
     const onCommit = vi.fn();
     const onActiveChange = vi.fn();

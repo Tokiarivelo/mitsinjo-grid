@@ -2,9 +2,11 @@ import {
   applianceProfileKw,
   SECTOR_IDS,
   type Appliance,
+  type Priority,
   type SectorId,
   type SimulationResult,
 } from '@mitsinjo/engine';
+import type { BuildingSceneModel, StatusColor } from '../types';
 import { terrainHeight } from './landscape';
 import { clampToTerrain, defaultPosition, snapAwayFromBuildings } from './placement';
 
@@ -26,6 +28,33 @@ export interface ApplianceMarkerSceneModel {
   feeder: [number, number, number];
   /** Grid connection mode (PI-T8/PI-T9): 'branch' (default) or 'ems'. */
   connectionMode?: 'branch' | 'ems';
+  /** Badge state from its sector (PT-11b), set by `toSceneModel`; absent = plain badge. */
+  tag?: ApplianceTagState;
+}
+
+/** What an inserted object's badge shows, all from its sector's engine input and result (PT-11b). */
+export interface ApplianceTagState {
+  /** The sector's priority: an appliance has none of its own. */
+  priority: Priority;
+  statusColor: StatusColor;
+  /** Its sector burns or has a critical incident. */
+  inAlert: boolean;
+}
+
+/**
+ * Badge state of one appliance: idle when its sector is off or it draws nothing this hour,
+ * else its sector's served status (green full, amber partly served, red unserved). Pure.
+ */
+export function applianceTagState(
+  m: Pick<ApplianceMarkerSceneModel, 'kwNow'>,
+  sector: Pick<BuildingSceneModel, 'priority' | 'statusColor' | 'connected' | 'inAlert' | 'onFire'>
+): ApplianceTagState {
+  const drawing = sector.connected && m.kwNow > RUNNING_KW;
+  return {
+    priority: sector.priority,
+    statusColor: drawing ? sector.statusColor : 'idle',
+    inAlert: Boolean(sector.inAlert || sector.onFire),
+  };
 }
 
 // Ring constants live in placement.ts (PP-T2); re-exported so existing importers keep working.

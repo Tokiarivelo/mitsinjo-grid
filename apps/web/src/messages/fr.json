@@ -216,7 +216,7 @@
       "batteryLow": "Faible",
       "batteryDepleted": "Épuisée",
       "perfOverlay": "{calls} appels de rendu · {fps} i/s",
-      "applianceTag": "{name} · {quantity} × {watts} W",
+      "applianceBadgeTitle": "{quantity, plural, =1 {{name}} other {{name} × #}}",
       "qualityLabel": "Qualité :",
       "qualityHigh": "Haute",
       "qualityLow": "Basse",

@@ -14,3 +14,4 @@ export * from './view-mode-toggle';
 export * from './theme-switcher';
 export * from './glass-panel';
 export * from './field';
+export * from './appliance-icon';

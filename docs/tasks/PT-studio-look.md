@@ -3,7 +3,7 @@
 **Why (user, 2026-11-04):** « how does this person get 3D so detailed and perfect? Can we transcribe it to refine
 our 3D generation? » Source studied: [elvarofficial/teardown](https://github.com/elvarofficial/teardown) (MIT, built
 on `whaleyxbt/claude-motion`). Every file was read; findings below.
-**Status:** ❌ planned. **Rules kept:** Meta models only; never paste the photo on a model (small swatches OK);
+**Status:** 🟡 PT-11 done (2026-11-04). **Rules kept:** Meta models only; never paste the photo on a model (small swatches OK);
 ≤ 5 k triangles per object; budgets of `docs/performance.md` § 1 unchanged; dual theme; mobile; zero static text.
 **Skills:** `/shape-3d` (object geometry) · `/scene-3d` (village) · `/shape-loop` (measure) · `/designer-3d` (review).
 
@@ -105,26 +105,26 @@ surface (`SURFACE_LOOK.radius`), PMREM room light, Neutral tone mapping, baked c
 - [ ] **PT-9** Render checklist: add teardown's 3D checks to `.claude/skills/designer-3d/SKILL.md` (bloom emissive
       < 1, near-white parts on a pale backdrop need ink, metal roughness ≥ 0.45, shadow catcher `polygonOffset`,
       clamp `pow` in shaders, `smoothstep(a, b)` with a > b breaks on ANGLE). **Done when** the skill lists them.
-- [ ] **PT-11** Same tag for an inserted object as for a village building (user, 2026-11-04: « the label is not the
+- [x] **PT-11** Same tag for an inserted object as for a village building (user, 2026-11-04: « the label is not the
       same, no icon, different elevation, no critical / medium / high info at the bottom »). Today
       (`appliance-markers.tsx` « HTML tags »): a plain text `name · qty × W` at `height + 0.35`, no icon, no status, no
       priority, not clickable. Buildings (`buildings.tsx` `BuildingFrame`): beacon sphere at `ledY`, glass badge at
       `ledY + 0.75` with sector icon, name, AI badge, status dot, priority (critical in red) and coverage.
       Gate: `/design-check` (spec + mockup before, desktop + 390 px, dark + light shots after).
-  - [ ] **PT-11a** Extract the building badge **once** into `features/microgrid-3d/ui/scene-badge.tsx` (props: icon,
+  - [x] **PT-11a** Extract the building badge **once** into `features/microgrid-3d/ui/scene-badge.tsx` (props: icon,
         title, status colour, priority label + level, metric text, selected / alert, onClick; tokens only) and use it
         in `buildings.tsx` with no visual change (screenshot diff = 0). No duplicated markup.
-  - [ ] **PT-11b** Data, pure and tested: `applianceMarkers()` (`utils/appliance-markers.ts`) adds `priority`
+  - [x] **PT-11b** Data, pure and tested: `applianceMarkers()` (`utils/appliance-markers.ts`) adds `priority`
         (its **sector's** engine input priority: an appliance has none of its own, no engine change, no migration),
         `status` (`StatusColor`: running → green, sector partly served → amber, unserved → red, off → idle) and
         `inAlert` (its sector's alert / fire). Every value from the engine input / result, none computed in UI.
-  - [ ] **PT-11c** Icon: `components/ui/appliance-icon.tsx`, one lucide icon per `ApplianceCategory` (fridge, TV,
+  - [x] **PT-11c** Icon: `components/ui/appliance-icon.tsx`, one lucide icon per `ApplianceCategory` (fridge, TV,
         lamp, fan, laptop, pump, mill…; `other` → plug), on its sector's icon background (`SECTOR_ICON_BG`). Reuse
         in `vision-insert/ui/appliance-list.tsx` where it helps.
-  - [ ] **PT-11d** Elevation: one shared rule `badgeY(top) = top + BEACON_GAP` and `beaconY(top)`, exported from
+  - [x] **PT-11d** Elevation: one shared rule `badgeY(top) = top + BEACON_GAP` and `beaconY(top)`, exported from
         `scene-badge.tsx` and used by both; the appliance top comes from `modelBounds[id].height` (real 3D model)
         or the box marker. Beacons of all appliances in **one** `Instances` (+1 draw call total, not per object).
-  - [ ] **PT-11e** Wire it in `appliance-markers.tsx`: `SceneBadge` with `ApplianceIcon`, name, bottom line
+  - [x] **PT-11e** Wire it in `appliance-markers.tsx`: `SceneBadge` with `ApplianceIcon`, name, bottom line
         `priority · fmtKw(kwNow)` (formatted with unit, `@/lib/format`), selected ring, alert pulse; click selects the
         marker (same handler as `bindMarker`), hit area ≥ 44 px on touch. Keep `MARKER_TAGS_ALL_MAX` (DOM cost:
         each `<Html>` is a layout per frame); memo the badge so it re-renders only when its fields change.
