@@ -253,6 +253,32 @@ docker-down: ## Stop the Docker Compose app
 docker-logs: ## Follow the Docker Compose app logs
 	docker compose logs -f web
 
+##@ Video
+# Demo video pipeline (video/VIDEO_PLAN.md). Capture needs `make dev` running, X11 :0 and ffmpeg + NVENC.
+video-tts-setup: ## Install the local Kokoro TTS (venv + model, ~350 MB) used for the narration
+	cd video && python3 -m venv .venv-tts && .venv-tts/bin/pip install -q kokoro-onnx soundfile && mkdir -p tts && cd tts && \
+	  curl -sSLO https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx && \
+	  curl -sSLO https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+
+video-voice: ## Render the voice-over (plan § 5) with Kokoro, young male voice (VOICE=am_puck)
+	cd video && .venv-tts/bin/python scripts/tts.py --voice $(or $(VOICE),am_puck)
+	cd video && .venv-tts/bin/python scripts/tts.py --voice $(or $(VOICE),am_puck) --name mic-question \
+		--say "If the sun drops by seventy percent for ten hours, who loses power first?"
+	ffmpeg -loglevel error -y -i video/audio/voice/mic-question.wav -ac 2 video/audio/voice/mic-question-48k.wav
+
+video-sfx: ## Generate click / whoosh / rise SFX with ffmpeg
+	video/scripts/sfx.sh
+
+video-capture: ## Record app shots on the real screen at 1920x1080, no lock while running (PART=a|b, ONLY=A1,A2; DRY=1)
+	video/scripts/capture.sh --part $(or $(PART),a) $(if $(ONLY),--only $(ONLY)) $(if $(DRY),--dry)
+
+video-canvas: ## Render the splash and outro canvas pages to PNG frames
+	node video/scripts/render-canvas.cjs video/canvas/00-splash.html video/frames/00-splash
+	node video/scripts/render-canvas.cjs video/canvas/10-outro.html video/frames/10-outro
+
+video-build: ## Assemble video/output/mitsinjo-grid-demo-720p.mp4 from video/edit.json (DRAFT=1 = NVENC)
+	python3 video/scripts/build.py $(if $(DRAFT),--draft)
+
 ##@ Cleanup
 clean: ## Remove build/test output (keeps node_modules)
 	rm -rf apps/*/.next apps/*/out packages/*/dist .turbo apps/*/.turbo packages/*/.turbo coverage apps/*/coverage packages/*/coverage apps/*/playwright-report apps/*/test-results $(SHOTS)
@@ -261,4 +287,4 @@ clean-all: clean ## Also remove node_modules
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
 
 .PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-shape shape-capture facade-e2e eval-stages shape-report shape-shots improve-shot test-watch coverage e2e \
-        typecheck lint bridge bridge-sim test-bridge format format-check format-changed git-hooks check ci shots mockups analyze scene-audit scene-audit-gpu lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all
+        typecheck lint bridge bridge-sim test-bridge format format-check format-changed git-hooks check ci shots mockups analyze scene-audit scene-audit-gpu lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all video-tts-setup video-voice video-sfx video-capture video-canvas video-build

@@ -1,0 +1,449 @@
+{
+  "segments": [
+    {
+      "id": "00",
+      "vo": "vo-00-provenance.wav",
+      "canvas": "00-splash",
+      "tail": 0.4
+    },
+    {
+      "id": "01",
+      "vo": "vo-01-hook.wav",
+      "clips": [
+        {
+          "src": "H1",
+          "from": 0.5,
+          "to": 4.5,
+          "w": 4
+        },
+        {
+          "src": "H1",
+          "from": 7.0,
+          "to": 17.0,
+          "w": 8
+        }
+      ],
+      "overlays": [
+        {
+          "kind": "kicker",
+          "text": "ONE MICROGRID \u00b7 ONE VILLAGE",
+          "sub": "Who keeps the light?",
+          "at": 5.0,
+          "dur": 5.5
+        }
+      ]
+    },
+    {
+      "id": "02",
+      "vo": "vo-02-week.wav",
+      "clips": [
+        {
+          "src": "A2",
+          "from": 0.5,
+          "to": 6.0,
+          "w": 4,
+          "zoom": [640, 200, 640]
+        },
+        {
+          "src": "A1",
+          "from": 0.5,
+          "to": 14.5,
+          "w": 8,
+          "zoom": [640, 60, 640]
+        },
+        {
+          "src": "A3",
+          "from": 0.5,
+          "to": 5.5,
+          "w": 4,
+          "zoom": [640, 180, 640]
+        }
+      ],
+      "overlays": [
+        {
+          "kind": "chapter",
+          "text": "01 \u00b7 A WEEK IN THE VILLAGE",
+          "at": 0.0,
+          "dur": 1.8
+        },
+        {
+          "kind": "lower",
+          "text": "Chaos mode",
+          "sub": "random incidents",
+          "at": 2.0,
+          "dur": 2.0
+        },
+        {
+          "kind": "lower",
+          "text": "Weather workflow \u00b7 7/7 days",
+          "at": 4.6,
+          "dur": 4.0
+        },
+        {
+          "kind": "lower",
+          "text": "Every setting is a lever",
+          "at": 11.5,
+          "dur": 4.0
+        }
+      ]
+    },
+    {
+      "id": "03",
+      "vo": "vo-03-play.wav",
+      "clips": [
+        {
+          "src": "V1",
+          "from": 15.0,
+          "to": 29.0,
+          "w": 6
+        },
+        {
+          "src": "V2",
+          "from": 1.0,
+          "to": 17.0,
+          "w": 3.5
+        },
+        {
+          "src": "V3",
+          "from": 1.0,
+          "to": 15.0,
+          "w": 2.5
+        },
+        {
+          "src": "A4",
+          "from": 4.5,
+          "to": 21.0,
+          "w": 3.5,
+          "zoom": [250, 40, 800]
+        },
+        {
+          "src": "A6",
+          "from": 4.0,
+          "to": 13.0,
+          "w": 4.5,
+          "zoom": [290, 236, 860]
+        }
+      ],
+      "overlays": [
+        {
+          "kind": "lower",
+          "text": "3D Scene",
+          "sub": "the week, day and night",
+          "at": 0.5,
+          "dur": 3.5
+        },
+        {
+          "kind": "lower",
+          "text": "Topology",
+          "sub": "solar hub \u2192 every sector",
+          "at": 6.3,
+          "dur": 3.0
+        },
+        {
+          "kind": "lower",
+          "text": "Circuit",
+          "sub": "sources, bus, breakers",
+          "at": 9.8,
+          "dur": 2.2
+        },
+        {
+          "kind": "lower",
+          "text": "Strategy Lab",
+          "sub": "70 % less sun for 10 h",
+          "at": 12.3,
+          "dur": 3.0
+        },
+        {
+          "kind": "engine",
+          "text": "Engine \u00b7 computed",
+          "at": 15.6,
+          "dur": 3.6
+        }
+      ]
+    },
+    {
+      "id": "04",
+      "vo": "vo-04-copilot.wav",
+      "clips": [
+        {
+          "src": "A7",
+          "from": 5.0,
+          "to": 19.0,
+          "w": 6,
+          "zoom": [180, 290, 760]
+        },
+        {
+          "src": "A7",
+          "from": 44.0,
+          "to": 58.0,
+          "w": 10,
+          "zoom": [180, 100, 780]
+        }
+      ],
+      "overlays": [
+        {
+          "kind": "chip",
+          "text": "Muse Voice \u00b7 speech \u2192 text",
+          "at": 0.6,
+          "dur": 3.0
+        },
+        {
+          "kind": "chip",
+          "text": "Muse Spark \u00b7 answers with engine tools",
+          "at": 6.4,
+          "dur": 3.6
+        },
+        {
+          "kind": "engine",
+          "text": "Every number = engine evidence",
+          "at": 11.2,
+          "dur": 4.4
+        }
+      ]
+    },
+    {
+      "id": "05",
+      "vo": "vo-05-autonomous.wav",
+      "clips": [
+        {
+          "src": "A8",
+          "from": 1.0,
+          "to": 10.0,
+          "w": 3,
+          "zoom": [640, 60, 640]
+        },
+        {
+          "src": "A9",
+          "from": 2.0,
+          "to": 12.0,
+          "w": 3.5
+        },
+        {
+          "src": "A9",
+          "from": 13.0,
+          "to": 30.0,
+          "w": 5
+        },
+        {
+          "src": "A9",
+          "from": 37.0,
+          "to": 45.0,
+          "w": 2.5
+        },
+        {
+          "src": "A10",
+          "from": 18.0,
+          "to": 28.0,
+          "w": 2.5
+        },
+        {
+          "src": "A10",
+          "from": 53.0,
+          "to": 58.5,
+          "w": 2.8
+        }
+      ],
+      "overlays": [
+        {
+          "kind": "lower",
+          "text": "Engine decides",
+          "sub": "within village rules",
+          "at": 0.5,
+          "dur": 3.0
+        },
+        {
+          "kind": "chip",
+          "text": "Muse Spark \u00b7 explains each decision",
+          "at": 3.6,
+          "dur": 3.0
+        },
+        {
+          "kind": "lower",
+          "text": "Every action logged & undoable",
+          "at": 14.2,
+          "dur": 4.5
+        }
+      ]
+    },
+    {
+      "id": "06",
+      "vo": "vo-06-detect.wav",
+      "clips": [
+        {
+          "src": "B1",
+          "from": 6.0,
+          "to": 12.0,
+          "w": 3,
+          "zoom": [150, 20, 880]
+        },
+        {
+          "src": "B1",
+          "from": 12.0,
+          "to": 50.0,
+          "w": 5,
+          "zoom": [150, 20, 880]
+        },
+        {
+          "src": "B2",
+          "from": 1.0,
+          "to": 12.0,
+          "w": 5,
+          "zoom": [150, 20, 880]
+        },
+        {
+          "src": "B2",
+          "from": 12.0,
+          "to": 20.0,
+          "w": 3
+        }
+      ],
+      "overlays": [
+        {
+          "kind": "chapter",
+          "text": "02 \u00b7 FROM A PHOTO TO THE VILLAGE",
+          "at": 0.0,
+          "dur": 1.8
+        },
+        {
+          "kind": "chip",
+          "text": "Muse Spark \u00b7 names the objects",
+          "at": 2.4,
+          "dur": 3.0
+        },
+        {
+          "kind": "chip",
+          "text": "SAM 3.1 \u00b7 outlines each one",
+          "at": 5.8,
+          "dur": 3.0
+        },
+        {
+          "kind": "lower",
+          "text": "AI perception \u00b7 to verify",
+          "at": 9.2,
+          "dur": 3.0
+        }
+      ]
+    },
+    {
+      "id": "07",
+      "vo": "vo-07-build-3d.wav",
+      "clips": [
+        {
+          "src": "B3",
+          "from": 1.0,
+          "to": 24.0,
+          "w": 5,
+          "zoom": [700, 0, 580]
+        },
+        {
+          "src": "B3",
+          "from": 24.0,
+          "to": 31.0,
+          "w": 3,
+          "zoom": [700, 0, 580]
+        },
+        {
+          "src": "B3",
+          "from": 52.0,
+          "to": 57.0,
+          "w": 2,
+          "zoom": [700, 0, 580]
+        },
+        {
+          "src": "B4",
+          "from": 3.0,
+          "to": 300.0,
+          "w": 6,
+          "zoom": [700, 0, 580]
+        },
+        {
+          "src": "B6",
+          "from": 0.0,
+          "to": 8.0,
+          "w": 3,
+          "zoom": [700, 0, 580]
+        }
+      ],
+      "overlays": [
+        {
+          "kind": "chip",
+          "text": "Muse Image \u00b7 draws the 2D facade",
+          "at": 0.8,
+          "dur": 3.5
+        },
+        {
+          "kind": "chip",
+          "text": "Muse Spark \u00b7 builds the 3D, piece by piece",
+          "at": 8.0,
+          "dur": 4.0
+        }
+      ]
+    },
+    {
+      "id": "08",
+      "vo": "vo-08-insert.wav",
+      "clips": [
+        {
+          "src": "B7",
+          "from": 0.5,
+          "to": 15.5,
+          "w": 6,
+          "zoom": [700, 0, 580]
+        },
+        {
+          "src": "B8",
+          "from": 0.5,
+          "to": 12.5,
+          "w": 5,
+          "zoom": [700, 0, 580]
+        },
+        {
+          "src": "B9",
+          "from": 5.5,
+          "to": 23.0,
+          "w": 5
+        }
+      ],
+      "overlays": [
+        {
+          "kind": "lower",
+          "text": "Its load joins the engine",
+          "at": 1.0,
+          "dur": 3.5
+        },
+        {
+          "kind": "lower",
+          "text": "Placed in the 3D twin",
+          "at": 11.0,
+          "dur": 3.5
+        }
+      ]
+    },
+    {
+      "id": "09",
+      "vo": "vo-09-recap.wav",
+      "clips": [
+        {
+          "src": "R1",
+          "from": 0.5,
+          "to": 30.0
+        }
+      ],
+      "overlays": [
+        {
+          "kind": "recap",
+          "text": "Muse Voice \u00b7 listens|Muse Spark \u00b7 reasons & builds|SAM 3.1 \u00b7 outlines|Muse Image \u00b7 draws",
+          "sub": "Engine \u00b7 every number|Human \u00b7 always in control",
+          "at": 0.8,
+          "dur": 12.5
+        }
+      ]
+    },
+    {
+      "id": "10",
+      "vo": "vo-10-outro.wav",
+      "canvas": "10-outro",
+      "tail": 0.4
+    }
+  ]
+}

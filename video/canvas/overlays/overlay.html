@@ -1,0 +1,246 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Overlay</title>
+    <link rel="stylesheet" href="../shared.css" />
+    <!-- Transparent overlay, one per render: ?kind=chip|engine|lower|chapter|kicker|recap&text=…&sub=…&dur=ms -->
+    <style>
+      .chip {
+        position: absolute;
+        left: 28px;
+        top: 84px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px 12px 16px;
+        border-radius: 999px;
+        background: rgba(27, 18, 56, 0.92);
+        border: 1.5px solid var(--ai);
+        color: #e6ddff;
+        font-family: 'Grotesk';
+        font-weight: 600;
+        font-size: 22px;
+        box-shadow:
+          0 8px 30px rgba(0, 0, 0, 0.45),
+          0 0 24px rgba(182, 160, 255, 0.3);
+      }
+      .chip .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--ai);
+        box-shadow: 0 0 12px var(--ai);
+      }
+      .chip .role {
+        font-family: 'Inter';
+        font-weight: 500;
+        color: #cfc2ff;
+      }
+      .chip.engine {
+        background: rgba(8, 36, 28, 0.92);
+        border-color: var(--battery);
+        color: #d8fff0;
+        box-shadow:
+          0 8px 30px rgba(0, 0, 0, 0.45),
+          0 0 24px rgba(83, 214, 160, 0.3);
+      }
+      .chip.engine .dot {
+        background: var(--battery);
+        box-shadow: 0 0 12px var(--battery);
+      }
+      .chip.engine .role {
+        color: #a9f0d2;
+      }
+      .lower {
+        position: absolute;
+        left: 40px;
+        bottom: 150px;
+        padding: 14px 24px;
+        border-left: 4px solid var(--solar);
+        background: rgba(8, 13, 26, 0.88);
+        border-radius: 0 12px 12px 0;
+        font-family: 'Grotesk';
+        font-weight: 600;
+        font-size: 28px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      }
+      .chapter {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(8, 13, 26, 0.78);
+      }
+      .chapter .in {
+        display: flex;
+        align-items: baseline;
+        gap: 24px;
+      }
+      .chapter .num {
+        font-family: 'Mono';
+        font-size: 40px;
+        color: var(--solar);
+      }
+      .chapter .t {
+        font-family: 'Grotesk';
+        font-weight: 600;
+        font-size: 52px;
+        letter-spacing: 0.06em;
+      }
+      .kicker-box {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 250px;
+        text-align: center;
+      }
+      .kicker-box .k {
+        display: inline-block;
+        padding: 8px 18px;
+        background: rgba(8, 13, 26, 0.82);
+        border-radius: 10px;
+        color: var(--solar);
+      }
+      .kicker-box .title {
+        margin-top: 16px;
+        text-shadow: 0 4px 30px rgba(0, 0, 0, 0.8);
+      }
+      .recap {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 140px;
+        display: grid;
+        grid-template-columns: repeat(5, 220px);
+        justify-content: center;
+        gap: 16px;
+      }
+      .recap2 {
+        top: 330px;
+        grid-template-columns: repeat(2, 340px);
+      }
+      .card {
+        padding: 18px;
+        border-radius: 16px;
+        background: rgba(17, 29, 48, 0.92);
+        border: 1.5px solid var(--ai);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      }
+      .card .m {
+        font-family: 'Grotesk';
+        font-weight: 600;
+        font-size: 24px;
+        color: #e6ddff;
+      }
+      .card .r {
+        margin-top: 6px;
+        font-size: 18px;
+        color: #cfc2ff;
+      }
+      .card.engine {
+        border-color: var(--battery);
+      }
+      .card.engine .m {
+        color: #d8fff0;
+      }
+      .card.engine .r {
+        color: #a9f0d2;
+      }
+      .card.human {
+        border-color: var(--solar);
+      }
+      .card.human .m {
+        color: #ffe3b5;
+      }
+      .card.human .r {
+        color: #ffd38a;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="../timeline.js"></script>
+    <script>
+      const q = new URLSearchParams(location.search);
+      const kind = q.get('kind') || 'chip',
+        text = q.get('text') || '',
+        sub = q.get('sub') || '';
+      const dur = Number(q.get('dur') || 2500);
+      document.body.dataset.duration = dur;
+      window.__duration = dur;
+      const el = document.createElement('div');
+      if (kind === 'chip' || kind === 'engine') {
+        const [m, r] = text.split(' · ');
+        el.className = 'chip' + (kind === 'engine' ? ' engine' : '');
+        el.innerHTML = `<span class="dot"></span><span>${m}</span>${r ? `<span class="role">· ${r}</span>` : ''}`;
+        document.body.appendChild(el);
+        inOut(el, 0, dur, -12);
+        anim(
+          el.querySelector('.dot'),
+          [
+            { transform: 'scale(1)', opacity: 1 },
+            { transform: 'scale(1.6)', opacity: 0.5 },
+            { transform: 'scale(1)', opacity: 1 },
+          ],
+          0,
+          900,
+          'ease-in-out'
+        );
+        el.querySelector('.dot')
+          .getAnimations()[0]
+          .effect.updateTiming({ iterations: Math.ceil(dur / 900) });
+      } else if (kind === 'lower') {
+        el.className = 'lower';
+        el.textContent = text;
+        document.body.appendChild(el);
+        inOut(el, 0, dur);
+      } else if (kind === 'chapter') {
+        const [num, t] = text.split(' · ');
+        el.className = 'chapter';
+        el.innerHTML = `<div class="in"><span class="num">${num}</span><span class="t">${t}</span></div>`;
+        document.body.appendChild(el);
+        anim(
+          el,
+          [
+            { opacity: 0, offset: 0 },
+            { opacity: 1, offset: 0.2 },
+            { opacity: 1, offset: 0.8 },
+            { opacity: 0, offset: 1 },
+          ],
+          0,
+          dur,
+          'linear'
+        );
+        anim(
+          el.querySelector('.in'),
+          [{ transform: 'translateY(24px)' }, { transform: 'none' }],
+          0,
+          500
+        );
+      } else if (kind === 'kicker') {
+        el.className = 'kicker-box';
+        el.innerHTML = `<div class="kicker k">${text}</div><div class="title">${sub}</div>`;
+        document.body.appendChild(el);
+        inOut(el.querySelector('.k'), 0, dur);
+        inOut(el.querySelector('.title'), dur * 0.35, dur * 0.65);
+      } else if (kind === 'recap') {
+        const rows = [text.split('|'), sub.split('|')];
+        rows.forEach((items, ri) => {
+          const g = document.createElement('div');
+          g.className = 'recap' + (ri ? ' recap2' : '');
+          document.body.appendChild(g);
+          items.forEach((it, i) => {
+            const [m, r] = it.split(' · ');
+            const c = document.createElement('div');
+            c.className = 'card' + (m === 'Engine' ? ' engine' : m === 'Human' ? ' human' : '');
+            c.innerHTML = `<div class="m">${m}</div><div class="r">${r}</div>`;
+            g.appendChild(c);
+            const start = ri ? 5200 + i * 700 : 700 + i * 850;
+            inOut(c, start, dur - start);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>

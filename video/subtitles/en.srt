@@ -1,0 +1,169 @@
+1
+00:00:00,300 --> 00:00:05,300
+Before this hackathon, none of this existed: no
+code, only open-source libraries.
+
+2
+00:00:05,300 --> 00:00:07,831
+Everything you'll see, I built this week.
+
+3
+00:00:08,831 --> 00:00:15,050
+In rural Madagascar, one solar microgrid powers a
+clinic, a school, water and every home.
+
+4
+00:00:15,050 --> 00:00:17,845
+When the sun drops, who keeps the light?
+
+5
+00:00:17,845 --> 00:00:19,732
+Mitsinjo Grid helps decide.
+
+6
+00:00:20,831 --> 00:00:22,899
+This village is fully simulated.
+
+7
+00:00:22,899 --> 00:00:28,846
+I build a seven-day week — sun, clouds, then a storm
+— with chaos mode for random incidents.
+
+8
+00:00:28,846 --> 00:00:35,892
+Every setting is a lever: strategy, clinic lifeline floor,
+night battery reserve, sector priorities and caps.
+
+9
+00:00:36,964 --> 00:00:39,467
+We play the whole week in seconds, in
+three views.
+
+10
+00:00:39,467 --> 00:00:42,120
+The 3D scene shows the village through day
+and night.
+
+11
+00:00:42,120 --> 00:00:45,374
+The topology follows the power from the
+solar hub to each sector.
+
+12
+00:00:45,374 --> 00:00:46,976
+The circuit shows every breaker.
+
+13
+00:00:46,976 --> 00:00:50,080
+Then the Strategy Lab: seventy percent
+less sun for ten hours.
+
+14
+00:00:50,080 --> 00:00:55,737
+Proportional sharing gives the clinic forty-four percent of its
+energy; essential-first raises it to fifty-eight.
+
+15
+00:00:56,831 --> 00:00:58,119
+Who loses power first?
+
+16
+00:00:58,119 --> 00:00:59,699
+I ask the copilot out loud.
+
+17
+00:00:59,699 --> 00:01:11,935
+Muse Voice turns my speech into text, and Muse Spark answers by calling the engine's tools: homes, then the
+clinic, fall short from the evening — and every number points to the simulation run that produced it.
+
+18
+00:01:13,031 --> 00:01:14,229
+Now let the AI drive.
+
+19
+00:01:14,229 --> 00:01:24,611
+In autonomous mode, the engine picks each action and applies it on its own, inside the village
+rules: it shifts flexible loads, reserves the night battery, isolates a sector on fire.
+
+20
+00:01:24,611 --> 00:01:29,688
+Muse Spark explains every decision in plain words,
+checked against the engine's evidence.
+
+21
+00:01:29,688 --> 00:01:31,228
+One tap takes back control.
+
+22
+00:01:32,331 --> 00:01:35,258
+Second feature: real objects in the twin.
+
+23
+00:01:35,258 --> 00:01:36,329
+I drop a photo.
+
+24
+00:01:36,329 --> 00:01:44,469
+Muse Spark names the appliances and buildings, and SAM 3.1
+outlines each one — marked as AI perception, to verify.
+
+25
+00:01:44,469 --> 00:01:45,754
+Missing something?
+
+26
+00:01:45,754 --> 00:01:48,181
+I draw it with the magnetic lasso.
+
+27
+00:01:49,264 --> 00:01:50,376
+I pick a building.
+
+28
+00:01:50,376 --> 00:01:55,195
+Muse Image draws a clean front elevation —
+I add details, retry, and validate.
+
+29
+00:01:55,195 --> 00:02:03,103
+Muse Spark then builds the 3D model piece by piece: massing, roof,
+openings, accessories, each stage scored against the drawing.
+
+30
+00:02:03,103 --> 00:02:05,883
+Then I turn the model, resize it and tint
+it.
+
+31
+00:02:06,997 --> 00:02:11,953
+Then its load: an AI estimate or my own
+watts, with the twenty-four-hour curve.
+
+32
+00:02:11,953 --> 00:02:15,779
+I place it on the map, choose its feeder
+line, and insert it.
+
+33
+00:02:15,779 --> 00:02:21,675
+The model now stands in the 3D village, and every
+strategy is recomputed with its consumption.
+
+34
+00:02:22,764 --> 00:02:29,558
+Four Meta models, one job each: Voice listens, Spark
+reasons and builds, SAM outlines, Image draws.
+
+35
+00:02:29,558 --> 00:02:35,735
+A deterministic engine behind every number — and a
+human who can always take back control.
+
+36
+00:02:36,831 --> 00:02:37,813
+Mitsinjo Grid.
+
+37
+00:02:37,813 --> 00:02:39,988
+Simulated data, real decisions.
+

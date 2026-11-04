@@ -1,0 +1,81 @@
+/* Video canvas tokens — dark tokens of apps/web/src/app/globals.css (VIDEO_PLAN.md § 2). */
+@font-face {
+  font-family: 'Grotesk';
+  src: url('fonts/grotesk.woff2') format('woff2');
+  font-weight: 300 700;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('fonts/inter.woff2') format('woff2');
+  font-weight: 100 900;
+}
+@font-face {
+  font-family: 'Mono';
+  src: url('fonts/mono.woff2') format('woff2');
+  font-weight: 400 500;
+}
+:root {
+  --canvas: #080d1a;
+  --surface: #111d30;
+  --text: #f4f7fb;
+  --muted: #9aa8bd;
+  --solar: #ffb547;
+  --battery: #53d6a0;
+  --ai: #b6a0ff;
+  --critical: #ff7185;
+  --cyan: #4dd8e8;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+html,
+body {
+  width: 1280px;
+  height: 720px;
+  overflow: hidden;
+  background: transparent;
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+}
+body.full {
+  background: var(--canvas);
+}
+.title {
+  font-family: 'Grotesk';
+  font-weight: 600;
+  font-size: 56px;
+  letter-spacing: -0.01em;
+}
+.kicker {
+  font-family: 'Grotesk';
+  font-weight: 600;
+  font-size: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.mono {
+  font-family: 'Mono';
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Mono';
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  border: 1px solid #2a3a55;
+  background: rgba(17, 29, 48, 0.8);
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+.badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--battery);
+}
