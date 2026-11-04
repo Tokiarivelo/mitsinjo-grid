@@ -6,3 +6,7 @@ captures/clips/
 frames/
 output/
 reference/
+
+# Local TTS (make video-tts-setup) and the dev probe output
+.venv-tts/
+tts/

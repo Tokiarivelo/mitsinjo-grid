@@ -1,0 +1,169 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Splash</title>
+    <link rel="stylesheet" href="shared.css" />
+    <style>
+      .stage {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+      }
+      .glow {
+        position: absolute;
+        left: 50%;
+        top: 46%;
+        width: 900px;
+        height: 900px;
+        margin: -450px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 181, 71, 0.22), rgba(255, 181, 71, 0) 60%);
+      }
+      .sun {
+        position: absolute;
+        left: 50%;
+        top: 600px;
+        width: 520px;
+        height: 520px;
+        margin-left: -260px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle at 50% 50%,
+          #ffcf7a,
+          #ffb547 45%,
+          rgba(255, 181, 71, 0) 70%
+        );
+        filter: blur(2px);
+        opacity: 0.55;
+      }
+      .village {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 1280px;
+        height: 210px;
+      }
+      .logo {
+        width: 120px;
+        height: 120px;
+        border-radius: 28px;
+        box-shadow: 0 0 60px rgba(255, 181, 71, 0.35);
+      }
+      .title {
+        font-size: 72px;
+        letter-spacing: 0.04em;
+      }
+      .title span {
+        opacity: 0;
+      }
+      .sub {
+        font-size: 26px;
+        color: var(--muted);
+      }
+      .prov {
+        font-size: 22px;
+        color: var(--text);
+        background: rgba(17, 29, 48, 0.85);
+        border: 1px solid #2a3a55;
+        padding: 10px 20px;
+        border-radius: 12px;
+      }
+      .prov b {
+        color: var(--solar);
+        font-weight: 600;
+      }
+      .badge {
+        position: absolute;
+        top: 28px;
+        right: 32px;
+      }
+    </style>
+  </head>
+  <body class="full" data-duration="4500">
+    <div class="glow"></div>
+    <div class="sun"></div>
+    <svg class="village" viewBox="0 0 1280 210" fill="none" stroke="#2c3f5e" stroke-width="2">
+      <path d="M0 190 H1280" />
+      <path
+        d="M150 190 V140 L190 110 L230 140 V190 M300 190 V120 H380 V190 M330 120 L340 95 L350 120"
+      />
+      <path
+        d="M520 190 V130 L580 95 L640 130 V190 M560 190 V160 H600 V190 M548 115 h24 M610 115 h12"
+      />
+      <path
+        d="M760 190 V150 L790 128 L820 150 V190 M870 190 V100 M850 120 h40 M860 100 a10 10 0 0 1 20 0"
+      />
+      <path
+        d="M980 190 V140 H1060 V190 M1000 140 L1020 118 L1040 140 M1110 190 V150 L1140 125 L1170 150 V190"
+      />
+      <path d="M420 190 l30 -40 l30 40 M435 170 h30" stroke="#ffb547" />
+    </svg>
+    <div class="badge">SIMULATED DATA</div>
+    <div class="stage">
+      <img class="logo" src="../brand/logo.png" alt="" />
+      <div class="title" id="title"></div>
+      <div class="sub" id="sub">AI copilot for a rural solar microgrid</div>
+    </div>
+    <script src="timeline.js"></script>
+    <script>
+      const T = 'MITSINJO GRID';
+      const title = document.getElementById('title');
+      [...T].forEach((c, i) => {
+        const s = document.createElement('span');
+        s.textContent = c === ' ' ? ' ' : c;
+        title.appendChild(s);
+        anim(
+          s,
+          [
+            { opacity: 0, transform: 'translateY(10px)' },
+            { opacity: 1, transform: 'none' },
+          ],
+          700 + i * 55,
+          260
+        );
+      });
+      anim(
+        '.logo',
+        [
+          { opacity: 0, transform: 'scale(.8)' },
+          { opacity: 1, transform: 'scale(1)' },
+        ],
+        0,
+        900
+      );
+      anim(
+        '.glow',
+        [
+          { opacity: 0, transform: 'scale(.7)' },
+          { opacity: 1, transform: 'scale(1)' },
+        ],
+        0,
+        2500
+      );
+      anim(
+        '.sun',
+        [{ transform: 'translateY(0)' }, { transform: 'translateY(-240px)' }],
+        0,
+        4500,
+        'cubic-bezier(.3,.6,.3,1)'
+      );
+      anim('.village', [{ opacity: 0 }, { opacity: 1 }], 300, 1200);
+      anim(
+        '#sub',
+        [
+          { opacity: 0, transform: 'translateY(24px)' },
+          { opacity: 1, transform: 'none' },
+        ],
+        1600,
+        400
+      );
+      anim('.badge', [{ opacity: 0 }, { opacity: 1 }], 500, 400);
+      anim('.stage, .badge, .village', [{ opacity: 1 }, { opacity: 0 }], 4000, 450, 'ease-in');
+    </script>
+  </body>
+</html>

@@ -1,0 +1,205 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Outro</title>
+    <link rel="stylesheet" href="shared.css" />
+    <style>
+      .stage {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        text-align: center;
+      }
+      .glow {
+        position: absolute;
+        left: 50%;
+        top: 40%;
+        width: 900px;
+        height: 900px;
+        margin: -450px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(182, 160, 255, 0.18), rgba(182, 160, 255, 0) 60%);
+      }
+      .logo {
+        width: 96px;
+        height: 96px;
+        border-radius: 22px;
+      }
+      .tag {
+        font-family: 'Grotesk';
+        font-size: 30px;
+        color: var(--solar);
+      }
+      .url {
+        font-family: 'Mono';
+        font-size: 24px;
+        color: var(--cyan);
+      }
+      .models {
+        font-size: 19px;
+        color: var(--ai);
+        margin-top: 10px;
+      }
+      .credit {
+        font-size: 16px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .badge {
+        position: absolute;
+        top: 28px;
+        right: 32px;
+      }
+      .stage > * {
+        opacity: 0;
+      }
+      .end {
+        position: absolute;
+        inset: 0;
+      }
+      .end > *,
+      .black {
+        opacity: 0;
+      }
+      .sun {
+        position: absolute;
+        left: 50%;
+        top: 70%;
+        width: 300px;
+        height: 300px;
+        margin: -150px;
+        clip-path: inset(0 0 50% 0);
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          #ffd27a 0%,
+          var(--solar) 38%,
+          rgba(255, 181, 71, 0) 70%
+        );
+        filter: blur(2px);
+      }
+      .horizon {
+        position: absolute;
+        left: 10%;
+        right: 10%;
+        top: 70%;
+        height: 2px;
+        background: linear-gradient(
+          90deg,
+          rgba(77, 216, 232, 0),
+          var(--cyan),
+          rgba(77, 216, 232, 0)
+        );
+        transform-origin: center;
+      }
+      .endlogo {
+        position: absolute;
+        left: 50%;
+        top: 38%;
+        width: 120px;
+        height: 120px;
+        margin: -60px;
+        z-index: 2;
+        border-radius: 26px;
+        box-shadow: 0 0 60px rgba(255, 181, 71, 0.45);
+      }
+      .thanks {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 52%;
+        text-align: center;
+        font-family: 'Grotesk';
+        font-size: 30px;
+        letter-spacing: 0.04em;
+        color: var(--text);
+      }
+      .black {
+        position: absolute;
+        inset: 0;
+        background: #000;
+      }
+    </style>
+  </head>
+  <body class="full" data-duration="12000">
+    <div class="glow"></div>
+    <div class="badge">SIMULATED DATA</div>
+    <div class="stage">
+      <img class="logo" src="../brand/logo.png" alt="" />
+      <div class="title">MITSINJO GRID</div>
+      <div class="tag">Simulated data, real decisions.</div>
+      <div class="url">github.com/Tokiarivelo/mitsinjo-grid</div>
+      <div class="models">Built with Meta Muse Spark · Muse Image · Muse Voice · SAM 3.1</div>
+      <div class="credit">
+        Music: “Passion”, Luke Bergs &amp; AgusAlvarez (Free To Use Music)<br />
+        Photo: Bin im Garten, CC BY-SA 3.0 (Wikimedia Commons) · Narration voice: Kokoro TTS
+      </div>
+    </div>
+    <div class="end">
+      <div class="sun"></div>
+      <div class="horizon"></div>
+      <img class="endlogo" src="../brand/logo.png" alt="" />
+      <div class="thanks">Thank you for watching</div>
+    </div>
+    <div class="black"></div>
+    <script src="timeline.js"></script>
+    <script>
+      document.querySelectorAll('.stage > *').forEach((e, i) =>
+        anim(
+          e,
+          [
+            { opacity: 0, transform: 'translateY(24px)' },
+            { opacity: 1, transform: 'none' },
+          ],
+          200 + i * 180,
+          420
+        )
+      );
+      anim('.glow', [{ opacity: 0 }, { opacity: 1 }], 0, 1500);
+      // Credits out, then the end scene: horizon draws, sun rises behind the logo, thanks, fade to black.
+      anim('.stage, .badge, .glow', [{ opacity: 1 }, { opacity: 0 }], 6000, 800, 'ease-in');
+      anim(
+        '.horizon',
+        [
+          { opacity: 0, transform: 'scaleX(0)' },
+          { opacity: 1, transform: 'scaleX(1)' },
+        ],
+        6600,
+        1200
+      );
+      anim(
+        '.sun',
+        [
+          { opacity: 0, transform: 'translateY(160px) scale(.7)' },
+          { opacity: 1, transform: 'none' },
+        ],
+        6800,
+        2200
+      );
+      anim(
+        '.endlogo',
+        [
+          { opacity: 0, transform: 'scale(.8)' },
+          { opacity: 1, transform: 'none' },
+        ],
+        7600,
+        900
+      );
+      anim(
+        '.thanks',
+        [
+          { opacity: 0, transform: 'translateY(18px)' },
+          { opacity: 1, transform: 'none' },
+        ],
+        8300,
+        800
+      );
+      anim('.black', [{ opacity: 0 }, { opacity: 1 }], 10600, 1400, 'ease-in');
+    </script>
+  </body>
+</html>
