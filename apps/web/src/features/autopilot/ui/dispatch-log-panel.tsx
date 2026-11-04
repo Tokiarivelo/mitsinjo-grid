@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { SectorIcon } from '@/components/ui/sector-icon';
 import { useTranslations } from '@/lib/i18n';
-import { fmtHour, fmtKwh, fmtPct } from '@/lib/format';
+import { fmtHour, fmtEvidence, fmtKwh, fmtPct } from '@/lib/format';
 import {
   computeShiftReport,
   dispatchLogToCsv,
@@ -476,7 +476,8 @@ export function DispatchLogPanel({
                             key={key}
                             className="bg-surface px-1.5 py-0.5 rounded border border-border text-[10px]"
                           >
-                            {key}: <span className="font-bold text-text-primary">{val}</span>
+                            {key}:{' '}
+                            <span className="font-bold text-text-primary">{fmtEvidence(val)}</span>
                           </span>
                         ))}
                       </div>

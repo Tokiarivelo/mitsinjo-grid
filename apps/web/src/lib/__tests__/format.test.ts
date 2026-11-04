@@ -3,6 +3,7 @@ import {
   EMPTY_PLACEHOLDER,
   fmtDeltaKwh,
   fmtDeltaPct,
+  fmtEvidence,
   fmtHour,
   fmtKw,
   fmtKwh,
@@ -98,5 +99,19 @@ describe('format utilities (P4-T2)', () => {
       expect(fmtDeltaPct(null)).toBe(EMPTY_PLACEHOLDER);
       expect(fmtDeltaPct(NaN)).toBe(EMPTY_PLACEHOLDER);
     });
+  });
+});
+
+describe('fmtEvidence', () => {
+  it('rounds float noise to 2 decimals and trims zeros', () => {
+    expect(fmtEvidence(10.640000000000002)).toBe('10.64');
+    expect(fmtEvidence(60)).toBe('60');
+    expect(fmtEvidence(0.5)).toBe('0.5');
+    expect(fmtEvidence(1.23456, 1)).toBe('1.2');
+  });
+  it('keeps text and guards empty or non-finite values', () => {
+    expect(fmtEvidence('clinic')).toBe('clinic');
+    expect(fmtEvidence(null)).toBe(EMPTY_PLACEHOLDER);
+    expect(fmtEvidence(Number.NaN)).toBe(EMPTY_PLACEHOLDER);
   });
 });

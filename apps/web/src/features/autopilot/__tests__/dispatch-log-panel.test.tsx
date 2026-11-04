@@ -62,7 +62,7 @@ const SAMPLE_ENTRIES: DispatchLogEntry[] = [
       severity: 'warning',
       day: 0,
       hour: 18,
-      evidence: { peakKw: 60, solarKw: 0 },
+      evidence: { peakKw: 10.640000000000002, solarKw: 0 },
     },
     hash: 'feedface11223344',
   },
@@ -106,6 +106,9 @@ describe('DispatchLogPanel (PA-T4b)', () => {
 
     // Renders evidence
     expect(screen.getByText(/activeFires/i)).toBeInTheDocument();
+    // Float noise from the engine is rounded for display
+    expect(screen.getByText('10.64')).toBeInTheDocument();
+    expect(screen.queryByText('10.640000000000002')).toBeNull();
   });
 
   it('filters by severity: Critical only shows fire incident', () => {
