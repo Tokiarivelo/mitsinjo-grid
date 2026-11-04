@@ -10,10 +10,18 @@ import {
   Vignette,
 } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
+import { Ink } from './ink';
+import { SCENE_INK_TOKEN } from '../utils/ink-effect';
+
+/** Ink strength in the village (PT-6): lighter than the editor, many objects at once. */
+export const VILLAGE_INK = 0.35;
+/** Village ink fades out with distance (world units): near buildings inked, far forest clean. */
+export const VILLAGE_INK_FADE = [22, 45] as const;
 
 /**
  * High-tier look: ambient occlusion grounds buildings and trees, bloom lifts lit windows,
- * active cables and the sun, then a warm filmic grade (ACES, same curve as the low tier) and a soft vignette.
+ * active cables and the sun, then a warm filmic grade (ACES, same curve as the low tier), a light ink outline
+ * (PT-6, merged into the vignette's pass: no extra render) and a soft vignette.
  * Only data-driven or light-source materials exceed the bloom threshold.
  */
 export function PostEffects() {
@@ -38,6 +46,8 @@ export function PostEffects() {
       {/* Grade after tone mapping: on HDR input (> 1) these go negative → black pixels. */}
       <HueSaturation saturation={0.12} />
       <BrightnessContrast contrast={0.06} />
+      {/* Silhouettes only (no creases: terrain and tree facets would turn to noise), dark ink. */}
+      <Ink strength={VILLAGE_INK} crease={0} fade={VILLAGE_INK_FADE} token={SCENE_INK_TOKEN} />
       <Vignette offset={0.3} darkness={0.55} />
     </EffectComposer>
   );
