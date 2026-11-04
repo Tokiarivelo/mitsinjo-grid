@@ -73,8 +73,8 @@ test.describe('PA-T7 Autonomous AI Dispatch & Chat Scenario E2E', () => {
     await expect(copilotInput).toBeVisible();
     await expect(copilotInput).not.toHaveValue('');
 
-    // Send the explanation question
-    await page.getByRole('button', { name: /^send$/i }).click();
+    // Send the explanation question with Enter (the fire snackbar can sit over the Send button)
+    await copilotInput.press('Enter');
 
     // Verify copilot provides an answer referencing the incident / isolation
     await expect(page.getByText(/what happened|ce qui s'est passé/i).first()).toBeVisible({

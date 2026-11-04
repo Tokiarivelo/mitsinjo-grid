@@ -1,4 +1,4 @@
-# Mitsinjo Grid — Rural Solar Microgrid Simulation & AI Decision Support
+# Mitsinjo Grid: Rural Solar Microgrid Simulation & AI Decision Support
 
 [![CI Status](https://github.com/Tokiarivelo/mitsinjo-grid/actions/workflows/ci.yml/badge.svg)](https://github.com/Tokiarivelo/mitsinjo-grid/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -13,7 +13,7 @@
 
 **Public Production Deployment**: [https://mitsinjo-grid.vercel.app](https://mitsinjo-grid.vercel.app)  
 **Demo Video (2:44, YouTube)**: [https://youtu.be/M1CGLtZBkWs](https://youtu.be/M1CGLtZBkWs) · production plan in [video/VIDEO_PLAN.md](video/VIDEO_PLAN.md)  
-[![Mitsinjo Grid demo video](https://img.youtube.com/vi/M1CGLtZBkWs/maxresdefault.jpg)](https://youtu.be/M1CGLtZBkWs)
+[![Mitsinjo Grid demo video (2:44), click to watch on YouTube](docs/images/demo-thumbnail.jpg)](https://youtu.be/M1CGLtZBkWs)
 
 **Documentation**: [docs/](docs/) · [docs/assumptions.md](docs/assumptions.md) · [docs/demo-script.md](docs/demo-script.md) · [docs/known-limitations.md](docs/known-limitations.md) · [benchmarks/](benchmarks/) · [tests/](tests/) (integration)
 
@@ -42,7 +42,7 @@
 
 In off-grid rural communities across Madagascar and Sub-Saharan Africa, small solar-plus-storage microgrids (typically 30–50 kWp solar PV + 100–150 kWh battery storage) are the sole lifeline for essential civic and economic infrastructure.
 
-When sudden monsoon cloud cover, severe weather, or high peak demands strike, battery reserves deplete rapidly. Traditional microgrid controllers rely on **naive proportional load shedding**—reducing power equally across all circuits by percentage.
+When sudden monsoon cloud cover, severe weather, or high peak demands strike, battery reserves deplete rapidly. Traditional microgrid controllers rely on **naive proportional load shedding**, reducing power equally across all circuits by percentage.
 
 Under proportional shedding, a severe deficit reduces power to the **Health Clinic** at the exact same rate as street markets and domestic lighting. An unexpected deficit can cut power to the clinic's vaccine refrigeration cold chain, incubator, and emergency lighting, risking catastrophic loss of life and supplies.
 
@@ -182,7 +182,7 @@ _For complete modeling formulas and boundary conditions, see [docs/assumptions.m
 Two ways to run the app. Both start in **offline mock mode** (no key, deterministic, recorded sample answers),
 and switch to the **live Meta models** with one variable plus your own key.
 
-### Option A — Docker (no Node or pnpm needed)
+### Option A: Docker (no Node or pnpm needed)
 
 ```bash
 git clone https://github.com/Tokiarivelo/mitsinjo-grid.git
@@ -193,7 +193,7 @@ docker compose up -d --build        # or: make docker-up
 Open **http://localhost:3000**. Logs: `docker compose logs -f web` · stop: `docker compose down`.
 Port 3000 busy? `HOST_PORT=8080 docker compose up -d --build` → http://localhost:8080.
 
-### Option B — Node + pnpm
+### Option B: Node + pnpm
 
 Requires **Node.js ≥ 20.12** (22 LTS recommended) and **pnpm 10** (`corepack enable` installs the pinned
 version, 10.29.3).
@@ -219,7 +219,7 @@ Open **http://localhost:3000** (`PORT` in `.env`). `make dev-mock` forces mock m
    META_API_KEY=<your key>
    ```
 
-3. Restart: `pnpm dev` (Option B), or `docker compose up -d --build` (Option A — compose reads the same
+3. Restart: `pnpm dev` (Option B), or `docker compose up -d --build` (Option A; compose reads the same
    root `.env`).
 
 Never commit `.env` (it is git-ignored). With an empty key the app runs the offline mock; a failing live call
@@ -266,7 +266,7 @@ Every screen is labelled `SIMULATED DATA`: no real grid is measured or controlle
 custom multi-day scenarios (**My Custom Scenarios**, drafted in chat or imported), and the Autonomous AI
 **Event Log** with its narrations. Without `DATABASE_URL` all of it still works for the whole demo, held in the
 server's memory: it is lost when the server restarts (`pnpm dev` / `docker compose` restart), and on a
-serverless host each instance has its own memory — so the deployed site uses Neon. To keep data locally, put a
+serverless host each instance has its own memory, so the deployed site uses Neon. To keep data locally, put a
 Neon (or any Postgres) URL in the root `.env`:
 
 ```ini
@@ -285,7 +285,7 @@ checklist: [docs/setup/env.md](docs/setup/env.md). `.env` (root) and `apps/web/.
 
 - **Port already in use:** `PORT=3005 pnpm dev` (Option B) or `HOST_PORT=8080 …` (Option A).
 - **Copilot answers look scripted:** `LLM_PROVIDER` is not `meta`, the key is empty or invalid, or the spend
-  cap is reached — check the server log (`[copilot:meta] …` lines mean live calls).
+  cap is reached. Check the server log (`[copilot:meta] …` lines mean live calls).
 - **Changed `.env` but nothing changed:** restart `pnpm dev`; with Docker, rerun `docker compose up -d --build`.
 - **No 3D (old GPU / no WebGL):** the app shows the 2D schematic instead; everything else works.
 - **`pnpm: command not found`:** run `corepack enable` (ships with Node), or `npm i -g pnpm@10.29.3`.
@@ -367,7 +367,7 @@ Template with comments: [.env.example](.env.example) · local vs Vercel: [docs/s
 
 | Variable    | Needed for | Default | Meaning                                                                |
 | ----------- | ---------- | ------- | ---------------------------------------------------------------------- |
-| `PORT`      | —          | `3000`  | `pnpm dev` / `make dev` port, also used by Playwright and `make shots` |
+| `PORT`      | -          | `3000`  | `pnpm dev` / `make dev` port, also used by Playwright and `make shots` |
 | `HOST_PORT` | Docker     | `3000`  | host port mapped to the container's 3000 (`PORT` is ignored in Docker) |
 
 ### Copilot and Meta models (server-only)
@@ -376,36 +376,36 @@ Template with comments: [.env.example](.env.example) · local vs Vercel: [docs/s
 | ------------------------- | ----------- | --------------------------- | --------------------------------------------------------------------------------------------------- |
 | `LLM_PROVIDER`            | live AI     | `mock`                      | `mock` (offline, scripted) · `meta` (Meta Model API) · `glimmer` (local model first)                |
 | `META_API_KEY`            | live AI     | empty                       | your key from [dev.meta.ai](https://dev.meta.ai); empty → mock. **Secret**                          |
-| `META_BASE_URL`           | —           | `https://api.meta.ai/v1`    | Meta Model API base URL                                                                             |
-| `META_MODEL`              | —           | `muse-spark-1.3`            | copilot chat + tool calling (Muse Spark)                                                            |
-| `META_VOICE_MODEL`        | —           | `muse-voice-transcribe-1.0` | voice input transcription (WAV)                                                                     |
-| `META_VISION_MODEL`       | —           | `muse-spark-1.3`            | reads photos: names appliances / buildings, 3D parts and stages                                     |
-| `META_SEGMENT_MODEL`      | —           | `sam-3.1`                   | outlines each detected object (SAM)                                                                 |
-| `META_IMAGE_MODEL`        | —           | `muse-image-1.0`            | 2D facade drawings, shedding posters                                                                |
-| `META_REFINE_MODEL`       | —           | `muse-wonder-1.0`           | final check + re-refinement of the 3D model (falls back to `META_VISION_MODEL`)                     |
-| `META_SPEND_CAP_USD`      | —           | `15`                        | estimated Meta spend allowed per chat session; over it → mock; `0` = no paid call                   |
-| `META_PREFER_CONTRIBUTOR` | —           | `true`                      | prefer Spark `*-contributor` ids (≈ 12× cheaper, Meta trains on them); `false` for real user data   |
+| `META_BASE_URL`           | -           | `https://api.meta.ai/v1`    | Meta Model API base URL                                                                             |
+| `META_MODEL`              | -           | `muse-spark-1.3`            | copilot chat + tool calling (Muse Spark)                                                            |
+| `META_VOICE_MODEL`        | -           | `muse-voice-transcribe-1.0` | voice input transcription (WAV)                                                                     |
+| `META_VISION_MODEL`       | -           | `muse-spark-1.3`            | reads photos: names appliances / buildings, 3D parts and stages                                     |
+| `META_SEGMENT_MODEL`      | -           | `sam-3.1`                   | outlines each detected object (SAM)                                                                 |
+| `META_IMAGE_MODEL`        | -           | `muse-image-1.0`            | 2D facade drawings, shedding posters                                                                |
+| `META_REFINE_MODEL`       | -           | `muse-wonder-1.0`           | final check + re-refinement of the 3D model (falls back to `META_VISION_MODEL`)                     |
+| `META_SPEND_CAP_USD`      | -           | `15`                        | estimated Meta spend allowed per chat session; over it → mock; `0` = no paid call                   |
+| `META_PREFER_CONTRIBUTOR` | -           | `true`                      | prefer Spark `*-contributor` ids (≈ 12× cheaper, Meta trains on them); `false` for real user data   |
 | `GLIMMER_BASE_URL`        | local model | empty                       | OpenAI-compatible URL (Ollama `http://localhost:11434/v1`, vLLM); set → chain Meta → Glimmer → mock |
 | `GLIMMER_MODEL`           | local model | `muse-glimmer-30b`          | model id served locally                                                                             |
 | `GLIMMER_API_KEY`         | local model | empty                       | only if the local server asks for one. **Secret**                                                   |
 
-### Database — Neon Postgres (optional, details in § 8)
+### Database: Neon Postgres (optional, details in § 8)
 
 | Variable                                                                             | Needed for                | Default | Meaning                                                                                            |
 | ------------------------------------------------------------------------------------ | ------------------------- | ------- | -------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`                                                                       | data kept across restarts | empty   | pooled URL read by the app (chats, custom scenarios, Event Log); empty → server memory. **Secret** |
 | `DATABASE_URL_UNPOOLED`                                                              | `make db-migrate`         | empty   | direct URL, preferred for migrations. **Secret**                                                   |
-| `PGHOST` `PGHOST_UNPOOLED` `PGUSER` `PGDATABASE` `PGPASSWORD`, `POSTGRES_*` (8 vars) | —                         | empty   | written by the Vercel–Neon integration; **not read by the app**                                    |
+| `PGHOST` `PGHOST_UNPOOLED` `PGUSER` `PGDATABASE` `PGPASSWORD`, `POSTGRES_*` (8 vars) | -                         | empty   | written by the Vercel–Neon integration; **not read by the app**                                    |
 
-### Media storage — Cloudflare R2 (optional)
+### Media storage: Cloudflare R2 (optional)
 
-| Variable                                                      | Needed for               | Default               | Meaning                                                                                                                                                         |
-| ------------------------------------------------------------- | ------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `R2_ACCOUNT_ID` · `R2_ACCESS_KEY_ID` · `R2_SECRET_ACCESS_KEY` | keeping generated images | empty (all 3 or none) | saves facades / posters with the session; empty → images stay in the page only. **Secrets** — guide: [docs/setup/cloudflare-r2.md](docs/setup/cloudflare-r2.md) |
-| `R2_BUCKET_NAME`                                              | R2                       | `mitsinjo-grid-media` | bucket name                                                                                                                                                     |
-| `R2_PUBLIC_URL`                                               | R2                       | empty                 | public bucket URL (r2.dev or custom domain)                                                                                                                     |
+| Variable                                                      | Needed for               | Default               | Meaning                                                                                                                                                        |
+| ------------------------------------------------------------- | ------------------------ | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `R2_ACCOUNT_ID` · `R2_ACCESS_KEY_ID` · `R2_SECRET_ACCESS_KEY` | keeping generated images | empty (all 3 or none) | saves facades / posters with the session; empty → images stay in the page only. **Secrets**; guide: [docs/setup/cloudflare-r2.md](docs/setup/cloudflare-r2.md) |
+| `R2_BUCKET_NAME`                                              | R2                       | `mitsinjo-grid-media` | bucket name                                                                                                                                                    |
+| `R2_PUBLIC_URL`                                               | R2                       | empty                 | public bucket URL (r2.dev or custom domain)                                                                                                                    |
 
-### Physical scale model — `make bridge` (optional, local only; details: [docs/bridge.md](docs/bridge.md))
+### Physical scale model: `make bridge` (optional, local only; details: [docs/bridge.md](docs/bridge.md))
 
 | Variable                                               | Default                                | Meaning                                                                              |
 | ------------------------------------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------ |
@@ -460,7 +460,7 @@ make deploy        # Manual production deployment from clean origin/main
 ### Stretch Features (shipped, simulated only)
 
 - **Autonomous AI Dispatch Mode & Event Log (PA)**: 3-level dispatch toggle (`Manual`, `Assisted`, `Autonomous AI`). In Autonomous mode, the engine continuously detects grid incidents (fires, overload, battery reserve drops, solar surplus), evaluates multi-hour candidate trajectories, and applies actions autonomously without human approval. Hard guardrails enforce the Village Constitution (Health Clinic lifeline never cut) and anti-oscillation limits (max 2 actions/hour, no counter-actions in < 2h). Full auditability through a hash-sealed Event Log (FNV-1a integrity hash, not cryptographic; `Neon` database + offline fallback), CSV/JSON export, automated shift reports, and one-tap "Take back control" (≥ 44px) returning control immediately to manual. Clicking "Why?" on any action links directly to Copilot with an evidence-grounded prompt.
-- **Natural Language Multi-Day Scenario Drafting (PA-8)**: Describe multi-day stress scenarios directly in natural language (EN, FR, MG — e.g. "jour 1 : nuageux, jour 2 : pluvieux, jour 3 : beau temps + école en feu"). Multilingual deterministic regex extractor and Meta Muse Spark `draft_scenario` tool generate structured `ScenarioDraft` objects, detect missing slots, and render an interactive draft card in chat with suggested response pills. Once completed, compute an engine preview and launch directly into 24h simulation or multi-day workflow in manual or autonomous mode, with persistent draft storage in Neon.
+- **Natural Language Multi-Day Scenario Drafting (PA-8)**: Describe multi-day stress scenarios directly in natural language (EN, FR, MG, e.g. "jour 1 : nuageux, jour 2 : pluvieux, jour 3 : beau temps + école en feu"). Multilingual deterministic regex extractor and Meta Muse Spark `draft_scenario` tool generate structured `ScenarioDraft` objects, detect missing slots, and render an interactive draft card in chat with suggested response pills. Once completed, compute an engine preview and launch directly into 24h simulation or multi-day workflow in manual or autonomous mode, with persistent draft storage in Neon.
 - **PX Anomaly Signal**: optional per-sector `meterReadings`; a persistent gap > 25 % vs the expected profile for ≥ 2 h raises `ANOMALY_TO_VERIFY` (a signal to verify, never a fraud or fault conclusion). Synthetic `meter_anomaly` scenario.
 - **Weather Workflow**: chain up to 7 days with weather pills (sunny, partly cloudy, cloudy, rainy, storm); each day scales solar and starts from the previous day's battery charge; day strip and playback follow the days; the 3D village shows each day's sky (overcast, clouds, rain, storm lightning) and a weather change re-runs the engine at once.
 - **Live Sector Load & Small Factory**: on `/simulation` (Buildings tab) a slider per sector scales its load ×0–3 and a button connects or disconnects it; each change re-runs the engine at once (3D, metrics, charts follow, even during playback). A small factory sector ships disconnected by default; adding another consumer sector follows the checklist in `docs/engine-spec.md`.
