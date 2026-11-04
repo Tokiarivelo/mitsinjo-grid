@@ -13,7 +13,7 @@
 
 **Public Production Deployment**: [https://mitsinjo-grid.vercel.app](https://mitsinjo-grid.vercel.app)  
 **Demo Video (2:44, YouTube)**: [https://youtu.be/M1CGLtZBkWs](https://youtu.be/M1CGLtZBkWs) · production plan in [video/VIDEO_PLAN.md](video/VIDEO_PLAN.md)  
-[![Mitsinjo Grid demo video](https://img.youtube.com/vi/M1CGLtZBkWs/maxresdefault.jpg)](https://youtu.be/M1CGLtZBkWs)
+[![Mitsinjo Grid demo video (2:44), click to watch on YouTube](docs/images/demo-thumbnail.jpg)](https://youtu.be/M1CGLtZBkWs)
 
 **Documentation**: [docs/](docs/) · [docs/assumptions.md](docs/assumptions.md) · [docs/demo-script.md](docs/demo-script.md) · [docs/known-limitations.md](docs/known-limitations.md) · [benchmarks/](benchmarks/) · [tests/](tests/) (integration)
 
