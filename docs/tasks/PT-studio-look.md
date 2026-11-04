@@ -3,7 +3,7 @@
 **Why (user, 2026-11-04):** « how does this person get 3D so detailed and perfect? Can we transcribe it to refine
 our 3D generation? » Source studied: [elvarofficial/teardown](https://github.com/elvarofficial/teardown) (MIT, built
 on `whaleyxbt/claude-motion`). Every file was read; findings below.
-**Status:** 🟡 PT-11, PT-0, PT-1a, PT-1b, PT-1d, PT-1c, PT-3, PT-2, PT-4, PT-5 done (2026-11-04). **Rules kept:** Meta models only; never paste the photo on a model (small swatches OK);
+**Status:** 🟡 PT-11, PT-0, PT-1a, PT-1b, PT-1d, PT-1c, PT-3, PT-2, PT-1e, PT-4, PT-5 done (PT-1 complete) (2026-11-04). **Rules kept:** Meta models only; never paste the photo on a model (small swatches OK);
 ≤ 5 k triangles per object; budgets of `docs/performance.md` § 1 unchanged; dual theme; mobile; zero static text.
 **Skills:** `/shape-3d` (object geometry) · `/scene-3d` (village) · `/shape-loop` (measure) · `/designer-3d` (review).
 
@@ -71,7 +71,7 @@ surface (`SURFACE_LOOK.radius`), PMREM room light, Neutral tone mapping, baked c
         third point) instead of hand-built faces. Reuse only.
   - [x] **PT-1d** Silhouette body (`silhouetteMesh`, `bevelEnabled: false` today) → `bevelEnabled`, size =
         `EDGE_BEVEL × max(w, h)`, depth reduced by 2 × bevel.
-  - [ ] **PT-1e** `hip` (hipped roof): no bevel geometry (clip planes make it costly); its edges are carried by the
+  - [x] **PT-1e** `hip` (hipped roof): no bevel geometry (clip planes make it costly); its edges are carried by the
         ink outline (PT-5). Done when a `shape-shots` check shows the ridge and hips read in both themes.
 - [x] **PT-2** Softbox studio: pure `features/vision-insert/utils/studio-env.ts` → `buildStudioScene()` (top softbox,
       two side strips, low front kicker, grey floor disc; intensities as named constants), PMREM at sigma 0.02.
@@ -164,3 +164,4 @@ Inside PT-1: 1a (most objects without a template) → 1b → 1d → 1c. Inside P
 | 2026-11-04 | PT-3 clearcoat         | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `surfaceMaterial()`: physical only on painted / plastic / tile / glass / metal; metal roughness 0.45                               |
 | 2026-11-04 | PT-2 softbox studio    | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `buildStudioScene()` replaces RoomEnvironment, sigma 0.02; first try too dark (fill 0.32), fill 0.6 + kicker 2.4 keeps white white |
 | 2026-11-04 | PT-4/5 editor ink      | 0.98     | 0.91    | 3.4     | 4/5      | — (no village change)                               | ink 0.6 after Neutral tone mapping, alpha kept; compiles on SwiftShader; crease term raised (0.7 → 1, 0.45–0.85) after shots       |
+| 2026-11-04 | PT-1e hip check        | 0.98     | 0.91    | 3.4     | 4/5      | —                                                   | no bevel geometry; `shape-shots` thatched house + cottage row: ridge and hips read by the ink, dark + light, 1440 and 320 px       |
