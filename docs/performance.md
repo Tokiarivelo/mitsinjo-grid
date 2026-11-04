@@ -52,6 +52,13 @@ Rules in `.claude/rules/three.md`. Two quality tiers (`useSceneQuality`, toggle 
   bloom + ACES grade (`@react-three/postprocessing`, 2× MSAA), dense forest (2 000 trees),
   `dpr={[1, 1.5]}`.
 - `low`: no post-processing, one baked `ContactShadows`, 520 low-detail trees (high 2000), `dpr={[1, 1.25]}`.
+- Ink outline (PT-4/6, `utils/ink-effect.ts`): depth-only post effect (no normal pass), merged into the existing
+  `EffectPass` → +0 draw calls, +0 render targets. Village high tier only: strength 0.35, silhouettes only,
+  fades out from 22 to 45 units (`scene-ink` token). GPU audit: fps and draw calls unchanged.
+- Object editor (PT-5): its own `EffectComposer` (4× MSAA, half float) with Neutral tone mapping + ink 0.6;
+  `frameloop="demand"` so it costs only when the view changes. Studio light = softbox scene baked once (PMREM).
+- Shader warm-up (PT-7, `useShaderWarmup`): `gl.compileAsync(scene, camera)` once per canvas, canvas fades in
+  on resolve (≤ 1 s). The ~1.2 s long task at village mount is scene building, not shaders (open).
 - Auto-downgrade: a 3.5 s fps probe after the high tier mounts switches to `low` when the median
   is < 28 fps, unless the user picked a tier (saved in `localStorage`). `?quality=high|low`
   forces a tier (audits, screenshots). The probe gives up after 8 s (`MAX_PROBE_MS`) and downgrades

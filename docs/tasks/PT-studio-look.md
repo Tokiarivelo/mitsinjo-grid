@@ -3,7 +3,7 @@
 **Why (user, 2026-11-04):** « how does this person get 3D so detailed and perfect? Can we transcribe it to refine
 our 3D generation? » Source studied: [elvarofficial/teardown](https://github.com/elvarofficial/teardown) (MIT, built
 on `whaleyxbt/claude-motion`). Every file was read; findings below.
-**Status:** 🟡 PT-11, PT-0, PT-1a, PT-1b, PT-1d, PT-1c, PT-3, PT-2, PT-1e, PT-4, PT-5, PT-6, PT-8, PT-9 done (PT-1 complete; PT-7 open) (2026-11-04). **Rules kept:** Meta models only; never paste the photo on a model (small swatches OK);
+**Status:** 🟡 PT-11, PT-0, PT-1a, PT-1b, PT-1d, PT-1c, PT-3, PT-2, PT-1e, PT-4, PT-5, all tasks done except PT-7 (warm-up shipped, first-mount long task still open) (2026-11-04). **Rules kept:** Meta models only; never paste the photo on a model (small swatches OK);
 ≤ 5 k triangles per object; budgets of `docs/performance.md` § 1 unchanged; dual theme; mobile; zero static text.
 **Skills:** `/shape-3d` (object geometry) · `/scene-3d` (village) · `/shape-loop` (measure) · `/designer-3d` (review).
 
@@ -136,7 +136,7 @@ surface (`SURFACE_LOOK.radius`), PMREM room light, Neutral tone mapping, baked c
         **Done when** tests cover `applianceMarkers()` priority / status / alert and the badge render (icon, priority
         text, critical in red); `make shots` shows building and object tags identical in style and height;
         `make scene-audit` draw calls ≤ previous + 1.
-- [ ] **PT-10** Close: docs (`docs/performance.md` § 5 ink + warm-up, `docs/design/*` 3D look and object tag),
+- [x] **PT-10** Close: docs (`docs/performance.md` § 5 ink + warm-up, `docs/design/*` 3D look and object tag),
       `docs/contracts.md` (`ApplianceMarkerSceneModel` fields), manual scenarios (`02-simulation` object tag,
       `05`/`99-transverse` look), `make check`, `HANDOFF.md`, tick boxes.
 
