@@ -36,6 +36,8 @@ test.describe('P8-T1 Demo Path E2E', () => {
 
     // Verify simulation completed and metrics are visible
     await expect(page.getByText('SIMULATION COMPLETE').first()).toBeVisible({ timeout: 15_000 });
+    // The deck opens on its top controls; results live in the Metrics tab.
+    await page.getByRole('tab', { name: /^metrics$/i }).click();
     await expect(page.getByText('Peak Solar PV')).toBeVisible();
     await expect(page.getByText('Battery End SoC')).toBeVisible();
     await expect(page.getByText('Essential Services', { exact: true })).toBeVisible();

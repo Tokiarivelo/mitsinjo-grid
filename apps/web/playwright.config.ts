@@ -7,6 +7,8 @@ const PORT = execFileSync(process.execPath, [join(__dirname, 'scripts/port.mjs')
   encoding: 'utf8',
 }).trim();
 const LOCAL_URL = `http://localhost:${PORT}`;
+// CI runs a production build: `next dev` compiles each route on first visit (up to 30 s a page).
+const CI = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: './e2e',
@@ -15,7 +17,7 @@ export default defineConfig({
     timeout: 15_000,
   },
   fullyParallel: false,
-  retries: process.env.CI ? 2 : 0,
+  retries: CI ? 1 : 0,
   workers: 1,
   reporter: 'list',
   use: {
@@ -27,10 +29,10 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: 'pnpm dev',
+    command: CI ? 'pnpm build && pnpm start' : 'pnpm dev',
     url: LOCAL_URL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
+    reuseExistingServer: !CI,
+    timeout: CI ? 300_000 : 60_000,
     env: {
       LLM_PROVIDER: 'mock',
     },
