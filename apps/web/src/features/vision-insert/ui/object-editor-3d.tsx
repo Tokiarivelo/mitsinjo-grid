@@ -3,6 +3,8 @@
 import { Suspense, useEffect, useMemo } from 'react';
 import { Canvas, useLoader, useThree } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
+import { EffectComposer, ToneMapping } from '@react-three/postprocessing';
+import { ToneMappingMode } from 'postprocessing';
 import * as THREE from 'three';
 import { TOKEN_HEX } from '@/features/microgrid-3d/utils/scene-palette';
 import { defaultArchetype, kitToRecipe, type ObjectKit } from '@/lib/object-kit';
@@ -14,6 +16,7 @@ import {
 } from '@/lib/object-shape';
 import type { ApplianceDetection } from '@/lib/vision';
 import { useReducedMotion } from '@/features/microgrid-3d/hooks/use-reduced-motion';
+import { Ink } from '@/features/microgrid-3d/ui/ink';
 import type { ShapeImprove } from '../hooks/use-object-shape';
 import { recipeMesh, silhouetteDepth, silhouetteMesh } from '../utils/object-geometry';
 import { surfaceMaterial, SURFACES } from '../utils/surface-look';
@@ -64,6 +67,9 @@ function StudioEnvironment() {
   }, [get]);
   return null;
 }
+
+/** Ink strength in the editor (PT-5): a clear drawn edge on the single object. */
+export const EDITOR_INK = 0.6;
 
 /** Camera on a ¾ view, far enough for a 1 × 1 × 1 object. */
 const CAMERA_POSITION: [number, number, number] = [1.3, 0.85, 2.35];
@@ -178,7 +184,7 @@ function ObjectModel({
  * Orbit (drag) and zoom (pinch / wheel), no pan. `frameloop="demand"`: renders only on change.
  * Transparent canvas over the `.viewer-studio` backdrop. Studio light (PR-1.1): image-based room light,
  * Khronos PBR Neutral tone mapping (keeps the measured colours; ACES shifted them), one soft key, a rim light (a dark object never melts into the background) and one
- * baked contact shadow.
+ * baked contact shadow. Ink outline (PT-5) in one post pass, rendered on demand only.
  * Load with `LazyObjectEditor3d` (no SSR) behind a WebGL check.
  */
 export function ObjectEditor3d(props: ObjectEditor3dProps) {
@@ -203,6 +209,16 @@ export function ObjectEditor3d(props: ObjectEditor3dProps) {
         <ObjectModel {...props} />
       </Suspense>
       <OrbitControls makeDefault enablePan={false} minDistance={1.2} maxDistance={5} />
+      {/* Ink outline (PT-5): the composer renders off-screen, so tone mapping moves into it; ink after
+          it keeps its theme colour exact. Alpha kept: the `.viewer-studio` backdrop shows through. */}
+      <EffectComposer
+        multisampling={4}
+        frameBufferType={THREE.HalfFloatType}
+        enableNormalPass={false}
+      >
+        <ToneMapping mode={ToneMappingMode.NEUTRAL} />
+        <Ink strength={EDITOR_INK} />
+      </EffectComposer>
     </Canvas>
   );
 }

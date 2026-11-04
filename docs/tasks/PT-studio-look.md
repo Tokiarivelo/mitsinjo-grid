@@ -3,7 +3,7 @@
 **Why (user, 2026-11-04):** « how does this person get 3D so detailed and perfect? Can we transcribe it to refine
 our 3D generation? » Source studied: [elvarofficial/teardown](https://github.com/elvarofficial/teardown) (MIT, built
 on `whaleyxbt/claude-motion`). Every file was read; findings below.
-**Status:** 🟡 PT-11, PT-0, PT-1a, PT-1b, PT-1d, PT-1c, PT-3, PT-2 done; PT-1e waits for PT-5 ink (2026-11-04). **Rules kept:** Meta models only; never paste the photo on a model (small swatches OK);
+**Status:** 🟡 PT-11, PT-0, PT-1a, PT-1b, PT-1d, PT-1c, PT-3, PT-2, PT-4, PT-5 done (2026-11-04). **Rules kept:** Meta models only; never paste the photo on a model (small swatches OK);
 ≤ 5 k triangles per object; budgets of `docs/performance.md` § 1 unchanged; dual theme; mobile; zero static text.
 **Skills:** `/shape-3d` (object geometry) · `/scene-3d` (village) · `/shape-loop` (measure) · `/designer-3d` (review).
 
@@ -82,12 +82,12 @@ surface (`SURFACE_LOOK.radius`), PMREM room light, Neutral tone mapping, baked c
       metal; 0 elsewhere); metal `roughness` 0.35 → 0.45 (teardown rule: big glossy metal streaks). Editor builds a
       `MeshPhysicalMaterial` only when `clearcoat > 0`, else standard. **Done when** a test asserts every surface has
       roughness in [0, 1], clearcoat 0 for matte surfaces, metal ≥ 0.45; ΔE in `shape-report` not worse.
-- [ ] **PT-4** Ink outline effect: `features/microgrid-3d/utils/ink-effect.ts`, a `postprocessing` `Effect`
+- [x] **PT-4** Ink outline effect: `features/microgrid-3d/utils/ink-effect.ts`, a `postprocessing` `Effect`
       (`EffectAttribute.DEPTH`): linear-depth Laplacian + depth-derived normal break, `strength` and ink colour as
       uniforms. Colour read once from the theme token (`--color-text-primary` resolved via `getComputedStyle`) and
       updated on theme change: no hex in TSX. One `<Ink />` wrapper, reused by both views. **Done when** the shader
       clamps every `pow` base (NaN guard), the uniform update is unit-tested, it compiles on SwiftShader.
-- [ ] **PT-5** Ink in the editor: an `EffectComposer` (`multisampling` 4, `frameBufferType` HalfFloat, transparent
+- [x] **PT-5** Ink in the editor: an `EffectComposer` (`multisampling` 4, `frameBufferType` HalfFloat, transparent
       clear kept for the `.viewer-studio` backdrop) with `<Ink strength≈0.6 />` only. Check alpha stays transparent
       in both themes; if it can't, fall back to an opaque clear in the backdrop token colour.
       **Done when** `make shape-shots` shows the outline in dark + light at 320 px and desktop, `designer-3d` ≥ +1.
@@ -163,3 +163,4 @@ Inside PT-1: 1a (most objects without a template) → 1b → 1d → 1c. Inside P
 | 2026-11-04 | PT-1c prism bevel      | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | prism = `unitExtrude(triangle, inset)` (8 → 20 triangles); inset bevel keeps unit bounds, ≤ `PRISM_BEVEL_MAX`                      |
 | 2026-11-04 | PT-3 clearcoat         | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `surfaceMaterial()`: physical only on painted / plastic / tile / glass / metal; metal roughness 0.45                               |
 | 2026-11-04 | PT-2 softbox studio    | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `buildStudioScene()` replaces RoomEnvironment, sigma 0.02; first try too dark (fill 0.32), fill 0.6 + kicker 2.4 keeps white white |
+| 2026-11-04 | PT-4/5 editor ink      | 0.98     | 0.91    | 3.4     | 4/5      | — (no village change)                               | ink 0.6 after Neutral tone mapping, alpha kept; compiles on SwiftShader; crease term raised (0.7 → 1, 0.45–0.85) after shots       |

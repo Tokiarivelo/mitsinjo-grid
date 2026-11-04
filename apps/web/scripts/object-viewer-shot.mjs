@@ -37,9 +37,17 @@ const detection = (name) => ({
 mkdirSync(outDir, { recursive: true });
 const browser = await chromium.launch({ args: GL_ARGS });
 for (const theme of ['dark', 'light']) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  // SHOT_WIDTH=320: phone-width shots (height follows a 16:10 → 9:19.5 phone ratio).
+  const width = Number(process.env.SHOT_WIDTH) || 1440;
+  const height = width < 768 ? Math.round(width * 2.1) : 900;
+  const context = await browser.newContext({ viewport: { width, height } });
   await context.addInitScript((t) => localStorage.setItem('mitsinjo_theme', t), theme);
   const page = await context.newPage();
+  // SHOT_LOG=1: print browser warnings and errors (shader compile errors, WebGL warnings).
+  if (process.env.SHOT_LOG)
+    page.on('console', (m) => {
+      if (m.type() === 'error' || m.type() === 'warning') console.log(`[${m.type()}] ${m.text()}`);
+    });
   for (const { name, recipe } of recipes) {
     await page.route('**/api/vision', (route) =>
       route.fulfill({
