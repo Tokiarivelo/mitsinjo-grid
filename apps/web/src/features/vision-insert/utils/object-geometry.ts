@@ -573,8 +573,19 @@ export function silhouetteMesh(
     .map(
       (r) => new THREE.Shape(r.map(([u, v]) => new THREE.Vector2((u - 0.5) * w, (0.5 - v) * h)))
     );
-  const body = new THREE.ExtrudeGeometry(shapes, { depth, bevelEnabled: false, curveSegments: 1 });
-  body.translate(0, 0, -depth / 2);
+  // Soft edges (PT-1d): one bevel ring, inset by `bevelOffset` so the outline keeps its size; a thin body
+  // (TV, water) keeps half its depth flat.
+  const b = Math.min(EDGE_BEVEL * Math.max(w, h), depth / 4);
+  const body = new THREE.ExtrudeGeometry(shapes, {
+    depth: depth - 2 * b,
+    bevelEnabled: b > 0,
+    bevelThickness: b,
+    bevelSize: b,
+    bevelOffset: -b,
+    bevelSegments: 1,
+    curveSegments: 1,
+  });
+  body.translate(0, 0, -depth / 2 + b);
   return body;
 }
 

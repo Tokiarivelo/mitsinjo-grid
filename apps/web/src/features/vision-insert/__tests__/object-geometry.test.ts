@@ -606,3 +606,40 @@ describe('cylinder / cone soft rims (PT-1b)', () => {
     expect(roundProfile('cylinder', 9, 9)[1]).toEqual([0.25, -0.5]);
   });
 });
+
+describe('silhouette soft edges (PT-1d)', () => {
+  const rings = silhouetteRings({ box });
+  const flatBody = (depth: number) => {
+    const [w, h] = silhouetteSize(box, 1);
+    const shapes = rings.map(
+      (r) => new THREE.Shape(r.map(([u, v]) => new THREE.Vector2((u - 0.5) * w, (0.5 - v) * h)))
+    );
+    const g = new THREE.ExtrudeGeometry(shapes, { depth, bevelEnabled: false, curveSegments: 1 });
+    g.translate(0, 0, -depth / 2);
+    return g;
+  };
+
+  it.each([0.1, 0.3, 0.8])('keeps the bounds at depth share %s', (share) => {
+    const soft = silhouetteMesh(rings, box, 1, share);
+    const [w, h] = silhouetteSize(box, 1);
+    const [a, b] = [bounds(flatBody(share * Math.max(w, h))), bounds(soft)];
+    for (const k of ['x', 'y', 'z'] as const) {
+      expect(Math.abs(b.min[k] - a.min[k])).toBeLessThan(1e-6);
+      expect(Math.abs(b.max[k] - a.max[k])).toBeLessThan(1e-6);
+    }
+  });
+
+  it('turns the outline normals toward the face (< 60° on the bevel ring)', () => {
+    const g = silhouetteMesh(rings, box, 1, 0.3);
+    const pos = g.getAttribute('position');
+    const nor = g.getAttribute('normal');
+    const zMax = bounds(g).max.z;
+    let ring = 0;
+    for (let i = 0; i < pos.count; i++) {
+      if (pos.getZ(i) < zMax - 1e-6 || Math.abs(nor.getZ(i)) > 0.999) continue;
+      ring++;
+      expect(nor.getZ(i)).toBeGreaterThan(Math.cos(Math.PI / 3));
+    }
+    expect(ring).toBeGreaterThan(0);
+  });
+});
