@@ -12,8 +12,10 @@
 > **⚠️ SIMULATED DATA NOTICE**: All energy metrics, solar generation curves, battery state-of-charge figures, and load balances presented in this system are synthetic and generated for simulation, educational, and decision-support purposes. They do not represent real-time measurements from physical microgrid hardware.
 
 **Public Production Deployment**: [https://mitsinjo-grid.vercel.app](https://mitsinjo-grid.vercel.app)  
-**Demo Video (3 Minutes)**: _Pending recording (P9-T5) — production plan in [video/VIDEO_PLAN.md](video/VIDEO_PLAN.md)_  
-**Documentation**: [docs/](docs/) · [docs/assumptions.md](docs/assumptions.md) · [docs/demo-script.md](docs/demo-script.md) · [docs/known-limitations.md](docs/known-limitations.md) · [benchmarks/](benchmarks/)
+**Demo Video (2:44, YouTube)**: [https://youtu.be/M1CGLtZBkWs](https://youtu.be/M1CGLtZBkWs) · production plan in [video/VIDEO_PLAN.md](video/VIDEO_PLAN.md)  
+[![Mitsinjo Grid demo video](https://img.youtube.com/vi/M1CGLtZBkWs/maxresdefault.jpg)](https://youtu.be/M1CGLtZBkWs)
+
+**Documentation**: [docs/](docs/) · [docs/assumptions.md](docs/assumptions.md) · [docs/demo-script.md](docs/demo-script.md) · [docs/known-limitations.md](docs/known-limitations.md) · [benchmarks/](benchmarks/) · [tests/](tests/) (integration)
 
 ### Hackathon submission at a glance
 
@@ -314,6 +316,9 @@ make db-migrate
 
 # Run full quality check suite (typecheck + lint + 242 tests + i18n parity)
 make check
+
+# Cross-package integration tests (tests/): published benchmarks/engine.json still matches the engine
+make test-integration
 
 # Run the 3D shape golden set (5 street photos, 300 ms math budget)
 make test-shape

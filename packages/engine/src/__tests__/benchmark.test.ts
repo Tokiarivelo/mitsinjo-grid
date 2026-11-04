@@ -1,11 +1,17 @@
 import { writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { compare, scenarios, simulate, type ScenarioId, type StrategyId } from '../index';
+import {
+  BENCH_STRATEGIES as STRATEGIES,
+  compare,
+  scenarios,
+  simulate,
+  strategyOutcomes,
+  type ScenarioId,
+} from '../index';
 
 // Engine benchmark (`make bench`): latency of simulate/compare and strategy outcomes per scenario.
 // Always runs as a light check; with BENCH_OUT set it also writes the JSON report there.
 
-const STRATEGIES: readonly StrategyId[] = ['proportional', 'essential_first', 'balanced'];
 // Plain `make test` keeps it light; `make bench` sets BENCH_RUNS=200.
 const RUNS = Number(process.env.BENCH_RUNS ?? 20);
 const round = (n: number, d = 2) => Math.round(n * 10 ** d) / 10 ** d;
@@ -28,14 +34,6 @@ function timeMs(fn: () => void, runs: number) {
   return { medianMs: round(percentile(samples, 50), 3), p95Ms: round(percentile(samples, 95), 3) };
 }
 
-interface Outcome {
-  healthCoveragePct: number;
-  criticalCoveragePct: number;
-  criticalUnmetHours: number;
-  unservedKwh: number;
-  violations: number;
-}
-
 describe('percentile', () => {
   it('picks nearest-rank values', () => {
     expect(percentile([1, 2, 3, 4], 50)).toBe(2);
@@ -49,20 +47,7 @@ describe('engine benchmark', () => {
     const ids = Object.keys(scenarios) as ScenarioId[];
     const rows = ids.map((id) => {
       const input = scenarios[id].input;
-      const cmp = compare(input, STRATEGIES);
-      const outcome = Object.fromEntries(
-        STRATEGIES.map((s) => {
-          const m = cmp[s]!.metrics;
-          const o: Outcome = {
-            healthCoveragePct: round(m.perSector.health?.coveragePct ?? 100, 1),
-            criticalCoveragePct: round(m.criticalCoveragePct, 1),
-            criticalUnmetHours: m.criticalUnmetHours,
-            unservedKwh: round(m.unservedKwh),
-            violations: m.violations,
-          };
-          return [s, o];
-        })
-      ) as Record<StrategyId, Outcome>;
+      const outcome = strategyOutcomes(input);
       return {
         scenario: id,
         simulate: timeMs(() => simulate(input, 'essential_first'), RUNS),

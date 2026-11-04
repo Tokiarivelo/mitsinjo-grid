@@ -78,6 +78,10 @@ test-bridge: ## Run scale-model bridge tests only
 	$(need_ws)
 	$(PNPM) --filter bridge test
 
+test-integration: ## Cross-package integration tests in tests/ (benchmarks/engine.json still matches the engine)
+	$(need_ws)
+	$(PNPM) --filter @mitsinjo/tests test
+
 test-web: ## Run web unit tests only
 	$(need_ws)
 	$(PNPM) --filter $(WEB) test

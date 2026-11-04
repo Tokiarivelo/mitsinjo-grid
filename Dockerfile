@@ -9,6 +9,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.js
 COPY apps/web/package.json apps/web/
 COPY packages/engine/package.json packages/engine/
 COPY apps/bridge/package.json apps/bridge/
+COPY tests/package.json tests/
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build

@@ -345,6 +345,7 @@ type SweepResult = SweepPoint[]; // length ≤ 20
 simulate(input: SimulationInput, strategy: StrategyId): SimulationResult
 compare(input: SimulationInput, strategies?: StrategyId[]): Comparison
 compareLifelineCoverage(comparison: Comparison): LifelineComparisonSummary
+strategyOutcomes(input: SimulationInput): Record<StrategyId, StrategyOutcome> // rounded rows of benchmarks/engine.json (BENCH_STRATEGIES)
 sweep(input: SimulationInput, config: SweepConfig, strategies?: StrategyId[]): SweepResult // ≤ 20 points
 
 Points use the same mapping as `applyPatch`; both range ends are validated, so an invalid range (e.g. `initialSocPct ≤ minSocPct`) throws `ZodError`.

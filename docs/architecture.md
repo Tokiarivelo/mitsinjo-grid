@@ -22,6 +22,8 @@ mitsinjo-grid/
 ├── .github/workflows/ci.yml            # typecheck + lint + test
 ├── docs/                               # agent docs (see docs/README.md)
 ├── scripts/                            # shell helpers called by the Makefile (env.sh: load .env)
+├── benchmarks/                         # engine.json (make bench) + README: latency, strategy A/B
+├── tests/                              # @mitsinjo/tests — cross-package integration (make test-integration)
 ├── packages/
 │   └── engine/                         # @mitsinjo/engine — pure TS, deps: zod only
 │       └── src/
