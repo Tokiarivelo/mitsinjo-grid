@@ -10,6 +10,7 @@ import {
 } from '@mitsinjo/engine';
 import {
   applianceMarkers,
+  applianceTagState,
   appliancesPerSector,
   MARKER_FEEDER_H,
   MARKER_RING,
@@ -119,5 +120,44 @@ describe('applianceMarkers free placement (PP-T3)', () => {
     const [sx, , sz] = defaultPosition('water', 0);
     expect(solo!.position[0]).toBeCloseTo(sx, 9);
     expect(solo!.position[2]).toBeCloseTo(sz, 9);
+  });
+});
+
+describe('applianceTagState (PT-11b)', () => {
+  const sector = {
+    priority: 'critical' as const,
+    statusColor: 'warning-amber' as const,
+    connected: true,
+    inAlert: false,
+    onFire: false,
+  };
+
+  it('takes its sector priority and served status while it draws power', () => {
+    expect(applianceTagState({ kwNow: 0.5 }, sector)).toEqual({
+      priority: 'critical',
+      statusColor: 'warning-amber',
+      inAlert: false,
+    });
+  });
+
+  it('idle when it draws nothing this hour or its sector is off', () => {
+    expect(applianceTagState({ kwNow: 0 }, sector).statusColor).toBe('idle');
+    expect(applianceTagState({ kwNow: 0.5 }, { ...sector, connected: false }).statusColor).toBe(
+      'idle'
+    );
+  });
+
+  it('alerts with its sector (fire or critical incident)', () => {
+    expect(applianceTagState({ kwNow: 0 }, { ...sector, onFire: true }).inAlert).toBe(true);
+    expect(applianceTagState({ kwNow: 0 }, { ...sector, inAlert: true }).inAlert).toBe(true);
+  });
+
+  it('the scene model tags every appliance from its sector building', () => {
+    const input = applyPatch(base, { appliances: [pump] });
+    const model = toSceneModel({ input, result: simulate(input, 'proportional'), timeIndex: 12 });
+    const [m] = model.appliances;
+    const b = model.buildings.water;
+    expect(m!.tag).toEqual(applianceTagState(m!, b));
+    expect(m!.tag!.priority).toBe(b.priority);
   });
 });

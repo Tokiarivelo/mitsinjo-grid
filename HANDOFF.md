@@ -1,38 +1,38 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-04 · **By:** Claude Code · **Branch:** feat/pd-demo-video
+**Updated:** 2026-11-04 · **By:** Claude Code · **Branch:** feat/pt-11-object-tag (worktree `../mitsinjo-grid-pt`)
 
 ## Current state
 
-- Demo video rendered locally: `video/output/mitsinjo-grid-demo-1080p.mp4` (2:44, 1920 × 1080, −14 LUFS,
-  small burned captions without em dashes + soft English track; `video/subtitles/en.srt`). Not committed (gitignored).
-- Refined cut: silent splash, no "before the hackathon / this week" lines, Essential 3D view at 0:37, map centred,
-  camera flies to and orbits the inserted house, 12 s outro with sunrise end animation + chime.
-- 1:45–2:02 reframed on the facade, the 3D viewer and its "stage n/5" chip; A8–A10 re-recorded with
-  PR #63 (evidence rounding) and PR #64 (no duplicate autonomous log entries), both merged in main.
-- Pipeline (all `make video-*`): `video-tts-setup` / `video-voice` (Kokoro TTS, voice `am_puck`),
-  `video-capture PART=a|b` (records the real screen at 1080p, pauses screen lock; hands off while it runs),
-  `video-canvas`, `video-sfx`, `video-build [DRAFT=1]` (reads `video/edit.json`).
-- Narration lines 03/04/07/09 (plan § 5) match what the take showed: Strategy Lab clinic 43.6 % vs 57.7 %,
-  copilot answer (homes then clinic short from the evening). Muse Wonder's final check timed out in the
-  take, so the video names 4 Meta models (Voice, Spark, SAM 3.1, Image).
+- New plan `docs/tasks/PT-studio-look.md` (from the `elvarofficial/teardown` study): studio look for every
+  object (soft edges, softbox light, clearcoat, ink outline, shader warm-up, real sizes) + PT-11 object tag.
+- **PT-11 done:** an inserted object's 3D tag is now the buildings' badge (`ui/scene-badge.tsx`): category icon on
+  the sector colour, name × quantity, status dot, sector priority (critical in red) · kW now, beacon above, click
+  selects. Tested; gate-out shots 1440 + 390, dark + light (sample-room fridge on /simulation).
+- Demo video work (PD) is merged in main; nothing pending there.
 
 ## Next
 
-- PD-T10 (human): upload the video, put the link in README line 15, tick P9-T5; open PR `feat/pd-demo-video`.
-- PD-T2: keep `video/captures/raw/server.log` (remove key/paths) as live-call provenance.
-- P9-T6: final submission before Wed Nov 4 21:00 ET.
+1. PT-0 baseline (`make shape-report`, `SHOT_SUFFIX=before make shape-shots`, `make scene-audit-gpu`), log numbers.
+2. PT-1a (bevel the 2D-view hull caps) → 1b → 1d → 1c, then PT-3, PT-2… (order in the plan).
 
-## Files touched (this session)
+## Files touched (PT-11)
 
-`video/scripts/{tts.py,lib.cjs,capture.cjs,capture.sh,probe.cjs,render-canvas.cjs,sfx.sh,build.py}`,
-`video/canvas/**`, `video/edit.json`, `video/subtitles/en.srt`, `video/VIDEO_PLAN.md`, `video/.gitignore`,
-`Makefile` (##@ Video), `README.md` (video credits), `docs/tasks/PD-demo-video.md`, `HANDOFF.md`.
+- `features/microgrid-3d/ui/scene-badge.tsx` (new), `buildings.tsx`, `appliance-markers.tsx`, `village-canvas.tsx`
+- `features/microgrid-3d/utils/appliance-markers.ts` (`applianceTagState`), `to-scene-model.ts`
+- `features/microgrid-3d/hooks/use-marker-drag.ts` (`toggleSelect`)
+- `components/ui/appliance-icon.tsx` (new), `sector-icon.tsx` (`SECTOR_ICON_BG_CLASS`), `index.ts`
+- `messages/{en,fr,mg}.json`: `applianceTag` → `applianceBadgeTitle` (ICU plural)
+- Docs: `contracts.md`, `design/3d-scene.md`, `design/stitch-map.md`, `tasks/PT-studio-look.md`, `tasks/README.md`
 
 ## Decisions
 
-- Voice: Kokoro TTS (non-Meta, local) at the author's request; exception to "Meta models only" for narration.
-- Capture on the real display: Xvfb drops to ~10 fps at 1080p; Chromium uses `--use-angle=gl` (Vulkan has no
-  WebGL on the real screen). Capture hides the Next dev badge, fire toasts and the big critical banner.
-- Final mux uses `-t <total>`, not `-shortest` (it stopped at the last caption and cut the outro).
-- App bugs seen in takes are fixed in PR #63 / #64 (merged).
+- An appliance has no priority of its own: the badge shows its **sector's** (no engine change, no migration).
+- Status: idle when the object draws 0 kW or its sector is off, else the sector's served colour.
+- Badge scale × `APPLIANCE_FOCUS_SCALE` (0.6): focused object = focused building size; a bit smaller in the overview.
+- All beacons in one `Instances` (+1 draw call total). `MARKER_TAGS_ALL_MAX` (6) kept for DOM cost.
+
+## Known limits
+
+- At 390 px a focused badge can sit under the floating HUD at the top of the 3D view (buildings already did).
+- `region-colors.test.ts` "golden car" can time out (5 s) under load; passes alone.

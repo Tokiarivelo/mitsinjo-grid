@@ -2,14 +2,13 @@
 
 import { type ReactNode, type RefObject, useMemo, useState } from 'react';
 import * as THREE from 'three';
-import { Html } from '@react-three/drei';
 import { SECTOR_IDS, type Priority, type SectorId } from '@mitsinjo/engine';
-import { SectorIcon } from '@/components/ui/sector-icon';
-import { cn } from '@/lib/utils';
+import { SECTOR_ICON_BG_CLASS, SectorIcon } from '@/components/ui/sector-icon';
 import { fmtPct } from '@/lib/format';
 import type { BuildingSceneModel } from '../types';
-import { STATUS_BG_CLASS, STATUS_HEX, TOKEN_HEX, glowFromIntensity } from '../utils/scene-palette';
+import { STATUS_HEX, TOKEN_HEX, glowFromIntensity } from '../utils/scene-palette';
 import { BODY_LAYOUT, BuildingBody } from './building-bodies';
+import { badgeY, SceneBadge } from './scene-badge';
 
 export interface VillageBuildingsProps {
   buildings: Record<SectorId, BuildingSceneModel>;
@@ -48,16 +47,6 @@ interface BuildingFrameProps extends FrameLayout {
 
 const SELECTED_RING_HEX = TOKEN_HEX.energyCyan;
 const HOVER_RING_HEX = '#94a3b8';
-
-/** Badge disc behind the sector glyph (same hue as `SECTOR_TEXT_CLASS`). */
-const SECTOR_ICON_BG: Record<SectorId, string> = {
-  health: 'bg-critical-red/20 border-critical-red/40',
-  water: 'bg-energy-cyan/20 border-energy-cyan/40',
-  school: 'bg-warning-amber/20 border-warning-amber/40',
-  households: 'bg-surface-hover border-border-strong',
-  market: 'bg-solar-amber/20 border-solar-amber/40',
-  industry: 'bg-network-blue/20 border-network-blue/40',
-};
 
 function BuildingFrame({
   id,
@@ -121,63 +110,23 @@ function BuildingFrame({
         <meshBasicMaterial color={beaconColor} toneMapped={false} />
       </mesh>
 
-      {/* Sleek Glassmorphic Floating Telemetry Badge */}
-      <Html
-        position={[0, ledY + 0.75, 0]}
-        center
-        distanceFactor={18}
-        portal={htmlPortal as RefObject<HTMLElement>}
-        className="pointer-events-auto select-none"
-      >
-        <button
-          type="button"
-          onClick={onSelect}
-          aria-pressed={isSelected}
-          className={cn(
-            'flex items-center gap-2 px-3 py-1.5 rounded-full shadow-xl backdrop-blur-md text-[11px] font-sans border transition-all cursor-pointer whitespace-nowrap',
-            isSelected
-              ? 'bg-surface-elevated/95 border-energy-cyan ring-2 ring-energy-cyan/50 scale-105'
-              : model.inAlert || model.onFire
-                ? 'bg-surface-elevated/95 border-critical-red ring-2 ring-critical-red/50 motion-safe:animate-pulse'
-                : 'bg-surface/90 border border-border hover:border-text-secondary hover:bg-surface-hover'
-          )}
-        >
-          <div
-            className={cn(
-              'w-5 h-5 rounded-full flex items-center justify-center shrink-0 border',
-              SECTOR_ICON_BG[id]
-            )}
-          >
-            <SectorIcon sector={id} className="w-3.5 h-3.5" />
-          </div>
-          <div className="flex flex-col text-left leading-tight">
-            <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-text-primary text-[11px]">{sectorName}</span>
-              {aiBadgeLabel && (
-                <span className="px-1 py-px rounded text-[9px] font-mono font-bold bg-ai-violet/20 text-ai-violet border border-ai-violet/40">
-                  {aiBadgeLabel}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5 font-mono text-[10px]">
-              <span
-                className={cn('w-1.5 h-1.5 rounded-full shrink-0', STATUS_BG_CLASS[statusColor])}
-                aria-hidden="true"
-              />
-              <span className="text-text-muted">
-                {priority === 'critical' ? (
-                  <span className="text-critical-red font-semibold">{priorityLabel}</span>
-                ) : (
-                  <span>{priorityLabel}</span>
-                )}
-              </span>
-              <span className="text-text-secondary">
-                · {model.connected ? fmtPct(coveragePct, 0) : disconnectedLabel}
-              </span>
-            </div>
-          </div>
-        </button>
-      </Html>
+      {/* Floating status badge (shared with inserted objects, PT-11a) */}
+      <SceneBadge
+        position={[0, badgeY(ledY), 0]}
+        htmlPortal={htmlPortal}
+        icon={<SectorIcon sector={id} className="w-3.5 h-3.5" />}
+        iconClassName={SECTOR_ICON_BG_CLASS[id]}
+        title={sectorName}
+        {...(aiBadgeLabel ? { aiBadgeLabel } : {})}
+        statusColor={statusColor}
+        priority={priority}
+        priorityLabel={priorityLabel}
+        metric={model.connected ? fmtPct(coveragePct, 0) : disconnectedLabel}
+        selected={isSelected}
+        alert={Boolean(model.inAlert || model.onFire)}
+        onClick={onSelect}
+        dataId={id}
+      />
     </group>
   );
 }

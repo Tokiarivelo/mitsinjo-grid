@@ -216,7 +216,7 @@
       "batteryLow": "Ambany",
       "batteryDepleted": "Lany",
       "perfOverlay": "{calls} antso fanaovana sary · {fps} sary/s",
-      "applianceTag": "{name} · {quantity} × {watts} W",
+      "applianceBadgeTitle": "{quantity, plural, =1 {{name}} other {{name} × #}}",
       "qualityLabel": "Kalitao:",
       "qualityHigh": "Avo",
       "qualityLow": "Ambany",

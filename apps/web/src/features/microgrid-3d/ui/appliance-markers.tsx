@@ -1,13 +1,18 @@
 'use client';
 
 import { useEffect, useMemo, type RefObject } from 'react';
-import { Html, Instance, Instances, Line } from '@react-three/drei';
+import { Instance, Instances, Line } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import { MAX_APPLIANCES, type SectorId } from '@mitsinjo/engine';
+import { MAX_APPLIANCES, type Priority, type SectorId } from '@mitsinjo/engine';
+import { ApplianceIcon } from '@/components/ui/appliance-icon';
+import { SECTOR_ICON_BG_CLASS, SECTOR_TEXT_CLASS } from '@/components/ui/sector-icon';
+import { fmtKw } from '@/lib/format';
 import { usePlacedModelsStore } from '@/stores';
 import type { ApplianceMarkerSceneModel } from '../types';
-import { MARKER_PLINTH_HEX, TOKEN_HEX } from '../utils/scene-palette';
+import { MARKER_PLINTH_HEX, STATUS_HEX, TOKEN_HEX } from '../utils/scene-palette';
+import { APPLIANCE_FOCUS_SCALE } from '../utils/camera-focus';
+import { BADGE_DISTANCE_FACTOR, badgeY, beaconY, SceneBadge } from './scene-badge';
 import {
   buildPlacedModelsGeometry,
   placedGeometryKey,
@@ -20,12 +25,32 @@ export const MARKER_TAGS_ALL_MAX = 6;
 
 const PLINTH: [number, number, number] = [0.46, 0.12, 0.46];
 const BODY: [number, number, number] = [0.32, 0.5, 0.32];
+/** Status beacon radius: the buildings' beacon, scaled to a small object. */
+const BEACON_R = 0.1;
+
+/** Beacon colour: the status hue, above 1 so bloom gives it the buildings' halo. */
+const BEACON_COLORS = new Map<string, THREE.Color>();
+function beaconColor(m: ApplianceMarkerSceneModel): THREE.Color {
+  const status = m.tag?.statusColor ?? (m.running ? 'battery-green' : 'idle');
+  let c = BEACON_COLORS.get(status);
+  if (!c) {
+    c = new THREE.Color(STATUS_HEX[status]).multiplyScalar(2);
+    BEACON_COLORS.set(status, c);
+  }
+  return c;
+}
 
 export interface ApplianceMarkersProps {
   markers: ApplianceMarkerSceneModel[];
   selectedSector: SectorId | null;
-  /** `name · quantity × W` per marker, already translated. */
+  /** Badge title per marker (name, × quantity), already translated. */
   tagOf: (m: ApplianceMarkerSceneModel) => string;
+  /** Translated priority names; the badge's bottom line shows the sector's (PT-11e). */
+  priorityLabels?: Record<Priority, string>;
+  /** Small "AI" tag on every badge while the AI dispatches alone. */
+  aiBadgeLabel?: string;
+  /** Badge click: toggle this marker's selection. */
+  onSelectMarker?: (id: string) => void;
   htmlPortal?: RefObject<HTMLElement | null>;
   /** Click-selected marker: ring + tag highlight (PP-T5). */
   selectedId?: string | null;
@@ -56,6 +81,9 @@ export function ApplianceMarkers({
   markers,
   selectedSector,
   tagOf,
+  priorityLabels,
+  aiBadgeLabel,
+  onSelectMarker,
   htmlPortal,
   selectedId = null,
   dragId = null,
@@ -126,6 +154,7 @@ export function ApplianceMarkers({
   const tagged =
     shown.length <= MARKER_TAGS_ALL_MAX ? shown : shown.filter((m) => m.sector === selectedSector);
   const selected = selectedId ? shown.find((m) => m.id === selectedId) : undefined;
+  const topOf = (m: ApplianceMarkerSceneModel) => modelBounds[m.id]?.height ?? PLINTH[1] + BODY[1];
   const selectedRadius = selected ? (modelBounds[selected.id]?.radius ?? 0.35) : 0.35;
 
   return (
@@ -224,30 +253,49 @@ export function ApplianceMarkers({
         </Instances>
       )}
 
-      {/* HTML tags */}
-      {tagged.map((m) => {
-        const h = modelBounds[m.id]?.height ?? PLINTH[1] + BODY[1];
-        return (
-          <Html
-            key={m.id}
-            position={[m.position[0], m.position[1] + h + 0.35, m.position[2]]}
-            center
-            distanceFactor={18}
-            portal={htmlPortal as RefObject<HTMLElement>}
-            zIndexRange={[8, 0]}
-            className="pointer-events-none select-none"
-          >
-            <span
-              data-appliance-tag={m.id}
-              className={`whitespace-nowrap rounded-md border bg-surface/90 px-1.5 py-0.5 text-[10px] font-medium text-text-primary shadow ${
-                m.id === selectedId ? 'border-energy-cyan' : 'border-border'
-              }`}
-            >
-              {tagOf(m)}
-            </span>
-          </Html>
-        );
-      })}
+      {/* Status beacons: one instanced draw call for every tagged marker (PT-11d) */}
+      {tagged.length > 0 && (
+        <Instances limit={MAX_APPLIANCES} name="appliance-beacons">
+          <sphereGeometry args={[BEACON_R, 16, 12]} />
+          <meshBasicMaterial toneMapped={false} />
+          {tagged.map((m) => (
+            <Instance
+              key={`beacon-${m.id}`}
+              position={[m.position[0], m.position[1] + beaconY(topOf(m)), m.position[2]]}
+              color={beaconColor(m)}
+            />
+          ))}
+        </Instances>
+      )}
+
+      {/* Status badges, the same as the sector buildings' (PT-11) */}
+      {tagged.map((m) => (
+        <SceneBadge
+          key={m.id}
+          position={[m.position[0], m.position[1] + badgeY(beaconY(topOf(m))), m.position[2]]}
+          htmlPortal={htmlPortal}
+          zIndexRange={[8, 0]}
+          distanceFactor={BADGE_DISTANCE_FACTOR * APPLIANCE_FOCUS_SCALE}
+          icon={
+            <ApplianceIcon
+              category={m.category}
+              className={`w-3.5 h-3.5 shrink-0 ${SECTOR_TEXT_CLASS[m.sector]}`}
+            />
+          }
+          iconClassName={SECTOR_ICON_BG_CLASS[m.sector]}
+          title={tagOf(m)}
+          {...(aiBadgeLabel ? { aiBadgeLabel } : {})}
+          statusColor={m.tag?.statusColor ?? (m.running ? 'battery-green' : 'idle')}
+          {...(m.tag && priorityLabels
+            ? { priority: m.tag.priority, priorityLabel: priorityLabels[m.tag.priority] }
+            : {})}
+          metric={fmtKw(m.kwNow, 2)}
+          selected={m.id === selectedId}
+          alert={Boolean(m.tag?.inAlert)}
+          {...(onSelectMarker ? { onClick: () => onSelectMarker(m.id) } : {})}
+          dataId={m.id}
+        />
+      ))}
 
       {/* Selection ring */}
       {selected && (

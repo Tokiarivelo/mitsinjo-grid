@@ -21,6 +21,8 @@ export interface UseMarkerDrag {
   ghostRef: React.RefObject<THREE.Group | null>;
   /** Wire onto a marker instance; empty when dragging is off (no `onCommit`). */
   bindMarker: (id: string) => MarkerDragHandlers | Record<string, never>;
+  /** Toggle a marker's selection from outside the 3D pick (its badge, PT-11e). */
+  toggleSelect: (id: string) => void;
 }
 
 /** Pointer travel (client px) before a press becomes a drag. */
@@ -143,5 +145,13 @@ export function useMarkerDrag({
     [onCommit]
   );
 
-  return { selectedId, dragId, ghostRef, bindMarker };
+  const toggleSelect = useCallback(
+    (id: string) => {
+      setSelectedId((prev) => (prev === id ? null : id));
+      invalidate();
+    },
+    [invalidate]
+  );
+
+  return { selectedId, dragId, ghostRef, bindMarker, toggleSelect };
 }

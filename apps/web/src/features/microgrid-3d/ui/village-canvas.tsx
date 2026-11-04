@@ -63,6 +63,8 @@ function DraggableApplianceMarkers({
   markers,
   selectedSector,
   tagOf,
+  priorityLabels,
+  aiBadgeLabel,
   htmlPortal,
   tier,
   sectorStatuses,
@@ -70,18 +72,25 @@ function DraggableApplianceMarkers({
   markers: ApplianceMarkerSceneModel[];
   selectedSector: SectorId | null;
   tagOf: (m: ApplianceMarkerSceneModel) => string;
+  priorityLabels?: Record<Priority, string>;
+  aiBadgeLabel?: string | undefined;
   htmlPortal?: RefObject<HTMLElement | null>;
   tier?: 'high' | 'low';
   sectorStatuses?: Partial<Record<SectorId, SectorStateOverride>>;
 }) {
   const moveMarker = useMoveMarker();
-  const { selectedId, dragId, ghostRef, bindMarker } = useMarkerDrag({ onCommit: moveMarker });
+  const { selectedId, dragId, ghostRef, bindMarker, toggleSelect } = useMarkerDrag({
+    onCommit: moveMarker,
+  });
   return (
     <>
       <ApplianceMarkers
         markers={markers}
         selectedSector={selectedSector}
         tagOf={tagOf}
+        {...(priorityLabels ? { priorityLabels } : {})}
+        {...(aiBadgeLabel ? { aiBadgeLabel } : {})}
+        onSelectMarker={toggleSelect}
         htmlPortal={htmlPortal}
         selectedId={selectedId}
         dragId={dragId}
@@ -381,9 +390,9 @@ export function VillageCanvas({
         <DraggableApplianceMarkers
           markers={model.appliances}
           selectedSector={selectedSector}
-          tagOf={(m) =>
-            tSim('applianceTag', { name: m.name, quantity: m.quantity, watts: m.watts })
-          }
+          tagOf={(m) => tSim('applianceBadgeTitle', { name: m.name, quantity: m.quantity })}
+          priorityLabels={priorityLabels}
+          aiBadgeLabel={aiInControl ? tDispatch('aiBadge') : undefined}
           htmlPortal={htmlPortal}
           tier={quality}
           sectorStatuses={sectorStatuses}

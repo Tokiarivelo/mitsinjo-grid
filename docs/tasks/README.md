@@ -31,6 +31,7 @@ Meta feature and carries external-API risk; 3D is local work and easy to time-bo
 | —   | PV-H Any object from its 2D view (hull + AI check)                                   | `PV-any-object.md`          | 🟡 H1–H2 done            |
 | —   | PA AI dispatch (autonomous mode, event log, chat scenarios)                          | `PA-ai-dispatch.md`         | ❌ planned               |
 | —   | PI 3D object in harmony with the village (clearing, red ground, poles to its branch) | `PI-village-integration.md` | ❌ planned (after PA)    |
+| —   | PT Studio look (ink, softbox light, clearcoat, warm-up) + object tag like buildings  | `PT-studio-look.md`         | 🟡 PT-11 done            |
 | 10  | PD 3-min demo video (rules, capture, voice, edit) — closes P9-T5                     | `PD-demo-video.md`          | ✅ (deadline Nov 4)      |
 
 ## Cut order if late

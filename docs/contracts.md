@@ -265,7 +265,7 @@ A fire lasts until restored: at midnight on the playback (`advancePlayback`), ev
 Scene, alerts and autopilot read `dayEvents(input.events, workflow, dayIndex)` (`toSceneModel({ events })`); fire alert key `fire:<sector>` (safety exception: no approval, not in `changeHistory`; no-op if that sector already burns). `BuildingSceneModel.onFire`
 = burning at the shown hour; `feederTone` → `critical-red`, 2D wire `cut`.
 
-3D `SceneModel.appliances: ApplianceMarkerSceneModel[]` (PV-T13) `{ id, name, category, sector, quantity, watts, kwNow /*engine profile at t*/, running, position /*ground y*/, feeder /*building anchor*/ }`;
+3D `SceneModel.appliances: ApplianceMarkerSceneModel[]` (PV-T13) `{ id, name, category, sector, quantity, watts, kwNow /*engine profile at t*/, running, position /*ground y*/, feeder /*building anchor*/, tag? /*PT-11: { priority (its sector's), statusColor, inAlert } = applianceTagState(m, buildings[sector])*/ }`;
 `position` = free placement when set (clamped + snapped, PP-T3), else the building ring; `feeder` anchors the thin cable link to the sector building.
 Placed 3D models (PI-T1, web visual store only, zero engine change):
 `PlacedModel { applianceId: string, recipe: ObjectRecipe, yaw?: number, scale?: number, archetype?: KitArchetype }`
