@@ -4,8 +4,10 @@
 
 ## Current state
 
-- Demo video rendered locally: `video/output/mitsinjo-grid-demo-1080p.mp4` (2:40, 1920 × 1080, −14 LUFS,
-  small burned captions + soft English track; `video/subtitles/en.srt`). Not committed (gitignored).
+- Demo video rendered locally: `video/output/mitsinjo-grid-demo-1080p.mp4` (2:44, 1920 × 1080, −14 LUFS,
+  small burned captions without em dashes + soft English track; `video/subtitles/en.srt`). Not committed (gitignored).
+- Refined cut: silent splash, no "before the hackathon / this week" lines, Essential 3D view at 0:37, map centred,
+  camera flies to and orbits the inserted house, 12 s outro with sunrise end animation + chime.
 - Pipeline (all `make video-*`): `video-tts-setup` / `video-voice` (Kokoro TTS, voice `am_puck`),
   `video-capture PART=a|b` (records the real screen at 1080p, pauses screen lock; hands off while it runs),
   `video-canvas`, `video-sfx`, `video-build [DRAFT=1]` (reads `video/edit.json`).
@@ -30,4 +32,5 @@
 - Voice: Kokoro TTS (non-Meta, local) at the author's request; exception to "Meta models only" for narration.
 - Capture on the real display: Xvfb drops to ~10 fps at 1080p; Chromium uses `--use-angle=gl` (Vulkan has no
   WebGL on the real screen). Capture hides the Next dev badge, fire toasts and the big critical banner.
+- Final mux uses `-t <total>`, not `-shortest` (it stopped at the last caption and cut the outro).
 - App bug seen in the video: Event Log evidence shows raw floats (e.g. `10.640000000000002`) — needs formatting.

@@ -126,6 +126,12 @@ async function stopRec(rec) {
     await page.mouse.up();
   }
 
+  // 3D camera preset buttons (Village, Solar, Battery, Controller, Essential): a clean, close framing.
+  const cam = (name) =>
+    h.click(page.getByRole('button', { name, exact: true }).filter({ visible: true }).first(), {
+      after: 2500,
+    });
+
   await page.goto(BASE + '/overview');
   await h.wait(4000);
   const reset = btn('Reset');
@@ -141,7 +147,7 @@ async function stopRec(rec) {
       await h.wait(1200);
       await nav('Live Simulation');
       await h.wait(2500);
-      await orbit(6000);
+      await orbit(6000, 140);
     });
 
     await shot('A2', async () => {
@@ -175,7 +181,9 @@ async function stopRec(rec) {
       await h.click(btn('Run simulation'), { after: 300 });
       await page.mouse.wheel(0, -2000);
       await h.wait(1500);
-      await orbit(9000, 200);
+      // Close view on the clinic, battery and market (the far orbit showed floating trees).
+      await cam('Essential');
+      await orbit(8000, 90);
       await h.wait(24_000); // days 1–3
     });
 
@@ -530,6 +538,10 @@ async function stopRec(rec) {
         .getByRole('application', { name: 'Village map' })
         .or(page.locator('[aria-label="Village map"]'))
         .first();
+      await map
+        .evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+        .catch(() => {});
+      await h.wait(900);
       const mb = await map.boundingBox();
       await h.click(map, { before: 400, after: 1000 }).catch(() => {});
       if (mb) {
@@ -551,19 +563,24 @@ async function stopRec(rec) {
       await nav('Live Simulation');
       await page.mouse.wheel(0, -2000);
       await h.wait(2000);
-      await orbit(7000, 240);
+      await cam('Village');
+      // Select the inserted object: the camera flies to it and orbits, like a selected sector.
+      const chip = page.locator('[data-testid^="appliance-chip-"]').last();
+      await h.click(chip, { after: 9000 });
+      mark('focused');
       const scrub = page.getByRole('slider', { name: /Hour of day scrubber/i });
       await scrub.fill('20').catch(() => {});
-      await h.wait(2500);
-      await h.click(btn('Topology'), { after: 4000 });
-      await h.click(btn('3D Scene'), { after: 500 });
+      await h.wait(4000); // evening: the object dims with the village
       await scrub.fill('12').catch(() => {});
+      await h.wait(1500);
+      await h.click(btn('Topology'), { after: 4000 });
+      await h.click(btn('3D Scene'), { after: 1500 });
     });
 
     await shot('R1', async () => {
+      // Keep the inserted object selected: the camera keeps orbiting it (recap background).
       await h.moveTo(1240, 700);
-      await h.wait(1000);
-      await orbit(15_000, 320);
+      await h.wait(15_000);
     });
   }
 

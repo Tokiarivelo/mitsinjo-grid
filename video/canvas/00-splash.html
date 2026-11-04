@@ -84,7 +84,7 @@
       }
     </style>
   </head>
-  <body class="full" data-duration="8500">
+  <body class="full" data-duration="4500">
     <div class="glow"></div>
     <div class="sun"></div>
     <svg class="village" viewBox="0 0 1280 210" fill="none" stroke="#2c3f5e" stroke-width="2">
@@ -108,9 +108,6 @@
       <img class="logo" src="../brand/logo.png" alt="" />
       <div class="title" id="title"></div>
       <div class="sub" id="sub">AI copilot for a rural solar microgrid</div>
-      <div class="prov" id="prov">
-        Built from scratch during the hackathon · <b>first commit Oct 26, 2026</b>
-      </div>
     </div>
     <script src="timeline.js"></script>
     <script>
@@ -152,7 +149,7 @@
         '.sun',
         [{ transform: 'translateY(0)' }, { transform: 'translateY(-240px)' }],
         0,
-        8500,
+        4500,
         'cubic-bezier(.3,.6,.3,1)'
       );
       anim('.village', [{ opacity: 0 }, { opacity: 1 }], 300, 1200);
@@ -165,17 +162,8 @@
         1600,
         400
       );
-      anim(
-        '#prov',
-        [
-          { opacity: 0, transform: 'translateY(24px)' },
-          { opacity: 1, transform: 'none' },
-        ],
-        3000,
-        400
-      );
       anim('.badge', [{ opacity: 0 }, { opacity: 1 }], 500, 400);
-      anim('.stage, .badge, .village', [{ opacity: 1 }, { opacity: 0 }], 8100, 400, 'ease-in');
+      anim('.stage, .badge, .village', [{ opacity: 1 }, { opacity: 0 }], 4000, 450, 'ease-in');
     </script>
   </body>
 </html>

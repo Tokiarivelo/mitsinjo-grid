@@ -58,3 +58,7 @@ Done notes (2026-11-04): capture is `video/scripts/capture.cjs` (+ `capture.sh`)
 `render-canvas.cjs`. Narration is Kokoro TTS (`am_puck`, local, chosen by the author) instead of the author's voice.
 Muse Wonder's final check timed out in the take, so the video does not claim it (narration 07/09, outro).
 Output: `video/output/mitsinjo-grid-demo-1080p.mp4` (≈ 2:40, burned + soft English captions).
+Refinement (2026-11-04, author review): no provenance narration (silent 4.5 s splash, then the hook); no em
+dashes in the narration or captions; V1 uses the `Essential` camera (the far orbit showed floating trees); B8
+centres the village map; B9 selects the inserted object (camera flies to it and orbits); outro is 12 s with an
+end animation (horizon, rising sun, `Thank you for watching`, fade to black) and a soft chime; ≤ 3:00.
