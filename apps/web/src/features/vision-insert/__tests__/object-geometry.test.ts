@@ -6,6 +6,7 @@ import {
   edgeBevel,
   EXTRUDE_BEVEL,
   recipeMesh,
+  PRISM_BEVEL_MAX,
   ROOF_OVERHANG,
   roundedBox,
   roundProfile,
@@ -192,8 +193,8 @@ describe('unitPrism (PF-T3)', () => {
       ],
     };
     const body = recipeMesh(house);
-    // Rounded walls (PR-1.2: 300 triangles) + the 8-triangle prism.
-    expect(body.getAttribute('position').count).toBe(3 * (2 * 6 * 25 + 8));
+    // Rounded walls (PR-1.2: 300 triangles) + the bevelled prism (PT-1c: 2 caps, 3 sides, 6 bevel quads).
+    expect(body.getAttribute('position').count).toBe(3 * (2 * 6 * 25 + 20));
     expect(bounds(body).max.y).toBeCloseTo(0.4, 6);
   });
 
@@ -641,5 +642,42 @@ describe('silhouette soft edges (PT-1d)', () => {
       expect(nor.getZ(i)).toBeGreaterThan(Math.cos(Math.PI / 3));
     }
     expect(ring).toBeGreaterThan(0);
+  });
+});
+
+describe('prism soft edges (PT-1c)', () => {
+  const bevel = [0.04, 0.04, 0.04] as const;
+
+  it.each([0, 0.25, 0.5, 1])('apex %s keeps the unit bounds and the ridge', (apex) => {
+    const [a, b] = [bounds(unitPrism(apex)), bounds(unitPrism(apex, bevel))];
+    for (const k of ['x', 'y', 'z'] as const) {
+      expect(Math.abs(b.min[k] - a.min[k])).toBeLessThan(1e-6);
+      expect(Math.abs(b.max[k] - a.max[k])).toBeLessThan(1e-6);
+    }
+    const g = unitPrism(apex, bevel);
+    const pos = g.getAttribute('position');
+    for (let i = 0; i < pos.count; i++)
+      if (Math.abs(pos.getY(i) - 0.5) < 1e-6) expect(pos.getX(i)).toBeCloseTo(apex - 0.5, 6);
+  });
+
+  it('turns the gable edge normals toward the gable (< 60° on the bevel ring)', () => {
+    const g = unitPrism(0.5, bevel);
+    const pos = g.getAttribute('position');
+    const nor = g.getAttribute('normal');
+    let ring = 0;
+    for (let i = 0; i < pos.count; i++) {
+      if (pos.getZ(i) < 0.5 - 1e-6 || Math.abs(nor.getZ(i)) > 0.999) continue;
+      ring++;
+      expect(nor.getZ(i)).toBeGreaterThan(Math.cos(Math.PI / 3));
+    }
+    expect(ring).toBeGreaterThan(0);
+  });
+
+  it('a huge bevel is capped so the cap never flips', () => {
+    const g = unitPrism(0.5, [1, 1, 1]);
+    const b = bounds(g);
+    expect(b.max.x - b.min.x).toBeCloseTo(1, 6);
+    expect(b.max.z - b.min.z).toBeCloseTo(1, 6);
+    expect(PRISM_BEVEL_MAX).toBeLessThan(0.3);
   });
 });

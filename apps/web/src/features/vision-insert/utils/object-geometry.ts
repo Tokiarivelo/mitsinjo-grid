@@ -70,12 +70,27 @@ export const SPHERE_SEGMENTS = [18, 12] as const;
  * the slopes, verge over the front and back — so the roof reads as a roof, not a wedge on a box.
  */
 export const ROOF_OVERHANG = 0.03;
+/** Largest unit bevel of a prism: well under its triangle's inner radius (≈ 0.3), so the cap never flips. */
+export const PRISM_BEVEL_MAX = 0.1;
 /**
  * Unit gable prism (PF-T3): triangle (base at y −0.5, ridge at x `apex − 0.5`, y 0.5) extruded along z.
  * Non-indexed with flat normals and empty UVs, the same attributes as the other primitives so they merge.
  */
-export function unitPrism(apex = 0.5): THREE.BufferGeometry {
+export function unitPrism(
+  apex = 0.5,
+  bevel?: readonly [number, number, number]
+): THREE.BufferGeometry {
   const r = Math.min(1, Math.max(0, apex)) - 0.5;
+  // Soft edges (PT-1c): the bevelled extrusion of the same triangle, cut inside it (bounds kept).
+  if (bevel)
+    return unitExtrude(
+      [
+        [-0.5, -0.5],
+        [0.5, -0.5],
+        [r, 0.5],
+      ],
+      { size: Math.min(bevel[0], bevel[1], PRISM_BEVEL_MAX), thickness: Math.min(bevel[2], 0.25) }
+    );
   const tri = (z: number) => [-0.5, -0.5, z, 0.5, -0.5, z, r, 0.5, z];
   const [a, b, c] = [0, 1, 2].map((k) => tri(0.5).slice(k * 3, k * 3 + 3)) as [
     number[],
@@ -213,23 +228,31 @@ export function roundedBox(w: number, h: number, d: number, radius: number): THR
 /** Bevel of an extruded profile (PR-2.1), unit space: soft edge, exact 1 × 1 × 1 bounds. */
 export const EXTRUDE_BEVEL = 0.02;
 
+/** Inset bevel of an extrusion (PT-1c): `size` across the profile, `thickness` along z; bounds exact. */
+export type ExtrudeBevel = { size: number; thickness: number };
+
 /**
  * Unit extruded profile (PR-2.1): the closed `points` ring (x right, y up) with a thin bevel,
- * 1 deep along z, centred. Non-indexed so parts merge; either winding accepted.
+ * 1 deep along z, centred. Non-indexed so parts merge; either winding accepted. Default bevel reaches
+ * `EXTRUDE_BEVEL` past the ring; an `inset` bevel cuts inside it instead, so the bounds stay the ring's.
  */
 export function unitExtrude(
-  points: ReadonlyArray<readonly [number, number]>
+  points: ReadonlyArray<readonly [number, number]>,
+  inset?: ExtrudeBevel
 ): THREE.BufferGeometry {
   const shape = new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y)));
+  const size = inset ? inset.size : EXTRUDE_BEVEL;
+  const thickness = inset ? inset.thickness : EXTRUDE_BEVEL;
   const g = new THREE.ExtrudeGeometry(shape, {
-    depth: 1 - 2 * EXTRUDE_BEVEL,
+    depth: 1 - 2 * thickness,
     bevelEnabled: true,
-    bevelThickness: EXTRUDE_BEVEL,
-    bevelSize: EXTRUDE_BEVEL,
+    bevelThickness: thickness,
+    bevelSize: size,
+    bevelOffset: inset ? -size : 0,
     bevelSegments: 1,
     steps: 1,
   });
-  g.translate(0, 0, -0.5 + EXTRUDE_BEVEL);
+  g.translate(0, 0, -0.5 + thickness);
   if (g.index) {
     const flat = g.toNonIndexed();
     g.dispose();
@@ -421,7 +444,7 @@ function unitPart(
         ? unitHull(points ?? [], section ?? [], HULL_SLICES, HULL_LEVELS, bevel)
         : unitHull(points ?? [], section ?? [], SKIN_SLICES, SKIN_LEVELS);
     case 'prism':
-      return unitPrism(apex);
+      return unitPrism(apex, bevel);
     case 'hip':
       return unitHip(ridge, clip);
     case 'extrude':
@@ -493,7 +516,9 @@ function buildMesh(recipe: ObjectRecipe, detail: AssemblyDetail): THREE.BufferGe
       const b = edgeBevel(sx, sy, sz, SURFACE_LOOK[SURFACES[surface]!].radius);
       // Hull bodies have no axis; round parts (wheels, poles) map the bevel to their turned axes.
       const round = p.shape === 'cylinder' || p.shape === 'cone';
-      const bevel = b > 0 && (round || !p.axis) ? unitBevel(b, [sx, sy, sz], p.axis) : undefined;
+      const eave = p.shape === 'prism' ? 2 * ROOF_OVERHANG : 0;
+      const bevel =
+        b > 0 && (round || !p.axis) ? unitBevel(b, [sx + eave, sy, sz + eave], p.axis) : undefined;
       g = unitPart(
         p.shape,
         p.apex,
@@ -508,7 +533,6 @@ function buildMesh(recipe: ObjectRecipe, detail: AssemblyDetail): THREE.BufferGe
       // Round parts turn to their axis before taking the part's own x / y / z extent.
       if (p.axis === 'x') g.rotateZ(Math.PI / 2);
       else if (p.axis === 'z') g.rotateX(Math.PI / 2);
-      const eave = p.shape === 'prism' ? 2 * ROOF_OVERHANG : 0;
       g.scale(sx + eave, sy, sz + eave);
     }
     g.translate(p.at[0] * dims[0], p.at[1] * dims[1], p.at[2] * dims[2]);
