@@ -1,4 +1,4 @@
-# PT — Studio look: object & village render inspired by `teardown` (plan)
+# PT — Studio look: object & village render inspired by `teardown`, plus the inserted object tag (plan)
 
 **Why (user, 2026-11-04):** « how does this person get 3D so detailed and perfect? Can we transcribe it to refine
 our 3D generation? » Source studied: [elvarofficial/teardown](https://github.com/elvarofficial/teardown) (MIT, built
@@ -105,12 +105,42 @@ surface (`SURFACE_LOOK.radius`), PMREM room light, Neutral tone mapping, baked c
 - [ ] **PT-9** Render checklist: add teardown's 3D checks to `.claude/skills/designer-3d/SKILL.md` (bloom emissive
       < 1, near-white parts on a pale backdrop need ink, metal roughness ≥ 0.45, shadow catcher `polygonOffset`,
       clamp `pow` in shaders, `smoothstep(a, b)` with a > b breaks on ANGLE). **Done when** the skill lists them.
-- [ ] **PT-10** Close: docs (`docs/performance.md` § 5 ink + warm-up, `docs/design/*` 3D look), manual scenarios
-      (`05`/`99-transverse`), `make check`, `HANDOFF.md`, tick boxes.
+- [ ] **PT-11** Same tag for an inserted object as for a village building (user, 2026-11-04: « the label is not the
+      same, no icon, different elevation, no critical / medium / high info at the bottom »). Today
+      (`appliance-markers.tsx` « HTML tags »): a plain text `name · qty × W` at `height + 0.35`, no icon, no status, no
+      priority, not clickable. Buildings (`buildings.tsx` `BuildingFrame`): beacon sphere at `ledY`, glass badge at
+      `ledY + 0.75` with sector icon, name, AI badge, status dot, priority (critical in red) and coverage.
+      Gate: `/design-check` (spec + mockup before, desktop + 390 px, dark + light shots after).
+  - [ ] **PT-11a** Extract the building badge **once** into `features/microgrid-3d/ui/scene-badge.tsx` (props: icon,
+        title, status colour, priority label + level, metric text, selected / alert, onClick; tokens only) and use it
+        in `buildings.tsx` with no visual change (screenshot diff = 0). No duplicated markup.
+  - [ ] **PT-11b** Data, pure and tested: `applianceMarkers()` (`utils/appliance-markers.ts`) adds `priority`
+        (its **sector's** engine input priority: an appliance has none of its own, no engine change, no migration),
+        `status` (`StatusColor`: running → green, sector partly served → amber, unserved → red, off → idle) and
+        `inAlert` (its sector's alert / fire). Every value from the engine input / result, none computed in UI.
+  - [ ] **PT-11c** Icon: `components/ui/appliance-icon.tsx`, one lucide icon per `ApplianceCategory` (fridge, TV,
+        lamp, fan, laptop, pump, mill…; `other` → plug), on its sector's icon background (`SECTOR_ICON_BG`). Reuse
+        in `vision-insert/ui/appliance-list.tsx` where it helps.
+  - [ ] **PT-11d** Elevation: one shared rule `badgeY(top) = top + BEACON_GAP` and `beaconY(top)`, exported from
+        `scene-badge.tsx` and used by both; the appliance top comes from `modelBounds[id].height` (real 3D model)
+        or the box marker. Beacons of all appliances in **one** `Instances` (+1 draw call total, not per object).
+  - [ ] **PT-11e** Wire it in `appliance-markers.tsx`: `SceneBadge` with `ApplianceIcon`, name, bottom line
+        `priority · fmtKw(kwNow)` (formatted with unit, `@/lib/format`), selected ring, alert pulse; click selects the
+        marker (same handler as `bindMarker`), hit area ≥ 44 px on touch. Keep `MARKER_TAGS_ALL_MAX` (DOM cost:
+        each `<Html>` is a layout per frame); memo the badge so it re-renders only when its fields change.
+        i18n: reuse the existing priority / disconnected keys; any new key (aria-label) in `en` / `fr` / `mg`
+        (`make check-i18n`).
+        **Done when** tests cover `applianceMarkers()` priority / status / alert and the badge render (icon, priority
+        text, critical in red); `make shots` shows building and object tags identical in style and height;
+        `make scene-audit` draw calls ≤ previous + 1.
+- [ ] **PT-10** Close: docs (`docs/performance.md` § 5 ink + warm-up, `docs/design/*` 3D look and object tag),
+      `docs/contracts.md` (`ApplianceMarkerSceneModel` fields), manual scenarios (`02-simulation` object tag,
+      `05`/`99-transverse` look), `make check`, `HANDOFF.md`, tick boxes.
 
-**Order:** PT-0 → PT-1 → PT-3 → PT-2 → PT-4 → PT-5 → PT-7 → PT-6 → PT-8 → PT-9 → PT-10 (cheap and safe first,
-village last because it is on the demo path). Inside PT-1: 1a (most objects without a template) → 1b → 1d → 1c.
-**Cut order if late:** PT-8, PT-6, PT-7, PT-1c.
+**Order:** PT-0 → PT-11 (user-visible bug, independent of the render work) → PT-1 → PT-3 → PT-2 → PT-4 → PT-5 →
+PT-7 → PT-6 → PT-8 → PT-9 → PT-10 (cheap and safe first, village render last because it is on the demo path).
+Inside PT-1: 1a (most objects without a template) → 1b → 1d → 1c. Inside PT-11: a → b → c → d → e.
+**Cut order if late:** PT-8, PT-6, PT-7, PT-1c. Never cut PT-11.
 
 ## Exit criteria
 
@@ -119,6 +149,8 @@ village last because it is on the demo path). Inside PT-1: 1a (most objects with
   `other` archetype): soft edges on every body shape except `hip` (ink), studio light, clearcoat by surface, ink.
 - Village: high tier ≥ 30 fps, draw calls unchanged; low tier unchanged; `make scene-audit` passes.
 - Ink readable in dark and light, 320 px → 4K; no hardcoded colour; `make check` green.
+- An inserted object's tag matches a building's: same badge component, icon, height rule, status dot and priority
+  line (critical / high / medium / low) from the engine; clickable; dark + light, 320 px → 4K.
 
 ## Loop log
 
