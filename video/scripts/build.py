@@ -54,7 +54,8 @@ def cut_clip(c, alloc, out):
         # Eased push-in over 0.5 s (15 frames) to the box [x, y, w]; zoompan sizes per frame (ffmpeg 4.4 crop can't).
         x, y, w = [v * SRC_SCALE for v in c["zoom"]]
         z = W / w
-        e = "(1-pow(1-min(1,on/15),3))"
+        # Already zoomed when the previous clip of the segment was: no push-in from the full frame.
+        e = "1" if c.get("held") else "(1-pow(1-min(1,on/15),3))"
         vf.append(f"zoompan=z='1+{z - 1:.4f}*{e}':x='{x:.1f}*{e}':y='{y:.1f}*{e}':d=1:s={W}x{H}:fps={FPS}")
     vf += [f"scale={W}:{H}:flags=lanczos", "setsar=1", f"trim=duration={alloc:.3f}"]
     if c.get("fadein"):
@@ -129,6 +130,7 @@ def main():
                 alloc = round((acc + alloc) * FPS) / FPS - acc  # frame-aligned
                 acc += alloc
                 out = WORK / f"seg-{seg['id']}-{i}.mp4"
+                c["held"] = i > 0 and "zoom" in clips[i - 1] and "zoom" in c
                 cut_clip(c, alloc, out)
                 parts.append(out)
             segdur = acc

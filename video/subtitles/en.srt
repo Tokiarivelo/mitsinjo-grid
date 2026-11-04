@@ -129,35 +129,35 @@ Then I turn the model, resize it and tint
 it.
 
 30
-00:02:02,700 --> 00:02:07,655
+00:02:02,667 --> 00:02:07,622
 Then its load: an AI estimate or my own
 watts, with the twenty-four-hour curve.
 
 31
-00:02:07,655 --> 00:02:11,481
+00:02:07,622 --> 00:02:11,448
 I place it on the map, choose its feeder
 line, and insert it.
 
 32
-00:02:11,481 --> 00:02:17,377
+00:02:11,448 --> 00:02:17,344
 The model now stands in the 3D village, and every
 strategy is recomputed with its consumption.
 
 33
-00:02:18,467 --> 00:02:25,319
+00:02:18,433 --> 00:02:25,286
 Four Meta models, one job each: Voice listens, Spark
 reasons and builds, SAM outlines, Image draws.
 
 34
-00:02:25,319 --> 00:02:31,480
+00:02:25,286 --> 00:02:31,447
 A deterministic engine behind every number, and a
 human who can always take back control.
 
 35
-00:02:32,567 --> 00:02:33,549
+00:02:32,533 --> 00:02:33,516
 Mitsinjo Grid.
 
 36
-00:02:33,549 --> 00:02:35,724
+00:02:33,516 --> 00:02:35,691
 Simulated data, real decisions.
 
