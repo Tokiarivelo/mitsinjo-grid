@@ -1,0 +1,191 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Thumbnail</title>
+    <link rel="stylesheet" href="shared.css" />
+    <style>
+      /* YouTube thumbnail, 1280 × 720 (make video-thumbnail). Day village vs. same village at night. */
+      body {
+        width: 1280px;
+        height: 720px;
+        overflow: hidden;
+        position: relative;
+        margin: 0;
+      }
+      .shot {
+        position: absolute;
+        inset: 0;
+        background-size: cover;
+        background-position: center;
+      }
+      .day {
+        background-image: url('../images/thumb-day.jpg');
+        background-position: 50% 50%;
+        filter: saturate(1.15) brightness(1.05);
+      }
+      .night {
+        background-image: url('../images/thumb-night.jpg');
+        background-position: 50% 50%;
+        clip-path: polygon(62% 0, 100% 0, 100% 100%, 46% 100%);
+        filter: saturate(1.2) contrast(1.1);
+      }
+      .seam {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          113.5deg,
+          transparent 54.6%,
+          var(--solar) 54.8%,
+          #fff3d6 55%,
+          var(--solar) 55.2%,
+          transparent 55.4%
+        );
+        filter: drop-shadow(0 0 14px var(--solar));
+      }
+      .shade {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(
+            90deg,
+            rgba(8, 13, 26, 0.86) 0%,
+            rgba(8, 13, 26, 0.5) 32%,
+            rgba(8, 13, 26, 0) 50%
+          ),
+          linear-gradient(0deg, rgba(8, 13, 26, 0.85) 0%, rgba(8, 13, 26, 0) 26%);
+      }
+      .brand {
+        position: absolute;
+        top: 34px;
+        left: 44px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-family: 'Grotesk', sans-serif;
+        font-weight: 700;
+        font-size: 30px;
+        letter-spacing: 0.06em;
+      }
+      .brand img {
+        width: 58px;
+        height: 58px;
+        border-radius: 14px;
+        box-shadow: 0 0 30px rgba(255, 181, 71, 0.45);
+      }
+      .title {
+        position: absolute;
+        left: 44px;
+        top: 150px;
+        width: 700px;
+        font-family: 'Grotesk', sans-serif;
+        font-weight: 700;
+        line-height: 0.98;
+        text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+      }
+      .title .l1 {
+        font-size: 58px;
+        color: var(--solar);
+      }
+      .title .l2 {
+        font-size: 104px;
+        color: var(--text);
+        margin-top: 10px;
+      }
+      .title .l2 em {
+        font-style: normal;
+        color: var(--solar);
+      }
+      .sub {
+        position: absolute;
+        left: 44px;
+        top: 488px;
+        font-size: 28px;
+        font-weight: 600;
+        color: var(--text);
+        background: rgba(182, 160, 255, 0.18);
+        border: 2px solid var(--ai);
+        border-radius: 999px;
+        padding: 10px 24px;
+      }
+      .sub b {
+        color: var(--ai);
+      }
+      .models {
+        position: absolute;
+        left: 44px;
+        bottom: 40px;
+        display: flex;
+        gap: 10px;
+      }
+      .models span {
+        font-size: 20px;
+        font-weight: 600;
+        padding: 8px 16px;
+        border-radius: 10px;
+        background: rgba(17, 29, 48, 0.92);
+        border: 1px solid #2a3a55;
+      }
+      .drop {
+        position: absolute;
+        right: 44px;
+        top: 40px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: 'Grotesk', sans-serif;
+        font-weight: 700;
+        font-size: 62px;
+        color: #fff;
+        background: rgba(255, 113, 133, 0.92);
+        border-radius: 22px;
+        padding: 6px 26px 10px 18px;
+        box-shadow: 0 10px 40px rgba(255, 113, 133, 0.5);
+        transform: rotate(3deg);
+      }
+      .drop svg {
+        width: 64px;
+        height: 64px;
+      }
+      .sim {
+        position: absolute;
+        right: 44px;
+        bottom: 40px;
+        font-family: 'Mono', monospace;
+        font-size: 16px;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        background: rgba(8, 13, 26, 0.85);
+        border: 1px solid #2a3a55;
+        border-radius: 8px;
+        padding: 6px 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shot day"></div>
+    <div class="shot night"></div>
+    <div class="seam"></div>
+    <div class="shade"></div>
+
+    <div class="brand"><img src="../brand/logo.png" alt="" />MITSINJO GRID</div>
+    <div class="title">
+      <div class="l1">When the sun drops…</div>
+      <div class="l2">who keeps the <em>light?</em></div>
+    </div>
+    <div class="sub"><b>AI copilot</b> for a village solar microgrid</div>
+    <div class="models">
+      <span>Muse Spark</span><span>SAM 3.1</span><span>Muse Image</span><span>Muse Voice</span>
+    </div>
+
+    <div class="drop">
+      <svg viewBox="0 0 64 64" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round">
+        <circle cx="32" cy="24" r="11" />
+        <path d="M32 3v5M13 24H8M56 24h-5M18 10l3 3M46 10l-3 3" />
+        <path d="M32 42v17M23 51l9 9 9-9" />
+      </svg>
+      −70% sun
+    </div>
+    <div class="sim">SIMULATED DATA</div>
+  </body>
+</html>

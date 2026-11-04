@@ -276,8 +276,11 @@ video-canvas: ## Render the splash and outro canvas pages to PNG frames
 	node video/scripts/render-canvas.cjs video/canvas/00-splash.html video/frames/00-splash
 	node video/scripts/render-canvas.cjs video/canvas/10-outro.html video/frames/10-outro
 
-video-build: ## Assemble video/output/mitsinjo-grid-demo-720p.mp4 from video/edit.json (DRAFT=1 = NVENC)
+video-build: ## Assemble video/output/mitsinjo-grid-demo-1080p.mp4 from video/edit.json (DRAFT=1 = NVENC)
 	python3 video/scripts/build.py $(if $(DRAFT),--draft)
+
+video-thumbnail: ## Render the YouTube thumbnail → video/output/thumbnail.png (SHOTS=1 re-grabs the 3D stills; app running)
+	$(if $(SHOTS),node video/scripts/thumb-shots.cjs &&) node video/scripts/thumbnail.cjs
 
 ##@ Cleanup
 clean: ## Remove build/test output (keeps node_modules)
@@ -287,4 +290,4 @@ clean-all: clean ## Also remove node_modules
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
 
 .PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-shape shape-capture facade-e2e eval-stages shape-report shape-shots improve-shot test-watch coverage e2e \
-        typecheck lint bridge bridge-sim test-bridge format format-check format-changed git-hooks check ci shots mockups analyze scene-audit scene-audit-gpu lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all video-tts-setup video-voice video-sfx video-capture video-canvas video-build
+        typecheck lint bridge bridge-sim test-bridge format format-check format-changed git-hooks check ci shots mockups analyze scene-audit scene-audit-gpu lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all video-tts-setup video-voice video-sfx video-capture video-canvas video-build video-thumbnail

@@ -281,6 +281,10 @@ Stills for the splash / outro carousel: `make shots` (dev server running) → `d
 - Icons: inline SVG from `video/icons/`, stroke `currentColor`, colours from § 2.
 - Splash / outro carousel accent: 6 cards, `rotateY(i·60°) translateZ(r)`, ring rotates 0 → −40°,
   `perspective: 1400px`, shading gradient for the curve, 25 % flipped reflection under the ring.
+- YouTube thumbnail (`canvas/thumbnail.html`, `make video-thumbnail` → `output/thumbnail.png`, 1280 × 720):
+  the village by day and the same village at night (Health Clinic critical), split by a solar seam;
+  "When the sun drops… who keeps the light?", a "−70 % sun" badge, the four model names, `SIMULATED DATA`.
+  Stills come from the app's full-screen 3D view at DPR 2 (`scripts/thumb-shots.cjs`, `SHOTS=1`).
 
 ---
 

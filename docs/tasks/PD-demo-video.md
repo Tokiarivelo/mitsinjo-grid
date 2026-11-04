@@ -45,6 +45,8 @@ All work in `video/` (layout: plan § 3). New commands → Makefile targets in a
 - [x] **PD-T9** `video/scripts/build.sh` + `make video-build`: cuts, zooms, ramps, overlays, music loop + ducking,
       captions, encode → `video/output/mitsinjo-grid-demo-720p.mp4` (+ `-backup.mp4`). **Done when** plan § 9
       checklist passes and the duration is ≤ 3:00.
+- [x] **PD-T9b** YouTube thumbnail: `make video-thumbnail` → `video/output/thumbnail.png` (1280 × 720, day vs.
+      night village from the live 3D view, plan § 7).
 - [ ] **PD-T10** (human) Upload, put the link in README line 15, tick P9-T5; then P9-T6 (submit, tag `v1.0.0`,
       the one X post for Most Viral).
 
