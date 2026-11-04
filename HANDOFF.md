@@ -1,38 +1,34 @@
 # HANDOFF — read first, overwrite at end of session (≤40 lines)
 
-**Updated:** 2026-11-04 · **By:** Claude Code · **Branch:** feat/pt-11-object-tag (worktree `../mitsinjo-grid-pt`)
+**Updated:** 2026-11-04 · **By:** Claude Code · **Branch:** feat/pt-0-1a-baseline-hull-bevel (pushed, no PR yet)
 
 ## Current state
 
-- New plan `docs/tasks/PT-studio-look.md` (from the `elvarofficial/teardown` study): studio look for every
-  object (soft edges, softbox light, clearcoat, ink outline, shader warm-up, real sizes) + PT-11 object tag.
-- **PT-11 done:** an inserted object's 3D tag is now the buildings' badge (`ui/scene-badge.tsx`): category icon on
-  the sector colour, name × quantity, status dot, sector priority (critical in red) · kW now, beacon above, click
-  selects. Tested; gate-out shots 1440 + 390, dark + light (sample-room fridge on /simulation).
-- Demo video work (PD) is merged in main; nothing pending there.
+- Plan `docs/tasks/PT-studio-look.md`: PT-11 merged; **PT-0 + PT-1a done** on this branch.
+- PT-0 baseline logged (Loop log): IoU 0.98, edge F1 0.91, ΔE 3.4, designer 3/5; village high 192–209 calls,
+  low 143–148 calls (fps from the dev server: 10–25 high / 17–26 low, not a prod measure).
+- PT-1a: `EDGE_BEVEL` (0.06 of the smallest side) + `edgeBevel(w, h, d, radius)` (capped by
+  `SURFACE_LOOK.radius`) in `object-geometry.ts`; `unitHull(…, bevel?)` adds one inset ring per end
+  (`bevelHullEnds`), + 4 × n triangles, bounds unchanged. Only hull **bodies** (`front`), no `axis`.
+- Shape report unchanged (no report fixture uses a hull body → proven by 4 new tests only).
 
 ## Next
 
-1. PT-0 baseline (`make shape-report`, `SHOT_SUFFIX=before make shape-shots`, `make scene-audit-gpu`), log numbers.
-2. PT-1a (bevel the 2D-view hull caps) → 1b → 1d → 1c, then PT-3, PT-2… (order in the plan).
+1. PT-1b: `cylinder` / `cone` → `unitLathe` on a chamfered profile, size from `edgeBevel`.
+2. Then 1d (silhouette body) → 1c (prism) → PT-3 → PT-2… (order in the plan).
 
-## Files touched (PT-11)
+## Files touched
 
-- `features/microgrid-3d/ui/scene-badge.tsx` (new), `buildings.tsx`, `appliance-markers.tsx`, `village-canvas.tsx`
-- `features/microgrid-3d/utils/appliance-markers.ts` (`applianceTagState`), `to-scene-model.ts`
-- `features/microgrid-3d/hooks/use-marker-drag.ts` (`toggleSelect`)
-- `components/ui/appliance-icon.tsx` (new), `sector-icon.tsx` (`SECTOR_ICON_BG_CLASS`), `index.ts`
-- `messages/{en,fr,mg}.json`: `applianceTag` → `applianceBadgeTitle` (ICU plural)
-- Docs: `contracts.md`, `design/3d-scene.md`, `design/stitch-map.md`, `tasks/PT-studio-look.md`, `tasks/README.md`
+- `apps/web/src/features/vision-insert/utils/object-geometry.ts`, `__tests__/object-geometry.test.ts`
+- `docs/tasks/PT-studio-look.md` (ticks + Loop log); `test-scenarios/06-village.md` V171 (local)
 
 ## Decisions
 
-- An appliance has no priority of its own: the badge shows its **sector's** (no engine change, no migration).
-- Status: idle when the object draws 0 kW or its sector is off, else the sector's served colour.
-- Badge scale × `APPLIANCE_FOCUS_SCALE` (0.6): focused object = focused building size; a bit smaller in the overview.
-- All beacons in one `Instances` (+1 draw call total). `MARKER_TAGS_ALL_MAX` (6) kept for DOM cost.
+- Bevel passed to unit geometry per axis (`b / sx`, `b / sy`, `b / sz`) so it stays even once scaled.
+- End loop moves in by ≤ half the gap to its neighbour, so slices never cross.
+- Skin patches (glass, grille, cell lines) keep sharp edges.
 
 ## Known limits
 
-- At 390 px a focused badge can sit under the floating HUD at the top of the 3D view (buildings already did).
+- No shape-report fixture exercises the hull path; add one (2D-view car) if a visual check is needed.
 - `region-colors.test.ts` "golden car" can time out (5 s) under load; passes alone.
