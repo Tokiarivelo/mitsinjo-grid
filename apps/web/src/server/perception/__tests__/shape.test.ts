@@ -230,3 +230,26 @@ describe('drawing reading (PV-G live 2026-11-02)', () => {
     );
   });
 });
+
+describe('Spark depth within real sizes (PT-8)', () => {
+  const colors = { main: '#ffffff', secondary: '#cccccc', accent: '#333333' };
+
+  it('parseKit clamps an estimated fridge depth', () => {
+    const k = parseKit(
+      reply({ archetype: 'cabinet', proportions: { w: 600, h: 1800, d: 1800 }, colors })
+    );
+    expect(k!.proportions.h).toBe(1);
+    expect(k!.proportions.d / k!.proportions.w).toBeCloseTo(1.5, 6);
+  });
+
+  it('a critic patch is clamped too, a plausible one passes untouched', () => {
+    const k = parseKit(
+      reply({ archetype: 'cabinet', proportions: { w: 600, h: 1800, d: 600 }, colors })
+    )!;
+    expect(
+      mergeKitPatch(k, { proportions: { w: 1 / 3, h: 1, d: 0.01 } }).proportions.d
+    ).toBeGreaterThan(0.2);
+    const fine = { w: 1 / 3, h: 1, d: 0.3 };
+    expect(mergeKitPatch(k, { proportions: fine }).proportions).toEqual(fine);
+  });
+});
