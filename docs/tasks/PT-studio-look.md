@@ -27,12 +27,12 @@ before the first frame (`kit/warm.js`, `compileAsync`), quality tiers with frame
 
 ## What we take, what we don't
 
-| Take                                                                | Don't take (and why)                                                               |
-| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Ink outline, softbox studio, clearcoat, bevel on the last bare body | Hand-coded per-object parts: we model any photographed object from templates (kit) |
-| Shader warm-up, render checklist                                    | Kinematics, film/timeline, sound: no moving machine in our scope                   |
-| Real-world size ranges per archetype                                | GTAO in the village: N8AO already does it cheaper                                  |
-|                                                                     | Stencil section caps: no cut-away need today (stretch idea for the battery)        |
+| Take                                                                                                       | Don't take (and why)                                                               |
+| ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Ink outline, softbox studio, clearcoat, bevel on the bare shapes (hull, cylinder, cone, prism, silhouette) | Hand-coded per-object parts: we model any photographed object from templates (kit) |
+| Shader warm-up, render checklist                                                                           | Kinematics, film/timeline, sound: no moving machine in our scope                   |
+| Real-world size ranges per archetype                                                                       | GTAO in the village: N8AO already does it cheaper                                  |
+|                                                                                                            | Stencil section caps: no cut-away need today (stretch idea for the battery)        |
 
 **Already there (no work):** rounded boxes (`ROUNDED_SEGMENTS = 2`), extrude bevel (`EXTRUDE_BEVEL`), edge radius per
 surface (`SURFACE_LOOK.radius`), PMREM room light, Neutral tone mapping, baked contact shadow, N8AO + bloom,
@@ -55,10 +55,24 @@ surface (`SURFACE_LOOK.radius`), PMREM room light, Neutral tone mapping, baked c
 - [ ] **PT-0** Baseline. Run `make shape-report`, `SHOT_SUFFIX=before make shape-shots` (dev server on),
       `make scene-audit-gpu`; paste mean IoU, edge F1, ΔE, designer score, village fps / draw calls (both tiers) in
       the Loop log. **Done when** the numbers are logged.
-- [ ] **PT-1** Bevel the silhouette body: `object-geometry.ts` silhouette `ExtrudeGeometry` (`bevelEnabled: false`
-      today) → `bevelEnabled`, `bevelSegments: 1`, size = `EXTRUDE_BEVEL × max(w, h)`, depth reduced by 2 × bevel so
-      the bbox is unchanged. **Done when** a test checks bbox equal ± 1e-6, triangles ≤ `MAX_TRIANGLES` on the
-      fixtures, and the silhouette fallback shows lit edges in the editor.
+- [ ] **PT-1** Soft edges on **every** object path (any object from vision, template or 2D view). Today in
+      `object-geometry.ts`: `box` (rounded), `extrude` and `lathe` are bevelled; `hull`, `cylinder`, `cone`, `prism`,
+      `hip` and the silhouette body have sharp edges. One shared constant `EDGE_BEVEL` (share of the part's smallest
+      side, capped by `SURFACE_LOOK.radius`), one bevel ring (`bevelSegments: 1`), bbox always unchanged.
+      **Common Done when** (one test per shape): bbox equal ± 1e-6, ≤ `MAX_TRIANGLES` on all fixtures, edge
+      normals no longer at 90° (angle between cap and side normals < 60° on the bevel ring), `shape-report` not worse.
+  - [ ] **PT-1a** `hull` (`unitHull`, the « any object » path, PV-H): add one inset loop at each end (end loop scaled
+        toward its centre by the bevel, pulled back by the same z) and build the caps from it. Cost: + 4 × n triangles
+        (n = loop size), no new pass. Skin patches (`body = false`) keep sharp edges (too small to see).
+  - [ ] **PT-1b** `cylinder` / `cone`: replace `CylinderGeometry` / `ConeGeometry` by the existing `unitLathe` on a
+        chamfered profile (4–6 points, same `ROUND_SEGMENTS`): reuse, no new geometry code. Wheels, poles and tanks gain
+        the highlight ring.
+  - [ ] **PT-1c** `prism`: build it with the existing bevelled `unitExtrude` on its triangle profile (apex as the
+        third point) instead of hand-built faces. Reuse only.
+  - [ ] **PT-1d** Silhouette body (`silhouetteMesh`, `bevelEnabled: false` today) → `bevelEnabled`, size =
+        `EDGE_BEVEL × max(w, h)`, depth reduced by 2 × bevel.
+  - [ ] **PT-1e** `hip` (hipped roof): no bevel geometry (clip planes make it costly); its edges are carried by the
+        ink outline (PT-5). Done when a `shape-shots` check shows the ridge and hips read in both themes.
 - [ ] **PT-2** Softbox studio: pure `features/vision-insert/utils/studio-env.ts` → `buildStudioScene()` (top softbox,
       two side strips, low front kicker, grey floor disc; intensities as named constants), PMREM at sigma 0.02.
       Replaces `RoomEnvironment` in `StudioEnvironment` (`object-editor-3d.tsx`); dispose scene + target on unmount.
@@ -95,11 +109,14 @@ surface (`SURFACE_LOOK.radius`), PMREM room light, Neutral tone mapping, baked c
       (`05`/`99-transverse`), `make check`, `HANDOFF.md`, tick boxes.
 
 **Order:** PT-0 → PT-1 → PT-3 → PT-2 → PT-4 → PT-5 → PT-7 → PT-6 → PT-8 → PT-9 → PT-10 (cheap and safe first,
-village last because it is on the demo path). **Cut order if late:** PT-8, PT-6, PT-7.
+village last because it is on the demo path). Inside PT-1: 1a (most objects without a template) → 1b → 1d → 1c.
+**Cut order if late:** PT-8, PT-6, PT-7, PT-1c.
 
 ## Exit criteria
 
 - Editor: designer score ≥ previous + 1; no `shape-report` metric down > 2 points on any object; ≤ 5 k triangles.
+- Any detected object gets the same finish, whatever its path (template, 2D-view hull, silhouette fallback,
+  `other` archetype): soft edges on every body shape except `hip` (ink), studio light, clearcoat by surface, ink.
 - Village: high tier ≥ 30 fps, draw calls unchanged; low tier unchanged; `make scene-audit` passes.
 - Ink readable in dark and light, 320 px → 4K; no hardcoded colour; `make check` green.
 
