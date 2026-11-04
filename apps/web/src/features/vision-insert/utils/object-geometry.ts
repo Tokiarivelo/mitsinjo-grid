@@ -245,7 +245,10 @@ export const LATHE_SEGMENTS = 16;
  * Unit body of revolution (PR-2.3): `profile` ([radius, height], rising y) revolved around y.
  * Non-indexed so parts merge; smooth normals so tanks read round.
  */
-export function unitLathe(profile: ReadonlyArray<readonly [number, number]>): THREE.BufferGeometry {
+export function unitLathe(
+  profile: ReadonlyArray<readonly [number, number]>,
+  segments = LATHE_SEGMENTS
+): THREE.BufferGeometry {
   const raw =
     profile.length >= 2
       ? profile
@@ -254,7 +257,7 @@ export function unitLathe(profile: ReadonlyArray<readonly [number, number]>): TH
           [0, 0.5],
         ] as const);
   const pts = raw.map(([r, y]) => new THREE.Vector2(Math.max(0, r), y));
-  const g = new THREE.LatheGeometry(pts, LATHE_SEGMENTS);
+  const g = new THREE.LatheGeometry(pts, segments);
   const flat = g.index ? g.toNonIndexed() : g;
   if (flat !== g) g.dispose();
   return flat;
@@ -266,6 +269,37 @@ export const EDGE_BEVEL = 0.06;
 /** Bevel of a part of final size `w × h × d` (object units), ≤ `radius`. */
 export function edgeBevel(w: number, h: number, d: number, radius: number): number {
   return Math.min(EDGE_BEVEL * Math.min(w, h, d), radius);
+}
+
+/**
+ * Chamfered profile of a unit cylinder / cone (PT-1b), [radius, y] rising y: each rim is cut by `br` across
+ * and `by` along the axis, so the cap meets the side on a highlight ring. Radius 0.5 stays (bounds kept);
+ * the cone's apex stays sharp.
+ */
+export function roundProfile(
+  shape: 'cylinder' | 'cone',
+  br: number,
+  by: number
+): Array<[number, number]> {
+  const [r, y] = [Math.min(br, 0.25), Math.min(by, 0.25)];
+  const bottom: Array<[number, number]> = [
+    [0, -0.5],
+    [0.5 - r, -0.5],
+    [0.5, -0.5 + y],
+  ];
+  if (shape === 'cone') return [...bottom, [0, 0.5]];
+  return [...bottom, [0.5, 0.5 - y], [0.5 - r, 0.5], [0, 0.5]];
+}
+
+/** Bevel of a part in its unit space: a round part turned to `axis` swaps which size each unit axis takes. */
+function unitBevel(
+  b: number,
+  [sx, sy, sz]: readonly [number, number, number],
+  axis?: RecipePart['axis']
+): readonly [number, number, number] {
+  if (axis === 'x') return [b / sy, b / sx, b / sz];
+  if (axis === 'z') return [b / sx, b / sz, b / sy];
+  return [b / sx, b / sy, b / sz];
 }
 
 type HullLoop = { z: number; loop: Array<[number, number]> };
@@ -397,9 +431,16 @@ function unitPart(
     case 'box':
       return new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
     case 'cylinder':
-      return new THREE.CylinderGeometry(0.5, 0.5, 1, ROUND_SEGMENTS).toNonIndexed();
     case 'cone':
-      return new THREE.ConeGeometry(0.5, 1, ROUND_SEGMENTS).toNonIndexed();
+      // Soft rims (PT-1b): the lathe on a chamfered profile; sharp three.js primitive without a bevel.
+      if (bevel)
+        return unitLathe(
+          roundProfile(shape, Math.min(bevel[0], bevel[2]), bevel[1]),
+          ROUND_SEGMENTS
+        );
+      return shape === 'cylinder'
+        ? new THREE.CylinderGeometry(0.5, 0.5, 1, ROUND_SEGMENTS).toNonIndexed()
+        : new THREE.ConeGeometry(0.5, 1, ROUND_SEGMENTS).toNonIndexed();
     case 'sphere':
       return new THREE.SphereGeometry(0.5, ...SPHERE_SEGMENTS).toNonIndexed();
   }
@@ -450,7 +491,9 @@ function buildMesh(recipe: ObjectRecipe, detail: AssemblyDetail): THREE.BufferGe
     } else {
       // Soft edges (PT-1), in unit space per axis so the bevel stays even once scaled.
       const b = edgeBevel(sx, sy, sz, SURFACE_LOOK[SURFACES[surface]!].radius);
-      const bevel = !p.axis && b > 0 ? ([b / sx, b / sy, b / sz] as const) : undefined;
+      // Hull bodies have no axis; round parts (wheels, poles) map the bevel to their turned axes.
+      const round = p.shape === 'cylinder' || p.shape === 'cone';
+      const bevel = b > 0 && (round || !p.axis) ? unitBevel(b, [sx, sy, sz], p.axis) : undefined;
       g = unitPart(
         p.shape,
         p.apex,

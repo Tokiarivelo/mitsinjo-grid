@@ -8,6 +8,7 @@ import {
   recipeMesh,
   ROOF_OVERHANG,
   roundedBox,
+  roundProfile,
   SPHERE_SEGMENTS,
   silhouetteDepth,
   silhouetteMesh,
@@ -548,5 +549,60 @@ describe('hull soft edges (PT-1a)', () => {
     const patch = recipeMesh(recipe(false));
     const sharpPatch = unitHull(square, square, 8, 6);
     expect(triangleCount(patch)).toBe(triangleCount(sharpPatch));
+  });
+});
+
+describe('cylinder / cone soft rims (PT-1b)', () => {
+  const part = (shape: 'cylinder' | 'cone', axis?: 'x' | 'z'): ObjectRecipe => ({
+    proportions: { w: 1, h: 1, d: 1 },
+    parts: [
+      {
+        shape,
+        at: [0, 0, 0],
+        size: [0.4, 0.8, 0.4],
+        color: '#808080',
+        material: 'metal',
+        ...(axis ? { axis } : {}),
+      },
+    ],
+  });
+  const sharp = {
+    cylinder: new THREE.CylinderGeometry(0.2, 0.2, 0.8, 24),
+    cone: new THREE.ConeGeometry(0.2, 0.8, 24),
+  };
+
+  it.each(['cylinder', 'cone'] as const)('%s keeps its bounds', (shape) => {
+    const [a, b] = [bounds(sharp[shape]), bounds(recipeMesh(part(shape)))];
+    for (const k of ['x', 'y', 'z'] as const) {
+      expect(Math.abs(b.min[k] - a.min[k])).toBeLessThan(1e-6);
+      expect(Math.abs(b.max[k] - a.max[k])).toBeLessThan(1e-6);
+    }
+  });
+
+  it.each(['cylinder', 'cone'] as const)('%s rim normals lean toward the cap (< 60°)', (shape) => {
+    const g = recipeMesh(part(shape));
+    const pos = g.getAttribute('position');
+    const nor = g.getAttribute('normal');
+    let ring = 0;
+    for (let i = 0; i < pos.count; i++) {
+      // Bottom rim ring: on the base plane, off the flat cap.
+      if (pos.getY(i) > -0.4 + 1e-6 || Math.abs(nor.getY(i)) > 0.999) continue;
+      ring++;
+      expect(-nor.getY(i)).toBeGreaterThan(Math.cos(Math.PI / 3));
+    }
+    expect(ring).toBeGreaterThan(0);
+  });
+
+  it('a wheel on the x axis keeps its turned bounds', () => {
+    const b = bounds(recipeMesh(part('cylinder', 'x')));
+    expect(b.max.x - b.min.x).toBeCloseTo(0.4, 6);
+    expect(b.max.y - b.min.y).toBeCloseTo(0.8, 6);
+    expect(b.max.z - b.min.z).toBeCloseTo(0.4, 6);
+  });
+
+  it('profile: radius 0.5 kept, apex sharp, cut capped at a quarter', () => {
+    expect(Math.max(...roundProfile('cylinder', 0.1, 0.1).map(([r]) => r))).toBe(0.5);
+    expect(roundProfile('cone', 0.1, 0.1).at(-1)).toEqual([0, 0.5]);
+    expect(roundProfile('cylinder', 9, 9)[1]).toEqual([0.25, -0.5]);
   });
 });
