@@ -260,18 +260,65 @@ export function unitLathe(profile: ReadonlyArray<readonly [number, number]>): TH
   return flat;
 }
 
+/** Soft edge (PT-1): share of a part's smallest side, capped by its surface's edge radius. */
+export const EDGE_BEVEL = 0.06;
+
+/** Bevel of a part of final size `w × h × d` (object units), ≤ `radius`. */
+export function edgeBevel(w: number, h: number, d: number, radius: number): number {
+  return Math.min(EDGE_BEVEL * Math.min(w, h, d), radius);
+}
+
+type HullLoop = { z: number; loop: Array<[number, number]> };
+
+/**
+ * Bevel ring at each end of a hull (PT-1a): the end loop moves in by `bz` (≤ half the gap to its
+ * neighbour) and a copy shrunk toward its centre by `bx` / `by` takes its place, so the cap meets the
+ * side on a slope. Bounds unchanged; + 4 × n triangles. `bevel` in unit space per axis.
+ */
+function bevelHullEnds(
+  loops: HullLoop[],
+  [bx, by, bz]: readonly [number, number, number]
+): HullLoop[] {
+  const inset = ({ z, loop }: HullLoop, out: 1 | -1, next: HullLoop) => {
+    const n = loop.length;
+    const cx = loop.reduce((t, p) => t + p[0], 0) / n;
+    const cy = loop.reduce((t, p) => t + p[1], 0) / n;
+    const shrunk = loop.map(([x, y]): [number, number] => {
+      // Direction in world units (bevel units per axis), at most half way to the centre.
+      const u = (x - cx) / bx;
+      const v = (y - cy) / by;
+      const len = Math.hypot(u, v);
+      if (!(len > 1e-9)) return [x, y];
+      const t = Math.min(1, len / 2) / len;
+      return [x - u * t * bx, y - v * t * by];
+    });
+    const dz = Math.min(bz, Math.abs(next.z - z) / 2);
+    return [
+      { z, loop: shrunk },
+      { z: z - out * dz, loop },
+    ];
+  };
+  const last = loops.length - 1;
+  const [backCap, back] = inset(loops[0]!, -1, loops[1]!);
+  const [frontCap, front] = inset(loops[last]!, 1, loops[last - 1]!);
+  return [backCap!, back!, ...loops.slice(1, last), front!, frontCap!];
+}
+
 /**
  * Unit visual hull (PV-H): cross-section loops along z (`hullLoops`) stitched into a smooth skin,
- * flat caps front and back. Non-indexed so parts merge; ≈ 1.6 k triangles.
+ * flat caps front and back, bevelled ends when `bevel` is given (PT-1a). Non-indexed so parts merge;
+ * ≈ 1.6 k triangles.
  */
 export function unitHull(
   points: ReadonlyArray<readonly [number, number]>,
   section: ReadonlyArray<readonly [number, number]>,
   slices = HULL_SLICES,
-  levels = HULL_LEVELS
+  levels = HULL_LEVELS,
+  bevel?: readonly [number, number, number]
 ): THREE.BufferGeometry {
-  const loops = hullLoops(points, section, slices, levels);
-  if (loops.length < 2) return new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
+  const raw = hullLoops(points, section, slices, levels);
+  if (raw.length < 2) return new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
+  const loops = bevel ? bevelHullEnds(raw, bevel) : raw;
   const n = loops[0]!.loop.length;
   const pos: number[] = [];
   loops.forEach(({ z, loop }) => loop.forEach(([x, y]) => pos.push(x, y, z)));
@@ -330,13 +377,14 @@ function unitPart(
   ridge?: number,
   section?: RecipePart['section'],
   body = true,
-  clip?: number
+  clip?: number,
+  bevel?: readonly [number, number, number]
 ): THREE.BufferGeometry {
   switch (shape) {
     case 'hull':
-      // Skin patches (glass, grille on a hull body) are small: a coarse skin is enough.
+      // Skin patches (glass, grille on a hull body) are small: a coarse skin, sharp edges.
       return body
-        ? unitHull(points ?? [], section ?? [])
+        ? unitHull(points ?? [], section ?? [], HULL_SLICES, HULL_LEVELS, bevel)
         : unitHull(points ?? [], section ?? [], SKIN_SLICES, SKIN_LEVELS);
     case 'prism':
       return unitPrism(apex);
@@ -400,7 +448,20 @@ function buildMesh(recipe: ObjectRecipe, detail: AssemblyDetail): THREE.BufferGe
     } else if (p.shape === 'box') {
       g = roundedBox(sx, sy, sz, SURFACE_LOOK[SURFACES[surface]!].radius);
     } else {
-      g = unitPart(p.shape, p.apex, p.points, p.profile, p.ridge, p.section, !!p.front, p.clip);
+      // Soft edges (PT-1), in unit space per axis so the bevel stays even once scaled.
+      const b = edgeBevel(sx, sy, sz, SURFACE_LOOK[SURFACES[surface]!].radius);
+      const bevel = !p.axis && b > 0 ? ([b / sx, b / sy, b / sz] as const) : undefined;
+      g = unitPart(
+        p.shape,
+        p.apex,
+        p.points,
+        p.profile,
+        p.ridge,
+        p.section,
+        !!p.front,
+        p.clip,
+        bevel
+      );
       // Round parts turn to their axis before taking the part's own x / y / z extent.
       if (p.axis === 'x') g.rotateZ(Math.PI / 2);
       else if (p.axis === 'z') g.rotateX(Math.PI / 2);
