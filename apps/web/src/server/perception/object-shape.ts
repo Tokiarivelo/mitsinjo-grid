@@ -66,6 +66,7 @@ import {
   imageBytes,
   measureObjectViews,
   roundViewRecipe,
+  keepPlausibleSide,
   sparkDepthRatio,
   viewIou,
   viewsRecipe,
@@ -524,7 +525,10 @@ export async function runObjectShape(
           ...source,
         };
       }
-      const seen = found.kit && VIEW_ARCHETYPES.includes(found.kit.archetype) ? await views : null;
+      const measured =
+        found.kit && VIEW_ARCHETYPES.includes(found.kit.archetype) ? await views : null;
+      const seen =
+        measured && found.kit ? keepPlausibleSide(measured, found.kit, target.label) : null;
       if (found.kit && seen) {
         const kit = colors ? { ...found.kit, colors } : found.kit;
         // Round objects (PG-T19): lathe of the drawn silhouette, no side, no views check.
@@ -547,7 +551,14 @@ export async function runObjectShape(
           );
           recipe = checked.recipe;
           seen.front = checked.views.front;
-          seen.side = checked.views.side;
+          // The check can redraw the side: the same depth guard applies.
+          const kept = keepPlausibleSide(
+            { front: checked.views.front, side: checked.views.side, sidePng: seen.sidePng },
+            kit,
+            target.label
+          );
+          seen.side = kept.side;
+          seen.sidePng = kept.sidePng;
         }
         // PG-T20: the archetype's stages, scored part by part on the views.
         if (perception.proposeShapeOps) {

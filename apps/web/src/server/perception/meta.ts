@@ -60,6 +60,7 @@ import {
   type Transcript,
   type VisionResult,
 } from './schemas';
+import { ensureNetworkDefaults } from '@/server/net';
 
 const VISION_SYSTEM_PROMPT = [
   'You look at photos for the operator of a SIMULATED rural solar microgrid.',
@@ -131,6 +132,7 @@ export class MetaPerceptionBackend implements PerceptionBackend {
   private readonly preferContributor: boolean;
 
   constructor(options?: { apiKey?: string; baseUrl?: string; preferContributor?: boolean }) {
+    ensureNetworkDefaults();
     this.preferContributor = options?.preferContributor ?? env.META_PREFER_CONTRIBUTOR;
     this.apiKey = options?.apiKey || env.META_API_KEY || '';
     this.baseUrl = (options?.baseUrl || env.META_BASE_URL || DEFAULT_META_BASE_URL).replace(

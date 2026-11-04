@@ -308,6 +308,38 @@ export function sparkDepthRatio(kit: Pick<ObjectKit, 'archetype' | 'proportions'
   return Math.min(6, Math.max(0.15, r));
 }
 
+/** A drawn side whose depth is this many times off Spark's estimate is a bad drawing, not the object. */
+export const SIDE_DEPTH_MAX_FACTOR = 2;
+
+/**
+ * The drawn side's depth (side aspect / front aspect, the ratio `sparkDepthRatio` uses) agrees with
+ * Spark's estimate within × `SIDE_DEPTH_MAX_FACTOR` either way. Muse Image sometimes draws a side
+ * far too wide (a fridge 3.4 × deeper than wide, user report 2026-11-04); the silhouette fit then
+ * matches the bad drawing, so it is checked against the kit instead. Pure.
+ */
+export function sideDepthPlausible(
+  front: Pick<ViewMeasure, 'aspect'>,
+  side: Pick<ViewMeasure, 'aspect'>,
+  kit: Pick<ObjectKit, 'archetype' | 'proportions'>
+): boolean {
+  const drawn = side.aspect / Math.max(1e-6, front.aspect);
+  const factor = drawn / sparkDepthRatio(kit);
+  return factor <= SIDE_DEPTH_MAX_FACTOR && factor >= 1 / SIDE_DEPTH_MAX_FACTOR;
+}
+
+/** Drops an implausible drawn side (`sideDepthPlausible`): the model then takes Spark's depth. */
+export function keepPlausibleSide<V extends Pick<ObjectViews, 'front' | 'side' | 'sidePng'>>(
+  views: V,
+  kit: Pick<ObjectKit, 'archetype' | 'proportions'>,
+  label: string
+): V {
+  if (!views.side || sideDepthPlausible(views.front, views.side, kit)) return views;
+  console.info(
+    `[vision] 3D side view for "${label}" dropped: depth ${(views.side.aspect / views.front.aspect).toFixed(2)} vs Spark ${sparkDepthRatio(kit).toFixed(2)} (more than × ${SIDE_DEPTH_MAX_FACTOR} off), using Spark's depth`
+  );
+  return { ...views, side: null, sidePng: null };
+}
+
 /** Data colours of the parts SAM finds (model colours, not UI tokens). */
 export const VIEW_PART_LOOK = {
   rubber: '#1d1d1f',

@@ -25,6 +25,9 @@ import {
   objectSidePrompt,
   roundViewRecipe,
   sideLooksNew,
+  keepPlausibleSide,
+  sideDepthPlausible,
+  SIDE_DEPTH_MAX_FACTOR,
   sparkDepthRatio,
   viewIou,
   viewsRecipe,
@@ -563,5 +566,48 @@ describe('round objects from their 2D view (PG-T19)', () => {
     expect(museImage).not.toHaveBeenCalled();
     expect(v?.side).toBeNull();
     expect(v?.front.aspect).toBeCloseTo(0.5, 1);
+  });
+});
+
+describe('side depth guard (fridge drawn 3.4 × deeper than wide, 2026-11-04)', () => {
+  // The logged run: Spark w 0.46, h 1, d 0.38; front aspect 0.46, side drawn 3.44 × the front.
+  const fridge = { archetype: 'cabinet' as const, proportions: { w: 0.46, h: 1, d: 0.38 } };
+  const frontView = { aspect: 0.46 };
+
+  it('rejects the logged side (depth 3.44 vs Spark 0.83)', () => {
+    expect(sideDepthPlausible(frontView, { aspect: 0.46 * 3.44 }, fridge)).toBe(false);
+  });
+
+  it('keeps a side close to Spark, within × SIDE_DEPTH_MAX_FACTOR both ways', () => {
+    const spark = sparkDepthRatio(fridge);
+    expect(sideDepthPlausible(frontView, { aspect: 0.46 * spark }, fridge)).toBe(true);
+    const edge = SIDE_DEPTH_MAX_FACTOR * 0.99;
+    expect(sideDepthPlausible(frontView, { aspect: 0.46 * spark * edge }, fridge)).toBe(true);
+    expect(sideDepthPlausible(frontView, { aspect: (0.46 * spark) / edge }, fridge)).toBe(true);
+    expect(sideDepthPlausible(frontView, { aspect: (0.46 * spark) / 2.5 }, fridge)).toBe(false);
+  });
+
+  it('a vehicle compares length / width the same way as sparkDepthRatio', () => {
+    const car = { archetype: 'vehicle' as const, proportions: { w: 1, h: 0.4, d: 0.45 } };
+    const spark = sparkDepthRatio(car);
+    expect(sideDepthPlausible({ aspect: 1 }, { aspect: spark }, car)).toBe(true);
+    expect(sideDepthPlausible({ aspect: 1 }, { aspect: spark * 3 }, car)).toBe(false);
+  });
+
+  it('keepPlausibleSide drops the bad side and its image, keeps a good one untouched', () => {
+    const png = Buffer.from('x');
+    const bad = { front: frontView, side: { aspect: 0.46 * 3.44 }, sidePng: png };
+    expect(keepPlausibleSide(bad as never, fridge, 'fridge')).toMatchObject({
+      side: null,
+      sidePng: null,
+    });
+    const good = {
+      front: frontView,
+      side: { aspect: 0.46 * sparkDepthRatio(fridge) },
+      sidePng: png,
+    };
+    expect(keepPlausibleSide(good as never, fridge, 'fridge')).toBe(good);
+    const none = { front: frontView, side: null, sidePng: null };
+    expect(keepPlausibleSide(none as never, fridge, 'fridge')).toBe(none);
   });
 });
