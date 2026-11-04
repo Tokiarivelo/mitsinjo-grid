@@ -17,7 +17,7 @@ import type { ApplianceDetection } from '@/lib/vision';
 import { useReducedMotion } from '@/features/microgrid-3d/hooks/use-reduced-motion';
 import type { ShapeImprove } from '../hooks/use-object-shape';
 import { recipeMesh, silhouetteDepth, silhouetteMesh } from '../utils/object-geometry';
-import { SURFACE_LOOK, SURFACES } from '../utils/surface-look';
+import { surfaceMaterial, SURFACES } from '../utils/surface-look';
 import { BuildFocus } from './build-focus-3d';
 import { SWATCH_GAIN } from '../utils/surface-maps';
 import { surfaceTextures, swatchTexture } from '../utils/surface-textures';
@@ -119,16 +119,13 @@ function ObjectModel({
   const surfaces = useMemo(() => {
     const used = new Set(mesh.groups.map((g) => g.materialIndex));
     return SURFACES.map((s, i) => {
-      const { roughness, metalness } = SURFACE_LOOK[s];
       const maps = vertexColors && used.has(i) ? surfaceTextures(s) : null;
       const swatch = vertexColors && swatches?.[s as RecipeMaterial];
       const swatchTex = swatch ? swatchTexture(swatch, invalidate) : null;
       const map = swatchTex ?? maps?.map;
       const gain = swatchTex ? SWATCH_GAIN : (maps?.gain ?? 1);
-      return new THREE.MeshStandardMaterial({
+      return surfaceMaterial(s, {
         vertexColors: true,
-        roughness,
-        metalness,
         color: new THREE.Color(tint ?? '#ffffff').multiplyScalar(gain),
         ...(maps ? { normalMap: maps.normalMap, roughnessMap: maps.roughnessMap } : {}),
         ...(map ? { map } : {}),
