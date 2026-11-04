@@ -3,6 +3,7 @@ import 'server-only';
 import { env } from '@/lib/env';
 import type { LlmProvider, ChatMessage, ToolDefinition, LlmTurn, ToolCall } from '../provider';
 import { fetchPreferringContributor } from './contributor';
+import { ensureNetworkDefaults } from '@/server/net';
 
 export const DEFAULT_META_MODEL = 'muse-spark-1.3';
 export const DEFAULT_META_BASE_URL = 'https://api.meta.ai/v1';
@@ -31,6 +32,7 @@ export class MetaLlmProvider implements LlmProvider {
     model?: string;
     preferContributor?: boolean;
   }) {
+    ensureNetworkDefaults();
     this.apiKey = options?.apiKey || env.META_API_KEY || '';
     this.baseUrl = options?.baseUrl || env.META_BASE_URL || DEFAULT_META_BASE_URL;
     this.model = options?.model || env.META_MODEL || DEFAULT_META_MODEL;

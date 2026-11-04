@@ -17,6 +17,9 @@ l'auto corriger ».
       Front only → front extruded to Spark's depth.
 - [x] **PH-T3** Silhouette IoU per view (`viewIou`), logged; `make facade-e2e … LABEL= SCENERY=`.
 - [x] **PH-T4** Fix: a ray entering a ring through its edge rendered nothing (extrude side views were empty).
+- [x] **PH-T4b** Fix (2026-11-04): a drawn side whose depth is more than × 2 off Spark's estimate is dropped
+      (`sideDepthPlausible` / `keepPlausibleSide`, also after the AI check) → Spark's depth. Was: a fridge drawn
+      3.44 × deeper than wide was kept (IoU side 0.995 on the bad drawing), w:h:d 0.29:0.69:1.00.
 
 ## H2 — AI check and self-correction
 
