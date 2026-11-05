@@ -409,6 +409,7 @@ export const SHAPE_STAGE_STOPS = [
   'error',
   'skipped',
 ] as const;
+export type ShapeStageStop = (typeof SHAPE_STAGE_STOPS)[number];
 
 /** `shape_stage`: a stage started (`running`) or ended (`done`, with its scores and the model). */
 export const ShapeStageEventSchema = z.object({

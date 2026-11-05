@@ -16,8 +16,9 @@ import {
  * answers patch ops for the stage's components only, the engine compiles them op by op with
  * smaller steps (`microPatch`), and the ops that raise the stage score without lowering the
  * overall score are kept. A stage stops at its gate, after `STAGE_MAX_MISSES` rounds without
- * gain (the retry is told what each op did), at `maxRounds`, or when the shared time budget runs out (the
- * rest keeps the seed). Deterministic given the same proposer answers. Pure apart from the
+ * gain (the retry is told what each op did), at `maxRounds`, when a further round would leave no
+ * time for one round of each later stage (`rounds`: breadth first, the final check always gets
+ * its turn), or when the shared time budget runs out (the rest keeps the seed). Deterministic given the same proposer answers. Pure apart from the
  * injected proposer and clock.
  */
 
@@ -131,10 +132,12 @@ export const STAGE_SAFETY_MS = 4_000;
 export const HOUSE_STAGES: ReadonlyArray<
   StageSpec<'massing' | 'roof' | 'openings' | 'accessories'>
 > = [
-  { id: 'massing', kinds: ['wall', 'plinth'], gate: 0.95 },
-  { id: 'roof', kinds: ['roof'], gate: 0.9 },
-  { id: 'openings', kinds: ['window', 'door'], gate: 0.9 },
-  { id: 'accessories', kinds: ['chimney', 'step'], gate: 0.8 },
+  // Raised (user 2026-11-05): the builder's seed passed every old gate (97 / 95 / 99 / 80 %), so
+  // the stages never asked Spark and nothing changed on screen.
+  { id: 'massing', kinds: ['wall', 'plinth'], gate: 0.98 },
+  { id: 'roof', kinds: ['roof'], gate: 0.97 },
+  { id: 'openings', kinds: ['window', 'door'], gate: 0.97 },
+  { id: 'accessories', kinds: ['chimney', 'step'], gate: 0.92 },
 ];
 
 /** Last stage of every loop: the whole model checked and re-refined (Muse Wonder, background only). */
@@ -265,7 +268,10 @@ export async function runShapeStages<S extends string>({
         onStageStart?.(stage, index);
         let misses = 0;
         let feedback: RoundFeedback | undefined;
-        for (let round = index === 0 ? startRound : 1; round <= maxRounds; round++) {
+        /** Duration of this stage's last round (ms), for the breadth-first share. */
+        let lastRoundMs: number | undefined;
+        const firstRound = index === 0 ? startRound : 1;
+        for (let round = firstRound; round <= maxRounds; round++) {
           const left = deadline - now();
           if (left <= Math.max(0, roundReserveMs)) {
             outOfTime = true;
@@ -273,11 +279,24 @@ export async function runShapeStages<S extends string>({
             resume ??= { stage: stage.id, round };
             break;
           }
+          // Out of time is checked first (resumed later); this only shares the time left.
+          const later = stages.length - index - 1;
+          if (
+            round > firstRound &&
+            later > 0 &&
+            lastRoundMs !== undefined &&
+            left < lastRoundMs * (1 + later)
+          ) {
+            // Another round here would starve the later stages (and the final check).
+            result.stop = 'rounds';
+            break;
+          }
           const editable = components
             .filter((c) => c.part.kind && stage.kinds.includes(c.part.kind) && canEdit(c))
             .map((c) => c.id);
           const locked = components.map((c) => c.id).filter((id) => !editable.includes(id));
           result.rounds = round;
+          const roundStart = now();
           let raw: unknown[];
           try {
             raw = await withDeadline(
@@ -315,6 +334,7 @@ export async function runShapeStages<S extends string>({
             current,
             score: (r) => score(r, stage.id),
           });
+          lastRoundMs = now() - roundStart;
           result.dropped += refused + step.dropped;
           result.trials = step.trials;
           const gained =

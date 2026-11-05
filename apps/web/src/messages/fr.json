@@ -1118,6 +1118,8 @@
         "done": "Modèle finalisé",
         "stopped": "Amélioration arrêtée : {cause}",
         "score": "Score de l'étape {before} → {after}",
+        "alreadyMatches": "Étape déjà conforme au dessin ({after})",
+        "noGain": "Aucune amélioration trouvée ({after})",
         "stage": {
           "massing": "Volumes",
           "roof": "Toit",

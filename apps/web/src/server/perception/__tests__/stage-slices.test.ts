@@ -61,12 +61,13 @@ describe('background stages in slices (Vercel 300 s limit, live 2026-11-03)', ()
     const last = (await events('job-1')).at(-1)!;
     expect(last.event).toBe('shape_stages_checkpoint');
     const cp = StageCheckpointSchema.parse(JSON.parse(JSON.stringify(last.data.checkpoint)));
-    // The body already passes its gate (no Spark call): the loop goes on from the next stage.
-    expect(cp.stages[0]).not.toBe(rest.stages[0]);
+    // No time for a round: the loop resumes where it stood (the body is below its 0.92 gate).
     expect(cp.stages).toEqual(rest.stages.slice(rest.stages.indexOf(cp.stages[0]!)));
     expect(cp.all).toEqual(rest.all);
+    expect(cp.stages[0]).toBe(rest.stages[0]);
     expect(cp.round).toBe(1);
-    expect(cp.stalls).toBe(0);
+    // No round finished in this slice: one stall (the next slices may still progress).
+    expect(cp.stalls).toBe(1);
     expect(cp.recipe.parts).toEqual(car.parts);
   }, 60_000);
 

@@ -212,6 +212,47 @@ describe('runShapeStages (PG-T16)', () => {
     expect(find(again.recipe, 'wall').size[0]).toBeCloseTo(0.8, 9);
   });
 
+  it('breadth first: a stage stops before a round that would starve the later stages', async () => {
+    let t = 0;
+    const asked: string[] = [];
+    const res = await runShapeStages({
+      seed,
+      stages: STAGES,
+      score,
+      // Room for 3 rounds of 40: massing round 1, then 80 left < 40 × (1 + 1 later stage)? no:
+      // 80 ≥ 80, round 2 runs; after it 40 left < 80 → massing stops, the roof still gets a round.
+      budgetMs: 120,
+      now: () => t,
+      propose: async ({ stage, round }) => {
+        t += 40;
+        asked.push(`${stage.id}${round}`);
+        return stage.id === 'massing'
+          ? [{ op: 'set', id: 'wall', size: [0.6 + 0.05 * round, 0.6, 0.6] }]
+          : [{ op: 'set', id: 'roof', ridge: 0.9 }];
+      },
+    });
+    expect(asked).toEqual(['massing1', 'massing2', 'roof1']);
+    expect(res.stages.map((s) => s.stop)).toEqual(['rounds', 'gate']);
+    expect(res.resume).toBeUndefined();
+  });
+
+  it('without a clock limit the share rule never stops a stage', async () => {
+    const asked: number[] = [];
+    await runShapeStages({
+      seed,
+      stages: STAGES,
+      score,
+      budgetMs: Infinity,
+      propose: async ({ stage, round }) => {
+        if (stage.id === 'massing') asked.push(round);
+        return stage.id === 'massing'
+          ? [{ op: 'set', id: 'wall', size: [0.6 + 0.05 * round, 0.6, 0.6] }]
+          : [];
+      },
+    });
+    expect(asked).toEqual([1, 2, 3]);
+  });
+
   it('a round cut at the deadline is asked again on resume', async () => {
     const res = await runShapeStages({
       seed,
