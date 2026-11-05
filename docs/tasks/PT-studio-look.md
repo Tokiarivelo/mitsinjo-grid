@@ -3,7 +3,7 @@
 **Why (user, 2026-11-04):** « how does this person get 3D so detailed and perfect? Can we transcribe it to refine
 our 3D generation? » Source studied: [elvarofficial/teardown](https://github.com/elvarofficial/teardown) (MIT, built
 on `whaleyxbt/claude-motion`). Every file was read; findings below.
-**Status:** 🟡 PT-11, PT-0, PT-1a, PT-1b, PT-1d, PT-1c, PT-3, PT-2, PT-1e, PT-4, PT-5, PT-6, PT-8 done (PT-1 complete; PT-7 open) (2026-11-04). **Rules kept:** Meta models only; never paste the photo on a model (small swatches OK);
+**Status:** 🟡 PT-11, PT-0, PT-1a, PT-1b, PT-1d, PT-1c, PT-3, PT-2, PT-1e, PT-4, PT-5, PT-6, PT-8, PT-9 done (PT-1 complete; PT-7 open) (2026-11-04). **Rules kept:** Meta models only; never paste the photo on a model (small swatches OK);
 ≤ 5 k triangles per object; budgets of `docs/performance.md` § 1 unchanged; dual theme; mobile; zero static text.
 **Skills:** `/shape-3d` (object geometry) · `/scene-3d` (village) · `/shape-loop` (measure) · `/designer-3d` (review).
 
@@ -105,7 +105,7 @@ surface (`SURFACE_LOOK.radius`), PMREM room light, Neutral tone mapping, baked c
       800–2000, tank Ø 600–2500…), used only to clamp **Spark-estimated** proportions; SAM-measured values are never
       overridden; the panel keeps labelling them « estimated ». **Done when** a test covers clamp + no-clamp on a
       measured value, and `shape-report` IoU not worse.
-- [ ] **PT-9** Render checklist: add teardown's 3D checks to `.claude/skills/designer-3d/SKILL.md` (bloom emissive
+- [x] **PT-9** Render checklist: add teardown's 3D checks to `.claude/skills/designer-3d/SKILL.md` (bloom emissive
       < 1, near-white parts on a pale backdrop need ink, metal roughness ≥ 0.45, shadow catcher `polygonOffset`,
       clamp `pow` in shaders, `smoothstep(a, b)` with a > b breaks on ANGLE). **Done when** the skill lists them.
 - [x] **PT-11** Same tag for an inserted object as for a village building (user, 2026-11-04: « the label is not the
