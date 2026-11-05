@@ -52,6 +52,8 @@ Rules in `.claude/rules/three.md`. Two quality tiers (`useSceneQuality`, toggle 
   bloom + ACES grade (`@react-three/postprocessing`, 2× MSAA), dense forest (2 000 trees),
   `dpr={[1, 1.5]}`.
 - `low`: no post-processing, one baked `ContactShadows`, 520 low-detail trees (high 2000), `dpr={[1, 1.25]}`.
+  Placed object models keep their recipe shape (light assemblies); past `PLACED_LOW_TRIANGLES` (40 k)
+  the remaining ones become one box each (`utils/placed-models-geometry.ts`).
 - Ink outline (PT-4/6, `utils/ink-effect.ts`): depth-only post effect (no normal pass), merged into the existing
   `EffectPass` → +0 draw calls, +0 render targets. Village high tier only: strength 0.35, silhouettes only,
   fades out from 22 to 45 units (`scene-ink` token). GPU audit: fps and draw calls unchanged.

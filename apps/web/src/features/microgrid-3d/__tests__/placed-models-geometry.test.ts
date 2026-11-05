@@ -3,9 +3,11 @@ import * as THREE from 'three';
 import type { ObjectRecipe } from '@/lib/object-shape';
 import {
   buildPlacedModelsGeometry,
+  PLACED_LOW_TRIANGLES,
   placedGeometryKey,
   type PlacedModelItem,
 } from '../utils/placed-models-geometry';
+import { triangleCount } from '@/features/vision-insert/utils/object-geometry';
 
 const SAMPLE_RECIPE: ObjectRecipe = {
   proportions: { w: 1, h: 0.8, d: 0.6 },
@@ -128,7 +130,7 @@ describe('placed-models-geometry (PI-T2)', () => {
     expect(colFire.getY(0)).toBeLessThan(0.4);
   });
 
-  it('renders a simple LOD box on tier low', () => {
+  it('keeps the model shape on tier low (before: a 24-vertex box)', () => {
     const item: PlacedModelItem = {
       id: 'app-low',
       sector: 'water',
@@ -137,10 +139,43 @@ describe('placed-models-geometry (PI-T2)', () => {
       recipe: SAMPLE_RECIPE,
     };
 
-    const resLow = buildPlacedModelsGeometry([item], {}, 'low');
-    expect(resLow.modelsGeometry).toBeInstanceOf(THREE.BufferGeometry);
-    // Box geometry has 24 vertices (or 36 indices)
-    expect(resLow.modelsGeometry!.getAttribute('position').count).toBe(24);
+    const low = buildPlacedModelsGeometry([item], {}, 'low').modelsGeometry!;
+    const high = buildPlacedModelsGeometry([item], {}, 'high').modelsGeometry!;
+    expect(low.getAttribute('position').count).toBeGreaterThan(24);
+    low.computeBoundingBox();
+    high.computeBoundingBox();
+    // Same size and place as the high tier.
+    expect(low.boundingBox!.max.y).toBeCloseTo(high.boundingBox!.max.y, 3);
+    expect(low.boundingBox!.min.y).toBeCloseTo(high.boundingBox!.min.y, 3);
+  });
+
+  it('falls back to a box per model once the low tier spends PLACED_LOW_TRIANGLES', () => {
+    const pole: ObjectRecipe = {
+      proportions: { w: 0.2, h: 1, d: 0.2 },
+      parts: [
+        { shape: 'cylinder', at: [0, -0.1, 0], size: [0.3, 0.8, 0.3], color: '#333333' },
+        { shape: 'sphere', at: [0, 0.4, 0], size: [1, 0.2, 1], color: '#eeeeee' },
+      ],
+    };
+    const one = buildPlacedModelsGeometry(
+      [{ id: 'm0', sector: 'water', running: true, position: [0, 0, 0], recipe: pole }],
+      {},
+      'low'
+    ).modelsGeometry!;
+    const per = triangleCount(one);
+    const n = Math.ceil(PLACED_LOW_TRIANGLES / per) + 3;
+    const items: PlacedModelItem[] = Array.from({ length: n }, (_, i) => ({
+      id: `m${i}`,
+      sector: 'water',
+      running: true,
+      position: [i * 3, 0, 0],
+      recipe: pole,
+    }));
+    const all = buildPlacedModelsGeometry(items, {}, 'low').modelsGeometry!;
+    // Fewer triangles than every model in full, and the last model is still drawn (as a box).
+    expect(triangleCount(all)).toBeLessThan(n * per);
+    all.computeBoundingBox();
+    expect(all.boundingBox!.max.x).toBeGreaterThan((n - 1) * 3 - 1);
   });
 
   it('stands the model on top of its plinth on a slope (uphill ground never pokes through)', () => {

@@ -71,6 +71,11 @@ describe('conceptOf (PR-2.21)', () => {
     expect(c('Mini Cooper')).toBe('car');
     expect(c('cottages en pierre à droite')).toBe('house');
     expect(c('Street lamp')).toBe('street lamp');
+    // before: 'lamp' — SAM found nothing on the 2D view, so the lamp post never reached its stages.
+    expect(c('lamp post')).toBe('street lamp');
+    expect(c('Lamppost')).toBe('street lamp');
+    expect(c('street light')).toBe('street lamp');
+    expect(c('table lamp')).toBe('lamp');
     expect(c('Réfrigérateur')).toBe('fridge');
     expect(c('Panneau solaire')).toBe('solar panel');
     expect(c('power plant')).toBe('building');
