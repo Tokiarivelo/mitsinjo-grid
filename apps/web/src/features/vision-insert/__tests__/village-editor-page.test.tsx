@@ -15,6 +15,7 @@ vi.mock('@/features/microgrid-3d', async (orig) => ({
 vi.mock('../ui/object-editor-3d', () => ({ ObjectEditor3d: () => <div>viewer</div> }));
 
 import { SAMPLE_ROOM_URL, VillageEditorPage } from '../index';
+import { clearKeptState } from '../hooks/use-kept-state';
 
 const detections = [
   { id: 'det-1', label: 'Fridge', category: 'fridge', box: { x: 0.1, y: 0.1, w: 0.2, h: 0.5 } },
@@ -59,6 +60,7 @@ async function buildFromFacade() {
 const originalFetch = global.fetch;
 let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
+  clearKeptState();
   fetchMock = vi.fn(async (url: string) =>
     url === SAMPLE_ROOM_URL
       ? // jsdom's FileReader only reads its own Blob, not Node's Response.blob().
@@ -159,5 +161,23 @@ describe('VillageEditorPage (/village)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Samsung TV/ }));
     expect(await screen.findByText('AI shape')).toBeTruthy();
     expect(shapeCalls()).toHaveLength(2);
+  }, 15000);
+
+  it('keeps the photo, objects, 2D facade and 3D model after leaving the page', async () => {
+    const first = renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Use the sample room' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Samsung TV/ }, { timeout: 5000 }));
+    await buildFromFacade();
+    expect(await screen.findByText('AI shape')).toBeTruthy();
+    const calls = fetchMock.mock.calls.length;
+
+    // Another page (e.g. /simulation), then back to /village.
+    first.unmount();
+    renderPage();
+    expect(screen.getByText('Selected: Samsung TV (Television)')).toBeTruthy();
+    expect(await screen.findByText('AI shape')).toBeTruthy();
+    expect(screen.queryByText('Drop a photo here')).toBeNull();
+    // Nothing is asked again: no new detection, facade or 3D call.
+    expect(fetchMock.mock.calls.length).toBe(calls);
   }, 15000);
 });

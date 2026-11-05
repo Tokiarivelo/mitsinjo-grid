@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   SHAPE_OUTLINE_MAX,
   ImaginedViewsResponseSchema,
@@ -19,6 +19,7 @@ import {
 } from '@/lib/object-shape';
 import { readSseStream } from '@/lib/sse';
 import { prepareVisionImage } from '../utils/prepare-image';
+import { useKeptRef, useKeptState } from './use-kept-state';
 
 /** `loading` = Spark is building the recipe · `ready` = recipe or silhouette to show. */
 export interface ObjectShapeState {
@@ -136,17 +137,31 @@ async function shapeForm(imageDataUrl: string, target: ShapeRequest, sessionId?:
  * `requestViews` previews the 6 imagined 2D angles first (cheap, no Spark call); validating them runs
  * `requestShape`.
  */
-export function useObjectShape() {
-  const [state, setState] = useState<ObjectShapeState>(IDLE);
-  const abortRef = useRef<AbortController | null>(null);
-  const cacheRef = useRef(new Map<string, ObjectShape>());
-  const viewsCacheRef = useRef(new Map<string, ImaginedAngleView[]>());
+export function useObjectShape(scope?: string) {
+  const [state, setState] = useKeptState<ObjectShapeState>(scope, 'shape', IDLE);
+  const abortRef = useKeptRef<AbortController | null>(scope, 'shapeAbort', () => null);
+  const cacheRef = useKeptRef(scope, 'shapeCache', () => new Map<string, ObjectShape>());
+  const viewsCacheRef = useKeptRef(
+    scope,
+    'viewsCache',
+    () => new Map<string, ImaginedAngleView[]>()
+  );
   /** Validated facade per object: « Regenerate » / « Retry » keep using it. */
-  const facadesRef = useRef(new Map<string, Pick<ShapeRequest, 'facadeUrl' | 'facadeKey'>>());
-  const lastRef = useRef<{ image: string; target: ShapeRequest; sessionId?: string } | null>(null);
+  const facadesRef = useKeptRef(
+    scope,
+    'shapeFacades',
+    () => new Map<string, Pick<ShapeRequest, 'facadeUrl' | 'facadeKey'>>()
+  );
+  const lastRef = useKeptRef<{ image: string; target: ShapeRequest; sessionId?: string } | null>(
+    scope,
+    'shapeLast',
+    () => null
+  );
+  /** Object (`shapeKey`) the state is about: a kept page coming back to it leaves it running. */
+  const forKeyRef = useKeptRef<string | null>(scope, 'shapeFor', () => null);
 
   /** Background stage job being followed (PG-T18), cancelled when it would be overwritten. */
-  const jobRef = useRef<string | null>(null);
+  const jobRef = useKeptRef<string | null>(scope, 'shapeJob', () => null);
 
   /** Stops following the background stages and tells the server to stop them (saves Spark calls). */
   const cancelJob = useCallback(() => {
@@ -156,49 +171,51 @@ export function useObjectShape() {
     void fetch(`/api/vision/shape/stages?job=${encodeURIComponent(id)}`, {
       method: 'DELETE',
     }).catch(() => undefined);
-  }, []);
+  }, [jobRef]);
 
-  useEffect(
-    () => () => {
+  // Leaving the page cancels the running request, unless the state is kept (it goes on then).
+  useEffect(() => {
+    if (scope) return;
+    return () => abortRef.current?.abort();
+  }, [scope, abortRef]);
+
+  const requestViews = useCallback(
+    async (imageDataUrl: string, target: ShapeRequest) => {
       abortRef.current?.abort();
-    },
-    []
-  );
-
-  const requestViews = useCallback(async (imageDataUrl: string, target: ShapeRequest) => {
-    abortRef.current?.abort();
-    const key = shapeKey(target);
-    const cached = viewsCacheRef.current.get(key);
-    if (cached) {
-      setState((s) => ({ ...s, viewsStatus: 'ready', views: cached }));
-      return;
-    }
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setState((s) => ({ ...s, viewsStatus: 'loading', views: undefined }));
-    try {
-      const res = await fetch('/api/vision/views', {
-        method: 'POST',
-        body: await shapeForm(imageDataUrl, target),
-        signal: controller.signal,
-      });
-      if (res.ok) {
-        const parsed = ImaginedViewsResponseSchema.safeParse(await res.json());
-        if (parsed.success && !controller.signal.aborted) {
-          viewsCacheRef.current.set(key, parsed.data.views);
-          setState((s) => ({ ...s, viewsStatus: 'ready', views: parsed.data.views }));
-          return;
-        }
-        if (!parsed.success)
-          console.warn('[vision] 6-angle views reply not readable:', parsed.error.issues[0]);
+      const key = shapeKey(target);
+      const cached = viewsCacheRef.current.get(key);
+      if (cached) {
+        setState((s) => ({ ...s, viewsStatus: 'ready', views: cached }));
+        return;
       }
-    } catch (err) {
-      if (!controller.signal.aborted) console.warn('[vision] 6-angle views request failed:', err);
-    }
-    if (controller.signal.aborted) return;
-    // No preview, no drama: the operator can still generate the 3D model directly.
-    setState((s) => (s.viewsStatus === 'loading' ? { ...s, viewsStatus: 'idle' } : s));
-  }, []);
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setState((s) => ({ ...s, viewsStatus: 'loading', views: undefined }));
+      try {
+        const res = await fetch('/api/vision/views', {
+          method: 'POST',
+          body: await shapeForm(imageDataUrl, target),
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const parsed = ImaginedViewsResponseSchema.safeParse(await res.json());
+          if (parsed.success && !controller.signal.aborted) {
+            viewsCacheRef.current.set(key, parsed.data.views);
+            setState((s) => ({ ...s, viewsStatus: 'ready', views: parsed.data.views }));
+            return;
+          }
+          if (!parsed.success)
+            console.warn('[vision] 6-angle views reply not readable:', parsed.error.issues[0]);
+        }
+      } catch (err) {
+        if (!controller.signal.aborted) console.warn('[vision] 6-angle views request failed:', err);
+      }
+      if (controller.signal.aborted) return;
+      // No preview, no drama: the operator can still generate the 3D model directly.
+      setState((s) => (s.viewsStatus === 'loading' ? { ...s, viewsStatus: 'idle' } : s));
+    },
+    [abortRef, viewsCacheRef, setState]
+  );
 
   const requestShape = useCallback(
     async (imageDataUrl: string, request: ShapeRequest, sessionId?: string, force = false) => {
@@ -214,6 +231,7 @@ export function useObjectShape() {
         ? request
         : { ...request, ...facadesRef.current.get(objectKey) };
       lastRef.current = { image: imageDataUrl, target, ...(sessionId ? { sessionId } : {}) };
+      forKeyRef.current = objectKey;
       const key = shapeRequestKey(target);
       const cached = force ? undefined : cacheRef.current.get(key);
       if (cached) {
@@ -409,7 +427,7 @@ export function useObjectShape() {
         if ((await followDropped(true)) === 'aborted') return;
       }
     },
-    [cancelJob]
+    [cancelJob, abortRef, cacheRef, facadesRef, lastRef, forKeyRef, jobRef, setState]
   );
 
   /**
@@ -419,9 +437,12 @@ export function useObjectShape() {
    */
   const peek = useCallback(
     (target: ShapeRequest) => {
+      const key = shapeKey(target);
+      // Back on a kept page with the same object: keep what is shown (or still being built).
+      if (scope && forKeyRef.current === key) return;
+      forKeyRef.current = key;
       abortRef.current?.abort();
       cancelJob();
-      const key = shapeKey(target);
       const cached = cacheRef.current.get(key);
       const views = viewsCacheRef.current.get(key);
       setState({
@@ -429,20 +450,20 @@ export function useObjectShape() {
         ...(views ? { viewsStatus: 'ready' as const, views } : { viewsStatus: 'idle' as const }),
       });
     },
-    [cancelJob]
+    [cancelJob, scope, abortRef, cacheRef, viewsCacheRef, forKeyRef, setState]
   );
 
   /** « Try the AI shape again »: same object, cache skipped (Spark answers vary). */
   const retry = useCallback(() => {
     const last = lastRef.current;
     if (last) void requestShape(last.image, last.target, last.sessionId, true);
-  }, [requestShape]);
+  }, [requestShape, lastRef]);
 
   /** « Regenerate the 3D model »: re-request the shape skipping cache (force = true). */
   const regenerate = useCallback(() => {
     const last = lastRef.current;
     if (last) void requestShape(last.image, last.target, last.sessionId, true);
-  }, [requestShape]);
+  }, [requestShape, lastRef]);
 
   /**
    * « Cancel » on the improvement chip: stops the background stages on the server (the stages
@@ -457,13 +478,14 @@ export function useObjectShape() {
         ? { ...s, improve: { ...s.improve, status: 'stopped', cause: 'aborted' } }
         : s
     );
-  }, [cancelJob]);
+  }, [cancelJob, abortRef, setState]);
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
     cancelJob();
+    forKeyRef.current = null;
     setState(IDLE);
-  }, [cancelJob]);
+  }, [cancelJob, abortRef, forKeyRef, setState]);
 
   /** New photo: forget every kept shape and preview (ids repeat across photos). */
   const clear = useCallback(() => {
@@ -471,10 +493,11 @@ export function useObjectShape() {
     viewsCacheRef.current.clear();
     facadesRef.current.clear();
     lastRef.current = null;
+    forKeyRef.current = null;
     abortRef.current?.abort();
     cancelJob();
     setState(IDLE);
-  }, [cancelJob]);
+  }, [cancelJob, abortRef, cacheRef, viewsCacheRef, facadesRef, lastRef, forKeyRef, setState]);
 
   return {
     ...state,

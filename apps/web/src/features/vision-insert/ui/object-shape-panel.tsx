@@ -185,6 +185,8 @@ export interface ObjectShapePanelProps extends ObjectShapeState {
   /** `facade` = the validated 2D elevation, used as a reference image by the 3D call. */
   onGenerate?: (facade?: ValidatedFacade) => void;
   sessionId?: string;
+  /** Keeps the 2D facade across page visits (see `useKeptState`). */
+  scope?: string;
 }
 
 type ShapeTab = 'model' | 'facade';
@@ -209,10 +211,11 @@ export function ObjectShapePanel({
   onCancelImprove,
   onGenerate,
   sessionId,
+  scope,
 }: ObjectShapePanelProps) {
   const t = useTranslations('features.visionInsert');
   const webgl = useWebGLAvailable();
-  const facade = useFacade2d(imageUrl ?? null, detection, sessionId);
+  const facade = useFacade2d(imageUrl ?? null, detection, sessionId, scope);
   const ready = status === 'ready' && shape?.detectionId === detection.id;
   const materials = ready && shape?.recipe ? recipeMaterials(shape.recipe) : [];
   const loading = status === 'loading';

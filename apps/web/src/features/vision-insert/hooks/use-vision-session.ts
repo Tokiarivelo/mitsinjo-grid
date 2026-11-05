@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { readSseStream } from '@/lib/sse';
 import {
   MAX_REGIONS,
@@ -10,6 +10,7 @@ import {
 } from '@/lib/vision';
 import { prepareVisionImage } from '../utils/prepare-image';
 import { shapeToDetection, shapeToRegion, type DrawnShape } from '../utils/shapes';
+import { useKeptRef, useKeptState } from './use-kept-state';
 import { useVisionDetection } from './use-vision-detection';
 
 /** Max objects the operator can draw on one photo (the engine takes ≤ 30 appliances). */
@@ -26,34 +27,49 @@ interface ManualState {
 /**
  * Detection for one photo: runs when `imageUrl` changes (null = nothing), keeps the selected
  * object and the shapes drawn by hand (PV-T8) for that photo only. Shared by the chat dialog
- * and the /village page.
+ * and the /village page. With a `scope` (see `useKeptState`) all of it outlives an unmount: coming
+ * back to the page shows the same photo session without asking the model again.
  */
-export function useVisionSession(imageUrl: string | null) {
-  const vision = useVisionDetection();
-  const { detect, reset } = vision;
-  const [selection, setSelection] = useState<{ image: string; id: string } | null>(null);
-  const [manual, setManual] = useState<ManualState | null>(null);
+export function useVisionSession(imageUrl: string | null, scope?: string) {
+  const vision = useVisionDetection(scope);
+  const { detect, reset, detectedFor } = vision;
+  const [selection, setSelection] = useKeptState<{ image: string; id: string } | null>(
+    scope,
+    'selection',
+    null
+  );
+  const [manual, setManual] = useKeptState<ManualState | null>(scope, 'manual', null);
   /** Boxes the operator corrected on this photo (AI or drawn objects), by object id. */
-  const [adjustedBoxes, setAdjustedBoxes] = useState<{
+  const [adjustedBoxes, setAdjustedBoxes] = useKeptState<{
     image: string;
     boxes: Record<string, NormBox>;
-  } | null>(null);
-  const aborts = useRef(new Set<AbortController>());
+  } | null>(scope, 'adjustedBoxes', null);
+  const abortsRef = useKeptRef(scope, 'identifyAborts', () => new Set<AbortController>());
+  /** Photo the running identifications belong to (kept sessions only). */
+  const abortsForRef = useKeptRef<string | null>(scope, 'identifyFor', () => null);
 
   useEffect(() => {
     if (!imageUrl) return;
+    // A kept session already asked for this photo (its answer may still be on the way).
+    if (scope && detectedFor === imageUrl) return;
     void detect(imageUrl);
-    return reset;
-  }, [imageUrl, detect, reset]);
+    return scope ? undefined : reset;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `detectedFor` follows `detect`
+  }, [imageUrl, detect, reset, scope]);
 
-  // A new photo (or unmount) drops the identifications still running.
+  // A new photo (or unmount, unless kept) drops the identifications still running.
   useEffect(() => {
-    const running = aborts.current;
-    return () => {
+    const running = abortsRef.current;
+    const stop = () => {
       running.forEach((c) => c.abort());
       running.clear();
     };
-  }, [imageUrl]);
+    if (!scope) return stop;
+    if (abortsForRef.current !== imageUrl) {
+      stop();
+      abortsForRef.current = imageUrl;
+    }
+  }, [imageUrl, scope, abortsRef, abortsForRef]);
 
   const current = imageUrl && manual?.image === imageUrl ? manual : null;
   const manualItems = useMemo(() => current?.items ?? [], [current]);
@@ -78,19 +94,22 @@ export function useVisionSession(imageUrl: string | null) {
     (id: string) => {
       if (imageUrl) setSelection({ image: imageUrl, id });
     },
-    [imageUrl]
+    [imageUrl, setSelection]
   );
   const retry = useCallback(() => {
     if (imageUrl) void detect(imageUrl);
   }, [imageUrl, detect]);
 
   /** Applies a change to this photo's drawn objects (ignored once the photo changed). */
-  const patch = useCallback((image: string, change: (m: ManualState) => ManualState) => {
-    setManual((m) => {
-      const base = m?.image === image ? m : { image, items: [], identifying: [], failed: false };
-      return change(base);
-    });
-  }, []);
+  const patch = useCallback(
+    (image: string, change: (m: ManualState) => ManualState) => {
+      setManual((m) => {
+        const base = m?.image === image ? m : { image, items: [], identifying: [], failed: false };
+        return change(base);
+      });
+    },
+    [setManual]
+  );
 
   /**
    * Sends drawn shapes (PV-T8): they show at once with their outline and the operator's text,
@@ -115,9 +134,9 @@ export function useVisionSession(imageUrl: string | null) {
       setSelection({ image, id: ids[ids.length - 1]! });
 
       const controller = new AbortController();
-      aborts.current.add(controller);
+      abortsRef.current.add(controller);
       const finish = (failed: boolean) => {
-        aborts.current.delete(controller);
+        abortsRef.current.delete(controller);
         if (controller.signal.aborted) return;
         patch(image, (m) => ({
           ...m,
@@ -165,7 +184,7 @@ export function useVisionSession(imageUrl: string | null) {
       })();
       return true;
     },
-    [imageUrl, manualItems.length, patch]
+    [imageUrl, manualItems.length, patch, setSelection, abortsRef]
   );
 
   const removeManual = useCallback(
@@ -178,7 +197,7 @@ export function useVisionSession(imageUrl: string | null) {
       }));
       setSelection((s) => (s?.id === id ? null : s));
     },
-    [imageUrl, patch]
+    [imageUrl, patch, setSelection]
   );
 
   /** The operator corrected an object's box (AI or drawn): kept for this photo only. */
@@ -190,7 +209,7 @@ export function useVisionSession(imageUrl: string | null) {
         boxes: { ...(a?.image === imageUrl ? a.boxes : {}), [id]: box },
       }));
     },
-    [imageUrl]
+    [imageUrl, setAdjustedBoxes]
   );
 
   return {

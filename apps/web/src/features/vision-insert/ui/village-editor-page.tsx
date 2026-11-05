@@ -21,6 +21,7 @@ import { isAppliance } from '@/lib/vision';
 import type { ValidatedFacade } from '../hooks/use-facade-2d';
 import { useDetectionLabel } from '../hooks/use-object-name';
 import { shapeKey, useObjectShape } from '../hooks/use-object-shape';
+import { useKeptRef, useKeptState, VILLAGE_SCOPE } from '../hooks/use-kept-state';
 import { useVisionSession } from '../hooks/use-vision-session';
 import { applianceIdFor, photoKey } from '../utils/appliance-draft';
 import { ApplianceInsert } from './appliance-insert';
@@ -44,10 +45,11 @@ export function VillageEditorPage() {
   const t = useTranslations('features.visionInsert');
   const tCommon = useTranslations('common');
   const fileRef = useRef<HTMLInputElement>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  // Photo, objects, 2D and 3D stay when the operator visits another page and comes back.
+  const [imageUrl, setImageUrl] = useKeptState<string | null>(VILLAGE_SCOPE, 'photo', null);
   const [badType, setBadType] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const vision = useVisionSession(imageUrl);
+  const vision = useVisionSession(imageUrl, VILLAGE_SCOPE);
   const input = useSimulationStore(selectInput);
   const result = useSimulationStore(selectActiveResult);
   const timeIndex = useSimulationStore(selectTimeIndex);
@@ -61,12 +63,20 @@ export function VillageEditorPage() {
     reset: resetShape,
     clear: clearShapes,
     ...objectShape
-  } = useObjectShape();
+  } = useObjectShape(VILLAGE_SCOPE);
 
   // Inspector tab navigation: 'inspector' (Active Object) | 'inventory' (Installed) | 'grid' (Microgrid Twin)
-  const [inspectorTab, setInspectorTab] = useState<'inspector' | 'inventory' | 'grid'>('inspector');
+  const [inspectorTab, setInspectorTab] = useKeptState<'inspector' | 'inventory' | 'grid'>(
+    VILLAGE_SCOPE,
+    'inspectorTab',
+    'inspector'
+  );
   // Selected object sub-tabs: '3d' | 'load'
-  const [activeSubTab, setActiveSubTab] = useState<'3d' | 'load'>('3d');
+  const [activeSubTab, setActiveSubTab] = useKeptState<'3d' | 'load'>(
+    VILLAGE_SCOPE,
+    'activeSubTab',
+    '3d'
+  );
 
   const selected = vision.selected;
   const onSelectObject = (id: string) => {
@@ -87,8 +97,13 @@ export function VillageEditorPage() {
     return vision.detections.filter((d) => ids.has(applianceIdFor(photo, d.id))).map((d) => d.id);
   }, [input.appliances, vision.detections, photo]);
 
-  // New photo: object ids start again, so kept shapes no longer apply.
-  useEffect(() => clearShapes(), [imageUrl, clearShapes]);
+  // New photo: object ids start again, so kept shapes no longer apply (coming back keeps them).
+  const shapesForRef = useKeptRef<string | null>(VILLAGE_SCOPE, 'shapesForRef', () => null);
+  useEffect(() => {
+    if (shapesForRef.current === imageUrl) return;
+    shapesForRef.current = imageUrl;
+    clearShapes();
+  }, [imageUrl, clearShapes, shapesForRef]);
   const shapeRequest = shapeTarget
     ? {
         id: shapeTarget.id,
@@ -470,6 +485,7 @@ export function VillageEditorPage() {
                         onRegenerate={regenerateShape}
                         onCancelImprove={cancelImprove}
                         onGenerate={generateShape}
+                        scope={VILLAGE_SCOPE}
                       />
                       <div className="flex items-center justify-between gap-2 rounded-xl border border-energy-cyan/30 bg-energy-cyan/5 p-3 text-xs">
                         <span className="text-text-secondary">

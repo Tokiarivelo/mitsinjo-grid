@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, type SetStateAction } from 'react';
 import type { ShapeRequest } from './use-object-shape';
 import { shapeKey } from './use-object-shape';
 import { prepareVisionImage } from '../utils/prepare-image';
+import { useKeptRef, useKeptState } from './use-kept-state';
 import { SHAPE_OUTLINE_MAX } from '@/lib/object-shape';
 
 export interface FacadeData {
@@ -38,27 +39,65 @@ const IDLE_STATE: FacadeState = {
   isValidated: false,
 };
 
+/** The facade state and the object (photo + `shapeKey`) it belongs to. */
+interface ShownFacade {
+  photo: string | null;
+  key: string;
+  state: FacadeState;
+}
+
+/**
+ * 2D facade of the selected object. With a `scope` (see `useKeptState`) facades, the one shown
+ * and a running generation outlive an unmount (navigating away and back).
+ */
 export function useFacade2d(
   imageDataUrl: string | null,
   target: ShapeRequest | null,
-  sessionId?: string
+  sessionId?: string,
+  scope?: string
 ) {
-  const [state, setState] = useState<FacadeState>(IDLE_STATE);
-  /** Facades per object of this photo: switching objects shows that object's own facade. */
-  const [cache] = useState(() => new Map<string, FacadeData>());
-  const abortRef = useRef<AbortController | null>(null);
+  /** Facades per object of one photo: switching objects shows that object's own facade. */
+  const cache = useKeptRef(scope, 'facadeCache', () => ({
+    photo: null as string | null,
+    byKey: new Map<string, FacadeData>(),
+  }));
+  const abortRef = useKeptRef<AbortController | null>(scope, 'facadeAbort', () => null);
+  /** Object the running generation belongs to (kept sessions only). */
+  const abortForRef = useKeptRef<string | null>(scope, 'facadeAbortFor', () => null);
 
-  // Another object (or photo) → its own facade, never the previous object's one.
   const objectKey = target ? shapeKey(target) : '';
-  const [shownFor, setShownFor] = useState({ photo: imageDataUrl, key: objectKey });
-  if (shownFor.photo !== imageDataUrl || shownFor.key !== objectKey) {
-    if (shownFor.photo !== imageDataUrl) cache.clear();
-    setShownFor({ photo: imageDataUrl, key: objectKey });
-    const kept = cache.get(objectKey);
-    setState(kept ? { ...IDLE_STATE, status: 'ready', facade: kept } : IDLE_STATE);
+  if (cache.current.photo !== imageDataUrl) {
+    cache.current = { photo: imageDataUrl, byKey: new Map() };
   }
-  // A facade still being imagined for the previous object is dropped.
-  useEffect(() => () => abortRef.current?.abort(), [imageDataUrl, objectKey]);
+  const [shown, setShown] = useKeptState<ShownFacade | null>(scope, 'facadeShown', null);
+  /** Another object (or photo) → its own kept facade, never the previous object's one. */
+  const fresh = (): FacadeState => {
+    const kept = cache.current.byKey.get(objectKey);
+    return kept ? { ...IDLE_STATE, status: 'ready', facade: kept } : IDLE_STATE;
+  };
+  const state =
+    shown && shown.photo === imageDataUrl && shown.key === objectKey ? shown.state : fresh();
+  const setState = useCallback(
+    (next: SetStateAction<FacadeState>) =>
+      setShown((cur) => {
+        const prev =
+          cur && cur.photo === imageDataUrl && cur.key === objectKey ? cur.state : fresh();
+        const value = typeof next === 'function' ? next(prev) : next;
+        return { photo: imageDataUrl, key: objectKey, state: value };
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `fresh` reads the same inputs
+    [imageDataUrl, objectKey, setShown]
+  );
+  const cacheKey = `${imageDataUrl ?? ''}|${objectKey}`;
+
+  // A facade still being imagined for the previous object is dropped (and on unmount unless kept).
+  useEffect(() => {
+    if (!scope) return () => abortRef.current?.abort();
+    if (abortForRef.current !== cacheKey) {
+      abortRef.current?.abort();
+      abortForRef.current = cacheKey;
+    }
+  }, [scope, cacheKey, abortRef, abortForRef]);
 
   const generate = useCallback(
     async (extraPrompt?: string) => {
@@ -130,8 +169,9 @@ export function useFacade2d(
           source: data.source,
         };
 
-        const key = shapeKey(target);
-        cache.set(key, facadeData);
+        if (cache.current.photo === imageDataUrl) {
+          cache.current.byKey.set(shapeKey(target), facadeData);
+        }
 
         setState((s) => ({
           ...s,
@@ -149,7 +189,7 @@ export function useFacade2d(
         }));
       }
     },
-    [imageDataUrl, target, sessionId, state.userPrompt, cache]
+    [imageDataUrl, target, sessionId, state.userPrompt, cache, abortRef, setState]
   );
 
   const retry = useCallback(
@@ -176,10 +216,7 @@ export function useFacade2d(
         throw new Error(`Failed to delete facade (HTTP ${res.status})`);
       }
 
-      if (target) {
-        const key = shapeKey(target);
-        cache.delete(key);
-      }
+      if (target) cache.current.byKey.delete(shapeKey(target));
 
       setState({
         status: 'idle',
@@ -195,19 +232,22 @@ export function useFacade2d(
         error: err instanceof Error ? err.message : 'Deletion failed',
       }));
     }
-  }, [state.facade, target, cache]);
+  }, [state.facade, target, cache, setState]);
 
   const validate = useCallback(() => {
     setState((s) => ({ ...s, isValidated: true }));
-  }, []);
+  }, [setState]);
 
-  const setUserPrompt = useCallback((prompt: string) => {
-    setState((s) => ({ ...s, userPrompt: prompt }));
-  }, []);
+  const setUserPrompt = useCallback(
+    (prompt: string) => {
+      setState((s) => ({ ...s, userPrompt: prompt }));
+    },
+    [setState]
+  );
 
   const reset = useCallback(() => {
     setState(IDLE_STATE);
-  }, []);
+  }, [setState]);
 
   return {
     ...state,
