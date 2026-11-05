@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { RECIPE_MATERIALS, type ObjectRecipe } from '@/lib/object-shape';
 import { recipeMesh } from '../utils/object-geometry';
-import { recipeMaterials, SURFACE_LOOK, SURFACES, surfaceIndex } from '../utils/surface-look';
+import * as THREE from 'three';
+import {
+  recipeMaterials,
+  SURFACE_LOOK,
+  surfaceMaterial,
+  SURFACES,
+  surfaceIndex,
+} from '../utils/surface-look';
 
 const house: ObjectRecipe = {
   proportions: { w: 1, h: 0.8, d: 0.6 },
@@ -55,5 +62,32 @@ describe('surface looks (AI materials)', () => {
     expect(total).toBe(g.getAttribute('position').count);
     // Two glass windows share one group (12 + 12 triangles).
     expect(g.groups.find((x) => SURFACES[x.materialIndex!] === 'glass')!.count).toBe(72);
+  });
+});
+
+describe('clearcoat by surface (PT-3)', () => {
+  const coated = ['painted', 'plastic', 'tile', 'glass', 'metal'] as const;
+
+  it('every surface: roughness and clearcoat in [0, 1]; coat only on lacquered surfaces', () => {
+    for (const s of SURFACES) {
+      const l = SURFACE_LOOK[s];
+      for (const v of [l.roughness, l.clearcoat, l.clearcoatRoughness]) {
+        expect(v).toBeGreaterThanOrEqual(0);
+        expect(v).toBeLessThanOrEqual(1);
+      }
+      expect(l.clearcoat > 0).toBe((coated as readonly string[]).includes(s));
+    }
+    expect(SURFACE_LOOK.metal.roughness).toBeGreaterThanOrEqual(0.45);
+  });
+
+  it('physical material only when coated, standard otherwise', () => {
+    const glass = surfaceMaterial('glass', { vertexColors: true });
+    expect(glass).toBeInstanceOf(THREE.MeshPhysicalMaterial);
+    expect((glass as THREE.MeshPhysicalMaterial).clearcoat).toBe(SURFACE_LOOK.glass.clearcoat);
+    expect(glass.vertexColors).toBe(true);
+    const stone = surfaceMaterial('stone');
+    expect(stone).not.toBeInstanceOf(THREE.MeshPhysicalMaterial);
+    expect(stone.roughness).toBe(SURFACE_LOOK.stone.roughness);
+    [glass, stone].forEach((m) => m.dispose());
   });
 });
