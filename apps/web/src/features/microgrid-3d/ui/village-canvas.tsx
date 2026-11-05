@@ -8,6 +8,7 @@ import { useTranslations } from '@/lib/i18n';
 import { useSimulationStore } from '@/stores';
 import { fmtKw } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { useShaderWarmup, type WarmupTarget } from '../hooks/use-shader-warmup';
 import type {
   ApplianceMarkerSceneModel,
   BatteryStatusColor,
@@ -158,6 +159,9 @@ export function VillageCanvas({
   // frame costs ~0.5 s and would freeze the page); dots stay visible, frozen.
   const softwareGl = isSoftwareRenderer();
   const animate = !reducedMotion && !model.isModified && !softwareGl;
+  // Shader warm-up (PT-7): the canvas fades in once its materials are compiled (≤ 1 s).
+  const [warmTarget, setWarmTarget] = useState<WarmupTarget | null>(null);
+  const warm = useShaderWarmup(warmTarget);
   const high = quality === 'high';
 
   const sectorStatuses = useMemo(() => {
@@ -287,7 +291,14 @@ export function VillageCanvas({
       <Canvas
         // Remount on tier change (shadow maps, MSAA and shaders differ) and after a lost context.
         key={`${quality}-${contextLoss.epoch}`}
-        onCreated={({ gl, get }) => contextLoss.attach(gl.domElement, () => get().internal.active)}
+        onCreated={({ gl, get, scene, camera }) => {
+          contextLoss.attach(gl.domElement, () => get().internal.active);
+          setWarmTarget({ gl, scene, camera });
+        }}
+        className={cn(
+          'transition-opacity duration-300 motion-reduce:transition-none',
+          warm ? 'opacity-100' : 'opacity-0'
+        )}
         camera={{ position: [2, 10.5, 28], fov: 42, near: 0.5, far: 1400 }}
         dpr={high ? [1, 1.5] : [1, 1.25]}
         frameloop={inView ? 'demand' : 'never'}
