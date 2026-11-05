@@ -70,12 +70,27 @@ export const SPHERE_SEGMENTS = [18, 12] as const;
  * the slopes, verge over the front and back — so the roof reads as a roof, not a wedge on a box.
  */
 export const ROOF_OVERHANG = 0.03;
+/** Largest unit bevel of a prism: well under its triangle's inner radius (≈ 0.3), so the cap never flips. */
+export const PRISM_BEVEL_MAX = 0.1;
 /**
  * Unit gable prism (PF-T3): triangle (base at y −0.5, ridge at x `apex − 0.5`, y 0.5) extruded along z.
  * Non-indexed with flat normals and empty UVs, the same attributes as the other primitives so they merge.
  */
-export function unitPrism(apex = 0.5): THREE.BufferGeometry {
+export function unitPrism(
+  apex = 0.5,
+  bevel?: readonly [number, number, number]
+): THREE.BufferGeometry {
   const r = Math.min(1, Math.max(0, apex)) - 0.5;
+  // Soft edges (PT-1c): the bevelled extrusion of the same triangle, cut inside it (bounds kept).
+  if (bevel)
+    return unitExtrude(
+      [
+        [-0.5, -0.5],
+        [0.5, -0.5],
+        [r, 0.5],
+      ],
+      { size: Math.min(bevel[0], bevel[1], PRISM_BEVEL_MAX), thickness: Math.min(bevel[2], 0.25) }
+    );
   const tri = (z: number) => [-0.5, -0.5, z, 0.5, -0.5, z, r, 0.5, z];
   const [a, b, c] = [0, 1, 2].map((k) => tri(0.5).slice(k * 3, k * 3 + 3)) as [
     number[],
@@ -213,23 +228,31 @@ export function roundedBox(w: number, h: number, d: number, radius: number): THR
 /** Bevel of an extruded profile (PR-2.1), unit space: soft edge, exact 1 × 1 × 1 bounds. */
 export const EXTRUDE_BEVEL = 0.02;
 
+/** Inset bevel of an extrusion (PT-1c): `size` across the profile, `thickness` along z; bounds exact. */
+export type ExtrudeBevel = { size: number; thickness: number };
+
 /**
  * Unit extruded profile (PR-2.1): the closed `points` ring (x right, y up) with a thin bevel,
- * 1 deep along z, centred. Non-indexed so parts merge; either winding accepted.
+ * 1 deep along z, centred. Non-indexed so parts merge; either winding accepted. Default bevel reaches
+ * `EXTRUDE_BEVEL` past the ring; an `inset` bevel cuts inside it instead, so the bounds stay the ring's.
  */
 export function unitExtrude(
-  points: ReadonlyArray<readonly [number, number]>
+  points: ReadonlyArray<readonly [number, number]>,
+  inset?: ExtrudeBevel
 ): THREE.BufferGeometry {
   const shape = new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y)));
+  const size = inset ? inset.size : EXTRUDE_BEVEL;
+  const thickness = inset ? inset.thickness : EXTRUDE_BEVEL;
   const g = new THREE.ExtrudeGeometry(shape, {
-    depth: 1 - 2 * EXTRUDE_BEVEL,
+    depth: 1 - 2 * thickness,
     bevelEnabled: true,
-    bevelThickness: EXTRUDE_BEVEL,
-    bevelSize: EXTRUDE_BEVEL,
+    bevelThickness: thickness,
+    bevelSize: size,
+    bevelOffset: inset ? -size : 0,
     bevelSegments: 1,
     steps: 1,
   });
-  g.translate(0, 0, -0.5 + EXTRUDE_BEVEL);
+  g.translate(0, 0, -0.5 + thickness);
   if (g.index) {
     const flat = g.toNonIndexed();
     g.dispose();
@@ -245,7 +268,10 @@ export const LATHE_SEGMENTS = 16;
  * Unit body of revolution (PR-2.3): `profile` ([radius, height], rising y) revolved around y.
  * Non-indexed so parts merge; smooth normals so tanks read round.
  */
-export function unitLathe(profile: ReadonlyArray<readonly [number, number]>): THREE.BufferGeometry {
+export function unitLathe(
+  profile: ReadonlyArray<readonly [number, number]>,
+  segments = LATHE_SEGMENTS
+): THREE.BufferGeometry {
   const raw =
     profile.length >= 2
       ? profile
@@ -254,7 +280,7 @@ export function unitLathe(profile: ReadonlyArray<readonly [number, number]>): TH
           [0, 0.5],
         ] as const);
   const pts = raw.map(([r, y]) => new THREE.Vector2(Math.max(0, r), y));
-  const g = new THREE.LatheGeometry(pts, LATHE_SEGMENTS);
+  const g = new THREE.LatheGeometry(pts, segments);
   const flat = g.index ? g.toNonIndexed() : g;
   if (flat !== g) g.dispose();
   return flat;
@@ -266,6 +292,37 @@ export const EDGE_BEVEL = 0.06;
 /** Bevel of a part of final size `w × h × d` (object units), ≤ `radius`. */
 export function edgeBevel(w: number, h: number, d: number, radius: number): number {
   return Math.min(EDGE_BEVEL * Math.min(w, h, d), radius);
+}
+
+/**
+ * Chamfered profile of a unit cylinder / cone (PT-1b), [radius, y] rising y: each rim is cut by `br` across
+ * and `by` along the axis, so the cap meets the side on a highlight ring. Radius 0.5 stays (bounds kept);
+ * the cone's apex stays sharp.
+ */
+export function roundProfile(
+  shape: 'cylinder' | 'cone',
+  br: number,
+  by: number
+): Array<[number, number]> {
+  const [r, y] = [Math.min(br, 0.25), Math.min(by, 0.25)];
+  const bottom: Array<[number, number]> = [
+    [0, -0.5],
+    [0.5 - r, -0.5],
+    [0.5, -0.5 + y],
+  ];
+  if (shape === 'cone') return [...bottom, [0, 0.5]];
+  return [...bottom, [0.5, 0.5 - y], [0.5 - r, 0.5], [0, 0.5]];
+}
+
+/** Bevel of a part in its unit space: a round part turned to `axis` swaps which size each unit axis takes. */
+function unitBevel(
+  b: number,
+  [sx, sy, sz]: readonly [number, number, number],
+  axis?: RecipePart['axis']
+): readonly [number, number, number] {
+  if (axis === 'x') return [b / sy, b / sx, b / sz];
+  if (axis === 'z') return [b / sx, b / sz, b / sy];
+  return [b / sx, b / sy, b / sz];
 }
 
 type HullLoop = { z: number; loop: Array<[number, number]> };
@@ -387,7 +444,7 @@ function unitPart(
         ? unitHull(points ?? [], section ?? [], HULL_SLICES, HULL_LEVELS, bevel)
         : unitHull(points ?? [], section ?? [], SKIN_SLICES, SKIN_LEVELS);
     case 'prism':
-      return unitPrism(apex);
+      return unitPrism(apex, bevel);
     case 'hip':
       return unitHip(ridge, clip);
     case 'extrude':
@@ -397,9 +454,16 @@ function unitPart(
     case 'box':
       return new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
     case 'cylinder':
-      return new THREE.CylinderGeometry(0.5, 0.5, 1, ROUND_SEGMENTS).toNonIndexed();
     case 'cone':
-      return new THREE.ConeGeometry(0.5, 1, ROUND_SEGMENTS).toNonIndexed();
+      // Soft rims (PT-1b): the lathe on a chamfered profile; sharp three.js primitive without a bevel.
+      if (bevel)
+        return unitLathe(
+          roundProfile(shape, Math.min(bevel[0], bevel[2]), bevel[1]),
+          ROUND_SEGMENTS
+        );
+      return shape === 'cylinder'
+        ? new THREE.CylinderGeometry(0.5, 0.5, 1, ROUND_SEGMENTS).toNonIndexed()
+        : new THREE.ConeGeometry(0.5, 1, ROUND_SEGMENTS).toNonIndexed();
     case 'sphere':
       return new THREE.SphereGeometry(0.5, ...SPHERE_SEGMENTS).toNonIndexed();
   }
@@ -450,7 +514,11 @@ function buildMesh(recipe: ObjectRecipe, detail: AssemblyDetail): THREE.BufferGe
     } else {
       // Soft edges (PT-1), in unit space per axis so the bevel stays even once scaled.
       const b = edgeBevel(sx, sy, sz, SURFACE_LOOK[SURFACES[surface]!].radius);
-      const bevel = !p.axis && b > 0 ? ([b / sx, b / sy, b / sz] as const) : undefined;
+      // Hull bodies have no axis; round parts (wheels, poles) map the bevel to their turned axes.
+      const round = p.shape === 'cylinder' || p.shape === 'cone';
+      const eave = p.shape === 'prism' ? 2 * ROOF_OVERHANG : 0;
+      const bevel =
+        b > 0 && (round || !p.axis) ? unitBevel(b, [sx + eave, sy, sz + eave], p.axis) : undefined;
       g = unitPart(
         p.shape,
         p.apex,
@@ -465,7 +533,6 @@ function buildMesh(recipe: ObjectRecipe, detail: AssemblyDetail): THREE.BufferGe
       // Round parts turn to their axis before taking the part's own x / y / z extent.
       if (p.axis === 'x') g.rotateZ(Math.PI / 2);
       else if (p.axis === 'z') g.rotateX(Math.PI / 2);
-      const eave = p.shape === 'prism' ? 2 * ROOF_OVERHANG : 0;
       g.scale(sx + eave, sy, sz + eave);
     }
     g.translate(p.at[0] * dims[0], p.at[1] * dims[1], p.at[2] * dims[2]);
@@ -530,8 +597,19 @@ export function silhouetteMesh(
     .map(
       (r) => new THREE.Shape(r.map(([u, v]) => new THREE.Vector2((u - 0.5) * w, (0.5 - v) * h)))
     );
-  const body = new THREE.ExtrudeGeometry(shapes, { depth, bevelEnabled: false, curveSegments: 1 });
-  body.translate(0, 0, -depth / 2);
+  // Soft edges (PT-1d): one bevel ring, inset by `bevelOffset` so the outline keeps its size; a thin body
+  // (TV, water) keeps half its depth flat.
+  const b = Math.min(EDGE_BEVEL * Math.max(w, h), depth / 4);
+  const body = new THREE.ExtrudeGeometry(shapes, {
+    depth: depth - 2 * b,
+    bevelEnabled: b > 0,
+    bevelThickness: b,
+    bevelSize: b,
+    bevelOffset: -b,
+    bevelSegments: 1,
+    curveSegments: 1,
+  });
+  body.translate(0, 0, -depth / 2 + b);
   return body;
 }
 

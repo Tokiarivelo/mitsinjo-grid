@@ -3,7 +3,7 @@
 **Why (user, 2026-11-04):** « how does this person get 3D so detailed and perfect? Can we transcribe it to refine
 our 3D generation? » Source studied: [elvarofficial/teardown](https://github.com/elvarofficial/teardown) (MIT, built
 on `whaleyxbt/claude-motion`). Every file was read; findings below.
-**Status:** 🟡 PT-11, PT-0, PT-1a done (2026-11-04). **Rules kept:** Meta models only; never paste the photo on a model (small swatches OK);
+**Status:** 🟡 PT-11, PT-0, PT-1a, PT-1b, PT-1d, PT-1c done (2026-11-04). **Rules kept:** Meta models only; never paste the photo on a model (small swatches OK);
 ≤ 5 k triangles per object; budgets of `docs/performance.md` § 1 unchanged; dual theme; mobile; zero static text.
 **Skills:** `/shape-3d` (object geometry) · `/scene-3d` (village) · `/shape-loop` (measure) · `/designer-3d` (review).
 
@@ -64,12 +64,12 @@ surface (`SURFACE_LOOK.radius`), PMREM room light, Neutral tone mapping, baked c
   - [x] **PT-1a** `hull` (`unitHull`, the « any object » path, PV-H): add one inset loop at each end (end loop scaled
         toward its centre by the bevel, pulled back by the same z) and build the caps from it. Cost: + 4 × n triangles
         (n = loop size), no new pass. Skin patches (`body = false`) keep sharp edges (too small to see).
-  - [ ] **PT-1b** `cylinder` / `cone`: replace `CylinderGeometry` / `ConeGeometry` by the existing `unitLathe` on a
+  - [x] **PT-1b** `cylinder` / `cone`: replace `CylinderGeometry` / `ConeGeometry` by the existing `unitLathe` on a
         chamfered profile (4–6 points, same `ROUND_SEGMENTS`): reuse, no new geometry code. Wheels, poles and tanks gain
         the highlight ring.
-  - [ ] **PT-1c** `prism`: build it with the existing bevelled `unitExtrude` on its triangle profile (apex as the
+  - [x] **PT-1c** `prism`: build it with the existing bevelled `unitExtrude` on its triangle profile (apex as the
         third point) instead of hand-built faces. Reuse only.
-  - [ ] **PT-1d** Silhouette body (`silhouetteMesh`, `bevelEnabled: false` today) → `bevelEnabled`, size =
+  - [x] **PT-1d** Silhouette body (`silhouetteMesh`, `bevelEnabled: false` today) → `bevelEnabled`, size =
         `EDGE_BEVEL × max(w, h)`, depth reduced by 2 × bevel.
   - [ ] **PT-1e** `hip` (hipped roof): no bevel geometry (clip planes make it costly); its edges are carried by the
         ink outline (PT-5). Done when a `shape-shots` check shows the ridge and hips read in both themes.
@@ -154,7 +154,10 @@ Inside PT-1: 1a (most objects without a template) → 1b → 1d → 1c. Inside P
 
 ## Loop log
 
-| Date       | Task             | Mean IoU | Edge F1 | Mean ΔE | Designer | Village fps (high/low)                              | Note                                                                                         |
-| ---------- | ---------------- | -------- | ------- | ------- | -------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| 2026-11-04 | PT-0 baseline    | 0.98     | 0.91    | 3.4     | 3/5      | 10–25 / 17–26 (dev server; 192–209 / 143–148 calls) | white fridge melts into the pale backdrop; car reads flat                                    |
-| 2026-11-04 | PT-1a hull bevel | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `EDGE_BEVEL` 0.06 + `edgeBevel()`; no report fixture uses a hull body → proven by tests only |
+| Date       | Task                   | Mean IoU | Edge F1 | Mean ΔE | Designer | Village fps (high/low)                              | Note                                                                                                          |
+| ---------- | ---------------------- | -------- | ------- | ------- | -------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| 2026-11-04 | PT-0 baseline          | 0.98     | 0.91    | 3.4     | 3/5      | 10–25 / 17–26 (dev server; 192–209 / 143–148 calls) | white fridge melts into the pale backdrop; car reads flat                                                     |
+| 2026-11-04 | PT-1a hull bevel       | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `EDGE_BEVEL` 0.06 + `edgeBevel()`; no report fixture uses a hull body → proven by tests only                  |
+| 2026-11-04 | PT-1b round rims       | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `roundProfile()` chamfer on `unitLathe` (24 seg.); axis parts (wheels, handles) bevelled too                  |
+| 2026-11-04 | PT-1d silhouette bevel | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | `bevelOffset: -b` keeps the outline; b = min(EDGE_BEVEL × max(w, h), depth / 4) for thin bodies               |
+| 2026-11-04 | PT-1c prism bevel      | 0.98     | 0.91    | 3.4     | 3/5      | — (no village change)                               | prism = `unitExtrude(triangle, inset)` (8 → 20 triangles); inset bevel keeps unit bounds, ≤ `PRISM_BEVEL_MAX` |
