@@ -17,6 +17,9 @@
 
 **Documentation**: [docs/](docs/) · [docs/assumptions.md](docs/assumptions.md) · [docs/demo-script.md](docs/demo-script.md) · [docs/known-limitations.md](docs/known-limitations.md) · [benchmarks/](benchmarks/) · [tests/](tests/) (integration)
 
+**Manual test scenarios (539 checks, page by page, with screenshots)**: [docs/test-scenarios/](docs/test-scenarios/README.md): try every screen yourself, each check written as `action → expected result`.  
+[![539 manual test scenarios across 8 pages: click through Mitsinjo Grid yourself](docs/images/test-scenarios-banner.jpg)](docs/test-scenarios/README.md)
+
 ### Hackathon submission at a glance
 
 - **Provenance**: built 100 % from scratch during the Meta Global AI Hackathon 2026 window (first commit Oct 26, 2026); no pre-existing code.

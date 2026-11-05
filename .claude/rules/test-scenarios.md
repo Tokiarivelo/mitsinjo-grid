@@ -23,6 +23,12 @@ and say so in your final reply.
 - Cover the happy path, the main error or limit case, and any fix's regression (the bug's steps → now correct).
 - Update or delete scenarios the change made wrong. Expected results describe what the code does now.
 
+## Public copy
+
+`make scenarios-publish` copies the page files into `docs/test-scenarios/` (committed, linked from the README,
+with screenshots in `docs/test-scenarios/shots/`) and re-renders the banner. Re-run it before a release or when
+the README count drifts; never edit the generated copy by hand.
+
 ## If the folder is missing
 
 Fresh clone or worktree: create `test-scenarios/` with a `README.md` (how to run `make dev-mock`, the scenario

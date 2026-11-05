@@ -58,7 +58,7 @@ design/shots/
 /tmp/
 
 # ── Manual test scenarios (local only) ───────
-test-scenarios/
+/test-scenarios/
 
 # ── Editors / OS ──────────────────────────────
 .vscode/*

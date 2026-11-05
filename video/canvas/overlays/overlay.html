@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>Overlay</title>
     <link rel="stylesheet" href="../shared.css" />
-    <!-- Transparent overlay, one per render: ?kind=chip|engine|lower|chapter|kicker|recap&text=…&sub=…&dur=ms -->
+    <!-- Transparent overlay, one per render: ?kind=chip|engine|lower|chapter|kicker|recap|bench&text=…&sub=…&dur=ms -->
     <style>
       .chip {
         position: absolute;
@@ -157,6 +157,36 @@
       .card.human .r {
         color: #ffd38a;
       }
+      .bench {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 150px;
+        text-align: center;
+      }
+      .bench .k {
+        display: inline-block;
+        padding: 8px 18px;
+        background: rgba(8, 13, 26, 0.88);
+        border-radius: 10px;
+        color: var(--battery);
+        font-family: 'Mono';
+        font-size: 20px;
+        letter-spacing: 0.08em;
+      }
+      .bench .grid {
+        margin-top: 22px;
+        display: grid;
+        grid-template-columns: repeat(4, 250px);
+        justify-content: center;
+        gap: 16px;
+      }
+      .bench .v {
+        font-family: 'Grotesk';
+        font-weight: 600;
+        font-size: 44px;
+        color: #d8fff0;
+      }
     </style>
   </head>
   <body>
@@ -239,6 +269,31 @@
             const start = ri ? 5200 + i * 700 : 700 + i * 850;
             inOut(c, start, dur - start);
           });
+        });
+      } else if (kind === 'bench') {
+        // Measured numbers: text = 'value · label|…', sub = kicker. Built with textContent ('< 4 ms').
+        el.className = 'bench';
+        const k = document.createElement('div');
+        k.className = 'k';
+        k.textContent = sub;
+        const g = document.createElement('div');
+        g.className = 'grid';
+        el.append(k, g);
+        document.body.appendChild(el);
+        inOut(k, 0, dur);
+        text.split('|').forEach((it, i) => {
+          const [v, r] = it.split(' · ');
+          const c = document.createElement('div');
+          c.className = 'card engine';
+          const m = document.createElement('div');
+          m.className = 'v';
+          m.textContent = v;
+          const l = document.createElement('div');
+          l.className = 'r';
+          l.textContent = r;
+          c.append(m, l);
+          g.appendChild(c);
+          inOut(c, 300 + i * 450, dur - 300 - i * 450);
         });
       }
     </script>
