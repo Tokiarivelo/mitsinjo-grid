@@ -476,7 +476,12 @@ const color = new THREE.Color();
  * Parts are grouped by material: one geometry group per surface, `materialIndex` = `surfaceIndex`, so the
  * view draws stone matte and glass shiny in one mesh.
  */
-export function recipeMesh(recipe: ObjectRecipe): THREE.BufferGeometry {
+export function recipeMesh(
+  recipe: ObjectRecipe,
+  detail: AssemblyDetail = 'full'
+): THREE.BufferGeometry {
+  // `low` (village low tier): straight to the light assemblies.
+  if (detail === 'low') return buildMesh(recipe, 'low');
   // Assemblies at full detail; past the triangle budget, again without bars, panels, lintels (PG-T10).
   const full = buildMesh(recipe, 'full');
   if (triangleCount(full) <= MAX_TRIANGLES) return full;

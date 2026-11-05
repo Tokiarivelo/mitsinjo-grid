@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { SectorId } from '@mitsinjo/engine';
 import type { KitArchetype } from '@/lib/object-kit';
 import type { ObjectRecipe } from '@/lib/object-shape';
-import { recipeMesh } from '@/features/vision-insert/utils/object-geometry';
+import { recipeMesh, triangleCount } from '@/features/vision-insert/utils/object-geometry';
 import { terrainHeight } from './landscape';
 import { TOKEN_HEX } from './scene-palette';
 import { footprint, sceneScale } from '@/stores/placed-models.store';
@@ -38,7 +38,25 @@ export interface SectorStateOverride {
   onFire?: boolean;
 }
 
-const tmpColor = new THREE.Color();
+/** Triangles the low tier spends on placed models (budget 150 k for the whole scene). */
+export const PLACED_LOW_TRIANGLES = 40_000;
+
+/** The model as one box of its main colour, same bounds and yaw (low-tier fallback). */
+function boxRecipe(recipe: ObjectRecipe): ObjectRecipe {
+  const main = recipe.parts[0];
+  return {
+    ...recipe,
+    parts: [
+      {
+        shape: 'box',
+        at: [0, 0, 0],
+        size: [1, 1, 1],
+        color: main?.color ?? TOKEN_HEX.idle,
+        ...(main?.material ? { material: main.material } : {}),
+      },
+    ],
+  };
+}
 
 /** Ground height difference over the footprint above which the model stands on a plinth. */
 export const PLINTH_SLOPE_MIN = 0.04;
@@ -51,7 +69,7 @@ const PLINTH_SINK = 0.04;
  * - Sits on `terrainHeight` at the lowest point of the footprint (plinth if slope).
  * - Applies departure states (dimmed if unserved/delested, fiery tint if sector on fire).
  * - Merges into ONE BufferGeometry (≤ +2 draw calls budget for up to 30 objects).
- * - Provides simple LOD box on tier `low`.
+ * - Tier `low`: light assemblies, a box per model only past `PLACED_LOW_TRIANGLES`.
  */
 export function buildPlacedModelsGeometry(
   items: readonly PlacedModelItem[],
@@ -65,6 +83,7 @@ export function buildPlacedModelsGeometry(
   const plinths: PlacedPlinth[] = [];
   const modelBounds: Record<string, { height: number; radius: number }> = {};
   const geometriesToMerge: THREE.BufferGeometry[] = [];
+  let lowTriangles = 0;
 
   for (const item of items) {
     const effScale = item.scale ?? sceneScale(item.archetype, item.recipe.proportions);
@@ -97,44 +116,35 @@ export function buildPlacedModelsGeometry(
       restY = maxH;
     }
 
-    let g: THREE.BufferGeometry;
+    const recipeWithYaw =
+      item.yaw !== undefined && item.yaw !== item.recipe.yaw
+        ? { ...item.recipe, yaw: item.yaw }
+        : item.recipe;
+    // The model's own shape on both tiers (a lamp post stays a lamp post); the low tier takes the
+    // light assemblies and, past its budget, a coloured box for the remaining models.
+    let g = recipeMesh(recipeWithYaw, tier === 'low' ? 'low' : 'full');
     if (tier === 'low') {
-      // Simple LOD box on low tier
-      const height = item.recipe.proportions.h * effScale;
-      g = new THREE.BoxGeometry(fp.box.width, height, fp.box.depth);
-      const mainColor = item.recipe.parts[0]?.color ?? TOKEN_HEX.idle;
-      tmpColor.set(mainColor);
-      const count = g.getAttribute('position').count;
-      const colors = new Float32Array(count * 3);
-      for (let c = 0; c < count; c++) tmpColor.toArray(colors, c * 3);
-      g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    } else {
-      // High tier: full recipe geometry
-      const recipeWithYaw =
-        item.yaw !== undefined && item.yaw !== item.recipe.yaw
-          ? { ...item.recipe, yaw: item.yaw }
-          : item.recipe;
-      const original = recipeMesh(recipeWithYaw);
-      g = original.clone();
-      original.dispose();
+      const tris = triangleCount(g);
+      if (lowTriangles + tris > PLACED_LOW_TRIANGLES) {
+        g.dispose();
+        g = recipeMesh(boxRecipe(recipeWithYaw));
+      }
+      lowTriangles += triangleCount(g);
     }
-
     g.computeBoundingBox();
     const bb = g.boundingBox;
     const bottomY = bb ? bb.min.y : 0;
     const rawHeight = bb ? bb.max.y - bb.min.y : item.recipe.proportions.h;
-    const finalHeight = rawHeight * (tier === 'low' ? 1 : effScale);
+    const finalHeight = rawHeight * effScale;
 
     modelBounds[item.id] = {
       height: finalHeight,
       radius: fp.radius,
     };
 
-    if (tier !== 'low') {
-      g.scale(effScale, effScale, effScale);
-    }
+    g.scale(effScale, effScale, effScale);
     // Translate so the bottom of the model rests on the ground (or its plinth)
-    g.translate(x, restY - bottomY * (tier === 'low' ? 1 : effScale), z);
+    g.translate(x, restY - bottomY * effScale, z);
 
     // Apply feeder / departure states to vertex colors
     const sec = sectorStatus?.[item.sector];

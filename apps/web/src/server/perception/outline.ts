@@ -40,7 +40,8 @@ export function samBoxToNorm(
  * detection wording "mini vintage". Phrases first, then nouns; first match wins.
  */
 const CONCEPT_NOUNS: ReadonlyArray<readonly [RegExp, string]> = [
-  [/street lamps?/, 'street lamp'],
+  // « lamp » alone finds nothing on a drawn lamp post (SAM reads a table lamp): keep the phrase.
+  [/street ?lamps?|street ?lights?|lamp ?posts?|lampposts?/, 'street lamp'],
   [/power plants?/, 'building'],
   [/solar panels?|panneaus? solaires?/, 'solar panel'],
   [/motorbikes?|motorcycles?|scooters?|bicycles?|\bmotos?\b|\bbikes?\b/, 'motorbike'],
