@@ -19,7 +19,9 @@ the engine catalog gives power (never the AI). Sidebar + MobileNav entry « Vill
   A house or building whose facade SAM can read is rebuilt from it (PR-2.23): walls, hip / gable roof, chimneys,
   door and windows at the facade's places and proportions, depth from a Muse Image side view; ≈ 45–60 s.
   Viewer on `.viewer-studio` (radial backdrop `--theme-viewer-center/edge`, lighter than dark objects in dark theme), rim
-  light from behind + one baked contact shadow.
+  light from behind + one baked contact shadow. Studio look (PT): softbox environment, soft bevelled edges on every
+  body (box, hull, cylinder, cone, prism, silhouette), clearcoat on painted / plastic / tile / glass / metal, ink
+  outline in `text-primary` (light in dark theme, dark in light theme); fades in once shaders are compiled.
   « 3D model »: title + badge (violet « AI shape » = Spark recipe; grey « Outline shape » = fallback + one-line why (Meta did not answer / AI shape unusable) + « Try the AI shape again »), viewer
   `h-72 sm:h-80 xl:h-96` on `bg-canvas-sunken` (orbit + zoom, no pan), « Drag to turn · pinch or scroll to zoom », display tweaks
   (PV-T11b: size slider 50–200 %, tint picker, reset — visual only, per object). Loading: spinner line +
