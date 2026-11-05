@@ -17,6 +17,7 @@ Both Dark (default) and Light theme modes supported. Keep UI mostly neutral; ene
 | text-primary     | #F4F7FB  | #0F172A   | Headings, values                |
 | text-secondary   | #A8B6C9  | #475569   | Supporting text                 |
 | text-muted       | #72839A  | #64748B   | Metadata, inactive              |
+| scene-ink        | #0B1220  | #1E293B   | Village 3D ink outline (PT-6)   |
 
 ## Energy / semantic colors
 

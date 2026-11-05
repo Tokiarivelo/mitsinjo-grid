@@ -6,6 +6,8 @@ import {
   INK_TOKEN,
   InkEffect,
   inkColorFromTheme,
+  NO_FADE,
+  SCENE_INK_TOKEN,
 } from '../utils/ink-effect';
 
 const uniform = (e: InkEffect, name: string) => e.uniforms.get(name)!.value;
@@ -33,6 +35,25 @@ describe('ink effect (PT-4)', () => {
     expect(uniform(e, 'strength')).toBe(0);
     expect(color.getHexString()).toBe('f4f7fb'); // colour untouched when not given
     e.dispose();
+  });
+
+  it('crease weight and distance fade (PT-6): defaults off, clamped, near < far kept', () => {
+    const e = new InkEffect();
+    expect(uniform(e, 'creaseWeight')).toBe(1);
+    expect([uniform(e, 'fadeNear'), uniform(e, 'fadeFar')]).toEqual([...NO_FADE]);
+    e.setInk({ crease: 0, fade: [22, 45] });
+    expect(uniform(e, 'creaseWeight')).toBe(0);
+    expect([uniform(e, 'fadeNear'), uniform(e, 'fadeFar')]).toEqual([22, 45]);
+    e.setInk({ crease: 3, fade: [50, 10] });
+    expect(uniform(e, 'creaseWeight')).toBe(1);
+    expect(uniform(e, 'fadeFar') as number).toBeGreaterThan(uniform(e, 'fadeNear') as number);
+    e.dispose();
+  });
+
+  it('reads the village ink from its own token', () => {
+    document.documentElement.style.setProperty(SCENE_INK_TOKEN, '#0b1220');
+    expect(inkColorFromTheme(document.documentElement, SCENE_INK_TOKEN)).toBe('#0b1220');
+    document.documentElement.style.removeProperty(SCENE_INK_TOKEN);
   });
 
   it('reads the ink colour from the theme token, null when unset', () => {

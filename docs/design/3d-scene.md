@@ -28,7 +28,7 @@ Reference visuals: `design/reference/Mitsinjo Grid_ Village at Sunset.png` (mast
 
 ## Quality tiers & fullscreen
 
-- Toolbar toggle `Quality: High | Low` (`useSceneQuality`, persisted). `high` (default) adds HDRI light, real-time sun shadows, ambient occlusion, bloom and a warm ACES grade; `low` keeps the same composition with lighter forest and a baked contact shadow. A slow device is auto-lowered once (tooltip says so) unless the user chose. Budgets: `docs/performance.md`.
+- Toolbar toggle `Quality: High | Low` (`useSceneQuality`, persisted). `high` (default) adds HDRI light, real-time sun shadows, ambient occlusion, bloom, a warm ACES grade and a light dark ink on near silhouettes (PT-6, `scene-ink` token, fades out past 22–45 units, no crease ink); `low` keeps the same composition with lighter forest and a baked contact shadow. A slow device is auto-lowered once (tooltip says so) unless the user chose. Budgets: `docs/performance.md`.
 - Fullscreen button (`useFullscreen`) expands the 3D card edge-to-edge; it then shows a stats strip (SIMULATED DATA, solar output, battery SoC, village demand for the selected hour, all engine values).
 - `VillageCanvas` props: `model`, `selectedSector`, `onSelectSector`, `cameraPreset`, `cameraResetKey` (`selectedSector` also drives camera focus), optional `quality` override (default = shared tier).
 - Assets (`apps/web/public/3d`, CC0, credits in `CREDITS.md`): `nature.glb` (Kenney palms, bushes, rocks), `ambulance|truck|van.glb` (Kenney), `sunset_512.hdr` (Poly Haven, downscaled). Broadleaf trees and all buildings are procedural.

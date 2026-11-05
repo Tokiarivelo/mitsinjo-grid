@@ -25,6 +25,8 @@
   /* 3D object viewer backdrop: lighter than most objects (black TVs, dark pumps) in the dark theme. */
   --theme-viewer-center: #7d8ba0;
   --theme-viewer-edge: #3a4659;
+  /* Ink outline of the village scene (PT-6): dark in both themes, over grass, roofs and sky. */
+  --theme-scene-ink: #0b1220;
 }
 
 html.light,
@@ -52,10 +54,12 @@ html.light,
   --theme-mark-l: 40%;
   --theme-viewer-center: #f8fafc;
   --theme-viewer-edge: #cbd5e1;
+  --theme-scene-ink: #1e293b;
 }
 
 @theme {
   --color-canvas: var(--theme-canvas);
+  --color-scene-ink: var(--theme-scene-ink);
   --color-canvas-raised: var(--theme-canvas-raised);
   --color-canvas-sunken: var(--theme-canvas-sunken);
   --color-surface: var(--theme-surface);
