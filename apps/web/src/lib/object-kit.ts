@@ -160,6 +160,37 @@ export function clampEstimatedDepth(
   return { w: unit(p.w), h: unit(p.h), d: unit(d) };
 }
 
+/** Water sheet thickness, share of its depth on the ground. */
+export const WATER_SHEET = 0.04;
+
+/**
+ * Water lies flat (user 2026-11-05: a river came out as a standing block): the photo box's height
+ * is mostly the water's depth on the ground seen in perspective, so it becomes the depth and the
+ * model a thin sheet of the water colour. Pure.
+ */
+export function flatWaterRecipe(recipe: ObjectRecipe): ObjectRecipe {
+  const { w, h, d } = recipe.proportions;
+  const depth = Math.max(d, h);
+  const thick = WATER_SHEET * depth;
+  const max = Math.max(w, depth, thick);
+  const main = recipe.parts[0];
+  return {
+    ...recipe,
+    proportions: { w: w / max, h: Math.max(0.01, thick / max), d: depth / max },
+    parts: [
+      {
+        shape: 'box',
+        at: [0, 0, 0],
+        size: [1, 1, 1],
+        color: main?.color ?? '#3d6b7a',
+        material: 'water',
+        front: true,
+        ...(main?.status ? { status: main.status } : {}),
+      },
+    ],
+  };
+}
+
 /** Archetype the detection already implies (mock mode, and the hint sent to Spark). */
 export function defaultArchetype(
   category: ApplianceCategory,

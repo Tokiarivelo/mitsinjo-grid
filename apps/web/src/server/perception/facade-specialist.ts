@@ -6,14 +6,25 @@ import type { ShapeTarget } from '@/lib/object-shape';
 import { env } from '@/lib/env';
 import { isR2Configured, uploadBufferToR2 } from '@/server/storage/r2';
 import { DEFAULT_META_BASE_URL } from '@/server/copilot/providers/meta';
+import type { PhotoForRegions } from './region';
+import { cropForShape } from './shape-crop';
+
+/**
+ * Sent with the photo crop as reference (user 2026-11-05): without it Muse Image drew a generic
+ * object of the label (an ornate Victorian lamp for a plain lantern post).
+ */
+export const FACADE_FROM_PHOTO =
+  'Draw exactly the object inside the clear rectangle of the reference photo: same type, shape, proportions, colours, materials and details. Complete the parts hidden by people, plants or other objects. Do not draw the background or anything else from the photo.';
 
 /**
  * Builds a strict orthographic architectural elevation prompt for Meta Muse Image.
+ * `fromPhoto`: the photo crop goes along as reference (`FACADE_FROM_PHOTO`).
  */
 export function buildFacadePrompt(
   archetype: KitArchetype,
   label: string,
-  userPrompt?: string
+  userPrompt?: string,
+  { fromPhoto = false }: { fromPhoto?: boolean } = {}
 ): string {
   let basePrompt: string;
 
@@ -33,8 +44,11 @@ export function buildFacadePrompt(
       basePrompt = `Direct front elevation view of a complete utility pole or lamp post, ${label}. Straight-on vertical elevation, unoccluded, clean solid neutral background.`;
       break;
     case 'tree':
-    case 'bush':
       basePrompt = `Direct front elevation view of a complete ${label}, botanical illustration. Straight-on eye-level view of the whole plant from the ground to its top, clear silhouette of the crown and the trunk, unoccluded, centered on a solid clean neutral background.`;
+      break;
+    case 'bush':
+      // No trunk asked (user 2026-11-05: a low flower bed came back as a flowering tree).
+      basePrompt = `Direct front elevation view of a complete ${label}, botanical illustration. Straight-on eye-level view of the whole low plant from the ground to its top, as wide and as low as it grows, no trunk unless one is visible, unoccluded, centered on a solid clean neutral background.`;
       break;
     case 'cabinet':
     case 'machine':
@@ -47,6 +61,8 @@ export function buildFacadePrompt(
       basePrompt = `Direct front orthographic elevation of a complete ${label}. Centered, unoccluded, straight-on view, solid clean neutral background.`;
       break;
   }
+
+  if (fromPhoto) basePrompt += ` ${FACADE_FROM_PHOTO}`;
 
   if (userPrompt && userPrompt.trim()) {
     basePrompt += ` Additional required architectural features: ${userPrompt.trim()}.`;
@@ -173,6 +189,8 @@ export const museImageReady = () => env.LLM_PROVIDER === 'meta' && Boolean(env.M
 
 export interface GenerateFacadeOptions {
   target: ShapeTarget;
+  /** The detection photo: its crop around the target goes to Muse Image as reference. */
+  photo?: PhotoForRegions | null;
   userPrompt?: string;
   sessionId?: string;
   signal?: AbortSignal;
@@ -191,11 +209,23 @@ export interface FacadeResult {
  * uploads it to R2 (or server storage), and returns the consultable result.
  */
 export async function generateFacadeImage(options: GenerateFacadeOptions): Promise<FacadeResult> {
-  const { target, userPrompt, signal } = options;
+  const { target, userPrompt, signal, photo } = options;
   const archetype = defaultArchetype(target.category, target.scenery, target.label);
-  const prompt = buildFacadePrompt(archetype, target.label, userPrompt);
-
   const isMeta = museImageReady();
+  const reference =
+    isMeta && photo
+      ? await cropForShape(photo, target.box).catch((err) => {
+          console.warn(
+            '[facade-specialist] photo crop failed:',
+            err instanceof Error ? err.message : err
+          );
+          return null;
+        })
+      : null;
+  let prompt = buildFacadePrompt(archetype, target.label, userPrompt, {
+    fromPhoto: reference !== null,
+  });
+
   let pngBuffer: Buffer;
   let source: 'meta' | 'mock' = 'mock';
 
@@ -203,7 +233,18 @@ export async function generateFacadeImage(options: GenerateFacadeOptions): Promi
     console.info(`[facade-specialist] Requesting Muse Image for "${target.label}"...`);
 
     try {
-      pngBuffer = await museImage(prompt, [], signal);
+      try {
+        pngBuffer = await museImage(prompt, reference ? [reference] : [], signal);
+      } catch (err) {
+        if (!reference || signal?.aborted) throw err;
+        // A refused reference must not cost the 2D view: once more from the label alone.
+        console.warn(
+          '[facade-specialist] Muse Image with the photo failed, retrying without it:',
+          err instanceof Error ? err.message : err
+        );
+        prompt = buildFacadePrompt(archetype, target.label, userPrompt);
+        pngBuffer = await museImage(prompt, [], signal);
+      }
       source = 'meta';
       console.info(`[facade-specialist] Muse Image generated successfully for "${target.label}"`);
     } catch (err) {

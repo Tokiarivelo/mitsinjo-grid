@@ -4,7 +4,12 @@ import { type NextRequest } from 'next/server';
 import { ShapeTargetSchema } from '@/lib/object-shape';
 import { generateFacadeImage } from '@/server/perception/facade-specialist';
 import { deleteObjectFromR2 } from '@/server/storage/r2';
-import { jsonField, jsonResponse, readVisionRequest } from '@/server/perception/vision-request';
+import {
+  jsonField,
+  jsonResponse,
+  photoSize,
+  readVisionRequest,
+} from '@/server/perception/vision-request';
 
 /**
  * 2D Facade Imagination endpoint (Muse Image 1.0 + Specialist Skill).
@@ -23,6 +28,8 @@ export async function POST(req: NextRequest) {
   try {
     const result = await generateFacadeImage({
       target,
+      // The object as photographed goes along as reference (drawn as itself, not a generic one).
+      photo: await photoSize(read.photo.buffer),
       userPrompt,
       sessionId,
       signal: req.signal,

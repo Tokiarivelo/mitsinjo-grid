@@ -26,6 +26,12 @@ describe('facade-specialist', () => {
       expect(prompt).toContain('solid clean neutral background');
     });
 
+    it('draws a bush or flower bed low and without a trunk (before: a flowering tree)', () => {
+      const prompt = buildFacadePrompt('bush', 'flowering plants');
+      expect(prompt).toContain('as wide and as low as it grows');
+      expect(prompt).not.toContain('the trunk');
+    });
+
     it('incorporates additional user prompt details', () => {
       const prompt = buildFacadePrompt(
         'house',
