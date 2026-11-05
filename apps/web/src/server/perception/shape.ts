@@ -2,6 +2,7 @@ import type { ApplianceCategory } from '@mitsinjo/engine';
 import type { SceneryType } from '@/lib/vision';
 import { z } from 'zod';
 import {
+  clampEstimatedDepth,
   KIT_ARCHETYPES,
   ObjectKitSchema,
   PART_MATERIAL_KEYS,
@@ -271,7 +272,14 @@ export function mergeKitPatch(kit: ObjectKit, patch: Partial<ObjectKit>): Object
   const merged = {
     ...kit,
     ...patch,
-    ...(patch.proportions ? { proportions: { ...kit.proportions, ...patch.proportions } } : {}),
+    ...(patch.proportions
+      ? {
+          proportions: clampEstimatedDepth(patch.archetype ?? kit.archetype, {
+            ...kit.proportions,
+            ...patch.proportions,
+          }),
+        }
+      : {}),
     ...(patch.colors ? { colors: { ...kit.colors, ...patch.colors } } : {}),
     ...(patch.materials ? { materials: { ...kit.materials, ...patch.materials } } : {}),
     ...(patch.details ? { details: { ...kit.details, ...patch.details } } : {}),
@@ -344,11 +352,12 @@ export function parseKit(content: string, fallback: KitArchetype = 'other'): Obj
   const kit = ObjectKitSchema.safeParse({
     archetype,
     ...(subtype ? { subtype } : {}),
-    proportions: {
+    // Spark only estimates the depth: keep it within the archetype's real size range (PT-8).
+    proportions: clampEstimatedDepth(archetype, {
       w: clamp(w / max, 0.01, 1),
       h: clamp(h / max, 0.01, 1),
       d: clamp(d / max, 0.01, 1),
-    },
+    }),
     colors: { main: pick('main'), secondary: pick('secondary'), accent: pick('accent') },
     ...(Object.keys(materials).length ? { materials } : {}),
     ...(Object.keys(partMaterials).length ? { partMaterials } : {}),

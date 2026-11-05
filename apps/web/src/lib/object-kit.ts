@@ -112,6 +112,54 @@ export const ObjectKitSchema = z.object({
 });
 export type ObjectKit = z.infer<typeof ObjectKitSchema>;
 
+/** Real size range of one axis, millimetres [min, max]. */
+type MmRange = readonly [number, number];
+
+/**
+ * Real-world sizes per archetype (PT-8), mm: width (as seen on the photo) × height × depth. Used only to
+ * clamp the depth Spark **estimates** (`clampEstimatedDepth`); widths and heights come from the photo box,
+ * and a measured depth (drawn side view) is never clamped. Archetypes seen from any side (vehicle, animal,
+ * person) or without a typical size (water, other) have no range.
+ */
+export const ARCHETYPE_SIZE_MM: Partial<
+  Record<KitArchetype, { w: MmRange; h: MmRange; d: MmRange }>
+> = {
+  cabinet: { w: [500, 900], h: [800, 2000], d: [500, 750] },
+  screen: { w: [300, 2000], h: [200, 1200], d: [20, 300] },
+  fan: { w: [300, 600], h: [400, 1500], d: [300, 600] },
+  machine: { w: [300, 2000], h: [300, 1500], d: [300, 1200] },
+  lamp_post: { w: [200, 1500], h: [3000, 10000], d: [200, 1500] },
+  pole: { w: [150, 1500], h: [4000, 15000], d: [150, 1500] },
+  tank: { w: [600, 2500], h: [600, 3000], d: [600, 2500] },
+  panel: { w: [1000, 2300], h: [1000, 2500], d: [40, 1500] },
+  house: { w: [4000, 20000], h: [3000, 9000], d: [4000, 15000] },
+  building: { w: [5000, 40000], h: [3000, 20000], d: [5000, 30000] },
+  tree: { w: [1000, 15000], h: [2000, 30000], d: [1000, 15000] },
+  bush: { w: [300, 4000], h: [300, 3000], d: [300, 4000] },
+};
+
+/**
+ * Spark-estimated proportions → depth clamped to the archetype's real range (PT-8), largest side = 1
+ * again. The depth must fit both its ratio to the height and to the width; when the two ranges do not
+ * overlap (odd width / height from Spark), only the height ratio is used. No range → unchanged.
+ */
+export function clampEstimatedDepth(
+  archetype: KitArchetype,
+  p: ObjectKit['proportions']
+): ObjectKit['proportions'] {
+  const size = ARCHETYPE_SIZE_MM[archetype];
+  if (!size) return p;
+  const byH = [(size.d[0] / size.h[1]) * p.h, (size.d[1] / size.h[0]) * p.h] as const;
+  const byW = [(size.d[0] / size.w[1]) * p.w, (size.d[1] / size.w[0]) * p.w] as const;
+  let [lo, hi] = [Math.max(byH[0], byW[0]), Math.min(byH[1], byW[1])];
+  if (lo > hi) [lo, hi] = byH;
+  const d = Math.min(hi, Math.max(lo, p.d));
+  if (d === p.d) return p;
+  const max = Math.max(p.w, p.h, d);
+  const unit = (v: number) => Math.min(1, Math.max(0.01, v / max));
+  return { w: unit(p.w), h: unit(p.h), d: unit(d) };
+}
+
 /** Archetype the detection already implies (mock mode, and the hint sent to Spark). */
 export function defaultArchetype(
   category: ApplianceCategory,

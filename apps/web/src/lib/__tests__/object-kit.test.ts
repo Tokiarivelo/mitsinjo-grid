@@ -1,6 +1,8 @@
 import { APPLIANCE_CATEGORIES } from '@mitsinjo/engine';
 import { describe, expect, it } from 'vitest';
 import {
+  ARCHETYPE_SIZE_MM,
+  clampEstimatedDepth,
   decalWidth,
   defaultArchetype,
   KIT_ARCHETYPES,
@@ -254,5 +256,40 @@ describe('materials (AI)', () => {
     const r = kitToRecipe(kit('cabinet'));
     expect(r.parts.every((p) => p.material === undefined)).toBe(true);
     expect(r.parts[0]!.color).toBe('#c9a36a');
+  });
+});
+
+describe('real size ranges (PT-8)', () => {
+  it('clamps a Spark depth out of range: a fridge 3 × deeper than wide comes back ≤ 1.5 × its width', () => {
+    // 600 wide × 1800 high, Spark says 1800 deep; ratio bound = max depth / min width = 750 / 500.
+    const p = clampEstimatedDepth('cabinet', { w: 1 / 3, h: 1, d: 1 });
+    expect(p.d / p.w).toBeCloseTo(750 / 500, 6);
+    expect(p.w / p.h).toBeCloseTo(1 / 3, 6); // width / height untouched
+    expect(Math.max(p.w, p.h, p.d)).toBe(1);
+  });
+
+  it('lifts a paper-thin tank to its real minimum', () => {
+    const p = clampEstimatedDepth('tank', { w: 1, h: 1, d: 0.05 });
+    expect(p.d).toBeGreaterThan(0.2);
+  });
+
+  it('keeps a plausible depth, and archetypes without a range, unchanged', () => {
+    const fridge = { w: 0.35, h: 1, d: 0.35 };
+    expect(clampEstimatedDepth('cabinet', fridge)).toBe(fridge);
+    const car = { w: 1, h: 0.3, d: 0.05 };
+    expect(clampEstimatedDepth('vehicle', car)).toBe(car);
+    for (const a of Object.keys(ARCHETYPE_SIZE_MM)) {
+      const r = ARCHETYPE_SIZE_MM[a as ObjectKit['archetype']]!;
+      for (const [lo, hi] of [r.w, r.h, r.d]) expect(lo).toBeLessThan(hi);
+    }
+  });
+
+  it('never touches a measured depth: the fitted recipe keeps it', () => {
+    // A drawn side view measured this cabinet 3 × deeper than wide: measured wins, no clamp downstream.
+    const measured = fitRecipe(
+      { ...kitToRecipe(kit('cabinet')), proportions: { w: 0.33, h: 1, d: 1 } },
+      0
+    );
+    expect(measured.proportions.d).toBeCloseTo(1, 6);
   });
 });
