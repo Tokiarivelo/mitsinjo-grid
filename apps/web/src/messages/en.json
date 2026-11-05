@@ -1118,6 +1118,8 @@
         "done": "Model finalised",
         "stopped": "Improvement stopped: {cause}",
         "score": "Stage score {before} → {after}",
+        "alreadyMatches": "Stage already matches the drawing ({after})",
+        "noGain": "No better change found ({after})",
         "stage": {
           "massing": "Massing",
           "roof": "Roof",

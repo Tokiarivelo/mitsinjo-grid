@@ -1118,6 +1118,8 @@
         "done": "Vita ny modely",
         "stopped": "Najanona ny fanatsarana: {cause}",
         "score": "Isan'ny dingana {before} → {after}",
+        "alreadyMatches": "Efa mifanaraka amin'ny sary ity dingana ity ({after})",
+        "noGain": "Tsy nahitana fanatsarana ({after})",
         "stage": {
           "massing": "Endrika ankapobeny",
           "roof": "Tafo",

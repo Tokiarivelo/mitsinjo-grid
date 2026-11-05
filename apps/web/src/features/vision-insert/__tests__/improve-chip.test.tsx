@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@/lib/i18n';
 import type { ShapeImprove } from '../hooks/use-object-shape';
-import { IMPROVE_FADE_MS, ImproveChip, improveProgress } from '../ui/improve-chip';
+import { IMPROVE_FADE_MS, ImproveChip, improveProgress, scoreKey } from '../ui/improve-chip';
 
 const running: ShapeImprove = { status: 'running', index: 3, total: 4, stage: 'openings' };
 const chip = (improve?: ShapeImprove) =>
@@ -30,6 +30,24 @@ describe('ImproveChip (PG-T18)', () => {
     );
     expect(screen.getByText('Stage score 62% → 81%')).toBeTruthy();
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('75');
+  });
+
+  it('an unchanged stage says why (before: « Stage score 97% → 97% » looked like a stuck stage)', () => {
+    const { rerender } = chip({ ...running, before: 0.97, after: 0.97, stop: 'gate' });
+    expect(screen.getByText('Stage already matches the drawing (97%)')).toBeTruthy();
+    rerender(
+      <I18nProvider>
+        <ImproveChip improve={{ ...running, before: 0.75, after: 0.75, stop: 'no_gain' }} />
+      </I18nProvider>
+    );
+    expect(screen.getByText('No better change found (75%)')).toBeTruthy();
+  });
+
+  it('scoreKey: before → after when the score moved, whatever the stop', () => {
+    expect(scoreKey({ ...running, before: 0.68, after: 0.95, stop: 'gate' })).toBe('score');
+    expect(scoreKey({ ...running, before: 0.8, after: 0.8, stop: 'rounds' })).toBe('noGain');
+    expect(scoreKey({ ...running, before: 0.8, after: 0.8, stop: 'timeout' })).toBe('score');
+    expect(scoreKey(running)).toBe('score');
   });
 
   it('done: « Model finalised », then fades out', () => {

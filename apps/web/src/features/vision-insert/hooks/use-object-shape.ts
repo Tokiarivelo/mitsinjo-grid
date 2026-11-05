@@ -14,6 +14,7 @@ import {
   type ObjectShape,
   type PartKind,
   type ShapeStageId,
+  type ShapeStageStop,
   type ShapeStep,
   type ShapeTarget,
 } from '@/lib/object-shape';
@@ -51,6 +52,8 @@ export interface ShapeImprove {
   /** Stage score before → after (0–1), once the stage ended. */
   before?: number;
   after?: number;
+  /** Why the ended stage stopped (`gate` with no change = already matched the drawing). */
+  stop?: ShapeStageStop;
 }
 
 /** Reconnects to a dropped background job before giving up (« Amélioration arrêtée »). */
@@ -296,6 +299,7 @@ export function useObjectShape(scope?: string) {
               ...(kinds ? { kinds } : {}),
               ...(st.state === 'done' && st.before !== undefined ? { before: st.before } : {}),
               ...(st.state === 'done' && st.after !== undefined ? { after: st.after } : {}),
+              ...(st.state === 'done' && st.stop ? { stop: st.stop } : {}),
             };
             // A background stage that kept a patch: swap the model in (and keep it).
             if (st.phase === 'background' && st.recipe && finalized && s.shape?.mode === 'recipe') {

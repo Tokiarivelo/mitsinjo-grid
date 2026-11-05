@@ -18,6 +18,17 @@ export function improveProgress(i: ShapeImprove): number {
 }
 
 /**
+ * Which score line an ended stage shows: unchanged at its gate = already matched the drawing,
+ * unchanged otherwise = Spark found nothing better, else before → after.
+ */
+export function scoreKey(i: ShapeImprove): 'score' | 'alreadyMatches' | 'noGain' {
+  if (i.before === undefined || i.after === undefined) return 'score';
+  if (Math.round(i.after * 100) !== Math.round(i.before * 100)) return 'score';
+  if (i.stop === 'gate') return 'alreadyMatches';
+  return i.stop === 'no_gain' || i.stop === 'rounds' ? 'noGain' : 'score';
+}
+
+/**
  * Improvement indicator (PG-T18) over the 3D viewer: « Improving: stage 2/4 — Roof » with a
  * spinner, a progress bar and the stage score before → after while the background stages run,
  * then « Model finalised » or « Improvement stopped: <cause> », which fades out. Announced to
@@ -109,7 +120,7 @@ export function ImproveChip({
           )}
           {improve.before !== undefined && improve.after !== undefined && (
             <p className="font-mono text-[11px] text-text-secondary">
-              {t('score', {
+              {t(scoreKey(improve), {
                 before: fmtPct(improve.before * 100, 0),
                 after: fmtPct(improve.after * 100, 0),
               })}

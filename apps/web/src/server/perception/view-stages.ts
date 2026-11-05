@@ -15,17 +15,18 @@ export type ViewStage =
   'body' | 'glass' | 'wheels' | 'doors' | 'cells' | 'trunk' | 'crown' | 'head' | 'details';
 
 const S = {
-  // The plan's silhouette target (PV-shape-realism stop criteria): past it, rounds go to the parts.
-  body: { id: 'body', kinds: ['body'], gate: 0.85 },
-  glass: { id: 'glass', kinds: ['window'], gate: 0.8 },
-  wheels: { id: 'wheels', kinds: ['wheel'], gate: 0.8 },
-  vehicleDetails: { id: 'details', kinds: ['light', 'bumper', 'grille'], gate: 0.75 },
-  doors: { id: 'doors', kinds: ['door'], gate: 0.8 },
-  applianceDetails: { id: 'details', kinds: ['handle', 'display'], gate: 0.75 },
-  cells: { id: 'cells', kinds: ['cell'], gate: 0.85 },
-  trunk: { id: 'trunk', kinds: ['trunk'], gate: 0.8 },
-  crown: { id: 'crown', kinds: ['crown'], gate: 0.85 },
-  head: { id: 'head', kinds: ['head'], gate: 0.8 },
+  // Raised (user 2026-11-05) so the stages work past a first match; was body 0.85 (the plan's
+  // silhouette target), parts 0.75–0.85.
+  body: { id: 'body', kinds: ['body'], gate: 0.92 },
+  glass: { id: 'glass', kinds: ['window'], gate: 0.88 },
+  wheels: { id: 'wheels', kinds: ['wheel'], gate: 0.88 },
+  vehicleDetails: { id: 'details', kinds: ['light', 'bumper', 'grille'], gate: 0.85 },
+  doors: { id: 'doors', kinds: ['door'], gate: 0.88 },
+  applianceDetails: { id: 'details', kinds: ['handle', 'display'], gate: 0.85 },
+  cells: { id: 'cells', kinds: ['cell'], gate: 0.9 },
+  trunk: { id: 'trunk', kinds: ['trunk'], gate: 0.88 },
+  crown: { id: 'crown', kinds: ['crown'], gate: 0.9 },
+  head: { id: 'head', kinds: ['head'], gate: 0.88 },
 } as const satisfies Record<string, StageSpec<ViewStage>>;
 
 type Stages = ReadonlyArray<StageSpec<ViewStage>>;
