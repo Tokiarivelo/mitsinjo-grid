@@ -32,9 +32,9 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
   float eps = 0.002 * c;
   float breakX = abs((r - c) - (c - l)) / (abs(r - c) + abs(c - l) + eps);
   float breakY = abs((u - c) - (c - d)) / (abs(u - c) + abs(c - d) + eps);
-  float crease = smoothstep(0.6, 0.95, max(breakX, breakY));
+  float crease = smoothstep(0.45, 0.85, max(breakX, breakY));
 
-  float edge = pow(clamp(max(silhouette, 0.7 * crease), 0.0, 1.0), 0.8);
+  float edge = pow(clamp(max(silhouette, crease), 0.0, 1.0), 0.8);
   float k = clamp(edge * strength, 0.0, 1.0);
   outputColor = vec4(mix(inputColor.rgb, inkColor, k), max(inputColor.a, k));
 }
