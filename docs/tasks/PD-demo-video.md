@@ -47,7 +47,7 @@ All work in `video/` (layout: plan § 3). New commands → Makefile targets in a
       checklist passes and the duration is ≤ 3:00.
 - [x] **PD-T9b** YouTube thumbnail: `make video-thumbnail` → `video/output/thumbnail.png` (1280 × 720, day vs.
       night village from the live 3D view, plan § 7).
-- [ ] **PD-T10** (human) ~~Upload, put the link in README line 15, tick P9-T5~~ (done: https://youtu.be/M1CGLtZBkWs); then P9-T6 (submit, tag `v1.0.0`,
+- [ ] **PD-T10** (human) ~~Upload, put the link in README line 15, tick P9-T5~~ (done: https://youtu.be/GSu96kD7HRw); then P9-T6 (submit, tag `v1.0.0`,
       the one X post for Most Viral).
 
 **Exit criteria:** a ≤ 3:00 720p video that opens with the provenance line, is ≥ 90 % live footage with live
