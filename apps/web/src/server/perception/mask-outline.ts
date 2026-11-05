@@ -64,13 +64,34 @@ export function simplifyRing(ring: readonly Pt[], tolerance: number): Pt[] {
 
 const fmt = (v: number) => String(Math.round(v * 10000) / 10000);
 
+/** Mask raster this many pixels off its box (per axis) is taken as full size, not scaled. */
+export const MASK_SCALE_SLACK_PX = 2;
+
+/**
+ * Raster → image pixel scale of a SAM mask over its box: SAM sends big instances downsampled
+ * (live 2026-11-05: a 1047 × 1148 px tree box came with a ≈ 934 × 1024 mask, the outline shrank
+ * 11 % toward the top-left). 1 when the box end is unknown or the raster is full size.
+ */
+export function maskScale(
+  mask: Pick<SamMask, 'width' | 'height'>,
+  box: { x1: number; y1: number; x2?: number; y2?: number }
+): [number, number] {
+  const axis = (lo: number, hi: number | undefined, px: number) => {
+    if (hi === undefined || !(px > 0)) return 1;
+    const span = hi - lo + 1; // inclusive pixels
+    return Math.abs(span - px) > MASK_SCALE_SLACK_PX && span > 0 ? span / px : 1;
+  };
+  return [axis(box.x1, box.x2, mask.width), axis(box.y1, box.y2, mask.height)];
+}
+
 /**
  * Encoded SAM mask (a raster over the instance box) → SVG path in image fractions (0–1), simplified.
- * `box` = instance box, inclusive pixels. Null when the mask cannot be decoded or is empty.
+ * `box` = instance box, inclusive pixels; with its end, a downsampled raster is scaled back to it
+ * (`maskScale`). Null when the mask cannot be decoded or is empty.
  */
 export function maskToOutline(
   mask: SamMask,
-  box: { x1: number; y1: number },
+  box: { x1: number; y1: number; x2?: number; y2?: number },
   imageWidth: number,
   imageHeight: number,
   tolerance = OUTLINE_TOLERANCE
@@ -83,9 +104,10 @@ export function maskToOutline(
     return null;
   }
   // Parser points sit on pixel edges as centre ± 0.5: shift by +0.5 to land on pixel boundaries.
+  const [sx, sy] = maskScale(mask, box);
   const toImage = ([x, y]: Pt): Pt => [
-    Math.min(1, Math.max(0, (x + 0.5 + box.x1) / imageWidth)),
-    Math.min(1, Math.max(0, (y + 0.5 + box.y1) / imageHeight)),
+    Math.min(1, Math.max(0, ((x + 0.5) * sx + box.x1) / imageWidth)),
+    Math.min(1, Math.max(0, ((y + 0.5) * sy + box.y1) / imageHeight)),
   ];
   const rings = pathToRings(path).map((r) => r.map(toImage));
   if (rings.length === 0) return null;

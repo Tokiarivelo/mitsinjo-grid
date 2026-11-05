@@ -117,6 +117,11 @@ facade-e2e: ## Facade → 3D end to end on live Meta, stage loop included (FRONT
 	@test -n "$(FRONT)" -a -n "$(OUT)" || { echo "Usage: make facade-e2e FRONT=path/front.png OUT=dir [PROMPT='cottage with a red tin roof' to draw FRONT first]"; exit 1; }
 	eval "$$(make -s env-export)" && FACADE_E2E_FRONT="$(abspath $(FRONT))" FACADE_E2E_OUT="$(abspath $(OUT))" $(if $(PROMPT),FACADE_E2E_FRONT_PROMPT="$(PROMPT)") $(if $(LABEL),FACADE_E2E_LABEL="$(LABEL)") $(if $(SCENERY),FACADE_E2E_SCENERY="$(SCENERY)") $(if $(ID),FACADE_E2E_ID="$(ID)" FACADE_E2E_CAPTURE_DIR="$(CURDIR)/apps/web/src/server/perception/__fixtures__/shape/real") $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/facade-e2e.test.ts
 
+photo-audit: ## Every object of a real photo built the app way (2D view → 3D → stages) on live Meta: PHOTO=… TARGETS=targets.json OUT=dir [ONLY=det-1,det-3] (sheet.png + audit.md, costs API calls)
+	$(need_ws)
+	@test -n "$(PHOTO)" -a -n "$(TARGETS)" -a -n "$(OUT)" || { echo "Usage: make photo-audit PHOTO=photo.jpg TARGETS=targets.json (ShapeTarget[]) OUT=dir [ONLY=id,id]"; exit 1; }
+	eval "$$(make -s env-export)" && PHOTO_AUDIT_PHOTO="$(abspath $(PHOTO))" PHOTO_AUDIT_TARGETS="$(abspath $(TARGETS))" PHOTO_AUDIT_OUT="$(abspath $(OUT))" $(if $(ONLY),PHOTO_AUDIT_ONLY="$(ONLY)") $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/photo-audit.test.ts
+
 shape-report: ## 3D shape report: scores + contact sheet → test-results/shape-report/ (/shape-loop)
 	$(need_ws)
 	SHAPE_REPORT=1 SHAPE_REPORT_DIR=$(CURDIR)/test-results/shape-report $(PNPM) --filter $(WEB) exec vitest run src/server/perception/__tests__/shape-report.test.ts -t "make shape-report"
@@ -298,5 +303,5 @@ clean: ## Remove build/test output (keeps node_modules)
 clean-all: clean ## Also remove node_modules
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
 
-.PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-shape shape-capture facade-e2e eval-stages shape-report shape-shots improve-shot test-watch coverage e2e \
+.PHONY: help install env setup-claude browsers dev port dev-mock build start test test-engine test-web test-shape shape-capture facade-e2e photo-audit eval-stages shape-report shape-shots improve-shot test-watch coverage e2e \
         typecheck lint bridge bridge-sim test-bridge format format-check format-changed git-hooks check ci shots mockups scenarios-publish analyze scene-audit scene-audit-gpu lighthouse claude env-export mcp status todo deploy-link deploy clean clean-all video-tts-setup video-voice video-sfx video-capture video-canvas video-build video-thumbnail

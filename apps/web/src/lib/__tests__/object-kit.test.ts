@@ -293,3 +293,34 @@ describe('real size ranges (PT-8)', () => {
     expect(measured.proportions.d).toBeCloseTo(1, 6);
   });
 });
+
+describe('flatWaterRecipe', () => {
+  it('lays a river flat (before: a standing block 0.34 high)', async () => {
+    const { flatWaterRecipe, WATER_SHEET } = await import('../object-kit');
+    const river = {
+      proportions: { w: 1, h: 0.34, d: 0.18 },
+      parts: [
+        {
+          shape: 'cylinder' as const,
+          at: [0, 0, 0] as [number, number, number],
+          size: [1, 1, 1] as [number, number, number],
+          color: '#3a4a2e',
+        },
+      ],
+    };
+    const r = flatWaterRecipe(river);
+    expect(r.proportions.w).toBe(1);
+    expect(r.proportions.d).toBeCloseTo(0.34, 6);
+    expect(r.proportions.h).toBeCloseTo(0.34 * WATER_SHEET, 6);
+    expect(r.parts).toEqual([
+      {
+        shape: 'box',
+        at: [0, 0, 0],
+        size: [1, 1, 1],
+        color: '#3a4a2e',
+        material: 'water',
+        front: true,
+      },
+    ]);
+  });
+});

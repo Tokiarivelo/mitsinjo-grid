@@ -1,7 +1,7 @@
 import 'server-only';
 
 import sharp from 'sharp';
-import { kitToRecipe, type ObjectKit } from '@/lib/object-kit';
+import { flatWaterRecipe, kitToRecipe, type ObjectKit } from '@/lib/object-kit';
 import {
   SHAPE_TIMEOUT_MS,
   type ObjectRecipe,
@@ -81,6 +81,15 @@ export async function criticImage(
  * outline-less runs never round (no kit, or nothing to score against). Never throws.
  */
 export async function shapeWithCritic(
+  ...args: Parameters<typeof shapeWithCriticRound>
+): Promise<ObjectShape> {
+  const shape = await shapeWithCriticRound(...args);
+  return shape.mode === 'recipe' && shape.recipe && shape.kit?.archetype === 'water'
+    ? { ...shape, recipe: flatWaterRecipe(shape.recipe) }
+    : shape;
+}
+
+async function shapeWithCriticRound(
   perception: Pick<PerceptionClient, 'describeShape' | 'describeParts' | 'criticizeShape'> &
     Partial<Pick<PerceptionClient, 'segmentImage' | 'checkViews'>>,
   photo: PhotoForRegions | null,

@@ -31,6 +31,7 @@ import {
   sparkDepthRatio,
   viewIou,
   viewsRecipe,
+  PERSON_TORSO,
 } from '../object-views';
 
 import { FRONT, KIT, SIDE, box, front, side, type Pt } from '../__fixtures__/views';
@@ -56,6 +57,37 @@ describe('hull helpers (PV-H)', () => {
 });
 
 describe('viewsRecipe (PV-H)', () => {
+  it('a person wears its top colour on the torso (before: one grey hull for a woman in pink)', () => {
+    const rect: Pt[] = [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+    ];
+    const person = {
+      archetype: 'person' as const,
+      proportions: { w: 0.3, h: 1, d: 0.2 },
+      colors: { main: '#d7cfcb', secondary: '#f6bab5', accent: '#594637' },
+      materials: { main: 'fabric' as const, secondary: 'fabric' as const },
+    };
+    const views = {
+      front: { box: { x: 0, y: 0, w: 1, h: 1 }, aspect: 0.3, ring: rect, parts: [] },
+      side: { box: { x: 0, y: 0, w: 1, h: 1 }, aspect: 0.2, ring: rect, parts: [] },
+    };
+    const r = viewsRecipe(views, person);
+    expect(r.parts[0]).toMatchObject({ shape: 'hull', color: '#d7cfcb' });
+    const top = r.parts.filter((p) => p.color === '#f6bab5');
+    expect(top).toHaveLength(4);
+    for (const p of top) expect(p.shape).toBe('hull');
+    expect(PERSON_TORSO[0]).toBeLessThan(PERSON_TORSO[1]);
+    // Top and trousers of one colour family: no patch.
+    const plain = viewsRecipe(views, {
+      ...person,
+      colors: { ...person.colors, secondary: '#d4ccc8' },
+    });
+    expect(plain.parts).toHaveLength(1);
+  });
+
   it('rebuilds the whole car: hull body, 4 wheels, glass, lights, bumper, longer than wide', () => {
     const r = viewsRecipe({ front, side }, KIT);
     expect(ObjectRecipeSchema.safeParse(r).success).toBe(true);

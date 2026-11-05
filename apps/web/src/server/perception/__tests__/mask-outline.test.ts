@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_OUTLINE_POINTS,
+  maskScale,
   maskToOutline,
   pathToRings,
   remapOutlineToPhoto,
@@ -35,6 +36,26 @@ describe('maskToOutline (PV-T5)', () => {
     expect(Math.max(...xs)).toBeCloseTo(271 / 320, 2);
     expect(Math.min(...ys)).toBeCloseTo(228 / 334, 2);
     expect(Math.max(...ys)).toBeCloseTo(255 / 334, 2);
+  });
+
+  it('scales a downsampled mask back to its box (before: big outlines shrank toward the top-left)', () => {
+    const inst = parsed.instances[0]!;
+    const mask = parsed.masks[0]!;
+    // Same raster over a box twice as big: SAM sends big instances at a lower resolution.
+    const big = {
+      ...inst.box,
+      x2: inst.box.x1 + 2 * mask.width - 1,
+      y2: inst.box.y1 + 2 * mask.height - 1,
+    };
+    expect(maskScale(mask, big)).toEqual([2, 2]);
+    const pts = points(maskToOutline(mask, big, 320, 334)!);
+    const xs = pts.map((p) => p[0]);
+    const ys = pts.map((p) => p[1]);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo((2 * mask.width) / 320, 1);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo((2 * mask.height) / 334, 1);
+    // Full-size raster (± 2 px) or no box end: unchanged.
+    expect(maskScale(mask, inst.box)).toEqual([1, 1]);
+    expect(maskScale(mask, { x1: 0, y1: 0 })).toEqual([1, 1]);
   });
 
   it('the two objects get distinct outlines at their own place', () => {

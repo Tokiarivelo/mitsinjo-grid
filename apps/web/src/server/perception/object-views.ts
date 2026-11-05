@@ -15,6 +15,7 @@ import { pathToRings, polygonPath, type NormBox } from '@/lib/vision';
 import sharp from 'sharp';
 import { timeoutSignal } from './abort';
 import type { PerceptionClient } from './client';
+import { deltaE2000, hexToLab } from './color-measure';
 import { compactDataUrl, imagineSideView } from './facade-views';
 import { renderFlat, type FlatView } from './flat-render';
 import { samBoxToNorm } from './outline';
@@ -273,6 +274,13 @@ export async function measureObjectViews(
     return null;
   }
 }
+
+/** A person's torso band (hull y, -0.5 feet … 0.5 head top): hips to shoulders. */
+export const PERSON_TORSO: readonly [number, number] = [-0.06, 0.34];
+/** Below this CIEDE2000 the top and the trousers read as one colour: no torso patch. */
+export const CLOTHES_MIN_DELTA_E = 8;
+const clothesDiffer = (c: { main: string; secondary: string }) =>
+  deltaE2000(hexToLab(c.main), hexToLab(c.secondary)) >= CLOTHES_MIN_DELTA_E;
 
 /**
  * Round object from its validated 2D view (PG-T19): the kit template at the drawing's
@@ -536,6 +544,25 @@ export function viewsRecipe(
         status: 'measured',
       };
   parts.push(body);
+  // A person's top (user 2026-11-05: a woman in pink came out all grey): the secondary colour is
+  // measured in the top band (`SECONDARY_BAND.person`), so the torso wears it on every face.
+  if (kit.archetype === 'person' && section && clothesDiffer(kit.colors)) {
+    const look = {
+      color: kit.colors.secondary,
+      ...(kit.materials?.secondary ? { material: kit.materials.secondary } : {}),
+      status: 'measured' as const,
+    };
+    const [y0, y1] = PERSON_TORSO;
+    const [zl, zh] = ringRange(section, 0);
+    parts.push(
+      ...[
+        ...faceSkin(-0.5, 0.5, y0, y1, (y) => zSpan(y)[1]),
+        ...faceSkin(-0.5, 0.5, y0, y1, (y) => zSpan(y)[0]),
+        ...sideSkin(1, zl, zh, y0, y1),
+        ...sideSkin(0, zl, zh, y0, y1),
+      ].map((p): RecipePart => ({ ...p, ...look }))
+    );
+  }
   for (const b of wheels) {
     const [cx, cy] = centre(b);
     const y = 0.5 - cy;
