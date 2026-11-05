@@ -22,7 +22,7 @@ https://github.com/Tokiarivelo/mitsinjo-grid
 
 ## Minute Demo Video\* (YouTube)
 
-https://youtu.be/M1CGLtZBkWs
+https://youtu.be/GSu96kD7HRw
 
 ## Describe your use of Meta products to build the submitted project\*
 

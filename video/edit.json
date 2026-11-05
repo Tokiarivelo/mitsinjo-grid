@@ -4,7 +4,8 @@
       "id": "00",
       "canvas": "00-splash",
       "tail": 0,
-      "min": 4.5
+      "min": 8.3,
+      "vo": "vo-00-provenance.wav"
     },
     {
       "id": "01",
@@ -456,6 +457,13 @@
           "sub": "Engine \u00b7 every number|Human \u00b7 always in control",
           "at": 0.8,
           "dur": 12.5
+        },
+        {
+          "kind": "bench",
+          "text": "< 4 ms \u00b7 3 strategies compared (p95)|+3.6 pt \u00b7 clinic coverage, storm day|96 / 96 \u00b7 copilot evals pass|0.98 IoU \u00b7 3D shape vs. photo",
+          "sub": "BENCHMARKS \u00b7 MEASURED, REPRODUCIBLE",
+          "at": 13.2,
+          "dur": 6.0
         }
       ]
     },

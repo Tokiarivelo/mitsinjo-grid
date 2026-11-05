@@ -1,6 +1,6 @@
 # YouTube description — Mitsinjo Grid demo
 
-Video: https://youtu.be/M1CGLtZBkWs
+Video: https://youtu.be/GSu96kD7HRw
 
 ## Title
 
@@ -18,17 +18,17 @@ Built solo from scratch during the Meta AI Hackathon (Oct 26 – Nov 4, 2026). N
 💻 Source code: https://github.com/Tokiarivelo/mitsinjo-grid
 
 ⏱️ Chapters
-0:00 Intro
-0:04 The problem: one microgrid, a whole village
-0:16 Building a simulated week (sun, clouds, storm, chaos mode)
-0:32 3D village, topology, circuit and the Strategy Lab
-0:52 Voice copilot: "Who loses power first?"
-1:08 Autonomous AI dispatch, with one-tap take back control
-1:27 Photo → objects detected and outlined
-1:44 2D facade → 3D model, built stage by stage
-2:02 Load, placement and insertion in the village
-2:18 Four Meta models, one job each
-2:32 Outro
+0:00 Intro: built from scratch at the hackathon
+0:08 The problem: one microgrid, a whole village
+0:20 Building a simulated week (sun, clouds, storm, chaos mode)
+0:36 3D village, topology, circuit and the Strategy Lab
+0:56 Voice copilot: "Who loses power first?"
+1:12 Autonomous AI dispatch, with one-tap take back control
+1:31 Photo → objects detected and outlined
+1:48 2D facade → 3D model, built stage by stage
+2:06 Load, placement and insertion in the village
+2:21 Four Meta models, one job each + benchmarks
+2:41 Outro
 
 🤖 Meta models used
 • Muse Voice: speech to text for the voice copilot
